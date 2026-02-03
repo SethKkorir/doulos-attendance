@@ -24,16 +24,28 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance')
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance');
+        console.log('MongoDB Connected');
+    } catch (err) {
+        console.error('MongoDB Connection Error:', err);
+    }
+};
+
+// Initial connection
+connectDB();
 
 // Basic Route
 app.get('/', (req, res) => {
     res.send('Doulos Attendance API Running');
 });
 
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Start Server locally
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+export default app;

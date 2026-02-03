@@ -110,8 +110,8 @@ const CheckIn = () => {
                         ))}
 
                         {meeting?.questionOfDay && (
-                            <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'rgba(124, 58, 237, 0.05)', borderRadius: '0.75rem', border: '1px solid rgba(124, 58, 237, 0.1)' }}>
-                                <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: 600, color: '#a78bfa' }}>
+                            <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'rgba(221, 93, 108, 0.05)', borderRadius: '0.75rem', border: '1px solid rgba(221, 93, 108, 0.1)' }}>
+                                <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: 600, color: '#dd5d6c' }}>
                                     Daily Reflection: {meeting.questionOfDay}
                                 </label>
                                 <textarea

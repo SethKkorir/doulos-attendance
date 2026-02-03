@@ -111,21 +111,58 @@ const AdminDashboard = () => {
 
             const rows = data.map(r => {
                 const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
-                return headers.map(h => responses[h] || '');
+                const timestamp = new Date(r.timestamp).toLocaleString();
+                return `<tr><td>${timestamp}</td>${headers.map(h => `<td>${responses[h] || '-'}</td>`).join('')}</tr>`;
             });
 
-            const csvContent = "data:text/csv;charset=utf-8,"
-                + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const headerCells = ['Time', ...headers].map(h => `<th style="text-align: left; padding: 12px; border-bottom: 2px solid #032540; color: #032540;">${h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>`).join('');
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `${meetingName}_Attendance.csv`);
-            document.body.appendChild(link);
-            link.click();
+            const reportHtml = `
+                <html>
+                <head>
+                    <title>${meetingName} - Attendance Report</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; padding: 40px; }
+                        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1976d2; padding-bottom: 20px; margin-bottom: 30px; }
+                        .logo { height: 80px; }
+                        .title-section { text-align: right; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th { background-color: #f5f5f5; }
+                        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+                        .footer { margin-top: 50px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <img src="${window.location.origin}/logo.png" class="logo" />
+                        <div class="title-section">
+                            <h1 style="margin: 0; color: #032540;">Attendance Report</h1>
+                            <p style="margin: 5px 0; color: #666;">${meetingName}</p>
+                            <p style="margin: 0; font-size: 0.9em;">Generated on: ${new Date().toLocaleString()}</p>
+                        </div>
+                    </div>
+                    
+                    <button class="no-print" onclick="window.print()" style="margin-bottom: 20px; padding: 10px 20px; background: #25AAE1; color: white; border: none; border-radius: 5px; cursor: pointer;">Print to PDF</button>
+
+                    <table>
+                        <thead><tr>${headerCells}</tr></thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+
+                    <div class="footer">
+                        Doulos Solidarity &bull; Daystar University &bull; Official Attendance Record
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const win = window.open('', '_blank');
+            win.document.write(reportHtml);
+            win.document.close();
         } catch (err) {
             console.error(err);
-            alert('Failed to download report');
+            alert('Failed to generate report');
         }
     };
 
@@ -206,7 +243,7 @@ const AdminDashboard = () => {
             {/* Analytics Bar */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                 <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '0.75rem', background: 'rgba(124, 58, 237, 0.2)', borderRadius: '0.75rem', color: '#a78bfa' }}>
+                    <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.2)', borderRadius: '0.75rem', color: '#25AAE1' }}>
                         <Users size={24} />
                     </div>
                     <div>
@@ -215,7 +252,7 @@ const AdminDashboard = () => {
                     </div>
                 </div>
                 <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '0.75rem', background: 'rgba(6, 182, 212, 0.2)', borderRadius: '0.75rem', color: '#22d3ee' }}>
+                    <div style={{ padding: '0.75rem', background: 'rgba(255, 215, 0, 0.2)', borderRadius: '0.75rem', color: '#FFD700' }}>
                         <Activity size={24} />
                     </div>
                     <div>
@@ -224,7 +261,7 @@ const AdminDashboard = () => {
                     </div>
                 </div>
                 <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.2)', borderRadius: '0.75rem', color: '#34d399' }}>
+                    <div style={{ padding: '0.75rem', background: 'rgba(221, 93, 108, 0.2)', borderRadius: '0.75rem', color: '#dd5d6c' }}>
                         <BarChart3 size={24} />
                     </div>
                     <div>
@@ -368,7 +405,7 @@ const AdminDashboard = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                    <button className="btn" style={{ flex: '1 1 60px', background: 'rgba(124, 58, 237, 0.15)', color: '#a78bfa', padding: '0.5rem', fontSize: '0.8rem' }} onClick={() => setSelectedMeeting(m)}>
+                                    <button className="btn" style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }} onClick={() => setSelectedMeeting(m)}>
                                         <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
                                     </button>
                                     <button className="btn" style={{ flex: '2 1 100px', background: 'rgba(255,255,255,0.05)', color: 'white', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)' }} onClick={() => setViewingAttendance(m)}>
@@ -426,7 +463,7 @@ const AdminDashboard = () => {
                                                         <div style={{
                                                             width: `${Math.min(m.totalAttended * 25, 100)}%`,
                                                             height: '100%',
-                                                            background: isRegular ? '#4ade80' : '#a78bfa'
+                                                            background: isRegular ? '#FFD700' : '#25AAE1'
                                                         }} />
                                                     </div>
                                                     <span style={{ fontSize: '0.85rem' }}>{m.totalAttended} meetings</span>
@@ -434,14 +471,14 @@ const AdminDashboard = () => {
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
                                                 {new Date(m.lastSeen).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                                <div style={{ fontSize: '0.7rem', color: isGhosting ? '#f87171' : 'var(--color-text-dim)' }}>
+                                                <div style={{ fontSize: '0.7rem', color: isGhosting ? '#dd5d6c' : 'var(--color-text-dim)' }}>
                                                     {daysSinceLast === 0 ? 'Today' : `${daysSinceLast} days ago`}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '1rem' }}>
-                                                {isNewcomer && <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(34, 211, 238, 0.1)', color: '#22d3ee', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>NEWCOMER</span>}
-                                                {isGhosting && <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', marginLeft: '0.5rem' }}>FOLLOW UP</span>}
-                                                {isRegular && !isGhosting && <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>REGULAR</span>}
+                                                {isNewcomer && <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>NEWCOMER</span>}
+                                                {isGhosting && <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(221, 93, 108, 0.1)', color: '#dd5d6c', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', marginLeft: '0.5rem' }}>FOLLOW UP</span>}
+                                                {isRegular && !isGhosting && <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(255, 215, 0, 0.1)', color: '#FFD700', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>REGULAR</span>}
                                             </td>
                                         </tr>
                                     );
