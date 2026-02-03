@@ -23,20 +23,18 @@ app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
-// MongoDB Connection
-const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance');
-        console.log('MongoDB Connected');
-    } catch (err) {
-        console.error('MongoDB Connection Error:', err);
-    }
-};
+// MongoDB Connection Strategy for Serverless
+let cachedConnection = null;
 
-// Initial connection
-connectDB().then(async () => {
-    // Auto-seed admin if database is empty
+const connectDB = async () => {
+    if (cachedConnection) return cachedConnection;
+
     try {
+        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance');
+        cachedConnection = conn;
+        console.log('MongoDB Connected');
+
+        // Auto-seed admin
         const User = (await import('./models/User.js')).default;
         const adminExists = await User.findOne({ role: 'admin' });
         if (!adminExists) {
@@ -48,9 +46,17 @@ connectDB().then(async () => {
             await admin.save();
             console.log('Admin auto-seeded successfully');
         }
+
+        return conn;
     } catch (err) {
-        console.error('Auto-seeding failed:', err);
+        console.error('MongoDB Connection or Seeding Error:', err);
     }
+};
+
+// Middleware to ensure DB connection before every request
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
 });
 
 // Basic Route
