@@ -24,28 +24,34 @@ let cachedConnection = null;
 const connectDB = async () => {
     if (cachedConnection) return cachedConnection;
 
+    console.log('--- Database Connection Attempt ---');
+    console.log('URI Presence:', !!process.env.MONGO_URI);
+
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance');
         cachedConnection = conn;
-        console.log('MongoDB Connected');
+        console.log('✅ MongoDB Connected');
 
         // Auto-seed admin
         const User = (await import('./models/User.js')).default;
         const adminExists = await User.findOne({ role: 'admin' });
         if (!adminExists) {
+            console.log('Seeding initial admin user...');
             const admin = new User({
                 username: 'admin',
                 password: process.env.ADMIN_PASSWORD || 'admin123',
                 role: 'admin'
             });
             await admin.save();
-            console.log('Admin auto-seeded successfully');
+            console.log('✅ Admin auto-seeded successfully');
+        } else {
+            console.log('Admin user verified');
         }
 
         return conn;
     } catch (err) {
-        console.error('MongoDB Connection or Seeding Error:', err);
-        throw err; // Throw so the middleware can catch it
+        console.error('❌ MongoDB Error:', err.message);
+        throw err;
     }
 };
 
