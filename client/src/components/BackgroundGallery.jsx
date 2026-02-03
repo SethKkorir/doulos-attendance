@@ -8,7 +8,7 @@ const IMAGES = [
     'DSC_7189.jpg', 'DSC_7192.jpg', 'DSC_7225.jpg', 'DSC_7238.jpg', 'DSC_7241.jpg'
 ];
 
-const FOLDER_PATH = '/Doulos%20Training%201%20October%202025-3-001/Doulos%20Training%201%20October%202025/';
+const FOLDER_PATH = '/gallery/';
 
 const BackgroundGallery = () => {
     const [currentImage, setCurrentImage] = useState('');
