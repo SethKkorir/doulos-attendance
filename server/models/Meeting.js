@@ -11,7 +11,15 @@ const meetingSchema = new mongoose.Schema({
     startTime: { type: String, required: true }, // e.g., "20:30"
     endTime: { type: String, required: true },   // e.g., "23:00"
     isActive: { type: Boolean, default: true },
-    code: { type: String, unique: true } // Unique meeting ID/Token for QR
+    code: { type: String, unique: true }, // Unique meeting ID/Token for QR
+    requiredFields: [
+        {
+            label: { type: String, default: 'Full Name' },
+            key: { type: String, default: 'studentName' },
+            required: { type: Boolean, default: true }
+        }
+    ],
+    questionOfDay: { type: String, default: '' }
 }, { timestamps: true });
 
 export default mongoose.model('Meeting', meetingSchema);

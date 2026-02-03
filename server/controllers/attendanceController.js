@@ -2,7 +2,7 @@ import Attendance from '../models/Attendance.js';
 import Meeting from '../models/Meeting.js';
 
 export const submitAttendance = async (req, res) => {
-    const { meetingCode, studentName, studentRegNo } = req.body;
+    const { meetingCode, responses } = req.body;
 
     try {
         // 1. Find the meeting
@@ -12,28 +12,34 @@ export const submitAttendance = async (req, res) => {
         // 2. Check if meeting is active/open
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
 
-        // 3. Time Validation (Server-side enforcement)
-        // meeting.date is a Date object (00:00:00). We need to combine it with startTime/endTime strings.
-        // For simplicity, we can assume the meeting is TODAY if the date matches.
-        // Or just rely on Admin toggling "isActive". 
-        // Let's rely on `isActive` + Admin sets it, AND a sanity check on date.
-        const now = new Date();
-        // Compare dates (YYYY-MM-DD)
-        const meetingDateStr = meeting.date.toISOString().split('T')[0];
-        const nowDateStr = now.toISOString().split('T')[0];
+        // 3. Extract uniquely identifying field (Reg No)
+        // Check standard keys first, then look for any key containing "reg" or "adm"
+        let rawRegNo = responses.studentRegNo || responses.regNo || responses.admNo;
 
-        // Allow check-in only on the day of the meeting?
-        if (meetingDateStr !== nowDateStr) {
-            // return res.status(400).json({ message: 'Meeting is not scheduled for today' });
-            // Commented out for testing/flexibility, but strictly per requirements:
-            // "Students can only scan a secure, time-restricted QR code"
+        if (!rawRegNo) {
+            const fallbackKey = Object.keys(responses).find(k =>
+                k.toLowerCase().includes('reg') || k.toLowerCase().includes('adm')
+            );
+            if (fallbackKey) rawRegNo = responses[fallbackKey];
         }
 
-        // 4. Record Attendance
+        if (!rawRegNo) {
+            return res.status(400).json({ message: 'Admission Number is required' });
+        }
+
+        const studentRegNo = rawRegNo.trim().toUpperCase();
+
+        // 4. Double check for duplicates explicitly for better error handling
+        const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
+        if (existing) {
+            return res.status(409).json({ message: 'You have already signed in for this meeting.' });
+        }
+
+        // 5. Record Attendance
         const attendance = new Attendance({
             meeting: meeting._id,
-            studentName,
-            studentRegNo
+            studentRegNo,
+            responses
         });
 
         await attendance.save();
