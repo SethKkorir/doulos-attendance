@@ -168,6 +168,55 @@ const AdminDashboard = () => {
         }
     };
 
+    const handlePrintQR = (meeting) => {
+        const qrSvg = document.querySelector('.qr-modal-content svg');
+        if (!qrSvg) return alert('QR code not found');
+
+        const qrDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(qrSvg));
+
+        const printHtml = `
+            <html>
+            <head>
+                <title>Doulos QR - ${meeting.name}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 40px; }
+                    .container { border: 4px solid #1976d2; padding: 60px; border-radius: 30px; max-width: 600px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+                    .logo { height: 120px; margin-bottom: 20px; }
+                    .date { font-size: 1.5rem; font-weight: 600; margin-bottom: 40px; color: #1976d2; text-transform: uppercase; letter-spacing: 2px; }
+                    .qr-container { margin: 40px 0; padding: 20px; background: white; border: 1px solid #eee; display: inline-block; border-radius: 20px; }
+                    .meeting-name { font-size: 2.5rem; font-weight: 800; color: #032540; margin-bottom: 10px; }
+                    .details { font-size: 1.2rem; color: #555; margin-bottom: 20px; }
+                    .footer { margin-top: 50px; font-size: 1rem; color: #888; border-top: 1px solid #eee; padding-top: 20px; }
+                    @media print { button { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <img src="${window.location.origin}/logo.png" class="logo" />
+                    <div class="meeting-name">${meeting.name}</div>
+                    <div class="details">${meeting.campus} Fellowship</div>
+                    <div class="date">Thursday, February 5, 2026</div>
+                    
+                    <div class="qr-container">
+                        <img src="${qrDataUrl}" width="350" height="350" />
+                    </div>
+                    
+                    <div class="footer">
+                        Doulos Solidarity &bull; Daystar University
+                    </div>
+                </div>
+                <script>
+                    window.onload = () => { setTimeout(() => window.print(), 500); };
+                </script>
+            </body>
+            </html>
+        `;
+
+        const win = window.open('', '_blank');
+        win.document.write(printHtml);
+        win.document.close();
+    };
+
     const logout = () => {
         localStorage.clear();
         window.location.href = '/admin';
@@ -517,7 +566,7 @@ const AdminDashboard = () => {
                         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
                         background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
                     }} onClick={() => setSelectedMeeting(null)}>
-                        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', background: '#fff' }} onClick={e => e.stopPropagation()}>
+                        <div className="glass-panel qr-modal-content" style={{ padding: '2rem', textAlign: 'center', background: '#fff' }} onClick={e => e.stopPropagation()}>
                             <h3 style={{ color: '#000', marginBottom: '1rem' }}>Scan to Check In</h3>
                             <div style={{ background: 'white', padding: '1rem', display: 'inline-block', borderRadius: '0.5rem' }}>
                                 <QRCode
@@ -529,8 +578,14 @@ const AdminDashboard = () => {
                             <p style={{ color: '#333', marginTop: '1rem', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
                             <p style={{ color: '#666', fontSize: '0.9rem' }}>{selectedMeeting.campus} | {selectedMeeting.startTime} - {selectedMeeting.endTime}</p>
 
-                            {/* Test Links for Local Environment */}
-                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ padding: '0.5rem 1.5rem' }}
+                                    onClick={() => handlePrintQR(selectedMeeting)}
+                                >
+                                    <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
+                                </button>
                                 <button
                                     className="btn"
                                     style={{ background: '#f3f4f6', color: '#374151', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
@@ -548,10 +603,10 @@ const AdminDashboard = () => {
                                     target="_blank"
                                     rel="noreferrer"
                                     className="btn"
-                                    style={{ background: 'hsl(var(--color-primary))', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', textDecoration: 'none' }}
+                                    style={{ background: 'rgba(0,0,0,0.05)', color: '#666', fontSize: '0.8rem', padding: '0.5rem 1rem', textDecoration: 'none' }}
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Open Test Link
+                                    <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
                                 </a>
                             </div>
 
@@ -627,6 +682,7 @@ const AttendanceTable = ({ meetingId }) => {
                         <thead>
                             <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
                                 <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Time</th>
+                                <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Category</th>
                                 {headers.map(h => (
                                     <th key={h} style={{ padding: '1rem', textTransform: 'capitalize', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                                         {h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
@@ -637,11 +693,14 @@ const AttendanceTable = ({ meetingId }) => {
                         <tbody>
                             {filteredRecords.map((r, i) => (
                                 <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
-                                    <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
+                                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
                                         {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </td>
+                                    <td style={{ padding: '1rem', fontSize: '0.9rem', fontWeight: 600, color: 'hsl(var(--color-primary))' }}>
+                                        {r.memberType || 'Visitor'}
+                                    </td>
                                     {headers.map(h => (
-                                        <td key={h} style={{ padding: '1rem' }}>
+                                        <td key={h} style={{ padding: '1rem', fontSize: '0.9rem' }}>
                                             {r.responses?.[h] || '-'}
                                         </td>
                                     ))}
