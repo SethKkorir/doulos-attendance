@@ -34,7 +34,24 @@ const connectDB = async () => {
 };
 
 // Initial connection
-connectDB();
+connectDB().then(async () => {
+    // Auto-seed admin if database is empty
+    try {
+        const User = (await import('./models/User.js')).default;
+        const adminExists = await User.findOne({ role: 'admin' });
+        if (!adminExists) {
+            const admin = new User({
+                username: 'admin',
+                password: process.env.ADMIN_PASSWORD || 'admin123',
+                role: 'admin'
+            });
+            await admin.save();
+            console.log('Admin auto-seeded successfully');
+        }
+    } catch (err) {
+        console.error('Auto-seeding failed:', err);
+    }
+});
 
 // Basic Route
 app.get('/', (req, res) => {
