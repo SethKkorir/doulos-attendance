@@ -2,12 +2,16 @@ import Attendance from '../models/Attendance.js';
 import Meeting from '../models/Meeting.js';
 
 export const submitAttendance = async (req, res) => {
-    const { meetingCode, responses } = req.body;
+    const { meetingCode, responses, memberType } = req.body;
 
     try {
         // 1. Find the meeting
         const meeting = await Meeting.findOne({ code: meetingCode });
         if (!meeting) return res.status(404).json({ message: 'Invalid Meeting Code' });
+
+        if (!memberType) {
+            return res.status(400).json({ message: 'Member category is required' });
+        }
 
         // 2. Check if meeting is active/open
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
@@ -38,7 +42,10 @@ export const submitAttendance = async (req, res) => {
         // 5. Record Attendance
         const attendance = new Attendance({
             meeting: meeting._id,
+            meetingName: meeting.name,
+            campus: meeting.campus,
             studentRegNo,
+            memberType,
             responses
         });
 

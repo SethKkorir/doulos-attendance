@@ -77,8 +77,8 @@ export const deleteMeeting = async (req, res) => {
     try {
         const { id } = req.params;
         await Meeting.findByIdAndDelete(id);
-        await Attendance.deleteMany({ meeting: id });
-        res.json({ message: 'Meeting and attendance records deleted' });
+        // We no longer delete attendance records to preserve historical member data
+        res.json({ message: 'Meeting deleted successfully (attendance records preserved)' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

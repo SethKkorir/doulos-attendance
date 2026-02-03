@@ -3,11 +3,13 @@ import { useParams } from 'react-router-dom';
 import api from '../api';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Logo from '../components/Logo';
+import BackgroundGallery from '../components/BackgroundGallery';
 
 const CheckIn = () => {
     const { meetingCode } = useParams();
     const [meeting, setMeeting] = useState(null);
     const [responses, setResponses] = useState({});
+    const [memberType, setMemberType] = useState(''); // Douloid, Recruit, Visitor
     const [status, setStatus] = useState('loading'); // loading, idle, submitting, success, error
     const [msg, setMsg] = useState('');
 
@@ -43,10 +45,15 @@ const CheckIn = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!memberType) {
+            setMsg('Please select your member category');
+            return;
+        }
         setStatus('submitting');
         try {
             await api.post('/attendance/submit', {
                 meetingCode,
+                memberType,
                 responses
             });
             setStatus('success');
@@ -60,13 +67,15 @@ const CheckIn = () => {
     if (status === 'loading') {
         return (
             <div className="flex-center" style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
+                <BackgroundGallery />
                 <Loader2 className="animate-spin" size={48} />
             </div>
         );
     }
 
     return (
-        <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1rem', background: 'var(--color-bg)' }}>
+        <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1rem', background: 'transparent' }}>
+            <BackgroundGallery />
             <div className="glass-panel" style={{ width: '100%', maxWidth: '450px', padding: '2rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Logo size={80} showText={false} />
@@ -81,6 +90,38 @@ const CheckIn = () => {
                                 {msg}
                             </div>
                         )}
+
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
+                                Who are you? <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                                {['Douloid', 'Recruit', 'Visitor'].map((type) => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => {
+                                            setMemberType(type);
+                                            if (msg) setMsg('');
+                                        }}
+                                        style={{
+                                            padding: '0.75rem 0.25rem',
+                                            borderRadius: '0.75rem',
+                                            border: '1px solid',
+                                            borderColor: memberType === type ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.1)',
+                                            background: memberType === type ? 'rgba(37, 170, 225, 0.1)' : 'rgba(255,255,255,0.02)',
+                                            color: memberType === type ? 'hsl(var(--color-primary))' : 'var(--color-text-dim)',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         {meeting?.requiredFields.map((field) => (
                             <div key={field.key}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
@@ -136,12 +177,26 @@ const CheckIn = () => {
                         </button>
                     </form>
                 ) : status === 'success' ? (
-                    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                         <div style={{ background: 'rgba(74, 222, 128, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                             <CheckCircle size={48} color="#4ade80" />
                         </div>
-                        <h2 style={{ color: '#4ade80', marginBottom: '1rem' }}>Success!</h2>
-                        <p style={{ lineHeight: 1.6 }}>{msg}</p>
+                        <h2 style={{ color: '#4ade80', marginBottom: '0.8rem', fontSize: '1.75rem' }}>Check-In Complete!</h2>
+                        <p style={{ lineHeight: 1.6, color: 'var(--color-text-dim)', marginBottom: '2rem' }}>
+                            Your attendance for <strong>{meeting?.name}</strong> has been officially recorded.
+                            You can now close this tab.
+                        </p>
+
+                        <button
+                            className="btn btn-primary"
+                            style={{ width: '100%', padding: '1rem' }}
+                            onClick={() => window.close()}
+                        >
+                            Close Tab
+                        </button>
+                        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '1rem' }}>
+                            If the button doesn't work, swipe this page away to exit.
+                        </p>
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>

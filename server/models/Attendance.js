@@ -2,8 +2,15 @@ import mongoose from 'mongoose';
 
 const attendanceSchema = new mongoose.Schema({
     meeting: { type: mongoose.Schema.Types.ObjectId, ref: 'Meeting', required: true },
-    studentRegNo: { type: String, required: true }, // Principal identifier for uniqueness
-    responses: { type: Map, of: String }, // Flexible dynamic fields
+    meetingName: { type: String },
+    campus: { type: String },
+    studentRegNo: { type: String, required: true },
+    memberType: {
+        type: String,
+        enum: ['Douloid', 'Recruit', 'Visitor'],
+        required: true
+    },
+    responses: { type: Map, of: String },
     timestamp: { type: Date, default: Date.now }
 });
 
