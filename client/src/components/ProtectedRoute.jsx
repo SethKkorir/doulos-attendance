@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children }) => {
-    const token = sessionStorage.getItem('token');
+    const token = localStorage.getItem('token');
     // In a real app, verify token validity/expiration here or via API check
 
     if (!token) {

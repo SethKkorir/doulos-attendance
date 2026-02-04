@@ -26,7 +26,7 @@ const AdminDashboard = () => {
     const [msg, setMsg] = useState(null);
     const [viewingAttendance, setViewingAttendance] = useState(null); // Meeting object
     const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'members', or 'reports'
-    const [userRole, setUserRole] = useState(sessionStorage.getItem('role') || 'admin');
+    const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'admin');
     const [members, setMembers] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(true);
@@ -280,7 +280,7 @@ const AdminDashboard = () => {
     };
 
     const logout = () => {
-        sessionStorage.clear();
+        localStorage.clear();
         window.location.href = '/admin';
     };
 
@@ -928,7 +928,7 @@ const AttendanceTable = ({ meeting }) => {
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const userRole = sessionStorage.getItem('role') || 'admin';
+    const userRole = localStorage.getItem('role') || 'admin';
 
     const deleteRecord = async (id) => {
         if (!window.confirm('Delete this attendance record?')) return;

@@ -13,7 +13,7 @@ const AdminLogin = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (sessionStorage.getItem('token')) {
+        if (localStorage.getItem('token')) {
             navigate('/admin/dashboard');
         }
     }, [navigate]);
@@ -27,9 +27,9 @@ const AdminLogin = () => {
             const loginPassword = isBypass ? '657' : password;
 
             const res = await api.post('/auth/login', { username: loginUsername, password: loginPassword });
-            sessionStorage.setItem('token', res.data.token);
-            sessionStorage.setItem('role', res.data.role);
-            sessionStorage.setItem('username', loginUsername);
+            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('role', res.data.role);
+            localStorage.setItem('username', loginUsername);
             navigate('/admin/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed');
