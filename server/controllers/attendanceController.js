@@ -16,49 +16,37 @@ export const submitAttendance = async (req, res) => {
         // 2. Check if meeting is active/open
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
 
-        // DEBUG: Log meeting details to see why time check might be skipped
-        console.log(`[DEBUG] Meeting Code: ${meetingCode}, Campus Found: "${meeting.campus}", Time: ${new Date().toLocaleTimeString()}`);
+        // Normalizing campus name for strict matching
+        const campusName = (meeting.campus || '').trim().toLowerCase();
 
-        // Nairobi Campus (Valley Road) time restriction (2 PM - 4 PM)
-        const isNairobiCampus = meeting.campus.trim() === 'Valley Road' || meeting.campus.trim() === 'Nairobi Campus';
+        // DEBUG: Vital logs for troubleshooting
+        const now = new Date();
+        const eatTime = new Date(now.getTime() + (3 * 60 * 60 * 1000)); // Manual UTC+3 for EAT
+        const eatHour = eatTime.getUTCHours();
+        const eatMin = eatTime.getUTCMinutes();
+        const eatDay = eatTime.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+        const timeDecimal = eatHour + (eatMin / 60);
 
-        if (isNairobiCampus) {
-            const now = new Date();
-            // Get East Africa Time (EAT) hour (UTC+3)
-            const eatTime = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
-            const eatHour = eatTime.getHours();
-            const eatDay = eatTime.getDay(); // 3 is Wednesday
+        console.log(`[STRICT CHECK] Campus: "${campusName}", Day: ${eatDay}, Time: ${timeDecimal.toFixed(2)}`);
 
-            console.log(`[TIME CHECK] Nairobi: Day=${eatDay}, Hour=${eatHour}`);
-
-            // Validation: Only Wednesday between 2 PM (14) and 4 PM (16)
-            if (eatDay !== 3 || eatHour < 14 || eatHour >= 16) {
+        // NAIROBI / VALLEY ROAD CHECK: Wed 2 PM - 4 PM
+        if (campusName.includes('valley') || campusName.includes('nairobi')) {
+            // Must be Wednesday (3) AND between 14.0 and 16.0
+            if (eatDay !== 3 || timeDecimal < 14.0 || timeDecimal >= 16.0) {
                 const jokes = [
                     "Eyy! Nairobi Campus attendance is strictly 2 PM - 4 PM on Wednesdays. Even the stairs aren't this steep! Come back later. 😂",
-                    "Slow down! The QR code is currently stuck in Nairobi traffic. Try again Wednesday between 2 PM and 4 PM. 🚗💨",
                     "The portal says 'No'! Nairobi Campus attendance is only for the 2-4 PM legends. Go grab some cafeteria food while you wait. 🍟",
                     "Wait a minute! Are you trying to beat the system? Nairobi Campus only allows scans from 2 PM to 4 PM on Wednesdays. Stay humble! 🙏",
-                    "Daystar says: 'Patience is a virtue'. Especially for Nairobi Campus scans between 2 PM and 4 PM. See you on Wednesday! ✨"
+                    "Daystar says: 'Patience is a virtue'. See you on Wednesday between 2 PM and 4 PM! ✨"
                 ];
-                const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
-                return res.status(403).json({ message: randomJoke });
+                return res.status(403).json({ message: jokes[Math.floor(Math.random() * jokes.length)] });
             }
         }
 
-        // Athi River Campus time restriction (Monday 8:30 PM - 11 PM)
-        if (meeting.campus.trim() === 'Athi River') {
-            const now = new Date();
-            const eatTime = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
-            const eatHour = eatTime.getHours();
-            const eatMin = eatTime.getMinutes();
-            const eatDay = eatTime.getDay(); // 1 is Monday
-
-            const currentTimeDecimal = eatHour + (eatMin / 60);
-
-            console.log(`[TIME CHECK] Athi River: Day=${eatDay}, Hour=${currentTimeDecimal}`);
-
-            // Validation: Only Monday between 8:30 PM (20.5) and 11 PM (23.0)
-            if (eatDay !== 1 || currentTimeDecimal < 20.5 || currentTimeDecimal >= 23.0) {
+        // ATHI RIVER CHECK: Mon 8:30 PM - 11 PM
+        if (campusName.includes('athi')) {
+            // Must be Monday (1) AND between 20.5 and 23.0
+            if (eatDay !== 1 || timeDecimal < 20.5 || timeDecimal >= 23.0) {
                 return res.status(403).json({
                     message: "Eyy! Athi River attendance is only for Monday night fellowship (8:30 PM - 11:00 PM). Go get some sleep or study! 📚✨"
                 });
@@ -66,23 +54,24 @@ export const submitAttendance = async (req, res) => {
         }
 
         // 3. Extract uniquely identifying field (Reg No)
-        // Check standard keys first, then look for any key containing "reg" or "adm"
-        let rawRegNo = responses.studentRegNo || responses.regNo || responses.admNo;
+        // Compatibility check: StudentScan.jsx sends data in root, CheckIn.jsx sends in 'responses'
+        const data = responses || req.body;
+        let rawRegNo = data.studentRegNo || data.regNo || data.admNo;
 
         if (!rawRegNo) {
-            const fallbackKey = Object.keys(responses).find(k =>
+            const fallbackKey = Object.keys(data).find(k =>
                 k.toLowerCase().includes('reg') || k.toLowerCase().includes('adm')
             );
-            if (fallbackKey) rawRegNo = responses[fallbackKey];
+            if (fallbackKey) rawRegNo = data[fallbackKey];
         }
 
         if (!rawRegNo) {
-            return res.status(400).json({ message: 'Admission Number is required' });
+            return res.status(400).json({ message: 'Admission Number (Reg No) is required' });
         }
 
-        const studentRegNo = rawRegNo.trim().toUpperCase();
+        const studentRegNo = String(rawRegNo).trim().toUpperCase();
 
-        // 4. Double check for duplicates explicitly for better error handling
+        // 4. Double check for duplicates
         const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
         if (existing) {
             return res.status(409).json({ message: 'You have already signed in for this meeting.' });
@@ -94,8 +83,8 @@ export const submitAttendance = async (req, res) => {
             meetingName: meeting.name,
             campus: meeting.campus,
             studentRegNo,
-            memberType,
-            responses
+            memberType: memberType || 'Student',
+            responses: responses || { studentName: req.body.studentName, studentRegNo: req.body.studentRegNo }
         });
 
         await attendance.save();
