@@ -16,6 +16,28 @@ export const submitAttendance = async (req, res) => {
         // 2. Check if meeting is active/open
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
 
+        // Nairobi Campus (Valley Road) time restriction (2 PM - 4 PM)
+        const isNairobiCampus = meeting.campus === 'Valley Road' || meeting.campus === 'Nairobi Campus';
+        if (isNairobiCampus) {
+            const now = new Date();
+            // Get East Africa Time (EAT) hour (UTC+3)
+            const eatHour = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Nairobi" })).getHours();
+            console.log(`Attendance Check: Campus=[${meeting.campus}], EAT Hour=[${eatHour}]`);
+
+            if (eatHour < 14 || eatHour >= 16) {
+                const jokes = [
+                    "Eyy! Nairobi Campus attendance is strictly 2 PM - 4 PM. Even the stairs aren't this steep! Come back later. 😂",
+                    "Slow down! The QR code is currently stuck in Nairobi traffic. Try again between 2 PM and 4 PM. 🚗💨",
+                    "The portal says 'No'! Nairobi Campus attendance is only for the 2-4 PM legends. Go grab some cafeteria food while you wait. 🍟",
+                    "Wait a minute! Are you trying to beat the system? Nairobi Campus only allows scans from 2 PM to 4 PM. Stay humble! 🙏",
+                    "Daystar says: 'Patience is a virtue'. Especially for Nairobi Campus scans between 2 PM and 4 PM. See you then! ✨"
+                ];
+                const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+                console.log(`Attendance Blocked: Outside hours for Valley Road. Sending joke: "${randomJoke}"`);
+                return res.status(403).json({ message: randomJoke });
+            }
+        }
+
         // 3. Extract uniquely identifying field (Reg No)
         // Check standard keys first, then look for any key containing "reg" or "adm"
         let rawRegNo = responses.studentRegNo || responses.regNo || responses.admNo;
