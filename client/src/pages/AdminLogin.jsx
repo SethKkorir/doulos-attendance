@@ -40,9 +40,9 @@ const AdminLogin = () => {
         <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', gap: '2rem' }}>
             <BackgroundGallery />
             <ValentineRain />
-            <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem' }}>
+            <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem', background: 'rgba(255, 255, 255, 0.95)', color: '#0f172a', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
                 <div className="flex-center" style={{ marginBottom: '1.5rem', flexDirection: 'column' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', marginBottom: '1rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(226, 232, 240, 0.5)', borderRadius: '50%', marginBottom: '1rem' }}>
                         <Lock size={32} color="hsl(var(--color-primary))" />
                     </div>
                     <h2>Admin Access</h2>
@@ -50,9 +50,9 @@ const AdminLogin = () => {
 
                 {error && (
                     <div style={{
-                        background: 'rgba(220, 38, 38, 0.2)',
-                        border: '1px solid rgba(220, 38, 38, 0.5)',
-                        color: '#fca5a5',
+                        background: '#fee2e2',
+                        border: '1px solid #fecaca',
+                        color: '#b91c1c',
                         padding: '0.75rem',
                         borderRadius: '0.5rem',
                         marginBottom: '1rem',
@@ -64,22 +64,24 @@ const AdminLogin = () => {
 
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Username</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#475569', fontWeight: 500 }}>Username</label>
                         <input
                             type="text"
                             className="input-field"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1' }}
                             required
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Password</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#475569', fontWeight: 500 }}>Password</label>
                         <input
                             type="password"
                             className="input-field"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            style={{ background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1' }}
                             required
                         />
                     </div>

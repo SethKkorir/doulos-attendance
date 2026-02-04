@@ -311,18 +311,18 @@ const AdminDashboard = () => {
             <BackgroundGallery />
             <ValentineRain />
             <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '2rem', paddingBottom: '2rem' }}>
-                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                <header className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
                         <Logo size={45} />
-                        <div style={{ width: '1px', height: '30px', background: 'rgba(255,255,255,0.1)' }}></div>
-                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div className="admin-nav" style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <button
                                 onClick={() => setActiveTab('meetings')}
                                 style={{
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
                                     background: activeTab === 'meetings' ? 'hsl(var(--color-primary))' : 'transparent',
                                     color: activeTab === 'meetings' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s'
+                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 Meetings
@@ -333,7 +333,8 @@ const AdminDashboard = () => {
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
                                     background: activeTab === 'members' ? 'hsl(var(--color-primary))' : 'transparent',
                                     color: activeTab === 'members' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s'
+                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 Members
@@ -344,7 +345,8 @@ const AdminDashboard = () => {
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
                                     background: activeTab === 'reports' ? 'hsl(var(--color-primary))' : 'transparent',
                                     color: activeTab === 'reports' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s'
+                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 Reports
@@ -392,7 +394,7 @@ const AdminDashboard = () => {
                 )}
 
                 {/* Analytics Bar */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                     <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.2)', borderRadius: '0.75rem', color: '#25AAE1' }}>
                             <Users size={24} />
@@ -435,7 +437,7 @@ const AdminDashboard = () => {
                         {showCreate && (
                             <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px' }}>
                                 <h3>Create Meeting</h3>
-                                <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <label>Meeting Name</label>
                                         <input className="input-field" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
@@ -528,7 +530,7 @@ const AdminDashboard = () => {
                         )}
 
                         {/* Meetings List */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                             {meetings.map(m => (
                                 <div key={m._id} className="glass-panel" style={{ padding: '1.5rem', position: 'relative', transition: 'all 0.3s ease', border: m.isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--glass-border)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
