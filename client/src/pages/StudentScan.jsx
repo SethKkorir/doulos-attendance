@@ -19,15 +19,23 @@ const StudentScan = () => {
             );
 
             scanner.render(async (decodedText) => {
+                let code = decodedText;
+                // If scanned text is a URL (e.g. from the dashboard QR), extract the code
+                if (decodedText.includes('/check-in/')) {
+                    const parts = decodedText.split('/check-in/');
+                    code = parts[parts.length - 1].replace(/\/$/, ''); // handle trailing slash
+                }
+
                 setStatus('submitting'); // Show a loading state
                 try {
                     // Pre-verify the meeting link/time
-                    const res = await api.get(`/meetings/code/${decodedText}`);
-                    setScannedCode(decodedText);
+                    // Using extracted code to avoid sending full URL to backend
+                    const res = await api.get(`/meetings/code/${code}`);
+                    setScannedCode(code); // Save the clean code
                     scanner.clear();
                     setStatus('form');
                 } catch (err) {
-                    setScannedCode(decodedText);
+                    setScannedCode(code);
                     scanner.clear();
                     setStatus('error');
                     setMsg(err.response?.data?.message || 'Invalid QR code or access restricted.');
