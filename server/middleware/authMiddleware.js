@@ -23,3 +23,17 @@ export const verifyAdmin = (req, res, next) => {
         }
     });
 };
+
+export const optionalVerify = (req, res, next) => {
+    const token = req.header('Authorization')?.split(' ')[1];
+    if (!token) return next();
+
+    try {
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = verified;
+        next();
+    } catch (error) {
+        // Just proceed without user if token is invalid
+        next();
+    }
+};

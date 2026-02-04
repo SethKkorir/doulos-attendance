@@ -111,7 +111,9 @@ export const getMeetingByCode = async (req, res) => {
         }
 
         // Check time restriction
-        if (!meeting.isTestMeeting) {
+        const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+
+        if (!meeting.isTestMeeting && !isSuperUser) {
             const timeReview = checkCampusTime(meeting.campus, meeting.date);
             if (!timeReview.allowed) {
                 return res.status(403).json({ message: timeReview.message });

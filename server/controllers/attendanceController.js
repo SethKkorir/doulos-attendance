@@ -18,8 +18,10 @@ export const submitAttendance = async (req, res) => {
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
 
         // Check time restriction (Wednesday 2-4 PM for Nairobi, Monday 8:30-11 PM for Athi)
-        // Bypass time restriction for TEST MEETINGS
-        if (!meeting.isTestMeeting) {
+        // Bypass time restriction for TEST MEETINGS or SUPER ADMINS
+        const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+
+        if (!meeting.isTestMeeting && !isSuperUser) {
             const timeReview = checkCampusTime(meeting.campus, meeting.date);
             if (!timeReview.allowed) {
                 return res.status(403).json({ message: timeReview.message });

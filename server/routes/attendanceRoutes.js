@@ -1,11 +1,11 @@
 import express from 'express';
 import { submitAttendance, getAttendance, deleteAttendance } from '../controllers/attendanceController.js';
-import { verifyAdmin } from '../middleware/authMiddleware.js';
+import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Public route for students to submit
-router.post('/submit', submitAttendance);
+router.post('/submit', optionalVerify, submitAttendance);
 
 import Attendance from '../models/Attendance.js';
 
