@@ -4,6 +4,7 @@ import api from '../api';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
+import ValentineRain from '../components/ValentineRain';
 
 const CheckIn = () => {
     const { meetingCode } = useParams();
@@ -76,6 +77,7 @@ const CheckIn = () => {
     return (
         <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1rem', background: 'transparent' }}>
             <BackgroundGallery />
+            <ValentineRain />
             <div className="glass-panel" style={{ width: '100%', maxWidth: '450px', padding: '2rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Logo size={80} showText={false} />
@@ -173,7 +175,7 @@ const CheckIn = () => {
                                     <Loader2 className="animate-spin" size={18} style={{ marginRight: '0.5rem' }} />
                                     Verifying...
                                 </>
-                            ) : 'Sign In Now'}
+                            ) : 'Check In Now'}
                         </button>
                     </form>
                 ) : status === 'success' ? (
@@ -203,7 +205,7 @@ const CheckIn = () => {
                         <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                             <XCircle size={48} color="#ef4444" />
                         </div>
-                        <h2 style={{ color: '#ef4444', marginBottom: '10px' }}>Sign-In Failed</h2>
+                        <h2 style={{ color: '#ef4444', marginBottom: '10px' }}>Check-In Failed</h2>
                         <p style={{ marginBottom: '20px', fontSize: '0.95rem', lineHeight: 1.5 }}>{msg}</p>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -211,7 +213,7 @@ const CheckIn = () => {
                                 Back to Form
                             </button>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
-                                If you already signed in, you don't need to do it again.
+                                If you already checked in, you don't need to do it again.
                             </p>
                         </div>
                     </div>

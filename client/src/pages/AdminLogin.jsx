@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { Lock } from 'lucide-react';
+import Logo from '../components/Logo';
+import BackgroundGallery from '../components/BackgroundGallery';
+import ValentineRain from '../components/ValentineRain';
 
 const AdminLogin = () => {
     const [username, setUsername] = useState('');
@@ -9,12 +12,24 @@ const AdminLogin = () => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
+    useEffect(() => {
+        if (sessionStorage.getItem('token')) {
+            navigate('/admin/dashboard');
+        }
+    }, [navigate]);
+
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const res = await api.post('/auth/login', { username, password });
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('role', res.data.role);
+            // Check if user is just entering the 657 code in either field
+            const isBypass = username === '657' || password === '657';
+            const loginUsername = isBypass ? (username === '657' ? 'SuperAdmin' : username) : username;
+            const loginPassword = isBypass ? '657' : password;
+
+            const res = await api.post('/auth/login', { username: loginUsername, password: loginPassword });
+            sessionStorage.setItem('token', res.data.token);
+            sessionStorage.setItem('role', res.data.role);
+            sessionStorage.setItem('username', loginUsername);
             navigate('/admin/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed');
@@ -22,8 +37,10 @@ const AdminLogin = () => {
     };
 
     return (
-        <div className="flex-center" style={{ minHeight: '100vh' }}>
-            <div className="glass-panel" style={{ padding: '2.5rem', width: '100%', maxWidth: '400px' }}>
+        <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', gap: '2rem' }}>
+            <BackgroundGallery />
+            <ValentineRain />
+            <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem' }}>
                 <div className="flex-center" style={{ marginBottom: '1.5rem', flexDirection: 'column' }}>
                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', marginBottom: '1rem' }}>
                         <Lock size={32} color="hsl(var(--color-primary))" />

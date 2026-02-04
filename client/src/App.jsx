@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import SuperAdmin from './pages/SuperAdmin';
 import StudentScan from './pages/StudentScan';
 import CheckIn from './pages/CheckIn';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -25,6 +26,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/superadmin" element={<SuperAdmin />} />
       </Routes>
     </Router>
   );

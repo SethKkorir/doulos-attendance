@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import api from '../api';
 import { CheckCircle, XCircle, ScanLine } from 'lucide-react';
+import ValentineRain from '../components/ValentineRain';
 
 const StudentScan = () => {
     const [scannedCode, setScannedCode] = useState(null);
@@ -17,10 +18,20 @@ const StudentScan = () => {
         /* verbose= */ false
             );
 
-            scanner.render((decodedText) => {
-                setScannedCode(decodedText);
-                scanner.clear();
-                setStatus('form');
+            scanner.render(async (decodedText) => {
+                setStatus('submitting'); // Show a loading state
+                try {
+                    // Pre-verify the meeting link/time
+                    const res = await api.get(`/meetings/code/${decodedText}`);
+                    setScannedCode(decodedText);
+                    scanner.clear();
+                    setStatus('form');
+                } catch (err) {
+                    setScannedCode(decodedText);
+                    scanner.clear();
+                    setStatus('error');
+                    setMsg(err.response?.data?.message || 'Invalid QR code or access restricted.');
+                }
             }, (error) => {
                 // console.warn(error);
             });
@@ -57,6 +68,7 @@ const StudentScan = () => {
 
     return (
         <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1rem' }}>
+            <ValentineRain />
             <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem', textAlign: 'center' }}>
                 <h2 style={{ marginBottom: '1.5rem' }}>Doulos Check-In</h2>
 

@@ -1,5 +1,6 @@
 import Attendance from '../models/Attendance.js';
 import Meeting from '../models/Meeting.js';
+import { checkCampusTime } from '../utils/timeCheck.js';
 
 export const submitAttendance = async (req, res) => {
     const { meetingCode, responses, memberType } = req.body;
@@ -16,40 +17,12 @@ export const submitAttendance = async (req, res) => {
         // 2. Check if meeting is active/open
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
 
-        // Normalizing campus name for strict matching
-        const campusName = (meeting.campus || '').trim().toLowerCase();
-
-        // DEBUG: Vital logs for troubleshooting
-        const now = new Date();
-        const eatTime = new Date(now.getTime() + (3 * 60 * 60 * 1000)); // Manual UTC+3 for EAT
-        const eatHour = eatTime.getUTCHours();
-        const eatMin = eatTime.getUTCMinutes();
-        const eatDay = eatTime.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-        const timeDecimal = eatHour + (eatMin / 60);
-
-        console.log(`[STRICT CHECK] Campus: "${campusName}", Day: ${eatDay}, Time: ${timeDecimal.toFixed(2)}`);
-
-        // NAIROBI / VALLEY ROAD CHECK: Wed 2 PM - 4 PM
-        if (campusName.includes('valley') || campusName.includes('nairobi')) {
-            // Must be Wednesday (3) AND between 14.0 and 16.0
-            if (eatDay !== 3 || timeDecimal < 14.0 || timeDecimal >= 16.0) {
-                const jokes = [
-                    "Eyy! Nairobi Campus attendance is strictly 2 PM - 4 PM on Wednesdays. Even the stairs aren't this steep! Come back later. 😂",
-                    "The portal says 'No'! Nairobi Campus attendance is only for the 2-4 PM legends. Go grab some cafeteria food while you wait. 🍟",
-                    "Wait a minute! Are you trying to beat the system? Nairobi Campus only allows scans from 2 PM to 4 PM on Wednesdays. Stay humble! 🙏",
-                    "Daystar says: 'Patience is a virtue'. See you on Wednesday between 2 PM and 4 PM! ✨"
-                ];
-                return res.status(403).json({ message: jokes[Math.floor(Math.random() * jokes.length)] });
-            }
-        }
-
-        // ATHI RIVER CHECK: Mon 8:30 PM - 11 PM
-        if (campusName.includes('athi')) {
-            // Must be Monday (1) AND between 20.5 and 23.0
-            if (eatDay !== 1 || timeDecimal < 20.5 || timeDecimal >= 23.0) {
-                return res.status(403).json({
-                    message: "Eyy! Athi River attendance is only for Monday night fellowship (8:30 PM - 11:00 PM). Go get some sleep or study! 📚✨"
-                });
+        // Check time restriction (Wednesday 2-4 PM for Nairobi, Monday 8:30-11 PM for Athi)
+        // Bypass time restriction for TEST MEETINGS
+        if (!meeting.isTestMeeting) {
+            const timeReview = checkCampusTime(meeting.campus, meeting.date);
+            if (!timeReview.allowed) {
+                return res.status(403).json({ message: timeReview.message });
             }
         }
 
@@ -84,7 +57,8 @@ export const submitAttendance = async (req, res) => {
             campus: meeting.campus,
             studentRegNo,
             memberType: memberType || 'Student',
-            responses: responses || { studentName: req.body.studentName, studentRegNo: req.body.studentRegNo }
+            responses: responses || { studentName: req.body.studentName, studentRegNo: req.body.studentRegNo },
+            questionOfDay: meeting.questionOfDay
         });
 
         await attendance.save();
@@ -103,6 +77,26 @@ export const getAttendance = async (req, res) => {
     try {
         const records = await Attendance.find({ meeting: meetingId }).sort({ timestamp: -1 });
         res.json(records);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+export const deleteAttendance = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const attendance = await Attendance.findById(id).populate('meeting');
+        if (!attendance) return res.status(404).json({ message: 'Record not found' });
+
+        // Security: Only allow deletion if it's a test meeting OR user is developer
+        const isTestMeeting = attendance.meeting?.isTestMeeting;
+        const isDeveloper = req.user.role === 'developer';
+
+        if (isTestMeeting || isDeveloper) {
+            await Attendance.findByIdAndDelete(id);
+            res.json({ message: 'Attendance record deleted' });
+        } else {
+            res.status(403).json({ message: 'Only developers can delete live attendance data' });
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

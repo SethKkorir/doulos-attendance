@@ -1,5 +1,6 @@
 import Meeting from '../models/Meeting.js';
 import crypto from 'crypto';
+import { checkCampusTime } from '../utils/timeCheck.js';
 
 // Helper to validate time windows
 const validateMeetingTime = (dateStr, startTime, endTime, campus) => {
@@ -95,10 +96,25 @@ export const updateMeetingStatus = async (req, res) => {
     }
 };
 
+
 export const getMeetingByCode = async (req, res) => {
     try {
         const meeting = await Meeting.findOne({ code: req.params.code });
         if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
+
+        // Check if meeting is active
+        if (!meeting.isActive) {
+            return res.status(403).json({ message: 'This meeting is currently closed by the admin.' });
+        }
+
+        // Check time restriction
+        if (!meeting.isTestMeeting) {
+            const timeReview = checkCampusTime(meeting.campus, meeting.date);
+            if (!timeReview.allowed) {
+                return res.status(403).json({ message: timeReview.message });
+            }
+        }
+
         res.json(meeting);
     } catch (error) {
         res.status(500).json({ message: error.message });

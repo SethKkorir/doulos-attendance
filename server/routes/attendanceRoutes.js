@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitAttendance, getAttendance } from '../controllers/attendanceController.js';
+import { submitAttendance, getAttendance, deleteAttendance } from '../controllers/attendanceController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -21,6 +21,7 @@ router.get('/insights/members', verifyAdmin, async (req, res) => {
                     _id: "$studentRegNo",
                     totalAttended: { $sum: 1 },
                     lastSeen: { $max: "$timestamp" },
+                    memberType: { $last: "$memberType" },
                     details: { $last: "$responses" }
                 }
             },
@@ -31,5 +32,7 @@ router.get('/insights/members', verifyAdmin, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+router.delete('/:id', verifyAdmin, deleteAttendance);
 
 export default router;

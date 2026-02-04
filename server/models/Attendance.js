@@ -11,6 +11,7 @@ const attendanceSchema = new mongoose.Schema({
         required: true
     },
     responses: { type: Map, of: String },
+    questionOfDay: { type: String },
     timestamp: { type: Date, default: Date.now }
 });
 
