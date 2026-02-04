@@ -16,25 +16,52 @@ export const submitAttendance = async (req, res) => {
         // 2. Check if meeting is active/open
         if (!meeting.isActive) return res.status(400).json({ message: 'Meeting is closed' });
 
+        // DEBUG: Log meeting details to see why time check might be skipped
+        console.log(`[DEBUG] Meeting Code: ${meetingCode}, Campus Found: "${meeting.campus}", Time: ${new Date().toLocaleTimeString()}`);
+
         // Nairobi Campus (Valley Road) time restriction (2 PM - 4 PM)
-        const isNairobiCampus = meeting.campus === 'Valley Road' || meeting.campus === 'Nairobi Campus';
+        const isNairobiCampus = meeting.campus.trim() === 'Valley Road' || meeting.campus.trim() === 'Nairobi Campus';
+
         if (isNairobiCampus) {
             const now = new Date();
             // Get East Africa Time (EAT) hour (UTC+3)
-            const eatHour = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Nairobi" })).getHours();
-            console.log(`Attendance Check: Campus=[${meeting.campus}], EAT Hour=[${eatHour}]`);
+            const eatTime = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
+            const eatHour = eatTime.getHours();
+            const eatDay = eatTime.getDay(); // 3 is Wednesday
 
-            if (eatHour < 14 || eatHour >= 16) {
+            console.log(`[TIME CHECK] Nairobi: Day=${eatDay}, Hour=${eatHour}`);
+
+            // Validation: Only Wednesday between 2 PM (14) and 4 PM (16)
+            if (eatDay !== 3 || eatHour < 14 || eatHour >= 16) {
                 const jokes = [
-                    "Eyy! Nairobi Campus attendance is strictly 2 PM - 4 PM. Even the stairs aren't this steep! Come back later. 😂",
-                    "Slow down! The QR code is currently stuck in Nairobi traffic. Try again between 2 PM and 4 PM. 🚗💨",
+                    "Eyy! Nairobi Campus attendance is strictly 2 PM - 4 PM on Wednesdays. Even the stairs aren't this steep! Come back later. 😂",
+                    "Slow down! The QR code is currently stuck in Nairobi traffic. Try again Wednesday between 2 PM and 4 PM. 🚗💨",
                     "The portal says 'No'! Nairobi Campus attendance is only for the 2-4 PM legends. Go grab some cafeteria food while you wait. 🍟",
-                    "Wait a minute! Are you trying to beat the system? Nairobi Campus only allows scans from 2 PM to 4 PM. Stay humble! 🙏",
-                    "Daystar says: 'Patience is a virtue'. Especially for Nairobi Campus scans between 2 PM and 4 PM. See you then! ✨"
+                    "Wait a minute! Are you trying to beat the system? Nairobi Campus only allows scans from 2 PM to 4 PM on Wednesdays. Stay humble! 🙏",
+                    "Daystar says: 'Patience is a virtue'. Especially for Nairobi Campus scans between 2 PM and 4 PM. See you on Wednesday! ✨"
                 ];
                 const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
-                console.log(`Attendance Blocked: Outside hours for Valley Road. Sending joke: "${randomJoke}"`);
                 return res.status(403).json({ message: randomJoke });
+            }
+        }
+
+        // Athi River Campus time restriction (Monday 8:30 PM - 11 PM)
+        if (meeting.campus.trim() === 'Athi River') {
+            const now = new Date();
+            const eatTime = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
+            const eatHour = eatTime.getHours();
+            const eatMin = eatTime.getMinutes();
+            const eatDay = eatTime.getDay(); // 1 is Monday
+
+            const currentTimeDecimal = eatHour + (eatMin / 60);
+
+            console.log(`[TIME CHECK] Athi River: Day=${eatDay}, Hour=${currentTimeDecimal}`);
+
+            // Validation: Only Monday between 8:30 PM (20.5) and 11 PM (23.0)
+            if (eatDay !== 1 || currentTimeDecimal < 20.5 || currentTimeDecimal >= 23.0) {
+                return res.status(403).json({
+                    message: "Eyy! Athi River attendance is only for Monday night fellowship (8:30 PM - 11:00 PM). Go get some sleep or study! 📚✨"
+                });
             }
         }
 
