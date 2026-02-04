@@ -42,7 +42,14 @@ const AdminDashboard = () => {
     const fetchMeetings = async () => {
         try {
             const res = await api.get('/meetings');
-            setMeetings(res.data);
+            // Sort: Active first, then Date descending
+            const sorted = res.data.sort((a, b) => {
+                if (a.isActive === b.isActive) {
+                    return new Date(b.date) - new Date(a.date);
+                }
+                return a.isActive ? -1 : 1;
+            });
+            setMeetings(sorted);
         } catch (err) {
             console.error(err);
         }

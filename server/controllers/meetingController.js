@@ -51,7 +51,8 @@ import Attendance from '../models/Attendance.js';
 
 export const getMeetings = async (req, res) => {
     try {
-        const meetings = await Meeting.aggregate([
+        // 1. Fetch meetings with attendance count
+        let meetings = await Meeting.aggregate([
             {
                 $lookup: {
                     from: 'attendances',
@@ -68,6 +69,39 @@ export const getMeetings = async (req, res) => {
             { $project: { attendance: 0 } },
             { $sort: { date: -1 } }
         ]);
+
+        // 2. Auto-close expired meetings
+        const now = new Date();
+        const updates = [];
+
+        meetings = meetings.map(m => {
+            if (m.isActive && !m.isTestMeeting) {
+                // Parse End Time
+                const [endH, endM] = m.endTime.split(':').map(Number);
+                const meetingEnd = new Date(m.date);
+                meetingEnd.setHours(endH, endM, 0, 0);
+
+                // If meeting ended before now (adding buffer of 1 hour just to be safe or strict?) 
+                // Let's be strict: if now > meetingEnd, it's closed.
+                if (now > meetingEnd) {
+                    m.isActive = false;
+                    updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
+                }
+            }
+            return m;
+        });
+
+        // Execute updates in background
+        if (updates.length > 0) await Promise.all(updates);
+
+        // 3. Sort: Active First, then Date Descending
+        meetings.sort((a, b) => {
+            if (a.isActive === b.isActive) {
+                return new Date(b.date) - new Date(a.date);
+            }
+            return a.isActive ? -1 : 1;
+        });
+
         res.json(meetings);
     } catch (error) {
         res.status(500).json({ message: error.message });
