@@ -75,6 +75,9 @@ export const getMeetings = async (req, res) => {
 };
 
 export const deleteMeeting = async (req, res) => {
+    if (!['developer', 'superadmin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Only developers/superadmins can delete meetings' });
+    }
     try {
         const { id } = req.params;
         await Meeting.findByIdAndDelete(id);

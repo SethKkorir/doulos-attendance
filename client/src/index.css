@@ -19,6 +19,8 @@
   --glass-border: hsla(343, 80%, 60%, 0.3);
   /* Pinkish border */
   --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+
+  --color-text: 0 0% 100%;
 }
 
 .light-mode {

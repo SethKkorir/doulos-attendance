@@ -581,9 +581,11 @@ const AdminDashboard = () => {
                                         <button className="btn" style={{ flex: '1 1 60px', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', color: 'var(--color-text-dim)' }} onClick={() => downloadReport(m._id, m.name)}>
                                             <Download size={16} />
                                         </button>
-                                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }} onClick={() => deleteMeeting(m._id)}>
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {['developer', 'superadmin'].includes(userRole) && (
+                                            <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }} onClick={() => deleteMeeting(m._id)}>
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

@@ -89,7 +89,7 @@ export const deleteAttendance = async (req, res) => {
 
         // Security: Only allow deletion if it's a test meeting OR user is developer
         const isTestMeeting = attendance.meeting?.isTestMeeting;
-        const isDeveloper = req.user.role === 'developer';
+        const isDeveloper = ['developer', 'superadmin'].includes(req.user.role);
 
         if (isTestMeeting || isDeveloper) {
             await Attendance.findByIdAndDelete(id);
