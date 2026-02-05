@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import QRCode from 'react-qr-code';
-import { Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, Users, BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink, ShieldAlert as Ghost, Sun, Moon } from 'lucide-react';
+import {
+    Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, Users,
+    BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
+    ShieldAlert as Ghost, Sun, Moon, Pencil, Trophy
+} from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -10,6 +14,7 @@ const AdminDashboard = () => {
     const [meetings, setMeetings] = useState([]);
     const [showCreate, setShowCreate] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState(null); // For QR Modal
+    const [editingMeeting, setEditingMeeting] = useState(null); // For Edit Modal
     const [formData, setFormData] = useState({
         name: 'Weekly Doulos',
         date: new Date().toISOString().split('T')[0],
@@ -21,7 +26,8 @@ const AdminDashboard = () => {
             { label: 'Admission Number', key: 'studentRegNo', required: true }
         ],
         questionOfDay: '',
-        isTestMeeting: false
+        isTestMeeting: false,
+        secretRoomCode: ''
     });
     const [msg, setMsg] = useState(null);
     const [viewingAttendance, setViewingAttendance] = useState(null); // Meeting object
@@ -30,6 +36,10 @@ const AdminDashboard = () => {
     const [members, setMembers] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(true);
+    const [quickRegNo, setQuickRegNo] = useState('');
+    const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
+    const [memberSearch, setMemberSearch] = useState('');
+    const [importLoading, setImportLoading] = useState(false);
 
     useEffect(() => {
         if (!isDarkMode) {
@@ -82,7 +92,7 @@ const AdminDashboard = () => {
     const fetchMembers = async () => {
         setLoadingMembers(true);
         try {
-            const res = await api.get('/attendance/insights/members');
+            const res = await api.get('/members');
             setMembers(res.data);
         } catch (err) {
             console.error(err);
@@ -99,6 +109,83 @@ const AdminDashboard = () => {
         if (activeTab === 'members') fetchMembers();
     }, [activeTab]);
 
+    const handleCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setImportLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const text = event.target.result;
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+            const data = lines.slice(1).map(line => {
+                const values = line.split(',');
+                if (values.length < headers.length) return null;
+                const obj = {};
+                headers.forEach((header, i) => {
+                    obj[header] = values[i]?.trim();
+                });
+                return obj;
+            }).filter(d => d && d.name && (d.studentregno || d.regno));
+
+            // Map keys to match our model
+            const members = data.map(d => ({
+                name: d.name,
+                studentRegNo: d.studentregno || d.regno,
+                memberType: d.type || d.membertype || 'Visitor',
+                campus: d.campus || 'Athi River'
+            }));
+
+            try {
+                await api.post('/members/import', { members });
+                setMsg({ type: 'success', text: `Imported ${members.length} members successfully!` });
+                fetchMembers();
+            } catch (err) {
+                alert('Import failed: ' + (err.response?.data?.message || 'Check CSV format'));
+            } finally {
+                setImportLoading(false);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const handleSyncRegistry = async () => {
+        if (!window.confirm('This will create registry profiles for everyone in your attendance history. Proceed?')) return;
+        setImportLoading(true);
+        try {
+            const res = await api.post('/members/sync');
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            alert('Sync failed');
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleQuickCheckIn = async (meetingId, regNoOverride = null) => {
+        const reg = regNoOverride || quickRegNo;
+        if (!reg) return;
+
+        setQuickCheckInLoading(true);
+        try {
+            await api.post('/attendance/manual', {
+                meetingId,
+                studentRegNo: reg
+            });
+            setMsg({ type: 'success', text: `Checked in ${reg} successfully!` });
+            setQuickRegNo('');
+            fetchMeetings(); // Refresh counts
+            if (activeTab === 'members') fetchMembers();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Manual check-in failed');
+        } finally {
+            setQuickCheckInLoading(false);
+        }
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
         setMsg(null);
@@ -114,7 +201,7 @@ const AdminDashboard = () => {
 
     const downloadReport = async (meetingId, meetingName) => {
         try {
-            const res = await api.get(`/attendance/${meetingId}`);
+            const res = await api.get(`/ attendance / ${meetingId} `);
             const data = res.data;
             if (data.length === 0) {
                 alert('No attendance recorded yet.');
@@ -133,13 +220,13 @@ const AdminDashboard = () => {
                 const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
                 const timestamp = new Date(r.timestamp).toLocaleString();
                 const memberType = r.memberType || 'Visitor';
-                return `<tr><td>${timestamp}</td><td><strong>${memberType}</strong></td>${headers.map(h => `<td>${responses[h] || '-'}</td>`).join('')}</tr>`;
+                return `< tr ><td>${timestamp}</td><td><strong>${memberType}</strong></td>${headers.map(h => `<td>${responses[h] || '-'}</td>`).join('')}</tr > `;
             });
 
-            const headerCells = ['Time', 'Category', ...headers].map(h => `<th style="text-align: left; padding: 12px; border-bottom: 2px solid #032540; color: #032540;">${h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>`).join('');
+            const headerCells = ['Time', 'Category', ...headers].map(h => `< th style = "text-align: left; padding: 12px; border-bottom: 2px solid #032540; color: #032540;" > ${h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th > `).join('');
 
             const reportHtml = `
-                <html>
+    < html >
                 <head>
                     <title>${meetingName} - Attendance Report</title>
                     <style>
@@ -175,8 +262,8 @@ const AdminDashboard = () => {
                         Doulos Solidarity &bull; Daystar University &bull; Official Attendance Record
                     </div>
                 </body>
-                </html>
-            `;
+                </html >
+    `;
 
             const win = window.open('', '_blank');
             win.document.write(reportHtml);
@@ -194,7 +281,7 @@ const AdminDashboard = () => {
         const qrDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(qrSvg));
 
         const printHtml = `
-            <html>
+    < html >
             <head>
                 <title>Doulos QR - ${meeting.name}</title>
                 <style>
@@ -278,8 +365,8 @@ const AdminDashboard = () => {
                     };
                 </script>
             </body>
-            </html>
-        `;
+            </html >
+    `;
 
         const win = window.open('', '_blank');
         win.document.write(printHtml);
@@ -293,7 +380,7 @@ const AdminDashboard = () => {
 
     const toggleStatus = async (meeting) => {
         try {
-            await api.patch(`/meetings/${meeting._id}`, { isActive: !meeting.isActive });
+            await api.patch(`/ meetings / ${meeting._id} `, { isActive: !meeting.isActive });
             fetchMeetings();
         } catch (err) {
             alert('Failed to update status');
@@ -303,7 +390,7 @@ const AdminDashboard = () => {
     const deleteMeeting = async (id) => {
         if (!window.confirm('Are you sure you want to delete this meeting and all its attendance?')) return;
         try {
-            await api.delete(`/meetings/${id}`);
+            await api.delete(`/ meetings / ${id} `);
             fetchMeetings();
         } catch (err) {
             alert('Failed to delete');
@@ -394,7 +481,7 @@ const AdminDashboard = () => {
                         borderRadius: '0.5rem',
                         background: msg.type === 'error' ? 'rgba(220, 38, 38, 0.2)' : 'rgba(16, 185, 129, 0.2)',
                         color: msg.type === 'error' ? '#fca5a5' : '#6ee7b7',
-                        border: `1px solid ${msg.type === 'error' ? '#ef4444' : '#10b981'}`
+                        border: `1px solid ${msg.type === 'error' ? '#ef4444' : '#10b981'} `
                     }}>
                         {msg.text}
                     </div>
@@ -495,6 +582,20 @@ const AdminDashboard = () => {
                                         </div>
                                     )}
 
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label>Secret Room Code (Optional)</label>
+                                        <input
+                                            className="input-field"
+                                            placeholder="e.g. FAITH"
+                                            style={{ textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800 }}
+                                            value={formData.secretRoomCode}
+                                            onChange={e => setFormData({ ...formData, secretRoomCode: e.target.value.toUpperCase() })}
+                                        />
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '0.3rem' }}>
+                                            If set, students must enter this exact code to submit their attendance.
+                                        </p>
+                                    </div>
+
                                     {/* Dynamic Fields Section */}
                                     <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -578,15 +679,60 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
 
+                                    {m.isActive && (
+                                        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+                                            <input
+                                                className="input-field"
+                                                placeholder="Admission No (Manually)"
+                                                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+                                                value={quickRegNo}
+                                                onChange={e => setQuickRegNo(e.target.value)}
+                                            />
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
+                                                onClick={() => handleQuickCheckIn(m._id)}
+                                                disabled={quickCheckInLoading}
+                                            >
+                                                {quickCheckInLoading ? '...' : <Plus size={16} />}
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                        <button className="btn" style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }} onClick={() => setSelectedMeeting(m)}>
+                                        <button
+                                            className="btn"
+                                            style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
+                                            onClick={() => {
+                                                if (['developer', 'superadmin'].includes(userRole)) {
+                                                    setSelectedMeeting(m);
+                                                    return;
+                                                }
+                                                // Check time for regular admins
+                                                const now = new Date();
+                                                const [startH, startM] = m.startTime.split(':').map(Number);
+                                                const [endH, endM] = m.endTime.split(':').map(Number);
+
+                                                const start = new Date(m.date);
+                                                start.setHours(startH, startM, 0, 0);
+
+                                                const end = new Date(m.date);
+                                                end.setHours(endH, endM, 0, 0);
+
+                                                if (now >= start && now <= end) {
+                                                    setSelectedMeeting(m);
+                                                } else {
+                                                    alert("QR Code is locked. It only opens during the scheduled meeting time.");
+                                                }
+                                            }}
+                                        >
                                             <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
                                         </button>
                                         <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
                                             View Attendance
                                         </button>
-                                        <button className="btn" style={{ flex: '1 1 60px', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', color: 'var(--color-text-dim)' }} onClick={() => downloadReport(m._id, m.name)}>
-                                            <Download size={16} />
+                                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                                            <Pencil size={16} />
                                         </button>
                                         {['developer', 'superadmin'].includes(userRole) && (
                                             <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }} onClick={() => deleteMeeting(m._id)}>
@@ -600,99 +746,125 @@ const AdminDashboard = () => {
                     </>
                 ) : activeTab === 'members' ? (
                     <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Members Directory</h2>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                Tracking {members.length} unique individuals
+                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Members Registry</h2>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
+                                    {members.length} members registered in the system
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
+                                    Sync from History
+                                </button>
+                                <label className="btn" style={{ cursor: 'pointer', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
+                                    {importLoading ? 'Importing...' : 'Import CSV'}
+                                    <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVUpload} disabled={importLoading} />
+                                </label>
+                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance('NEW_MEMBER')}>
+                                    Add Member
+                                </button>
+                            </div>
+                        </div>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ position: 'relative' }}>
+                                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)' }} />
+                                <input
+                                    placeholder="Search registry by name or admission number..."
+                                    className="input-field"
+                                    style={{ paddingLeft: '3rem' }}
+                                    value={memberSearch}
+                                    onChange={e => setMemberSearch(e.target.value)}
+                                />
                             </div>
                         </div>
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
                                     <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Member Info</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Commitment</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Last Seen</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Status</th>
+                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Member Details</th>
+                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Points</th>
+                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Campus</th>
+                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Category</th>
+                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {loadingMembers ? (
-                                        <tr><td colSpan="4" style={{ padding: '3rem', textAlign: 'center' }}>Loading members...</td></tr>
-                                    ) : members.map((m, i) => {
-                                        const name = m.details?.studentName || 'Unknown Student';
-                                        const regNo = m._id;
-                                        const isNewcomer = m.totalAttended === 1;
-                                        const isRegular = m.totalAttended >= 3;
-                                        const daysSinceLast = Math.floor((new Date() - new Date(m.lastSeen)) / (1000 * 60 * 60 * 24));
-                                        const isGhosting = daysSinceLast > 14;
-
-                                        return (
-                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <div style={{ fontWeight: 600 }}>{name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{regNo}</div>
+                                        <tr><td colSpan="5" style={{ padding: '3rem', textAlign: 'center' }}>Loading directory...</td></tr>
+                                    ) : (
+                                        members.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="5" style={{ padding: '4rem', textAlign: 'center' }}>
+                                                    <div style={{ color: 'var(--color-text-dim)', marginBottom: '1.5rem' }}>
+                                                        <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
+                                                        <p>Registry is empty. Sync from your attendance history to populate it.</p>
+                                                    </div>
+                                                    <button className="btn btn-primary" onClick={handleSyncRegistry}>
+                                                        Sync Registry from History
+                                                    </button>
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <div style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-                                                            <div style={{
-                                                                width: `${Math.min(m.totalAttended * 25, 100)}%`,
-                                                                height: '100%',
-                                                                background: isRegular ? '#FFD700' : '#25AAE1'
-                                                            }} />
+                                            </tr>
+                                        ) : (
+                                            members.filter(m => {
+                                                const search = memberSearch.toLowerCase();
+                                                return m.name?.toLowerCase().includes(search) || m.studentRegNo?.toLowerCase().includes(search);
+                                            }).map((m, i) => (
+                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <div style={{ fontWeight: 600 }}>{m.name}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{m.studentRegNo}</div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFD700', fontWeight: 800 }}>
+                                                            <Trophy size={14} /> {m.totalPoints || 0}
                                                         </div>
-                                                        <span style={{ fontSize: '0.85rem' }}>{m.totalAttended} meetings</span>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
-                                                    {new Date(m.lastSeen).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                                    <div style={{ fontSize: '0.7rem', color: isGhosting ? '#dd5d6c' : 'var(--color-text-dim)' }}>
-                                                        {daysSinceLast === 0 ? 'Today' : `${daysSinceLast} days ago`}
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    {/* Primary Status: The category they chose */}
-                                                    <span style={{
-                                                        padding: '0.2rem 0.5rem',
-                                                        background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.1)' :
-                                                            m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.1)' :
-                                                                'rgba(255, 255, 255, 0.05)',
-                                                        color: m.memberType === 'Douloid' ? '#FFD700' :
-                                                            m.memberType === 'Recruit' ? '#25AAE1' :
-                                                                'var(--color-text-dim)',
-                                                        borderRadius: '4px',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 'bold',
-                                                        textTransform: 'uppercase'
-                                                    }}>
-                                                        {m.memberType || 'Visitor'}
-                                                    </span>
-
-                                                    {/* Alert Status: Ghosting */}
-                                                    {isGhosting && (
+                                                    </td>
+                                                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
+                                                        {m.campus}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
                                                         <span style={{
                                                             padding: '0.2rem 0.5rem',
-                                                            background: 'rgba(221, 93, 108, 0.1)',
-                                                            color: '#dd5d6c',
+                                                            background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.1)' :
+                                                                m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.1)' :
+                                                                    'rgba(255, 255, 255, 0.05)',
+                                                            color: m.memberType === 'Douloid' ? '#FFD700' :
+                                                                m.memberType === 'Recruit' ? '#25AAE1' :
+                                                                    'var(--color-text-dim)',
                                                             borderRadius: '4px',
                                                             fontSize: '0.7rem',
                                                             fontWeight: 'bold',
-                                                            marginLeft: '0.5rem'
+                                                            textTransform: 'uppercase'
                                                         }}>
-                                                            FOLLOW UP
+                                                            {m.memberType}
                                                         </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            {meetings.some(mt => mt.isActive) ? (
+                                                                <button
+                                                                    className="btn btn-primary"
+                                                                    style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}
+                                                                    onClick={() => handleQuickCheckIn(meetings.find(mt => mt.isActive)._id, m.studentRegNo)}
+                                                                >
+                                                                    Mark Present
+                                                                </button>
+                                                            ) : (
+                                                                <button className="btn" style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}>View History</button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 ) : (
-                    <ReportsView meetings={meetings} members={members} />
+                    <ReportsView meetings={meetings} members={members} onViewAttendance={setViewingAttendance} onDownload={downloadReport} />
                 )}
 
                 {/* Attendance View Modal */}
@@ -723,7 +895,7 @@ const AdminDashboard = () => {
                             <h3 style={{ marginBottom: '1rem' }}>Scan to Check In</h3>
                             <div style={{ background: 'white', padding: '1rem', display: 'inline-block', borderRadius: '0.5rem' }}>
                                 <QRCode
-                                    value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
+                                    value={`${window.location.origin} /check-in/${selectedMeeting.code} `}
                                     size={256}
                                     level="H"
                                 />
@@ -744,7 +916,7 @@ const AdminDashboard = () => {
                                     style={{ background: 'var(--glass-bg)', color: 'var(--color-text)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
+                                        const link = `${window.location.origin} /check-in/${selectedMeeting.code} `;
                                         navigator.clipboard.writeText(link);
                                         alert('Link copied to clipboard!');
                                     }}
@@ -753,7 +925,7 @@ const AdminDashboard = () => {
                                 </button>
                                 {['developer', 'superadmin'].includes(userRole) && (
                                     <a
-                                        href={`/check-in/${selectedMeeting.code}`}
+                                        href={`/ check -in/${selectedMeeting.code}`}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="btn"
@@ -761,19 +933,83 @@ const AdminDashboard = () => {
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
-                                    </a>
+                                    </a >
                                 )}
-                            </div>
+                            </div >
                             <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', marginTop: '1.5rem', opacity: 0.7 }}>Click anywhere outside to close</p>
-                        </div>
-                    </div>
+                        </div >
+                    </div >
                 )}
-            </div>
-        </div>
+
+                {/* Edit Meeting Modal */}
+                {
+                    editingMeeting && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                            background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
+                        }}>
+                            <div className="glass-panel" style={{ width: '90%', maxWidth: '600px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
+                                <h3 style={{ marginBottom: '1.5rem' }}>Edit Meeting Content</h3>
+                                <form onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                        await api.patch(`/meetings/${editingMeeting._id}`, editingMeeting);
+                                        setMsg({ type: 'success', text: 'Meeting updated!' });
+                                        setEditingMeeting(null);
+                                        fetchMeetings();
+                                    } catch (err) {
+                                        alert('Failed to update');
+                                    }
+                                }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                                    <div>
+                                        <label>Devotion (Topic / Verse)</label>
+                                        <textarea
+                                            className="input-field"
+                                            rows="3"
+                                            value={editingMeeting.devotion || ''}
+                                            onChange={e => setEditingMeeting({ ...editingMeeting, devotion: e.target.value })}
+                                            placeholder="e.g. John 3:16 - The Heart of Service"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label>Ice Breaker / Activity</label>
+                                        <textarea
+                                            className="input-field"
+                                            rows="2"
+                                            value={editingMeeting.iceBreaker || ''}
+                                            onChange={e => setEditingMeeting({ ...editingMeeting, iceBreaker: e.target.value })}
+                                            placeholder="e.g. Two Truths and a Lie"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label>Announcements</label>
+                                        <textarea
+                                            className="input-field"
+                                            rows="3"
+                                            value={editingMeeting.announcements || ''}
+                                            onChange={e => setEditingMeeting({ ...editingMeeting, announcements: e.target.value })}
+                                            placeholder="Check your emails for the retreat info!"
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
+                                        <button type="button" className="btn" onClick={() => setEditingMeeting(null)} style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )
+                }
+            </div >
+        </div >
     );
 };
 
-const ReportsView = ({ meetings, members }) => {
+const ReportsView = ({ meetings, members, onViewAttendance, onDownload }) => {
     const [reportType, setReportType] = useState('summary'); // 'summary' or 'cumulative'
     const [filterSemester, setFilterSemester] = useState('Current');
     const [filterCampus, setFilterCampus] = useState('All');
@@ -875,6 +1111,7 @@ const ReportsView = ({ meetings, members }) => {
                                     <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Date</th>
                                     <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Campus</th>
                                     <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Attendance</th>
+                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -884,6 +1121,22 @@ const ReportsView = ({ meetings, members }) => {
                                         <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{new Date(m.date).toLocaleDateString()}</td>
                                         <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>{m.campus}</td>
                                         <td style={{ padding: '1rem', fontWeight: 700, color: '#25AAE1' }}>{m.attendanceCount || 0}</td>
+                                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => onViewAttendance(m)}
+                                                title="View Attendance"
+                                                style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: 'var(--color-text)' }}
+                                            >
+                                                <Users size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => onDownload(m._id, m.name)}
+                                                title="Download Report"
+                                                style={{ background: 'rgba(37, 170, 225, 0.15)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: '#25AAE1' }}
+                                            >
+                                                <Download size={16} />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -944,6 +1197,15 @@ const AttendanceTable = ({ meeting }) => {
             setRecords(records.filter(r => r._id !== id));
         } catch (err) {
             alert(err.response?.data?.message || 'Failed to delete');
+        }
+    };
+
+    const toggleExemption = async (id) => {
+        try {
+            const res = await api.patch(`/attendance/${id}/exemption`);
+            setRecords(records.map(r => r._id === id ? { ...r, isExempted: res.data.isExempted } : r));
+        } catch (err) {
+            alert('Failed to update exemption status');
         }
     };
 
@@ -1032,6 +1294,7 @@ const AttendanceTable = ({ meeting }) => {
                                         </div>
                                     </th>
                                 )}
+                                <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>Status</th>
                                 {['developer', 'superadmin'].includes(userRole) && (
                                     <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>Action</th>
                                 )}
@@ -1056,6 +1319,24 @@ const AttendanceTable = ({ meeting }) => {
                                             {r.responses?.dailyQuestionAnswer || '-'}
                                         </td>
                                     )}
+                                    <td style={{ padding: '1rem' }}>
+                                        <button
+                                            onClick={() => toggleExemption(r._id)}
+                                            style={{
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '0.4rem',
+                                                border: '1px solid',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 800,
+                                                cursor: 'pointer',
+                                                background: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.1)',
+                                                color: r.isExempted ? 'var(--color-text-dim)' : '#4ade80',
+                                                borderColor: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.2)'
+                                            }}
+                                        >
+                                            {r.isExempted ? 'EXEMPTED' : 'PRESENT'}
+                                        </button>
+                                    </td>
                                     {['developer', 'superadmin'].includes(userRole) && (
                                         <td style={{ padding: '0.5rem 1rem' }}>
                                             <button

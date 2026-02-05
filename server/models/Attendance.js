@@ -12,6 +12,8 @@ const attendanceSchema = new mongoose.Schema({
     },
     responses: { type: Map, of: String },
     questionOfDay: { type: String },
+    deviceId: { type: String }, // Fingerprint
+    isExempted: { type: Boolean, default: false },
     timestamp: { type: Date, default: Date.now }
 });
 

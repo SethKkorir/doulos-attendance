@@ -8,6 +8,7 @@ import path from 'path';
 import authRoutes from './routes/authRoutes.js';
 import meetingRoutes from './routes/meetingRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import memberRoutes from './routes/memberRoutes.js';
 
 dotenv.config();
 
@@ -69,6 +70,7 @@ app.use(async (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/members', memberRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitAttendance, getAttendance, deleteAttendance } from '../controllers/attendanceController.js';
+import { submitAttendance, getAttendance, deleteAttendance, getStudentPortalData, manualCheckIn, toggleExemption } from '../controllers/attendanceController.js';
 import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -7,10 +7,14 @@ const router = express.Router();
 // Public route for students to submit
 router.post('/submit', optionalVerify, submitAttendance);
 
+// Student Portal data
+router.get('/student/:regNo', getStudentPortalData);
+
 import Attendance from '../models/Attendance.js';
 
 // Protected route for admins to view
 router.get('/:meetingId', verifyAdmin, getAttendance);
+router.post('/manual', verifyAdmin, manualCheckIn);
 
 // Member Insights (Unique members, total attendance, last seen)
 router.get('/insights/members', verifyAdmin, async (req, res) => {
@@ -34,5 +38,6 @@ router.get('/insights/members', verifyAdmin, async (req, res) => {
 });
 
 router.delete('/:id', verifyAdmin, deleteAttendance);
+router.patch('/:id/exemption', verifyAdmin, toggleExemption);
 
 export default router;

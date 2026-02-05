@@ -125,8 +125,8 @@ export const deleteMeeting = async (req, res) => {
 export const updateMeetingStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { isActive } = req.body;
-        const meeting = await Meeting.findByIdAndUpdate(id, { isActive }, { new: true });
+        const updates = req.body;
+        const meeting = await Meeting.findByIdAndUpdate(id, updates, { new: true });
         res.json(meeting);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -139,13 +139,13 @@ export const getMeetingByCode = async (req, res) => {
         const meeting = await Meeting.findOne({ code: req.params.code });
         if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
 
-        // Check if meeting is active
-        if (!meeting.isActive) {
-            return res.status(403).json({ message: 'This meeting is currently closed by the admin.' });
-        }
-
         // Check time restriction
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+
+        // Check if meeting is active (Bypass for SuperUser or Test Meetings)
+        if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
+            return res.status(403).json({ message: 'This meeting is currently closed by the admin.' });
+        }
 
         if (!meeting.isTestMeeting && !isSuperUser) {
             const timeReview = checkCampusTime(meeting.campus, meeting.date);
@@ -154,7 +154,15 @@ export const getMeetingByCode = async (req, res) => {
             }
         }
 
-        res.json(meeting);
+        // Fetch the previous meeting recap from the same campus
+        const previousRecap = await Meeting.findOne({
+            campus: meeting.campus,
+            _id: { $ne: meeting._id },
+            date: { $lt: meeting.date },
+            $or: [{ devotion: { $ne: '' } }, { announcements: { $ne: '' } }]
+        }).sort({ date: -1 }).select('name date devotion iceBreaker announcements');
+
+        res.json({ ...meeting.toObject(), previousRecap });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

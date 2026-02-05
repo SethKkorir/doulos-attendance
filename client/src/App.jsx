@@ -4,6 +4,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SuperAdmin from './pages/SuperAdmin';
 import StudentScan from './pages/StudentScan';
 import CheckIn from './pages/CheckIn';
+import StudentPortal from './pages/StudentPortal';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         {/* Student Routes */}
         <Route path="/student" element={<StudentScan />} />
         <Route path="/check-in/:meetingCode" element={<CheckIn />} />
+        <Route path="/portal" element={<StudentPortal />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLogin />} />

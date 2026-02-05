@@ -1,0 +1,20 @@
+import mongoose from 'mongoose';
+
+const memberSchema = new mongoose.Schema({
+    studentRegNo: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    memberType: {
+        type: String,
+        enum: ['Douloid', 'Recruit', 'Visitor'],
+        default: 'Visitor'
+    },
+    campus: {
+        type: String,
+        enum: ['Athi River', 'Valley Road'],
+        required: true
+    },
+    totalPoints: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
+export default mongoose.model('Member', memberSchema);

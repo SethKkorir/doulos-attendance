@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -13,6 +13,24 @@ const CheckIn = () => {
     const [memberType, setMemberType] = useState(''); // Douloid, Recruit, Visitor
     const [status, setStatus] = useState('loading'); // loading, idle, submitting, success, error
     const [msg, setMsg] = useState('');
+    const [showRecap, setShowRecap] = useState(false);
+    const [secretCode, setSecretCode] = useState('');
+    const [memberInfo, setMemberInfo] = useState(null); // { name, type } from registry
+    const [isLookingUp, setIsLookingUp] = useState(false);
+
+    const getFingerprint = () => {
+        const n = window.navigator;
+        const s = window.screen;
+        return [
+            n.userAgent,
+            n.language,
+            s.colorDepth,
+            s.width + 'x' + s.height,
+            new Date().getTimezoneOffset(),
+            !!window.sessionStorage,
+            !!window.localStorage
+        ].join('|');
+    };
 
     useEffect(() => {
         const fetchMeeting = async () => {
@@ -30,7 +48,10 @@ const CheckIn = () => {
                 }
                 setResponses(initialResponses);
 
-                if (!res.data.isActive) {
+                const userRole = localStorage.getItem('role');
+                const isSuperUser = ['developer', 'superadmin'].includes(userRole);
+
+                if (!res.data.isActive && !res.data.isTestMeeting && !isSuperUser) {
                     setStatus('error');
                     setMsg('This meeting is currently closed for attendance.');
                 } else {
@@ -44,21 +65,42 @@ const CheckIn = () => {
         fetchMeeting();
     }, [meetingCode]);
 
+    const lookupMember = async (regNo) => {
+        if (!regNo || regNo.length < 5) return;
+        setIsLookingUp(true);
+        try {
+            // We'll use the existing portal data or a specific lookup endpoint if we had one
+            // For now, let's use the registry logic via a new search endpoint if possible
+            // Or just allow the backend to handle it on submit.
+            // But for better UX, let's see if we can find them.
+            const res = await api.get(`/attendance/student/${regNo}`);
+            if (res.data && res.data.stats.totalMeetings > 0) {
+                // Member exists in history at least
+                setMemberInfo({ name: res.data.memberName || 'Member', type: res.data.memberType });
+            }
+        } catch (err) {
+            setMemberInfo(null);
+        } finally {
+            setIsLookingUp(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!memberType) {
-            setMsg('Please select your member category');
-            return;
-        }
         setStatus('submitting');
         try {
-            await api.post('/attendance/submit', {
+            const fingerprint = getFingerprint();
+            const res = await api.post('/attendance/submit', {
                 meetingCode,
-                memberType,
-                responses
+                secretCode,
+                deviceId: fingerprint,
+                responses: {
+                    ...responses,
+                    studentRegNo: responses.studentRegNo // Ensure it's passed
+                }
             });
             setStatus('success');
-            setMsg('Attendance recorded successfully! You may close this page.');
+            setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
         } catch (err) {
             setStatus('error');
             setMsg(err.response?.data?.message || 'Submission failed. Please try again.');
@@ -93,37 +135,11 @@ const CheckIn = () => {
                             </div>
                         )}
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
-                                Who are you? <span style={{ color: '#ef4444' }}>*</span>
-                            </label>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                                {['Douloid', 'Recruit', 'Visitor'].map((type) => (
-                                    <button
-                                        key={type}
-                                        type="button"
-                                        onClick={() => {
-                                            setMemberType(type);
-                                            if (msg) setMsg('');
-                                        }}
-                                        style={{
-                                            padding: '0.75rem 0.25rem',
-                                            borderRadius: '0.75rem',
-                                            border: '1px solid',
-                                            borderColor: memberType === type ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.1)',
-                                            background: memberType === type ? 'rgba(37, 170, 225, 0.1)' : 'rgba(255,255,255,0.02)',
-                                            color: memberType === type ? 'hsl(var(--color-primary))' : 'var(--color-text-dim)',
-                                            fontSize: '0.8rem',
-                                            fontWeight: 600,
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {type}
-                                    </button>
-                                ))}
+                        {memberInfo && (
+                            <div style={{ padding: '0.8rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '0.5rem', fontSize: '0.9rem', textAlign: 'center', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                                Welcome back, <strong>{memberInfo.name}</strong> ({memberInfo.type})
                             </div>
-                        </div>
+                        )}
                         {meeting?.requiredFields.map((field) => (
                             <div key={field.key}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
@@ -140,6 +156,7 @@ const CheckIn = () => {
                                             if (val.length > 2) {
                                                 val = val.slice(0, 2) + '-' + val.slice(2, 6);
                                             }
+                                            if (val.length === 7) lookupMember(val);
                                         }
                                         setResponses({ ...responses, [field.key]: val });
                                         if (msg) setMsg(''); // Clear error on change
@@ -168,15 +185,79 @@ const CheckIn = () => {
                                 />
                             </div>
                         )}
+                        <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-primary-light)', fontWeight: 'bold' }}>
+                                Secret Room Code
+                            </label>
+                            <input
+                                className="input-field"
+                                placeholder="Code announced in meeting"
+                                value={secretCode}
+                                onChange={e => setSecretCode(e.target.value.toUpperCase())}
+                                required
+                                disabled={status === 'submitting'}
+                                style={{ textTransform: 'uppercase', letterSpacing: '4px', textAlign: 'center', fontWeight: 900, fontSize: '1.25rem' }}
+                            />
+                            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '0.5rem', textAlign: 'center' }}>
+                                This confirms you are physically present in the hall.
+                            </p>
+                        </div>
 
-                        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem', position: 'relative' }} disabled={status === 'submitting'}>
-                            {status === 'submitting' ? (
-                                <>
-                                    <Loader2 className="animate-spin" size={18} style={{ marginRight: '0.5rem' }} />
-                                    Verifying...
-                                </>
-                            ) : 'Check In Now'}
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={status === 'submitting'}
+                            style={{ width: '100%', marginTop: '2rem', padding: '1.25rem', fontSize: '1.1rem', fontWeight: 'bold' }}
+                        >
+                            {status === 'submitting' ? 'Verifying...' : 'Check In Now'}
                         </button>
+
+                        {meeting?.previousRecap && (
+                            <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRecap(!showRecap)}
+                                    style={{
+                                        width: '100%', background: 'rgba(167, 139, 250, 0.05)', border: '1px solid rgba(167, 139, 250, 0.1)',
+                                        borderRadius: '0.75rem', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center',
+                                        justifyContent: 'space-between', color: '#a78bfa', cursor: 'pointer', fontSize: '0.85rem'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <BookOpen size={16} />
+                                        <span>Missed last week? Read the recap</span>
+                                    </div>
+                                    {showRecap ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+
+                                {showRecap && (
+                                    <div className="glass-panel" style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                                        <div style={{ fontWeight: 700, marginBottom: '0.5rem', opacity: 0.8 }}>{meeting.previousRecap.name} Recap</div>
+
+                                        {meeting.previousRecap.devotion && (
+                                            <div style={{ marginBottom: '0.75rem' }}>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Devotion</div>
+                                                <div style={{ color: 'var(--color-text-dim)' }}>{meeting.previousRecap.devotion}</div>
+                                            </div>
+                                        )}
+
+                                        {meeting.previousRecap.announcements && (
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#facc15', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Announcements</div>
+                                                <div style={{ color: 'var(--color-text-dim)' }}>{meeting.previousRecap.announcements}</div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={() => window.location.href = '/portal'}
+                                            style={{ marginTop: '1rem', background: 'none', border: 'none', color: '#25AAE1', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            View full history in Student Portal
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </form>
                 ) : status === 'success' ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>
@@ -189,13 +270,22 @@ const CheckIn = () => {
                             You can now close this tab.
                         </p>
 
-                        <button
-                            className="btn btn-primary"
-                            style={{ width: '100%', padding: '1rem' }}
-                            onClick={() => window.close()}
-                        >
-                            Close Tab
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <button
+                                className="btn btn-primary"
+                                style={{ width: '100%', padding: '1rem' }}
+                                onClick={() => window.location.href = '/portal'}
+                            >
+                                View My Dashboard & Recap
+                            </button>
+                            <button
+                                className="btn"
+                                style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                onClick={() => window.close()}
+                            >
+                                Close
+                            </button>
+                        </div>
                         <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '1rem' }}>
                             If the button doesn't work, swipe this page away to exit.
                         </p>
@@ -223,7 +313,7 @@ const CheckIn = () => {
             <p style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
                 Doulos Attendance System &bull; &copy; {new Date().getFullYear()}
             </p>
-        </div>
+        </div >
     );
 };
 

@@ -20,7 +20,11 @@ const meetingSchema = new mongoose.Schema({
         }
     ],
     questionOfDay: { type: String, default: '' },
-    isTestMeeting: { type: Boolean, default: false }
+    isTestMeeting: { type: Boolean, default: false },
+    devotion: { type: String, default: '' },
+    iceBreaker: { type: String, default: '' },
+    announcements: { type: String, default: '' },
+    secretRoomCode: { type: String, default: '' }
 }, { timestamps: true });
 
 export default mongoose.model('Meeting', meetingSchema);
