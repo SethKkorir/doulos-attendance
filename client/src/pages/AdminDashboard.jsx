@@ -40,6 +40,7 @@ const AdminDashboard = () => {
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
     const [memberSearch, setMemberSearch] = useState('');
     const [importLoading, setImportLoading] = useState(false);
+    const [memberCampusFilter, setMemberCampusFilter] = useState('All'); // 'All', 'Athi River', 'Valley Road'
 
     useEffect(() => {
         if (!isDarkMode) {
@@ -379,18 +380,22 @@ const AdminDashboard = () => {
     };
 
     const toggleStatus = async (meeting) => {
+        if (!meeting.isActive) return; // Already closed, can't reopen
+
+        if (!window.confirm('Are you sure you want to CLOSE this meeting? Once closed, it cannot be reopened and the QR code will be disabled.')) return;
+
         try {
-            await api.patch(`/ meetings / ${meeting._id} `, { isActive: !meeting.isActive });
+            await api.patch(`/meetings/${meeting._id}`, { isActive: false });
             fetchMeetings();
         } catch (err) {
-            alert('Failed to update status');
+            alert('Failed to close meeting');
         }
     };
 
     const deleteMeeting = async (id) => {
         if (!window.confirm('Are you sure you want to delete this meeting and all its attendance?')) return;
         try {
-            await api.delete(`/ meetings / ${id} `);
+            await api.delete(`/meetings/${id}`);
             fetchMeetings();
         } catch (err) {
             alert('Failed to delete');
@@ -651,18 +656,20 @@ const AdminDashboard = () => {
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                                             <button
                                                 onClick={() => toggleStatus(m)}
+                                                disabled={!m.isActive}
                                                 style={{
                                                     padding: '0.25rem 0.6rem',
                                                     borderRadius: '2rem',
                                                     fontSize: '0.7rem',
                                                     fontWeight: 'bold',
-                                                    background: m.isActive ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                                    color: m.isActive ? '#4ade80' : '#94a3b8',
-                                                    border: m.isActive ? '1px solid #4ade80' : '1px solid #94a3b8',
-                                                    cursor: 'pointer'
+                                                    background: m.isActive ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                                                    color: m.isActive ? '#4ade80' : '#f87171',
+                                                    border: m.isActive ? '1px solid #4ade80' : '1px solid #f87171',
+                                                    cursor: m.isActive ? 'pointer' : 'default',
+                                                    opacity: m.isActive ? 1 : 0.8
                                                 }}
                                             >
-                                                {m.isActive ? '• ACTIVE' : 'CLOSED'}
+                                                {m.isActive ? '• ACTIVE' : 'FINALIZED'}
                                             </button>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-text-dim)', fontSize: '0.8rem' }}>
                                                 <Users size={14} /> {m.attendanceCount || 0}
@@ -700,40 +707,41 @@ const AdminDashboard = () => {
                                     )}
 
                                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                        <button
-                                            className="btn"
-                                            style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
-                                            onClick={() => {
-                                                if (['developer', 'superadmin'].includes(userRole)) {
-                                                    setSelectedMeeting(m);
-                                                    return;
-                                                }
-                                                // Check time for regular admins
-                                                const now = new Date();
-                                                const [startH, startM] = m.startTime.split(':').map(Number);
-                                                const [endH, endM] = m.endTime.split(':').map(Number);
+                                        {m.isActive && (
+                                            <button
+                                                className="btn"
+                                                style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
+                                                onClick={() => {
+                                                    const now = new Date();
+                                                    const [startH, startM] = m.startTime.split(':').map(Number);
+                                                    const [endH, endM] = m.endTime.split(':').map(Number);
 
-                                                const start = new Date(m.date);
-                                                start.setHours(startH, startM, 0, 0);
+                                                    const start = new Date(m.date);
+                                                    start.setHours(startH, startM, 0, 0);
 
-                                                const end = new Date(m.date);
-                                                end.setHours(endH, endM, 0, 0);
+                                                    const end = new Date(m.date);
+                                                    end.setHours(endH, endM, 0, 0);
 
-                                                if (now >= start && now <= end) {
-                                                    setSelectedMeeting(m);
-                                                } else {
-                                                    alert("QR Code is locked. It only opens during the scheduled meeting time.");
-                                                }
-                                            }}
-                                        >
-                                            <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
-                                        </button>
+                                                    const isSuperUser = ['developer', 'superadmin'].includes(userRole);
+
+                                                    if (isSuperUser || (now >= start && now <= end)) {
+                                                        setSelectedMeeting(m);
+                                                    } else {
+                                                        alert("QR Code is locked. It only opens during the scheduled meeting time.");
+                                                    }
+                                                }}
+                                            >
+                                                <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
+                                            </button>
+                                        )}
                                         <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
                                             View Attendance
                                         </button>
-                                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
-                                            <Pencil size={16} />
-                                        </button>
+                                        {m.isActive && (
+                                            <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                                                <Pencil size={16} />
+                                            </button>
+                                        )}
                                         {['developer', 'superadmin'].includes(userRole) && (
                                             <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }} onClick={() => deleteMeeting(m._id)}>
                                                 <Trash2 size={16} />
@@ -753,17 +761,28 @@ const AdminDashboard = () => {
                                     {members.length} members registered in the system
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem', marginRight: '0.5rem' }}>
+                                    {['All', 'Athi River', 'Valley Road'].map(c => (
+                                        <button
+                                            key={c}
+                                            onClick={() => setMemberCampusFilter(c)}
+                                            style={{
+                                                padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                                background: memberCampusFilter === c ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
+                                                color: memberCampusFilter === c ? '#25AAE1' : 'var(--color-text-dim)',
+                                                fontSize: '0.75rem', fontWeight: 600
+                                            }}
+                                        >{c === 'Valley Road' ? 'Nairobi' : c}</button>
+                                    ))}
+                                </div>
                                 <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
-                                    Sync from History
+                                    Sync
                                 </button>
                                 <label className="btn" style={{ cursor: 'pointer', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
-                                    {importLoading ? 'Importing...' : 'Import CSV'}
+                                    {importLoading ? '...' : 'Import'}
                                     <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVUpload} disabled={importLoading} />
                                 </label>
-                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance('NEW_MEMBER')}>
-                                    Add Member
-                                </button>
                             </div>
                         </div>
                         <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -793,23 +812,34 @@ const AdminDashboard = () => {
                                     {loadingMembers ? (
                                         <tr><td colSpan="5" style={{ padding: '3rem', textAlign: 'center' }}>Loading directory...</td></tr>
                                     ) : (
-                                        members.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="5" style={{ padding: '4rem', textAlign: 'center' }}>
-                                                    <div style={{ color: 'var(--color-text-dim)', marginBottom: '1.5rem' }}>
-                                                        <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
-                                                        <p>Registry is empty. Sync from your attendance history to populate it.</p>
-                                                    </div>
-                                                    <button className="btn btn-primary" onClick={handleSyncRegistry}>
-                                                        Sync Registry from History
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            members.filter(m => {
-                                                const search = memberSearch.toLowerCase();
-                                                return m.name?.toLowerCase().includes(search) || m.studentRegNo?.toLowerCase().includes(search);
-                                            }).map((m, i) => (
+                                        (() => {
+                                            const filtered = members.filter(m => {
+                                                const matchesSearch =
+                                                    m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                                    m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
+                                                const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
+                                                return matchesSearch && matchesCampus;
+                                            });
+
+                                            if (filtered.length === 0) {
+                                                return (
+                                                    <tr>
+                                                        <td colSpan="5" style={{ padding: '4rem', textAlign: 'center' }}>
+                                                            <div style={{ color: 'var(--color-text-dim)', marginBottom: '1.5rem' }}>
+                                                                <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
+                                                                <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
+                                                            </div>
+                                                            {!memberSearch && memberCampusFilter === 'All' && (
+                                                                <button className="btn btn-primary" onClick={handleSyncRegistry}>
+                                                                    Sync Registry from History
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return filtered.map((m, i) => (
                                                 <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ fontWeight: 600 }}>{m.name}</div>
@@ -856,8 +886,8 @@ const AdminDashboard = () => {
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )
+                                            ));
+                                        })()
                                     )}
                                 </tbody>
                             </table>
@@ -895,7 +925,7 @@ const AdminDashboard = () => {
                             <h3 style={{ marginBottom: '1rem' }}>Scan to Check In</h3>
                             <div style={{ background: 'white', padding: '1rem', display: 'inline-block', borderRadius: '0.5rem' }}>
                                 <QRCode
-                                    value={`${window.location.origin} /check-in/${selectedMeeting.code} `}
+                                    value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
                                     size={256}
                                     level="H"
                                 />
@@ -916,7 +946,7 @@ const AdminDashboard = () => {
                                     style={{ background: 'var(--glass-bg)', color: 'var(--color-text)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        const link = `${window.location.origin} /check-in/${selectedMeeting.code} `;
+                                        const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
                                         navigator.clipboard.writeText(link);
                                         alert('Link copied to clipboard!');
                                     }}
@@ -925,7 +955,7 @@ const AdminDashboard = () => {
                                 </button>
                                 {['developer', 'superadmin'].includes(userRole) && (
                                     <a
-                                        href={`/ check -in/${selectedMeeting.code}`}
+                                        href={`/check-in/${selectedMeeting.code}`}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="btn"
@@ -1158,22 +1188,25 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {members.map((m, i) => {
-                                        // This is a rough estimation since members.insights is pre-aggregated
-                                        // A real semester report would need a backend aggregate with date filters
-                                        return (
-                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <td style={{ padding: '1rem', fontWeight: 600 }}>{m.details?.studentName || 'Unknown'}</td>
-                                                <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>{m._id}</td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <span style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: m.memberType === 'Douloid' ? '#FFD700' : '#25AAE1' }}>
-                                                        {m.memberType || 'Visitor'}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '1rem', fontWeight: 700 }}>{m.totalAttended}</td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {members
+                                        .filter(m => filterCampus === 'All' || m.campus === filterCampus)
+                                        .map((m, i) => {
+                                            // This is a rough estimation since members.insights is pre-aggregated
+                                            // A real semester report would need a backend aggregate with date filters
+                                            return (
+                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <td style={{ padding: '1rem', fontWeight: 600 }}>{m.name || 'Unknown'}</td>
+                                                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>{m.studentRegNo}</td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: m.memberType === 'Douloid' ? '#FFD700' : '#25AAE1' }}>
+                                                            {m.memberType || 'Visitor'}
+                                                        </span>
+                                                        <div style={{ fontSize: '0.6rem', opacity: 0.6 }}>{m.campus}</div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem', fontWeight: 700 }}>{m.totalAttended}</td>
+                                                </tr>
+                                            );
+                                        })}
                                 </tbody>
                             </table>
                         </div>

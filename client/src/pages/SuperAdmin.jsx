@@ -8,7 +8,7 @@ const SuperAdmin = () => {
 
     useEffect(() => {
         const handlePromotion = async () => {
-            const username = sessionStorage.getItem('username');
+            const username = localStorage.getItem('username');
             if (!username) {
                 setMsg('Please login as admin first.');
                 setTimeout(() => navigate('/admin'), 2000);
@@ -23,7 +23,7 @@ const SuperAdmin = () => {
 
             try {
                 const res = await api.post('/auth/promote', { username, secret });
-                sessionStorage.setItem('role', res.data.role);
+                localStorage.setItem('role', res.data.role);
                 setMsg('Success! You are now a Developer. Redirecting...');
                 setTimeout(() => navigate('/admin/dashboard'), 1500);
             } catch (err) {

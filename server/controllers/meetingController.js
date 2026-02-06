@@ -148,7 +148,7 @@ export const getMeetingByCode = async (req, res) => {
         }
 
         if (!meeting.isTestMeeting && !isSuperUser) {
-            const timeReview = checkCampusTime(meeting.campus, meeting.date);
+            const timeReview = checkCampusTime(meeting);
             if (!timeReview.allowed) {
                 return res.status(403).json({ message: timeReview.message });
             }

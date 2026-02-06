@@ -66,17 +66,28 @@ const CheckIn = () => {
     }, [meetingCode]);
 
     const lookupMember = async (regNo) => {
-        if (!regNo || regNo.length < 5) return;
+        if (!regNo || regNo.length < 5) {
+            setMemberInfo(null);
+            return;
+        }
         setIsLookingUp(true);
         try {
-            // We'll use the existing portal data or a specific lookup endpoint if we had one
-            // For now, let's use the registry logic via a new search endpoint if possible
-            // Or just allow the backend to handle it on submit.
-            // But for better UX, let's see if we can find them.
             const res = await api.get(`/attendance/student/${regNo}`);
-            if (res.data && res.data.stats.totalMeetings > 0) {
-                // Member exists in history at least
-                setMemberInfo({ name: res.data.memberName || 'Member', type: res.data.memberType });
+            if (res.data && res.data.stats.percentage !== undefined) {
+                const name = res.data.memberName || 'Member';
+                setMemberInfo({ name, type: res.data.memberType });
+
+                // Pre-fill all name-related fields in responses
+                const updatedResponses = { ...responses };
+                meeting?.requiredFields.forEach(f => {
+                    const k = f.key.toLowerCase();
+                    if (k.includes('name') && k !== 'studentregno') {
+                        updatedResponses[f.key] = name;
+                    }
+                });
+                setResponses(updatedResponses);
+            } else {
+                setMemberInfo(null);
             }
         } catch (err) {
             setMemberInfo(null);
@@ -140,34 +151,58 @@ const CheckIn = () => {
                                 Welcome back, <strong>{memberInfo.name}</strong> ({memberInfo.type})
                             </div>
                         )}
-                        {meeting?.requiredFields.map((field) => (
-                            <div key={field.key}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>
-                                    {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
-                                </label>
-                                <input
-                                    className="input-field"
-                                    placeholder={field.key === 'studentRegNo' ? 'e.g. 22-0990' : field.label}
-                                    value={responses[field.key] || ''}
-                                    onChange={e => {
-                                        let val = e.target.value;
-                                        if (field.key === 'studentRegNo') {
-                                            val = val.replace(/\D/g, '');
-                                            if (val.length > 2) {
-                                                val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                            }
-                                            if (val.length === 7) lookupMember(val);
-                                        }
-                                        setResponses({ ...responses, [field.key]: val });
-                                        if (msg) setMsg(''); // Clear error on change
-                                    }}
-                                    pattern={field.key === 'studentRegNo' ? "[0-9]{2}-[0-9]{4}" : undefined}
-                                    title={field.key === 'studentRegNo' ? "Format must be 00-0000" : undefined}
-                                    required={field.required}
-                                    disabled={status === 'submitting'}
-                                />
-                            </div>
-                        ))}
+                        {[...(meeting?.requiredFields || [])]
+                            .sort((a, b) => {
+                                if (a.key === 'studentRegNo') return -1;
+                                if (b.key === 'studentRegNo') return 1;
+                                return 0;
+                            })
+                            .map((field) => {
+                                const isNameField = field.key.toLowerCase().includes('name') && field.key !== 'studentRegNo';
+                                const isLocked = memberInfo && isNameField;
+
+                                return (
+                                    <div key={field.key}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: isLocked ? '#25AAE1' : 'var(--color-text-dim)', fontWeight: isLocked ? 600 : 400 }}>
+                                            {field.label} {field.required && !isLocked && <span style={{ color: '#ef4444' }}>*</span>}
+                                            {isLocked && <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>(Verified Member)</span>}
+                                        </label>
+                                        <input
+                                            className="input-field"
+                                            placeholder={field.key === 'studentRegNo' ? 'e.g. 22-0990' : field.label}
+                                            style={isLocked ? {
+                                                background: 'rgba(37, 170, 225, 0.05)',
+                                                borderColor: 'rgba(37, 170, 225, 0.3)',
+                                                color: 'rgba(255, 255, 255, 0.9)',
+                                                cursor: 'not-allowed',
+                                                pointerEvents: 'none',
+                                                userSelect: 'none'
+                                            } : {}}
+                                            value={isLocked ? memberInfo.name : (responses[field.key] || '')}
+                                            readOnly={isLocked}
+                                            tabIndex={isLocked ? -1 : 0}
+                                            onChange={e => {
+                                                if (isLocked) return;
+                                                let val = e.target.value;
+                                                if (field.key === 'studentRegNo') {
+                                                    val = val.replace(/\D/g, '');
+                                                    if (val.length > 2) {
+                                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                                    }
+                                                    if (val.length === 7) lookupMember(val);
+                                                    else setMemberInfo(null);
+                                                }
+                                                setResponses({ ...responses, [field.key]: val });
+                                                if (msg) setMsg(''); // Clear error on change
+                                            }}
+                                            pattern={field.key === 'studentRegNo' ? "[0-9]{2}-[0-9]{4}" : undefined}
+                                            title={field.key === 'studentRegNo' ? "Format must be 00-0000" : undefined}
+                                            required={field.required}
+                                            disabled={status === 'submitting'}
+                                        />
+                                    </div>
+                                );
+                            })}
 
                         {meeting?.questionOfDay && (
                             <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'rgba(221, 93, 108, 0.05)', borderRadius: '0.75rem', border: '1px solid rgba(221, 93, 108, 0.1)' }}>

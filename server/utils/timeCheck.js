@@ -4,7 +4,10 @@
  * 
  * @returns { { allowed: boolean, message: string | null } }
  */
-export const checkCampusTime = (campus, meetingDate) => {
+export const checkCampusTime = (meeting) => {
+    if (!meeting) return { allowed: true };
+
+    const { campus, date: meetingDate, startTime, endTime } = meeting;
     const campusName = (campus || '').trim().toLowerCase();
 
     // Manual UTC+3 for EAT
@@ -14,7 +17,6 @@ export const checkCampusTime = (campus, meetingDate) => {
     const eatYear = eatTime.getUTCFullYear();
     const eatMonth = eatTime.getUTCMonth();
     const eatDate = eatTime.getUTCDate();
-    const eatDay = eatTime.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 
     const eatHour = eatTime.getUTCHours();
     const eatMin = eatTime.getUTCMinutes();
@@ -35,29 +37,17 @@ export const checkCampusTime = (campus, meetingDate) => {
         }
     }
 
-    // 2. CAMPUS + TIME WINDOW CHECK
-    // NAIROBI / VALLEY ROAD CHECK: Wed 2 PM - 4 PM
-    if (campusName.includes('valley') || campusName.includes('nairobi')) {
-        if (eatDay !== 3 || timeDecimal < 14.0 || timeDecimal >= 16.0) {
-            const jokes = [
-                "Eyy! Nairobi Campus attendance is strictly 2 PM - 4 PM on Wednesdays. Even the stairs aren't this steep! Come back later. 😂",
-                "The portal says 'No'! Nairobi Campus attendance is only for the 2-4 PM legends. Go grab some cafeteria food while you wait. 🍟",
-                "Wait a minute! Are you trying to beat the system? Nairobi Campus only allows scans from 2 PM to 4 PM on Wednesdays. Stay humble! 🙏",
-                "Daystar says: 'Patience is a virtue'. See you on Wednesday between 2 PM and 4 PM! ✨"
-            ];
-            return {
-                allowed: false,
-                message: jokes[Math.floor(Math.random() * jokes.length)]
-            };
-        }
-    }
+    // 2. DYNAMIC TIME WINDOW CHECK
+    if (startTime && endTime) {
+        const [startH, startM] = startTime.split(':').map(Number);
+        const [endH, endM] = endTime.split(':').map(Number);
+        const startVal = startH + (startM / 60);
+        const endVal = endH + (endM / 60);
 
-    // ATHI RIVER CHECK: Mon 8:30 PM - 11 PM
-    if (campusName.includes('athi')) {
-        if (eatDay !== 1 || timeDecimal < 20.5 || timeDecimal >= 23.0) {
+        if (timeDecimal < startVal || timeDecimal >= endVal) {
             return {
                 allowed: false,
-                message: "Eyy! Athi River attendance is only for Monday night fellowship (8:30 PM - 11:00 PM). Go get some sleep or study! 📚✨"
+                message: `Attendance for ${campus} is only open between ${startTime} and ${endTime}. You are a bit early or late! ⏰`
             };
         }
     }
