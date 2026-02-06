@@ -14,74 +14,57 @@ const IMAGES = [
 const FOLDER_PATH = '/gallery/';
 
 const BackgroundGallery = () => {
-    const [bubbles, setBubbles] = useState([]);
+    const [index, setIndex] = useState(0);
+    const [fade, setFade] = useState(true);
 
     useEffect(() => {
-        // Create 24 floating bubbles
-        const newBubbles = Array.from({ length: 24 }).map((_, i) => ({
-            id: i,
-            img: FOLDER_PATH + IMAGES[i % IMAGES.length],
-            size: Math.random() * 150 + 150, // 150px to 300px
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-            duration: Math.random() * 30 + 30, // 30s to 60s
-            delay: Math.random() * -60,
-            opacity: 0.9,
-            rotation: Math.random() * 360
-        }));
-        setBubbles(newBubbles);
+        const interval = setInterval(() => {
+            setFade(false); // Start fade out
+            setTimeout(() => {
+                setIndex((prev) => (prev + 1) % IMAGES.length);
+                setFade(true); // Fade back in with new image
+            }, 1000); // 1s transition time
+        }, 7000); // Change image every 7 seconds
+
+        return () => clearInterval(interval);
     }, []);
 
     return (
         <div className="bg-gallery-container" style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 0,
+            zIndex: -2,
             overflow: 'hidden',
-            pointerEvents: 'none',
-            background: 'hsl(var(--color-bg))'
+            background: '#000' // Dark base
         }}>
-            {/* Subtle base gradient */}
+            {/* The Image Layer */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'var(--bg-gradient)',
-                opacity: 0.2,
-                zIndex: 1
-            }}></div>
+                backgroundImage: `url("${FOLDER_PATH}${IMAGES[index]}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                transition: 'opacity 2s ease-in-out',
+                opacity: fade ? 0.85 : 0,
+                transform: 'none',
+            }} />
 
-            {bubbles.map(bubble => (
-                <div
-                    key={bubble.id}
-                    className="floating-bubble"
-                    style={{
-                        position: 'absolute',
-                        width: bubble.size,
-                        height: bubble.size,
-                        left: `${bubble.x}%`,
-                        top: `${bubble.y}%`,
-                        backgroundImage: `url("${bubble.img}")`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        borderRadius: '2rem',
-                        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
-                        opacity: bubble.opacity,
-                        animation: `floatAndRotate ${bubble.duration}s linear infinite`,
-                        animationDelay: `${bubble.delay}s`,
-                        filter: 'none',
-                        border: '2px solid rgba(255,255,255,0.3)',
-                        zIndex: 0
-                    }}
-                />
-            ))}
-
-            {/* Subtler blur to unify, but not hide */}
+            {/* Premium Vignette / Overlay - keeping it minimal for visibility */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                backdropFilter: 'blur(10px)',
-                background: 'hsla(var(--color-bg-h), var(--color-bg-s), var(--color-bg-l), 0.2)',
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)',
                 zIndex: 1
+            }} />
+
+            {/* Optional subtle noise/texture for that premium feel */}
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.03,
+                pointerEvents: 'none',
+                background: 'url("https://grains-img.vercel.app/noise.png")', // Example noise texture
+                zIndex: 2
             }} />
         </div>
     );
