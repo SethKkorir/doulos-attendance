@@ -74,18 +74,40 @@ export const getMeetings = async (req, res) => {
 
         // 2. Auto-close expired meetings
         const now = new Date();
+        const eatTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+        const eatYear = eatTime.getUTCFullYear();
+        const eatMonth = eatTime.getUTCMonth();
+        const eatDate = eatTime.getUTCDate();
+        const eatHour = eatTime.getUTCHours();
+        const eatMin = eatTime.getUTCMinutes();
+        const timeDecimal = eatHour + (eatMin / 60);
+
         const updates = [];
 
         meetings = meetings.map(m => {
             if (m.isActive && !m.isTestMeeting) {
-                // Parse End Time
-                const [endH, endM] = m.endTime.split(':').map(Number);
-                const meetingEnd = new Date(m.date);
-                meetingEnd.setHours(endH, endM, 0, 0);
+                const meetingDate = new Date(m.date);
+                const mYear = meetingDate.getUTCFullYear();
+                const mMonth = meetingDate.getUTCMonth();
+                const mDate = meetingDate.getUTCDate();
 
-                // If meeting ended before now (adding buffer of 1 hour just to be safe or strict?) 
-                // Let's be strict: if now > meetingEnd, it's closed.
-                if (now > meetingEnd) {
+                const [endH, endM] = m.endTime.split(':').map(Number);
+                const endVal = endH + (endM / 60);
+
+                // Check if meeting date is in the past (EAT perspective)
+                const isPastDay =
+                    mYear < eatYear ||
+                    (mYear === eatYear && mMonth < eatMonth) ||
+                    (mYear === eatYear && mMonth === eatMonth && mDate < eatDate);
+
+                // Check if meeting is today but time has passed
+                const isTodayAndPastTime =
+                    mYear === eatYear &&
+                    mMonth === eatMonth &&
+                    mDate === eatDate &&
+                    timeDecimal >= endVal;
+
+                if (isPastDay || isTodayAndPastTime) {
                     m.isActive = false;
                     updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
                 }
