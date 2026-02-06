@@ -5,35 +5,47 @@
 
   /* HSL Colors */
   /* Premium Daystar University Palette */
-  --color-bg: 206 91% 8%;
-  /* Darker Navy Portal Feel */
+  --color-bg-h: 206;
+  --color-bg-s: 91%;
+  --color-bg-l: 8%;
+  --color-bg: var(--color-bg-h) var(--color-bg-s) var(--color-bg-l);
+
   --color-surface: 206 80% 14%;
-  /* Blue Whale Surface */
-  /* Valentine Theme Override */
-  --color-primary: 343 100% 50%;
-  /* Pink/Rose */
-  --color-primary-glow: 343 100% 50% / 0.4;
+  --color-primary: 198 76% 51%;
+  --color-primary-glow: 198 76% 51% / 0.4;
   --color-accent: 330 80% 60%;
 
-  --glass-bg: hsla(206, 91%, 12%, 0.85);
-  --glass-border: hsla(343, 80%, 60%, 0.3);
-  /* Pinkish border */
+  --glass-bg: hsla(var(--color-bg-h), var(--color-bg-s), 12%, 0.85);
+  --glass-border: hsla(198, 76%, 51%, 0.2);
   --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 
   --color-text: 0 0% 100%;
+  --color-text-dim: 206 20% 70%;
+
+  --bg-gradient: radial-gradient(circle at 0% 0%, hsla(198, 76%, 51%, 0.15), transparent 40%),
+    radial-gradient(circle at 100% 100%, hsla(353, 63%, 62%, 0.08), transparent 40%),
+    linear-gradient(to bottom, hsla(var(--color-bg-h), var(--color-bg-s), 10%, 1), hsla(var(--color-bg-h), var(--color-bg-s), 5%, 1));
 }
 
 .light-mode {
-  --color-bg: 210 20% 98%;
+  --color-bg-h: 210;
+  --color-bg-s: 20%;
+  --color-bg-l: 98%;
+  --color-bg: var(--color-bg-h) var(--color-bg-s) var(--color-bg-l);
+
   --color-surface: 0 0% 100%;
   --color-primary: 198 76% 51%;
   --color-primary-glow: 198 76% 51% / 0.2;
   --color-text: 206 91% 8%;
   --color-text-dim: 206 20% 40%;
 
-  --glass-bg: hsla(0, 0%, 100%, 0.85);
+  --glass-bg: hsla(0, 0%, 100%, 0.8);
   --glass-border: hsla(206, 91%, 8%, 0.1);
-  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+
+  --bg-gradient: radial-gradient(circle at 0% 0%, hsla(198, 76%, 51%, 0.05), transparent 40%),
+    radial-gradient(circle at 100% 100%, hsla(353, 63%, 62%, 0.03), transparent 40%),
+    linear-gradient(to bottom, #f8fafc, #eff6ff);
 }
 
 * {
@@ -59,10 +71,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background:
-    radial-gradient(circle at 0% 0%, hsla(198, 76%, 51%, 0.1), transparent 40%),
-    radial-gradient(circle at 100% 100%, hsla(353, 63%, 62%, 0.05), transparent 40%),
-    linear-gradient(to bottom, hsla(206, 91%, 10%, 1), hsla(206, 91%, 5%, 1));
+  background: var(--bg-gradient);
   z-index: -2;
   pointer-events: none;
 }
@@ -309,5 +318,116 @@ select.input-field {
   /* Modal sizing */
   .glass-panel {
     padding: 1.5rem !important;
+  }
+}
+
+/* Animations & Spinners */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes rotateLogo {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatAndRotate {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(15%, -10%) rotate(90deg);
+  }
+
+  50% {
+    transform: translate(-10%, 15%) rotate(180deg);
+  }
+
+  75% {
+    transform: translate(10%, -15%) rotate(270deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(360deg);
   }
 }

@@ -40,7 +40,7 @@ const AdminDashboard = () => {
     const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'admin');
     const [members, setMembers] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(true);
+    const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [quickRegNo, setQuickRegNo] = useState('');
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
     const [memberSearch, setMemberSearch] = useState('');
@@ -54,8 +54,10 @@ const AdminDashboard = () => {
     useEffect(() => {
         if (!isDarkMode) {
             document.body.classList.add('light-mode');
+            localStorage.setItem('theme', 'light');
         } else {
             document.body.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark');
         }
     }, [isDarkMode]);
 
@@ -314,7 +316,7 @@ const AdminDashboard = () => {
 
     const downloadReport = async (meetingId, meetingName) => {
         try {
-            const res = await api.get(`/ attendance / ${meetingId} `);
+            const res = await api.get(`/attendance/${meetingId}`);
             const data = res.data;
             if (data.length === 0) {
                 setMsg({ type: 'error', text: 'No attendance recorded yet.' });
@@ -333,13 +335,13 @@ const AdminDashboard = () => {
                 const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
                 const timestamp = new Date(r.timestamp).toLocaleString();
                 const memberType = r.memberType || 'Visitor';
-                return `< tr ><td>${timestamp}</td><td><strong>${memberType}</strong></td>${headers.map(h => `<td>${responses[h] || '-'}</td>`).join('')}</tr > `;
+                return `<tr><td>${timestamp}</td><td><strong>${memberType}</strong></td>${headers.map(h => `<td>${responses[h] || '-'}</td>`).join('')}</tr>`;
             });
 
-            const headerCells = ['Time', 'Category', ...headers].map(h => `< th style = "text-align: left; padding: 12px; border-bottom: 2px solid #032540; color: #032540;" > ${h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th > `).join('');
+            const headerCells = ['Time', 'Category', ...headers].map(h => `<th style="text-align: left; padding: 12px; border-bottom: 2px solid #032540; color: #032540;">${h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>`).join('');
 
             const reportHtml = `
-    < html >
+                <html>
                 <head>
                     <title>${meetingName} - Attendance Report</title>
                     <style>
@@ -375,7 +377,7 @@ const AdminDashboard = () => {
                         Doulos Solidarity &bull; Daystar University &bull; Official Attendance Record
                     </div>
                 </body>
-                </html >
+                </html>
     `;
 
             const win = window.open('', '_blank');
@@ -641,7 +643,18 @@ const AdminDashboard = () => {
             <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '2rem', paddingBottom: '2rem' }}>
                 <header className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-                        <Logo size={45} />
+                        <div className="rotating-logo">
+                            <Logo size={45} />
+                        </div>
+                        <style>{`
+                            .rotating-logo {
+                                animation: rotateInfinite 20s linear infinite;
+                            }
+                            @keyframes rotateInfinite {
+                                from { transform: rotate(0deg); }
+                                to { transform: rotate(360deg); }
+                            }
+                        `}</style>
                         <div className="admin-nav" style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <button
                                 onClick={() => setActiveTab('meetings')}
@@ -784,7 +797,7 @@ const AdminDashboard = () => {
                         {showCreate && (
                             <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px' }}>
                                 <h3>Create Meeting</h3>
-                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <label>Meeting Name</label>
                                         <input className="input-field" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
@@ -1045,8 +1058,8 @@ const AdminDashboard = () => {
                                         <GraduationCap size={16} /> Graduate All Recruits
                                     </button>
                                 )}
-                                {['developer', 'superadmin', 'admin'].includes(userRole) && (
-                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                    {userRole === 'superadmin' && (
                                         <button
                                             className="btn"
                                             style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
@@ -1055,6 +1068,8 @@ const AdminDashboard = () => {
                                         >
                                             Setup Tester
                                         </button>
+                                    )}
+                                    {['developer', 'superadmin', 'admin'].includes(userRole) && (
                                         <button
                                             className="btn"
                                             style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
@@ -1063,8 +1078,8 @@ const AdminDashboard = () => {
                                         >
                                             <RotateCcw size={14} /> Reset Points
                                         </button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                                 <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
                                     Sync
                                 </button>
@@ -1222,7 +1237,7 @@ const AdminDashboard = () => {
 
                             {editingMember._id === 'NEW' ? (
                                 <form onSubmit={saveMember} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Full Name</label>
                                             <input className="input-field" required value={editingMember.name} onChange={e => setEditingMember({ ...editingMember, name: e.target.value })} />
@@ -1244,7 +1259,7 @@ const AdminDashboard = () => {
                                             />
                                         </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Campus</label>
                                             <select className="input-field" value={editingMember.campus} onChange={e => setEditingMember({ ...editingMember, campus: e.target.value })}>
@@ -1563,7 +1578,8 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
     if (!semesters.includes(currentSemester)) semesters.push(currentSemester);
 
     const filteredMeetings = meetings.filter(m => {
-        const semesterMatch = filterSemester === 'All' || getSemester(m.date) === (filterSemester === 'Current' ? currentSemester : filterSemester);
+        const semesterMatch = filterSemester === 'All' ||
+            (filterSemester === 'Current' ? getSemester(m.date) === currentSemester : getSemester(m.date) === filterSemester);
         const campusMatch = filterCampus === 'All' || m.campus === filterCampus;
         return semesterMatch && campusMatch;
     });
@@ -1572,18 +1588,28 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
     const averageAttendance = filteredMeetings.length > 0 ? (totalAttendance / filteredMeetings.length).toFixed(1) : 0;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Reports Dashboard</h2>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Reports & Analytics</h2>
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Real-time attendance tracking and insights</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '0.75rem' }}>
                         <select
                             className="input-field"
-                            style={{ padding: '0.4rem 2rem 0.4rem 1rem', width: 'auto' }}
+                            style={{
+                                padding: '0.5rem 2rem 0.5rem 1rem',
+                                width: 'auto',
+                                border: 'none',
+                                background: 'rgba(255,255,255,0.05)',
+                                fontSize: '0.8rem',
+                                fontWeight: 600
+                            }}
                             value={filterSemester}
                             onChange={(e) => setFilterSemester(e.target.value)}
                         >
-                            <option value="Current">Current Semester</option>
+                            <option value="Current">This Semester</option>
                             <option value="All">All Time</option>
                             {semesters.filter(s => s !== currentSemester).map(s => (
                                 <option key={s} value={s}>{s}</option>
@@ -1591,79 +1617,85 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                         </select>
                         <select
                             className="input-field"
-                            style={{ padding: '0.4rem 2rem 0.4rem 1rem', width: 'auto' }}
+                            style={{
+                                padding: '0.5rem 2rem 0.5rem 1rem',
+                                width: 'auto',
+                                border: 'none',
+                                background: 'rgba(255,255,255,0.05)',
+                                fontSize: '0.8rem',
+                                fontWeight: 600
+                            }}
                             value={filterCampus}
                             onChange={(e) => setFilterCampus(e.target.value)}
                         >
-                            <option value="All">All Campuses</option>
+                            <option value="All">Global (All)</option>
                             <option value="Athi River">Athi River</option>
                             <option value="Valley Road">Valley Road</option>
                         </select>
-                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
-                            <button
-                                onClick={() => setReportType('summary')}
-                                style={{
-                                    padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
-                                    background: reportType === 'summary' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
-                                    color: reportType === 'summary' ? '#25AAE1' : 'var(--color-text-dim)',
-                                    fontSize: '0.8rem', fontWeight: 600
-                                }}
-                            >Summary</button>
-                            <button
-                                onClick={() => setReportType('cumulative')}
-                                style={{
-                                    padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
-                                    background: reportType === 'cumulative' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
-                                    color: reportType === 'cumulative' ? '#25AAE1' : 'var(--color-text-dim)',
-                                    fontSize: '0.8rem', fontWeight: 600
-                                }}
-                            >Cumulative</button>
-                        </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                    <div style={{ padding: '1rem', background: 'var(--color-primary-glow)', borderRadius: '0.75rem', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Total Attendance</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{totalAttendance}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                    <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#25AAE1', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>
+                            <Activity size={14} /> Gross Attendance
+                        </div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-text))' }}>{totalAttendance}</div>
                     </div>
-                    <div style={{ padding: '1rem', background: 'rgba(167, 139, 250, 0.1)', borderRadius: '0.75rem', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Total Meetings</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a78bfa' }}>{filteredMeetings.length}</div>
+                    <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '1rem', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#a78bfa', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>
+                            <Calendar size={14} /> Total Meetings
+                        </div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-text))' }}>{filteredMeetings.length}</div>
                     </div>
-                    <div style={{ padding: '1rem', background: 'rgba(250, 204, 21, 0.1)', borderRadius: '0.75rem', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Average per Meeting</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#facc15' }}>{averageAttendance}</div>
+                    <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '1rem', border: '1px solid rgba(250, 204, 21, 0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#facc15', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>
+                            <Users size={14} /> Avg Engagement
+                        </div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-text))' }}>{averageAttendance}</div>
                     </div>
-                    {reportType === 'cumulative' && (
-                        <button
-                            className="btn btn-primary"
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                            onClick={() => onDownloadCumulativeCSV(members.filter(m => filterCampus === 'All' || m.campus === filterCampus), filterSemester === 'Current' ? currentSemester : filterSemester)}
-                        >
-                            <Download size={18} /> Export All (CSV)
-                        </button>
-                    )}
+                    <div
+                        onClick={() => onDownloadCumulativeCSV(members.filter(m => filterCampus === 'All' || m.campus === filterCampus), filterSemester === 'Current' ? currentSemester : filterSemester)}
+                        style={{
+                            padding: '1.5rem',
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: '1rem',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s'
+                        }}
+                        className="hover-bright"
+                    >
+                        <Download size={24} style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Export Core Matrix</span>
+                    </div>
                 </div>
 
                 {/* Visual Analytics */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                    <div className="glass-panel" style={{ padding: '1.5rem', height: '300px' }}>
-                        <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7 }}>Attendance Trends</h3>
-                        <ResponsiveContainer width="100%" height="80%">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                    <div className="glass-panel" style={{ padding: '2rem', height: '350px', background: 'rgba(0,0,0,0.2)' }}>
+                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1.5rem', color: '#25AAE1' }}>Frequency Analysis</h3>
+                        <ResponsiveContainer width="100%" height="85%">
                             <LineChart data={[...filteredMeetings].reverse().map(m => ({ name: new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: m.attendanceCount || 0 }))}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                                <XAxis dataKey="name" stroke="var(--color-text-dim)" fontSize={12} />
-                                <YAxis stroke="var(--color-text-dim)" fontSize={12} />
-                                <Tooltip contentStyle={{ background: '#032540', border: '1px solid var(--glass-border)', borderRadius: '8px' }} />
-                                <Line type="monotone" dataKey="count" stroke="#25AAE1" strokeWidth={3} dot={{ r: 4, fill: '#25AAE1' }} activeDot={{ r: 6 }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                <XAxis dataKey="name" stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
+                                <YAxis stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                                    itemStyle={{ color: 'hsl(var(--color-text))', fontWeight: 700 }}
+                                />
+                                <Line type="monotone" dataKey="count" stroke="#25AAE1" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 6, fill: '#25AAE1', stroke: 'hsl(var(--color-bg))', strokeWidth: 2 }} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '1.5rem', height: '300px' }}>
-                        <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7 }}>Member Category Breakdown</h3>
-                        <ResponsiveContainer width="100%" height="80%">
+                    <div className="glass-panel" style={{ padding: '2rem', height: '350px', background: 'var(--glass-bg)' }}>
+                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1.5rem', color: '#a78bfa' }}>Segment Integrity</h3>
+                        <ResponsiveContainer width="100%" height="85%">
                             <PieChart>
                                 <Pie
                                     data={[
@@ -1671,109 +1703,136 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                                         { name: 'Recruits', value: members.filter(m => m.memberType === 'Recruit' && (filterCampus === 'All' || m.campus === filterCampus)).length },
                                         { name: 'Visitors', value: members.filter(m => (m.memberType === 'Visitor' || !m.memberType) && (filterCampus === 'All' || m.campus === filterCampus)).length },
                                     ]}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
+                                    innerRadius={70}
+                                    outerRadius={100}
+                                    paddingAngle={8}
                                     dataKey="value"
+                                    stroke="none"
                                 >
                                     <Cell fill="#FFD700" />
                                     <Cell fill="#a78bfa" />
                                     <Cell fill="#25AAE1" />
                                 </Pie>
-                                <Tooltip contentStyle={{ background: '#032540', border: '1px solid var(--glass-border)', borderRadius: '8px' }} />
-                                <Legend />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                                />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {reportType === 'summary' ? (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Meeting Name</th>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Date</th>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Campus</th>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Attendance</th>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredMeetings.map((m, i) => (
-                                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{m.name}</td>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{new Date(m.date).toLocaleDateString()}</td>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>{m.campus}</td>
-                                        <td style={{ padding: '1rem', fontWeight: 700, color: '#25AAE1' }}>{m.attendanceCount || 0}</td>
-                                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
-                                            <button
-                                                onClick={() => onViewAttendance(m)}
-                                                title="View Attendance"
-                                                style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: 'var(--color-text)' }}
-                                            >
-                                                <Users size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => onDownloadCSV(m._id, m.name)}
-                                                title="Download CSV"
-                                                style={{ background: 'rgba(167, 139, 250, 0.15)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: '#a78bfa' }}
-                                            >
-                                                <FileSpreadsheet size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => onDownload(m._id, m.name)}
-                                                title="Download PDF/Print"
-                                                style={{ background: 'rgba(37, 170, 225, 0.15)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: '#25AAE1' }}
-                                            >
-                                                <Download size={16} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div>
-                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.05)', border: '1px solid rgba(37, 170, 225, 0.1)', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.85rem', color: '#25AAE1' }}>
-                            Showing members who attended meetings in <strong>{filterSemester === 'Current' ? currentSemester : filterSemester}</strong> {filterCampus !== 'All' ? `at ${filterCampus}` : 'across all campuses'}.
+                <div className="glass-panel" style={{ background: 'var(--glass-bg)', borderRadius: '1rem', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--color-text-dim)' }}>Archived Logs</div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
+                                <button
+                                    onClick={() => setReportType('summary')}
+                                    style={{
+                                        padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                        background: reportType === 'summary' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
+                                        color: reportType === 'summary' ? '#25AAE1' : 'var(--color-text-dim)',
+                                        fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
+                                    }}
+                                >Logs</button>
+                                <button
+                                    onClick={() => setReportType('cumulative')}
+                                    style={{
+                                        padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                        background: reportType === 'cumulative' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
+                                        color: reportType === 'cumulative' ? '#25AAE1' : 'var(--color-text-dim)',
+                                        fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
+                                    }}
+                                >Cumulative</button>
+                            </div>
                         </div>
+                    </div>
+
+                    {reportType === 'summary' ? (
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
-                                    <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Member Name</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Reg No</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Category</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Total (Period)</th>
+                                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Meeting Name</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Date</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Campus</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Attendance</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', textAlign: 'center' }}>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredMeetings.map((m, i) => (
+                                        <tr key={i} className="hover-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'all 0.2s' }}>
+                                            <td style={{ padding: '1.25rem', fontWeight: 600, color: 'white' }}>{m.name}</td>
+                                            <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.6 }}>{new Date(m.date).toLocaleDateString('en-GB')}</td>
+                                            <td style={{ padding: '1.25rem' }}>
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#facc15', background: 'rgba(250, 204, 21, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                                                    {m.campus.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '1.25rem', fontWeight: 800, color: '#25AAE1', fontSize: '1.1rem' }}>{m.attendanceCount || 0}</td>
+                                            <td style={{ padding: '1.25rem', textAlign: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                                    <button
+                                                        onClick={() => onViewAttendance(m)}
+                                                        className="btn-icon"
+                                                        style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1' }}
+                                                    >
+                                                        <Users size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onDownloadCSV(m._id, m.name)}
+                                                        className="btn-icon"
+                                                        style={{ background: 'rgba(250, 204, 21, 0.1)', color: '#facc15' }}
+                                                    >
+                                                        <FileSpreadsheet size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Subject Name</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>ID Hash</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Classification</th>
+                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Aggregated Units</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {members
                                         .filter(m => filterCampus === 'All' || m.campus === filterCampus)
-                                        .map((m, i) => {
-                                            // This is a rough estimation since members.insights is pre-aggregated
-                                            // A real semester report would need a backend aggregate with date filters
-                                            return (
-                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    <td style={{ padding: '1rem', fontWeight: 600 }}>{m.name || 'Unknown'}</td>
-                                                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>{m.studentRegNo}</td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <span style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: m.memberType === 'Douloid' ? '#FFD700' : '#25AAE1' }}>
-                                                            {m.memberType || 'Visitor'}
-                                                        </span>
-                                                        <div style={{ fontSize: '0.6rem', opacity: 0.6 }}>{m.campus}</div>
-                                                    </td>
-                                                    <td style={{ padding: '1rem', fontWeight: 700 }}>{m.totalAttended}</td>
-                                                </tr>
-                                            );
-                                        })}
+                                        .map((m, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                                <td style={{ padding: '1.25rem', fontWeight: 600, color: 'white' }}>{m.name || 'Unknown'}</td>
+                                                <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.6, fontFamily: 'monospace' }}>{m.studentRegNo}</td>
+                                                <td style={{ padding: '1.25rem' }}>
+                                                    <span style={{
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 800,
+                                                        color: m.memberType === 'Douloid' ? '#FFD700' : '#25AAE1',
+                                                        border: `1px solid ${m.memberType === 'Douloid' ? 'rgba(255,215,0,0.3)' : 'rgba(37,170,225,0.3)'}`,
+                                                        padding: '0.2rem 0.6rem',
+                                                        borderRadius: '20px'
+                                                    }}>
+                                                        {m.memberType.toUpperCase() || 'VISITOR'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1.25rem', fontWeight: 800, fontSize: '1.1rem', color: '#4ade80' }}>{m.totalAttended}</td>
+                                            </tr>
+                                        ))}
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

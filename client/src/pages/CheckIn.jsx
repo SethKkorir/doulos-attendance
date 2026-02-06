@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -16,6 +16,7 @@ const CheckIn = () => {
     const [memberInfo, setMemberInfo] = useState(null); // { name, type } from registry
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
+    const [msg, setMsg] = useState('');
 
     useEffect(() => {
         let timer;
@@ -134,55 +135,99 @@ const CheckIn = () => {
     }
 
     return (
-        <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1rem', background: 'transparent' }}>
+        <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1.5rem', position: 'relative' }}>
             <BackgroundGallery />
             <ValentineRain />
-            <div className="glass-panel" style={{ width: '100%', maxWidth: '450px', padding: '2rem' }}>
-                <div style={{ textAlign: 'center', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Logo size={80} showText={false} />
-                    <h1 style={{ fontSize: '1.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>Doulos Check-In</h1>
-                    {meeting && <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>{meeting.name} @ {meeting.campus}</p>}
-                </div>
 
+            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '2.5rem', animation: 'fadeIn 0.8s ease-out' }}>
+                <div style={{ animation: 'rotateLogo 30s linear infinite', display: 'inline-block', marginBottom: '1.5rem' }}>
+                    <Logo size={90} showText={false} />
+                </div>
+                <h1 style={{
+                    fontSize: '2.5rem',
+                    fontWeight: 900,
+                    letterSpacing: '-0.05em',
+                    margin: 0,
+                    textShadow: '0 0 30px rgba(255, 255, 255, 0.2)'
+                }}>
+                    DOULOS <span style={{ color: 'hsl(var(--color-primary))' }}>CHECK-IN</span>
+                </h1>
+                {meeting && (
+                    <div style={{
+                        marginTop: '0.5rem',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        color: 'var(--color-text-dim)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.75rem'
+                    }}>
+                        <div style={{ width: '15px', height: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+                        {meeting.name} &bull; {meeting.campus}
+                        <div style={{ width: '15px', height: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+                    </div>
+                )}
+            </div>
+
+            <div className="glass-panel" style={{
+                width: '100%',
+                maxWidth: '500px',
+                padding: '3rem',
+                border: '1px solid var(--glass-border)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                backdropFilter: 'blur(20px)'
+            }}>
                 {status === 'idle' || status === 'submitting' ? (
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         {msg && (
                             <div style={{
-                                position: 'fixed',
-                                top: '2rem',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                zIndex: 2000,
-                                minWidth: '300px',
-                                padding: '1rem 1.5rem',
-                                borderRadius: '0.75rem',
-                                background: status === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)',
-                                color: 'white',
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                                backdropFilter: 'blur(10px)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.75rem',
-                                fontWeight: 600,
-                                animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                                padding: '1rem',
+                                borderRadius: '1rem',
+                                background: status === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                color: status === 'error' ? '#f87171' : '#4ade80',
+                                border: `1px solid ${status === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                fontSize: '0.9rem',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                animation: 'fadeIn 0.3s ease-out'
                             }}>
                                 {status === 'error' ? '⚠️' : '✅'} {msg}
-                                <style>{`
-                            @keyframes slideDown {
-                                0% { opacity: 0; transform: translate(-50%, -20px); }
-                                100% { opacity: 1; transform: translate(-50%, 0); }
-                            }
-                        `}</style>
                             </div>
                         )}
 
                         {memberInfo && (
-                            <div style={{ padding: '0.8rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '0.5rem', fontSize: '0.9rem', textAlign: 'center', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                                Welcome back, <strong>{memberInfo.name}</strong> ({memberInfo.type})
+                            <div style={{
+                                padding: '1.25rem',
+                                background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, transparent 100%)',
+                                borderRadius: '1rem',
+                                border: '1px solid rgba(37, 170, 225, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1rem',
+                                animation: 'slideRight 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+                            }}>
+                                <div style={{
+                                    width: '40px', height: '40px',
+                                    borderRadius: '50%',
+                                    background: '#25AAE1',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white'
+                                }}>
+                                    <Trophy size={20} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1px', textTransform: 'uppercase' }}>Verified Member</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{memberInfo.name}</div>
+                                </div>
                             </div>
                         )}
+
                         {[...(meeting?.requiredFields || [])]
                             .sort((a, b) => {
                                 if (a.key === 'studentRegNo') return -1;
@@ -194,61 +239,94 @@ const CheckIn = () => {
                                 const isLocked = memberInfo && isNameField;
 
                                 return (
-                                    <div key={field.key}>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: isLocked ? '#25AAE1' : 'var(--color-text-dim)', fontWeight: isLocked ? 600 : 400 }}>
+                                    <div key={field.key} style={{ animation: 'fadeIn 0.5s ease-out' }}>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '0.75rem',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 900,
+                                            letterSpacing: '1px',
+                                            textTransform: 'uppercase',
+                                            color: isLocked ? '#25AAE1' : 'var(--color-text-dim)'
+                                        }}>
                                             {field.label} {field.required && !isLocked && <span style={{ color: '#ef4444' }}>*</span>}
-                                            {isLocked && <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>(Verified Member)</span>}
                                         </label>
-                                        <input
-                                            className="input-field"
-                                            placeholder={field.key === 'studentRegNo' ? 'e.g. 22-0000' : field.label}
-                                            style={isLocked ? {
-                                                background: 'rgba(37, 170, 225, 0.05)',
-                                                borderColor: 'rgba(37, 170, 225, 0.3)',
-                                                color: 'rgba(255, 255, 255, 0.9)',
-                                                cursor: 'not-allowed',
-                                                pointerEvents: 'none',
-                                                userSelect: 'none'
-                                            } : {}}
-                                            value={isLocked ? memberInfo.name : (responses[field.key] || '')}
-                                            readOnly={isLocked}
-                                            tabIndex={isLocked ? -1 : 0}
-                                            onChange={e => {
-                                                if (isLocked) return;
-                                                let val = e.target.value.replace(/\D/g, '');
-                                                let formatted = val;
-                                                if (val.length > 2) {
-                                                    formatted = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                                }
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                className="input-field"
+                                                placeholder={field.key === 'studentRegNo' ? 'ADMISSION NO (22-0000)' : field.label}
+                                                style={{
+                                                    height: '55px',
+                                                    fontSize: '1rem',
+                                                    fontWeight: 700,
+                                                    paddingLeft: '1.25rem',
+                                                    background: isLocked ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
+                                                    borderColor: isLocked ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
+                                                    color: isLocked ? '#25AAE1' : 'white',
+                                                    cursor: isLocked ? 'not-allowed' : 'text',
+                                                    borderRadius: '0.75rem',
+                                                    transition: 'all 0.3s ease'
+                                                }}
+                                                value={isLocked ? memberInfo.name : (responses[field.key] || '')}
+                                                readOnly={isLocked}
+                                                onChange={e => {
+                                                    if (isLocked) return;
+                                                    let val = e.target.value.replace(/\D/g, '');
+                                                    let formatted = val;
+                                                    if (val.length > 2) {
+                                                        formatted = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                                    }
 
-                                                if (val.length === 6) {
-                                                    lookupMember(formatted);
-                                                } else {
-                                                    setMemberInfo(null);
-                                                }
+                                                    if (val.length === 6) {
+                                                        lookupMember(formatted);
+                                                    } else {
+                                                        setMemberInfo(null);
+                                                    }
 
-                                                setResponses({ ...responses, [field.key]: formatted });
-                                                if (msg) setMsg('');
-                                            }}
-                                            maxLength={field.key === 'studentRegNo' ? 7 : undefined}
-                                            pattern={field.key === 'studentRegNo' ? "[0-9]{2}-[0-9]{4}" : undefined}
-                                            title={field.key === 'studentRegNo' ? "Format must be 00-0000" : undefined}
-                                            required={field.required}
-                                            disabled={status === 'submitting'}
-                                        />
+                                                    setResponses({ ...responses, [field.key]: formatted });
+                                                    if (msg) setMsg('');
+                                                }}
+                                                maxLength={field.key === 'studentRegNo' ? 7 : undefined}
+                                                required={field.required}
+                                                disabled={status === 'submitting'}
+                                            />
+                                            {field.key === 'studentRegNo' && isLookingUp && (
+                                                <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                                                    <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}
 
                         {meeting?.questionOfDay && (
-                            <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'rgba(221, 93, 108, 0.05)', borderRadius: '0.75rem', border: '1px solid rgba(221, 93, 108, 0.1)' }}>
-                                <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.95rem', fontWeight: 600, color: '#dd5d6c' }}>
-                                    {meeting.questionOfDay}
+                            <div style={{ marginTop: '1rem' }}>
+                                <label style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    marginBottom: '1rem',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 900,
+                                    letterSpacing: '1px',
+                                    color: '#dd5d6c',
+                                    textTransform: 'uppercase'
+                                }}>
+                                    <Star size={18} /> {meeting.questionOfDay}
                                 </label>
                                 <textarea
                                     className="input-field"
-                                    placeholder="Your answer..."
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', minHeight: '80px', resize: 'vertical' }}
+                                    placeholder="Type your response here..."
+                                    style={{
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        minHeight: '120px',
+                                        borderRadius: '1rem',
+                                        fontSize: '1rem',
+                                        padding: '1.25rem',
+                                        lineHeight: '1.6'
+                                    }}
                                     value={responses['dailyQuestionAnswer'] || ''}
                                     onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
                                     required
@@ -257,57 +335,99 @@ const CheckIn = () => {
                             </div>
                         )}
 
-
                         <button
                             type="submit"
                             className="btn btn-primary"
                             disabled={status === 'submitting'}
-                            style={{ width: '100%', marginTop: '2rem', padding: '1.25rem', fontSize: '1.1rem', fontWeight: 'bold' }}
+                            style={{
+                                height: '65px',
+                                marginTop: '1.5rem',
+                                fontSize: '1.1rem',
+                                fontWeight: 900,
+                                borderRadius: '1rem',
+                                letterSpacing: '1px',
+                                textTransform: 'uppercase',
+                                boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
+                            }}
                         >
-                            {status === 'submitting' ? 'Verifying...' : 'Check In Now'}
+                            {status === 'submitting' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                                    <div className="loading-spinner-small"></div>
+                                    SUBMITTING...
+                                </div>
+                            ) : 'COMPLETE CHECK-IN'}
                         </button>
 
                         {meeting?.previousRecap && (
-                            <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                            <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
                                 <button
                                     type="button"
                                     onClick={() => setShowRecap(!showRecap)}
                                     style={{
-                                        width: '100%', background: 'rgba(167, 139, 250, 0.05)', border: '1px solid rgba(167, 139, 250, 0.1)',
-                                        borderRadius: '0.75rem', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center',
-                                        justifyContent: 'space-between', color: '#a78bfa', cursor: 'pointer', fontSize: '0.85rem'
+                                        width: '100%',
+                                        background: 'rgba(167, 139, 250, 0.08)',
+                                        border: '1px solid rgba(167, 139, 250, 0.15)',
+                                        borderRadius: '1rem',
+                                        padding: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        color: '#a78bfa',
+                                        cursor: 'pointer',
+                                        fontWeight: 800,
+                                        fontSize: '0.8rem',
+                                        letterSpacing: '0.5px'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <BookOpen size={16} />
-                                        <span>Missed last week? Read the recap</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <BookOpen size={18} />
+                                        <span>MEETING RECAP: LAST WEEK</span>
                                     </div>
-                                    {showRecap ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    {showRecap ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                 </button>
 
                                 {showRecap && (
-                                    <div className="glass-panel" style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                                        <div style={{ fontWeight: 700, marginBottom: '0.5rem', opacity: 0.8 }}>{meeting.previousRecap.name} Recap</div>
+                                    <div className="glass-panel" style={{
+                                        marginTop: '1rem',
+                                        padding: '1.5rem',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        fontSize: '0.9rem',
+                                        lineHeight: '1.6',
+                                        border: '1px solid rgba(167, 139, 250, 0.1)',
+                                        animation: 'slideDown 0.4s ease-out'
+                                    }}>
+                                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '1rem' }}>Meeting Details: {meeting.previousRecap.name}</div>
 
                                         {meeting.previousRecap.devotion && (
-                                            <div style={{ marginBottom: '0.75rem' }}>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Devotion</div>
-                                                <div style={{ color: 'var(--color-text-dim)' }}>{meeting.previousRecap.devotion}</div>
+                                            <div style={{ marginBottom: '1.25rem' }}>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#a78bfa', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '1px' }}>Core Devotion</div>
+                                                <div style={{ color: 'rgba(255,255,255,0.8)' }}>{meeting.previousRecap.devotion}</div>
                                             </div>
                                         )}
 
                                         {meeting.previousRecap.announcements && (
                                             <div>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#facc15', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Announcements</div>
-                                                <div style={{ color: 'var(--color-text-dim)' }}>{meeting.previousRecap.announcements}</div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#facc15', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '1px' }}>Announcements</div>
+                                                <div style={{ color: 'rgba(255,255,255,0.8)' }}>{meeting.previousRecap.announcements}</div>
                                             </div>
                                         )}
 
                                         <button
                                             onClick={() => window.location.href = '/portal'}
-                                            style={{ marginTop: '1rem', background: 'none', border: 'none', color: '#25AAE1', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                                            style={{
+                                                marginTop: '1.5rem',
+                                                background: 'transparent',
+                                                border: '1px solid rgba(37, 170, 225, 0.3)',
+                                                color: '#25AAE1',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 800,
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '0.5rem',
+                                                cursor: 'pointer',
+                                                width: '100%'
+                                            }}
                                         >
-                                            View full history in Student Portal
+                                            VIEW ATTENDANCE HISTORY
                                         </button>
                                     </div>
                                 )}
@@ -315,51 +435,69 @@ const CheckIn = () => {
                         )}
                     </form>
                 ) : status === 'success' ? (
-                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                        <div style={{ background: 'rgba(74, 222, 128, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                            <CheckCircle size={48} color="#4ade80" />
+                    <div style={{ textAlign: 'center', padding: '1rem 0', animation: 'fadeIn 1s ease-out' }}>
+                        <div style={{
+                            background: 'radial-gradient(circle, rgba(74, 222, 128, 0.2) 0%, transparent 70%)',
+                            width: '120px', height: '120px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 2rem',
+                            animation: 'pulse 2s infinite'
+                        }}>
+                            <CheckCircle size={64} color="#4ade80" />
                         </div>
-                        <h2 style={{ color: '#4ade80', marginBottom: '0.8rem', fontSize: '1.75rem' }}>Check-In Complete!</h2>
-                        <p style={{ lineHeight: 1.6, color: 'var(--color-text-dim)', marginBottom: '2rem' }}>
-                            Your attendance for <strong>{meeting?.name}</strong> has been officially recorded.
-                            You can now close this tab.
+                        <h2 style={{ color: '#4ade80', marginBottom: '1rem', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.05em' }}>CHECK-IN SUCCESSFUL</h2>
+                        <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', fontSize: '1.1rem' }}>
+                            Your attendance for <strong>{meeting?.name}</strong> has been successfully recorded.
                         </p>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <button
                                 className="btn btn-primary"
-                                style={{ width: '100%', padding: '1rem' }}
+                                style={{ width: '100%', height: '60px', borderRadius: '1rem', fontSize: '1rem', fontWeight: 900 }}
                                 onClick={() => window.location.href = '/portal'}
                             >
-                                View My Dashboard & Recap
+                                GO TO STUDENT PORTAL
                             </button>
                             <button
                                 className="btn"
-                                style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                style={{
+                                    width: '100%',
+                                    height: '50px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '0.75rem',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 800,
+                                    color: 'var(--color-text-dim)'
+                                }}
                                 onClick={() => window.close()}
                             >
-                                Close
+                                CLOSE
                             </button>
                         </div>
-                        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '1rem' }}>
-                            If the button doesn't work, swipe this page away to exit.
-                        </p>
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                            <XCircle size={48} color="#ef4444" />
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                            <XCircle size={60} color="#ef4444" />
                         </div>
-                        <h2 style={{ color: '#ef4444', marginBottom: '10px' }}>Check-In Failed</h2>
-                        <p style={{ marginBottom: '20px', fontSize: '0.95rem', lineHeight: 1.5 }}>{msg}</p>
+                        <h2 style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>CHECK-IN FAILED</h2>
+                        <p style={{ marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.8)' }}>{msg}</p>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <button className="btn" onClick={() => setStatus('idle')} style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                Back to Form
-                            </button>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
-                            </p>
-                        </div>
+                        <button
+                            className="btn"
+                            onClick={() => setStatus('idle')}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                fontWeight: 800,
+                                borderRadius: '0.75rem'
+                            }}
+                        >
+                            RETRY
+                        </button>
                     </div>
                 )}
             </div>

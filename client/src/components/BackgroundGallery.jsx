@@ -14,45 +14,75 @@ const IMAGES = [
 const FOLDER_PATH = '/gallery/';
 
 const BackgroundGallery = () => {
-    console.log('BackgroundGallery: Component rendered');
-    const [currentImage, setCurrentImage] = useState('');
-    const [fade, setFade] = useState(true);
+    const [bubbles, setBubbles] = useState([]);
 
     useEffect(() => {
-        const changeImage = () => {
-            console.log('BackgroundGallery: Changing image...');
-            setFade(false);
-            setTimeout(() => {
-                const randomImg = IMAGES[Math.floor(Math.random() * IMAGES.length)];
-                const fullPath = FOLDER_PATH + randomImg;
-                console.log('BackgroundGallery: Selected image:', fullPath);
-
-                // Test image loading
-                const img = new Image();
-                img.onload = () => console.log('BackgroundGallery: Image loaded successfully:', fullPath);
-                img.onerror = () => console.error('BackgroundGallery: Failed to load image:', fullPath);
-                img.src = fullPath;
-
-                setCurrentImage(fullPath);
-                setFade(true);
-            }, 1000);
-        };
-
-        changeImage();
-        const interval = setInterval(changeImage, 15000); // Change every 15 seconds
-
-        return () => clearInterval(interval);
+        // Create 24 floating bubbles
+        const newBubbles = Array.from({ length: 24 }).map((_, i) => ({
+            id: i,
+            img: FOLDER_PATH + IMAGES[i % IMAGES.length],
+            size: Math.random() * 150 + 150, // 150px to 300px
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            duration: Math.random() * 30 + 30, // 30s to 60s
+            delay: Math.random() * -60,
+            opacity: 0.9,
+            rotation: Math.random() * 360
+        }));
+        setBubbles(newBubbles);
     }, []);
 
     return (
-        <div className="bg-gallery-container">
-            {currentImage && (
+        <div className="bg-gallery-container" style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 0,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            background: 'hsl(var(--color-bg))'
+        }}>
+            {/* Subtle base gradient */}
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'var(--bg-gradient)',
+                opacity: 0.2,
+                zIndex: 1
+            }}></div>
+
+            {bubbles.map(bubble => (
                 <div
-                    className={`bg-gallery-image ${fade ? 'fade-in' : 'fade-out'}`}
-                    style={{ backgroundImage: `url("${currentImage}")` }}
+                    key={bubble.id}
+                    className="floating-bubble"
+                    style={{
+                        position: 'absolute',
+                        width: bubble.size,
+                        height: bubble.size,
+                        left: `${bubble.x}%`,
+                        top: `${bubble.y}%`,
+                        backgroundImage: `url("${bubble.img}")`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        borderRadius: '2rem',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                        opacity: bubble.opacity,
+                        animation: `floatAndRotate ${bubble.duration}s linear infinite`,
+                        animationDelay: `${bubble.delay}s`,
+                        filter: 'none',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        zIndex: 0
+                    }}
                 />
-            )}
-            <div className="bg-gallery-overlay" />
+            ))}
+
+            {/* Subtler blur to unify, but not hide */}
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                backdropFilter: 'blur(10px)',
+                background: 'hsla(var(--color-bg-h), var(--color-bg-s), var(--color-bg-l), 0.2)',
+                zIndex: 1
+            }} />
         </div>
     );
 };

@@ -23,7 +23,14 @@ const Logo = ({ size = 60, showText = true }) => {
                 />
             </div>
             {showText && (
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'white', lineHeight: 1 }}>DOULOS</span>
+                <span style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 900,
+                    letterSpacing: '-0.03em',
+                    color: 'hsl(var(--color-text))',
+                    lineHeight: 1,
+                    fontFamily: 'var(--font-main)'
+                }}>DOULOS</span>
             )}
         </div>
     );
