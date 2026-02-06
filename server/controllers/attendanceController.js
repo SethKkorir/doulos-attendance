@@ -11,15 +11,10 @@ export const submitAttendance = async (req, res) => {
         const meeting = await Meeting.findOne({ code: meetingCode });
         if (!meeting) return res.status(404).json({ message: 'Invalid Meeting Code' });
 
-        // 2. Presence Proof (Secret Code)
-        if (meeting.secretRoomCode && meeting.secretRoomCode.toUpperCase() !== secretCode?.toUpperCase()) {
-            return res.status(403).json({ message: 'Invalid Room Code. Please use the code announced in the meeting.' });
-        }
-
-        // 3. User & Role check
+        // 2. User & Role check
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
-        // 4. Activity Check (Bypass for SuperUser or Test Meetings)
+        // 3. Activity Check (Bypass for SuperUser or Test Meetings)
         if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
             return res.status(400).json({ message: 'Meeting is closed' });
         }
@@ -48,29 +43,43 @@ export const submitAttendance = async (req, res) => {
 
         const studentRegNo = String(rawRegNo).trim().toUpperCase();
 
-        // 6. Device Fingerprint Check (Anti-Proxy)
-        if (deviceId && !isSuperUser) {
-            const deviceUsed = await Attendance.findOne({ meeting: meeting._id, deviceId });
-            if (deviceUsed) {
-                return res.status(403).json({ message: 'This device has already been used for a check-in today.' });
+        // 6. Device Handcuff Logic (Locking student to one phone)
+        let member = await Member.findOne({ studentRegNo });
+        if (member) {
+            if (!member.linkedDeviceId && deviceId) {
+                // Link the device on first use
+                member.linkedDeviceId = deviceId;
+                await member.save();
+            } else if (member.linkedDeviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !member.isTestAccount) {
+                return res.status(403).json({
+                    message: "Device Mismatch. This Admission Number is linked to a different phone. Please contact Admin if you have a new phone."
+                });
             }
         }
 
-        // 7. Duplicate check
+        // 7. Anti-Proxy Check (One check-in per device per meeting)
+        if (deviceId && !isSuperUser) {
+            const deviceUsed = await Attendance.findOne({ meeting: meeting._id, deviceId });
+            if (deviceUsed) {
+                return res.status(403).json({ message: 'This device has already been used for a check-in for this meeting.' });
+            }
+        }
+
+        // 8. Duplicate check
         const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
         if (existing) {
             return res.status(409).json({ message: 'You have already signed in for this meeting.' });
         }
 
-        // 8. Member Registry Lookup & Points
-        let member = await Member.findOne({ studentRegNo });
+        // 8. Member Registry Lookup & Points (Already fetched above for device check)
         if (!member) {
             // Auto-track new visitor
             member = new Member({
                 studentRegNo,
                 name: data.studentName || 'New Visitor',
                 memberType: 'Visitor',
-                campus: meeting.campus
+                campus: meeting.campus,
+                linkedDeviceId: deviceId
             });
             await member.save();
         }

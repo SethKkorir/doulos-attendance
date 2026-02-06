@@ -254,3 +254,12 @@ export const deleteMemberWithPassword = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const resetDeviceLock = async (req, res) => {
+    try {
+        await Member.findByIdAndUpdate(req.params.id, { linkedDeviceId: null });
+        res.json({ message: 'Device link reset successfully. The student can now use a new phone.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

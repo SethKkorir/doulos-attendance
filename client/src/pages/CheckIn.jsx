@@ -12,9 +12,7 @@ const CheckIn = () => {
     const [responses, setResponses] = useState({});
     const [memberType, setMemberType] = useState(''); // Douloid, Recruit, Visitor
     const [status, setStatus] = useState('loading'); // loading, idle, submitting, success, error
-    const [msg, setMsg] = useState('');
     const [showRecap, setShowRecap] = useState(false);
-    const [secretCode, setSecretCode] = useState('');
     const [memberInfo, setMemberInfo] = useState(null); // { name, type } from registry
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
@@ -27,18 +25,13 @@ const CheckIn = () => {
         return () => clearTimeout(timer);
     }, [msg]);
 
-    const getFingerprint = () => {
-        const n = window.navigator;
-        const s = window.screen;
-        return [
-            n.userAgent,
-            n.language,
-            s.colorDepth,
-            s.width + 'x' + s.height,
-            new Date().getTimezoneOffset(),
-            !!window.sessionStorage,
-            !!window.localStorage
-        ].join('|');
+    const getPersistentDeviceId = () => {
+        let deviceId = localStorage.getItem('doulos_device_id');
+        if (!deviceId) {
+            deviceId = 'DL-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('doulos_device_id', deviceId);
+        }
+        return deviceId;
     };
 
     useEffect(() => {
@@ -111,11 +104,10 @@ const CheckIn = () => {
         e.preventDefault();
         setStatus('submitting');
         try {
-            const fingerprint = getFingerprint();
+            const deviceId = getPersistentDeviceId();
             const res = await api.post('/attendance/submit', {
                 meetingCode,
-                secretCode,
-                deviceId: fingerprint,
+                deviceId,
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
@@ -264,23 +256,7 @@ const CheckIn = () => {
                                 />
                             </div>
                         )}
-                        <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-primary-light)', fontWeight: 'bold' }}>
-                                Room Code
-                            </label>
-                            <input
-                                className="input-field"
-                                placeholder="Code announced in meeting"
-                                value={secretCode}
-                                onChange={e => setSecretCode(e.target.value.toUpperCase())}
-                                required
-                                disabled={status === 'submitting'}
-                                style={{ textTransform: 'uppercase', letterSpacing: '4px', textAlign: 'center', fontWeight: 900, fontSize: '1.25rem' }}
-                            />
-                            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '0.5rem', textAlign: 'center' }}>
-                                This confirms you are physically present in the hall.
-                            </p>
-                        </div>
+
 
                         <button
                             type="submit"

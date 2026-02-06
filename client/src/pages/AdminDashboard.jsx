@@ -619,6 +619,18 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleResetDevice = async (memberId) => {
+        if (!window.confirm('Are you sure you want to reset this student\'s device link? They will be able to check in with a new phone.')) return;
+        try {
+            await api.post(`/members/${memberId}/reset-device`);
+            setMsg({ type: 'success', text: 'Device link reset successfully!' });
+            fetchMembers();
+            setEditingMember(null);
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to reset device' });
+        }
+    };
+
     const totalAttendanceCount = meetings.reduce((acc, current) => acc + (current.attendanceCount || 0), 0);
     const activeMeetingsCount = meetings.filter(m => m.isActive).length;
 
@@ -823,19 +835,7 @@ const AdminDashboard = () => {
                                         </div>
                                     )}
 
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <label>Room Code (Optional)</label>
-                                        <input
-                                            className="input-field"
-                                            placeholder="e.g. FAITH"
-                                            style={{ textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800 }}
-                                            value={formData.secretRoomCode}
-                                            onChange={e => setFormData({ ...formData, secretRoomCode: e.target.value.toUpperCase() })}
-                                        />
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '0.3rem' }}>
-                                            If set, students must enter this exact code to submit their attendance.
-                                        </p>
-                                    </div>
+
 
                                     {/* Dynamic Fields Section */}
                                     <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
@@ -1357,8 +1357,26 @@ const AdminDashboard = () => {
                                         <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
                                     )}
                                     {/* Super Admin Actions */}
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <button
+                                            className="btn"
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(37, 170, 225, 0.1)',
+                                                color: '#25AAE1',
+                                                border: '1px solid rgba(37, 170, 225, 0.2)',
+                                                padding: '0.75rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                            onClick={() => handleResetDevice(editingMember._id)}
+                                        >
+                                            <RotateCcw size={16} /> Unlock Device / Reset Link
+                                        </button>
+
+                                        {['developer', 'superadmin'].includes(userRole) && (
                                             <button
                                                 className="btn"
                                                 style={{
@@ -1376,8 +1394,8 @@ const AdminDashboard = () => {
                                             >
                                                 <Trash2 size={16} /> Delete Member Permanentely
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
