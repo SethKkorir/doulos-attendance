@@ -87,27 +87,18 @@ export const getMeetings = async (req, res) => {
         meetings = meetings.map(m => {
             if (m.isActive && !m.isTestMeeting) {
                 const meetingDate = new Date(m.date);
-                const mYear = meetingDate.getUTCFullYear();
-                const mMonth = meetingDate.getUTCMonth();
-                const mDate = meetingDate.getUTCDate();
+                // Create a comparison date for "Today" in EAT
+                const todayEAT = new Date(eatYear, eatMonth, eatDate);
+                const compareDate = new Date(meetingDate.getUTCFullYear(), meetingDate.getUTCMonth(), meetingDate.getUTCDate());
 
                 const [endH, endM] = m.endTime.split(':').map(Number);
                 const endVal = endH + (endM / 60);
 
-                // Check if meeting date is in the past (EAT perspective)
-                const isPastDay =
-                    mYear < eatYear ||
-                    (mYear === eatYear && mMonth < eatMonth) ||
-                    (mYear === eatYear && mMonth === eatMonth && mDate < eatDate);
+                const isPastDay = compareDate < todayEAT;
+                const isToday = compareDate.getTime() === todayEAT.getTime();
+                const isPastTime = timeDecimal >= endVal;
 
-                // Check if meeting is today but time has passed
-                const isTodayAndPastTime =
-                    mYear === eatYear &&
-                    mMonth === eatMonth &&
-                    mDate === eatDate &&
-                    timeDecimal >= endVal;
-
-                if (isPastDay || isTodayAndPastTime) {
+                if (isPastDay || (isToday && isPastTime)) {
                     m.isActive = false;
                     updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
                 }
