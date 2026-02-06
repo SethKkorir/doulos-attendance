@@ -5,7 +5,7 @@ const memberSchema = new mongoose.Schema({
     name: { type: String, required: true },
     memberType: {
         type: String,
-        enum: ['Douloid', 'Recruit', 'Visitor'],
+        enum: ['Douloid', 'Recruit', 'Visitor', 'Exempted'],
         default: 'Visitor'
     },
     campus: {

@@ -77,15 +77,17 @@ const CheckIn = () => {
                 const name = res.data.memberName || 'Member';
                 setMemberInfo({ name, type: res.data.memberType });
 
-                // Pre-fill all name-related fields in responses
-                const updatedResponses = { ...responses };
-                meeting?.requiredFields.forEach(f => {
-                    const k = f.key.toLowerCase();
-                    if (k.includes('name') && k !== 'studentregno') {
-                        updatedResponses[f.key] = name;
-                    }
+                // Pre-fill all name-related fields in responses using functional update to avoid staled state
+                setResponses(prev => {
+                    const updated = { ...prev };
+                    meeting?.requiredFields.forEach(f => {
+                        const k = f.key.toLowerCase();
+                        if (k.includes('name') && k !== 'studentregno') {
+                            updated[f.key] = name;
+                        }
+                    });
+                    return updated;
                 });
-                setResponses(updatedResponses);
             } else {
                 setMemberInfo(null);
             }
@@ -169,7 +171,7 @@ const CheckIn = () => {
                                         </label>
                                         <input
                                             className="input-field"
-                                            placeholder={field.key === 'studentRegNo' ? 'e.g. 22-0990' : field.label}
+                                            placeholder={field.key === 'studentRegNo' ? 'e.g. 22-0000' : field.label}
                                             style={isLocked ? {
                                                 background: 'rgba(37, 170, 225, 0.05)',
                                                 borderColor: 'rgba(37, 170, 225, 0.3)',
@@ -183,18 +185,22 @@ const CheckIn = () => {
                                             tabIndex={isLocked ? -1 : 0}
                                             onChange={e => {
                                                 if (isLocked) return;
-                                                let val = e.target.value;
-                                                if (field.key === 'studentRegNo') {
-                                                    val = val.replace(/\D/g, '');
-                                                    if (val.length > 2) {
-                                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                                    }
-                                                    if (val.length === 7) lookupMember(val);
-                                                    else setMemberInfo(null);
+                                                let val = e.target.value.replace(/\D/g, '');
+                                                let formatted = val;
+                                                if (val.length > 2) {
+                                                    formatted = val.slice(0, 2) + '-' + val.slice(2, 6);
                                                 }
-                                                setResponses({ ...responses, [field.key]: val });
-                                                if (msg) setMsg(''); // Clear error on change
+
+                                                if (val.length === 6) {
+                                                    lookupMember(formatted);
+                                                } else {
+                                                    setMemberInfo(null);
+                                                }
+
+                                                setResponses({ ...responses, [field.key]: formatted });
+                                                if (msg) setMsg('');
                                             }}
+                                            maxLength={field.key === 'studentRegNo' ? 7 : undefined}
                                             pattern={field.key === 'studentRegNo' ? "[0-9]{2}-[0-9]{4}" : undefined}
                                             title={field.key === 'studentRegNo' ? "Format must be 00-0000" : undefined}
                                             required={field.required}
@@ -206,8 +212,8 @@ const CheckIn = () => {
 
                         {meeting?.questionOfDay && (
                             <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'rgba(221, 93, 108, 0.05)', borderRadius: '0.75rem', border: '1px solid rgba(221, 93, 108, 0.1)' }}>
-                                <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: 600, color: '#dd5d6c' }}>
-                                    Daily Reflection: {meeting.questionOfDay}
+                                <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.95rem', fontWeight: 600, color: '#dd5d6c' }}>
+                                    {meeting.questionOfDay}
                                 </label>
                                 <textarea
                                     className="input-field"
@@ -222,7 +228,7 @@ const CheckIn = () => {
                         )}
                         <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-primary-light)', fontWeight: 'bold' }}>
-                                Secret Room Code
+                                Room Code
                             </label>
                             <input
                                 className="input-field"

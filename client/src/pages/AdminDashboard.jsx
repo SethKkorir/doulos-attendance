@@ -40,7 +40,10 @@ const AdminDashboard = () => {
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
     const [memberSearch, setMemberSearch] = useState('');
     const [importLoading, setImportLoading] = useState(false);
-    const [memberCampusFilter, setMemberCampusFilter] = useState('All'); // 'All', 'Athi River', 'Valley Road'
+    const [memberCampusFilter, setMemberCampusFilter] = useState('All');
+    const [editingMember, setEditingMember] = useState(null);
+    const [memberInsights, setMemberInsights] = useState(null);
+    const [loadingInsights, setLoadingInsights] = useState(false);
 
     useEffect(() => {
         if (!isDarkMode) {
@@ -163,6 +166,18 @@ const AdminDashboard = () => {
             alert('Sync failed');
         } finally {
             setImportLoading(false);
+        }
+    };
+
+    const fetchMemberInsights = async (regNo) => {
+        setLoadingInsights(true);
+        try {
+            const res = await api.get(`/attendance/student/${regNo}`);
+            setMemberInsights(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoadingInsights(false);
         }
     };
 
@@ -392,13 +407,19 @@ const AdminDashboard = () => {
         }
     };
 
-    const deleteMeeting = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this meeting and all its attendance?')) return;
+    const saveMember = async (e) => {
+        e.preventDefault();
         try {
-            await api.delete(`/meetings/${id}`);
-            fetchMeetings();
+            if (editingMember._id === 'NEW') {
+                await api.post('/members', editingMember);
+            } else {
+                await api.patch(`/members/${editingMember._id}`, editingMember);
+            }
+            setMsg({ type: 'success', text: 'Member profile updated!' });
+            setEditingMember(null);
+            fetchMembers();
         } catch (err) {
-            alert('Failed to delete');
+            alert(err.response?.data?.message || 'Failed to save member');
         }
     };
 
@@ -588,7 +609,7 @@ const AdminDashboard = () => {
                                     )}
 
                                     <div style={{ gridColumn: '1 / -1' }}>
-                                        <label>Secret Room Code (Optional)</label>
+                                        <label>Room Code (Optional)</label>
                                         <input
                                             className="input-field"
                                             placeholder="e.g. FAITH"
@@ -690,10 +711,16 @@ const AdminDashboard = () => {
                                         <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
                                             <input
                                                 className="input-field"
-                                                placeholder="Admission No (Manually)"
+                                                placeholder="e.g. 22-0000"
                                                 style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
                                                 value={quickRegNo}
-                                                onChange={e => setQuickRegNo(e.target.value)}
+                                                onChange={e => {
+                                                    let val = e.target.value.replace(/\D/g, '');
+                                                    if (val.length > 2) {
+                                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                                    }
+                                                    setQuickRegNo(val);
+                                                }}
                                             />
                                             <button
                                                 className="btn btn-primary"
@@ -742,7 +769,7 @@ const AdminDashboard = () => {
                                                 <Pencil size={16} />
                                             </button>
                                         )}
-                                        {['developer', 'superadmin'].includes(userRole) && (
+                                        {['developer', 'superadmin'].includes(userRole) && m.isActive && (
                                             <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }} onClick={() => deleteMeeting(m._id)}>
                                                 <Trash2 size={16} />
                                             </button>
@@ -779,10 +806,9 @@ const AdminDashboard = () => {
                                 <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
                                     Sync
                                 </button>
-                                <label className="btn" style={{ cursor: 'pointer', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
-                                    {importLoading ? '...' : 'Import'}
-                                    <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVUpload} disabled={importLoading} />
-                                </label>
+                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={() => setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' })}>
+                                    Add Member
+                                </button>
                             </div>
                         </div>
                         <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -840,7 +866,7 @@ const AdminDashboard = () => {
                                             }
 
                                             return filtered.map((m, i) => (
-                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ fontWeight: 600 }}>{m.name}</div>
                                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{m.studentRegNo}</div>
@@ -858,10 +884,12 @@ const AdminDashboard = () => {
                                                             padding: '0.2rem 0.5rem',
                                                             background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.1)' :
                                                                 m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.1)' :
-                                                                    'rgba(255, 255, 255, 0.05)',
+                                                                    m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' :
+                                                                        'rgba(255, 255, 255, 0.05)',
                                                             color: m.memberType === 'Douloid' ? '#FFD700' :
                                                                 m.memberType === 'Recruit' ? '#25AAE1' :
-                                                                    'var(--color-text-dim)',
+                                                                    m.memberType === 'Exempted' ? '#f87171' :
+                                                                        'var(--color-text-dim)',
                                                             borderRadius: '4px',
                                                             fontSize: '0.7rem',
                                                             fontWeight: 'bold',
@@ -872,17 +900,13 @@ const AdminDashboard = () => {
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                            {meetings.some(mt => mt.isActive) ? (
-                                                                <button
-                                                                    className="btn btn-primary"
-                                                                    style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}
-                                                                    onClick={() => handleQuickCheckIn(meetings.find(mt => mt.isActive)._id, m.studentRegNo)}
-                                                                >
-                                                                    Mark Present
-                                                                </button>
-                                                            ) : (
-                                                                <button className="btn" style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}>View History</button>
-                                                            )}
+                                                            <button
+                                                                className="btn"
+                                                                style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa' }}
+                                                                onClick={(e) => { e.stopPropagation(); setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
+                                                            >
+                                                                Insights
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -895,6 +919,180 @@ const AdminDashboard = () => {
                     </div>
                 ) : (
                     <ReportsView meetings={meetings} members={members} onViewAttendance={setViewingAttendance} onDownload={downloadReport} />
+                )}
+
+                {/* Member Insights & Profile Modal */}
+                {editingMember && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
+                    }} onClick={() => { setEditingMember(null); setMemberInsights(null); }}>
+                        <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                                        <p style={{ color: 'var(--color-text-dim)', margin: 0 }}>{editingMember.studentRegNo} • {editingMember.campus}</p>
+                                        {memberInsights?.history?.[0] && !loadingInsights && (
+                                            <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', color: 'var(--color-text-dim)' }}>
+                                                Last seen: {new Date(memberInsights.history[0].date).toLocaleDateString()}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); }} style={{ padding: '0.5rem 1rem' }}>Close</button>
+                            </div>
+
+                            {editingMember._id === 'NEW' ? (
+                                <form onSubmit={saveMember} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Full Name</label>
+                                            <input className="input-field" required value={editingMember.name} onChange={e => setEditingMember({ ...editingMember, name: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Admission Number</label>
+                                            <input
+                                                className="input-field"
+                                                required
+                                                value={editingMember.studentRegNo}
+                                                onChange={e => {
+                                                    let val = e.target.value.replace(/\D/g, '');
+                                                    if (val.length > 2) {
+                                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                                    }
+                                                    setEditingMember({ ...editingMember, studentRegNo: val });
+                                                }}
+                                                placeholder="e.g. 22-0000"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Campus</label>
+                                            <select className="input-field" value={editingMember.campus} onChange={e => setEditingMember({ ...editingMember, campus: e.target.value })}>
+                                                <option value="Athi River">Athi River</option>
+                                                <option value="Valley Road">Valley Road</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Category</label>
+                                            <select className="input-field" value={editingMember.memberType} onChange={e => setEditingMember({ ...editingMember, memberType: e.target.value })}>
+                                                <option value="Douloid">Douloid</option>
+                                                <option value="Recruit">Recruit</option>
+                                                <option value="Visitor">Visitor</option>
+                                                <option value="Exempted">Exempted</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem' }}>Save Member</button>
+                                </form>
+                            ) : (
+                                <div>
+                                    {loadingInsights ? (
+                                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>Analyzing attendance data...</div>
+                                    ) : memberInsights ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                            {/* Stats Cards */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                                                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Points</div>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFD700' }}>{editingMember.totalPoints || 0}</div>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Attended</div>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.totalAttended} / {memberInsights.stats.totalMeetings}</div>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: memberInsights.stats.percentage > 75 ? '#4ade80' : '#facc15' }}>{memberInsights.stats.percentage}%</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Attendance Trend (Custom Chart) */}
+                                            <div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                    <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Attendance Trend (Last 20)</h4>
+                                                    <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <div style={{ width: '8px', height: '8px', background: '#25AAE1', borderRadius: '2px' }}></div> Present
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <div style={{ width: '8px', height: '8px', background: '#FFD700', borderRadius: '2px' }}></div> Exempt
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <div style={{ width: '8px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}></div> Absent
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '100px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
+                                                    {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.attended ? 'Present' : h.isExempted ? 'Exempted' : 'Absent'}`}
+                                                            style={{
+                                                                flex: 1,
+                                                                height: (h.attended || h.isExempted) ? '100%' : '15%',
+                                                                background: h.attended ? '#25AAE1' : h.isExempted ? '#FFD700' : 'rgba(255,255,255,0.1)',
+                                                                borderRadius: '2px',
+                                                                transition: 'all 0.3s ease',
+                                                                opacity: h.attended ? 1 : h.isExempted ? 1 : 0.3
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Category Switch (Exemption Focus) */}
+                                            <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                                                <div>
+                                                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Profile Category</h4>
+                                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Current Status: <strong style={{ color: editingMember.memberType === 'Exempted' ? '#f87171' : 'inherit' }}>{editingMember.memberType}</strong></p>
+                                                </div>
+                                                <select
+                                                    className="input-field"
+                                                    style={{ width: 'auto', minWidth: '150px' }}
+                                                    value={editingMember.memberType}
+                                                    onChange={async (e) => {
+                                                        const newType = e.target.value;
+                                                        try {
+                                                            await api.patch(`/members/${editingMember._id}`, { memberType: newType });
+                                                            setEditingMember({ ...editingMember, memberType: newType });
+                                                            fetchMembers();
+                                                        } catch (err) {
+                                                            alert('Failed to update status');
+                                                        }
+                                                    }}
+                                                >
+                                                    <option value="Douloid">Douloid</option>
+                                                    <option value="Recruit">Recruit</option>
+                                                    <option value="Visitor">Visitor</option>
+                                                    <option value="Exempted">Exempted</option>
+                                                </select>
+                                            </div>
+
+                                            {/* History List */}
+                                            <div>
+                                                <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Meeting History</h4>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    {memberInsights.history.slice(0, 10).map((h, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
+                                                            <span>{h.name}</span>
+                                                            <span style={{ color: h.attended ? '#4ade80' : h.isExempted ? '#FFD700' : '#f87171', fontWeight: 600 }}>
+                                                                {h.attended ? 'PRESENT' : h.isExempted ? 'EXEMPTED' : 'ABSENT'}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 )}
 
                 {/* Attendance View Modal */}
@@ -1354,23 +1552,25 @@ const AttendanceTable = ({ meeting }) => {
                                     )}
                                     <td style={{ padding: '1rem' }}>
                                         <button
-                                            onClick={() => toggleExemption(r._id)}
+                                            onClick={() => meeting.isActive && toggleExemption(r._id)}
+                                            disabled={!meeting.isActive}
                                             style={{
                                                 padding: '0.25rem 0.5rem',
                                                 borderRadius: '0.4rem',
                                                 border: '1px solid',
                                                 fontSize: '0.7rem',
                                                 fontWeight: 800,
-                                                cursor: 'pointer',
+                                                cursor: meeting.isActive ? 'pointer' : 'default',
                                                 background: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.1)',
                                                 color: r.isExempted ? 'var(--color-text-dim)' : '#4ade80',
-                                                borderColor: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.2)'
+                                                borderColor: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.2)',
+                                                opacity: meeting.isActive ? 1 : 0.7
                                             }}
                                         >
                                             {r.isExempted ? 'EXEMPTED' : 'PRESENT'}
                                         </button>
                                     </td>
-                                    {['developer', 'superadmin'].includes(userRole) && (
+                                    {['developer', 'superadmin'].includes(userRole) && meeting.isActive && (
                                         <td style={{ padding: '0.5rem 1rem' }}>
                                             <button
                                                 onClick={() => deleteRecord(r._id)}
