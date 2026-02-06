@@ -4,11 +4,16 @@ import QRCode from 'react-qr-code';
 import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, Users,
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
-    ShieldAlert as Ghost, Sun, Moon, Pencil, Trophy
+    ShieldAlert as Ghost, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
+    FileSpreadsheet
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, BarChart, Bar, Legend
+} from 'recharts';
 
 const AdminDashboard = () => {
     const [meetings, setMeetings] = useState([]);
@@ -41,6 +46,7 @@ const AdminDashboard = () => {
     const [memberSearch, setMemberSearch] = useState('');
     const [importLoading, setImportLoading] = useState(false);
     const [memberCampusFilter, setMemberCampusFilter] = useState('All');
+    const [memberTypeFilter, setMemberTypeFilter] = useState('All');
     const [editingMember, setEditingMember] = useState(null);
     const [memberInsights, setMemberInsights] = useState(null);
     const [loadingInsights, setLoadingInsights] = useState(false);
@@ -65,7 +71,7 @@ const AdminDashboard = () => {
             });
             setMeetings(sorted);
         } catch (err) {
-            console.error(err);
+            setMsg({ type: 'error', text: 'Failed to sync with server' });
         }
     };
 
@@ -93,13 +99,26 @@ const AdminDashboard = () => {
         }
     };
 
+    useEffect(() => {
+        let timer;
+        if (msg) {
+            timer = setTimeout(() => setMsg(null), 4000);
+        }
+        return () => clearTimeout(timer);
+    }, [msg]);
+
     const fetchMembers = async () => {
         setLoadingMembers(true);
         try {
-            const res = await api.get('/members');
+            const res = await api.get('/members', {
+                params: {
+                    campus: memberCampusFilter,
+                    memberType: memberTypeFilter
+                }
+            });
             setMembers(res.data);
         } catch (err) {
-            console.error(err);
+            setMsg({ type: 'error', text: 'Failed to fetch members directory' });
         } finally {
             setLoadingMembers(false);
         }
@@ -111,7 +130,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         if (activeTab === 'members') fetchMembers();
-    }, [activeTab]);
+    }, [activeTab, memberCampusFilter, memberTypeFilter]);
 
     const handleCSVUpload = async (e) => {
         const file = e.target.files[0];
@@ -147,7 +166,7 @@ const AdminDashboard = () => {
                 setMsg({ type: 'success', text: `Imported ${members.length} members successfully!` });
                 fetchMembers();
             } catch (err) {
-                alert('Import failed: ' + (err.response?.data?.message || 'Check CSV format'));
+                setMsg({ type: 'error', text: 'Import failed: ' + (err.response?.data?.message || 'Check CSV format') });
             } finally {
                 setImportLoading(false);
             }
@@ -163,7 +182,85 @@ const AdminDashboard = () => {
             setMsg({ type: 'success', text: res.data.message });
             fetchMembers();
         } catch (err) {
-            alert('Sync failed');
+            setMsg({ type: 'error', text: 'Sync failed' });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleGraduateAll = async () => {
+        const password = window.prompt('SECURITY CHECK: Please enter your admin password to confirm graduating ALL recruits:');
+        if (!password) return;
+
+        setImportLoading(true);
+        try {
+            const res = await api.post('/members/graduate-all', { confirmPassword: password });
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Graduation failed: ' + (err.response?.data?.message || 'Server error') });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleResetAllPoints = async () => {
+        if (!window.confirm('CRITICAL: This will reset points for ALL members (except test accounts) back to 0. This cannot be undone. Proceed?')) return;
+        setImportLoading(true);
+        try {
+            const res = await api.post('/members/reset-all-points');
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Reset failed' });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleDeleteMember = async (id, name) => {
+        const password = window.prompt(`SECURITY CHECK: Please enter your admin password to CONFIRM DELETING ${name}:`);
+        if (!password) return;
+
+        setImportLoading(true);
+        try {
+            const res = await api.post(`/members/${id}/delete-secure`, { confirmPassword: password });
+            setMsg({ type: 'success', text: res.data.message });
+            setEditingMember(null);
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleDeleteMeeting = async (id, name) => {
+        const password = window.prompt(`SECURITY CHECK: Enter admin password to PERMANENTLY DELETE "${name}" and all its attendance records:`);
+        if (!password) return;
+
+        setImportLoading(true);
+        try {
+            const res = await api.post(`/meetings/${id}/delete-secure`, { confirmPassword: password });
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMeetings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleSetupTestAccount = async () => {
+        const regNo = window.prompt('Enter student registration number to set as dedicated TESTER:', '00-0000');
+        if (!regNo) return;
+        setImportLoading(true);
+        try {
+            const res = await api.post('/members/setup-test-account', { regNo });
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Setup failed' });
         } finally {
             setImportLoading(false);
         }
@@ -196,7 +293,7 @@ const AdminDashboard = () => {
             fetchMeetings(); // Refresh counts
             if (activeTab === 'members') fetchMembers();
         } catch (err) {
-            alert(err.response?.data?.message || 'Manual check-in failed');
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Manual check-in failed' });
         } finally {
             setQuickCheckInLoading(false);
         }
@@ -220,7 +317,7 @@ const AdminDashboard = () => {
             const res = await api.get(`/ attendance / ${meetingId} `);
             const data = res.data;
             if (data.length === 0) {
-                alert('No attendance recorded yet.');
+                setMsg({ type: 'error', text: 'No attendance recorded yet.' });
                 return;
             }
 
@@ -285,14 +382,113 @@ const AdminDashboard = () => {
             win.document.write(reportHtml);
             win.document.close();
         } catch (err) {
-            console.error(err);
-            alert('Failed to generate report');
+            setMsg({ type: 'error', text: 'Failed to generate report' });
+        }
+    };
+
+    const downloadCSV = async (meetingId, meetingName) => {
+        try {
+            const res = await api.get(`/attendance/${meetingId}`);
+            const data = res.data;
+            if (data.length === 0) {
+                setMsg({ type: 'error', text: 'No attendance recorded yet.' });
+                return;
+            }
+
+            const allKeys = new Set();
+            data.forEach(r => {
+                const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
+                Object.keys(responses || {}).forEach(k => allKeys.add(k));
+            });
+            const headers = ['Timestamp', 'Category', ...Array.from(allKeys)];
+
+            const csvContent = [
+                headers.join(','),
+                ...data.map(r => {
+                    const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
+                    const timestamp = new Date(r.timestamp).toLocaleString();
+                    const category = r.memberType || 'Visitor';
+                    return [
+                        `"${timestamp}"`,
+                        `"${category}"`,
+                        ...Array.from(allKeys).map(h => `"${(responses[h] || '-').toString().replace(/"/g, '""')}"`)
+                    ].join(',');
+                })
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `${meetingName}_Attendance.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setMsg({ type: 'success', text: 'CSV Export Started' });
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to download CSV' });
+        }
+    };
+
+    const downloadCumulativeCSV = (filteredMembers, semesterName) => {
+        try {
+            const headers = ['Name', 'Registration Number', 'Category', 'Campus', 'Total Attendance'];
+            const csvContent = [
+                headers.join(','),
+                ...filteredMembers.map(m => [
+                    `"${m.name || 'Unknown'}"`,
+                    `"${m.studentRegNo}"`,
+                    `"${m.memberType || 'Visitor'}"`,
+                    `"${m.campus}"`,
+                    m.totalAttended
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `Cumulative_Report_${semesterName.replace(/\s+/g, '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setMsg({ type: 'success', text: 'Cumulative Export Started' });
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to export cumulative CSV' });
+        }
+    };
+
+    const downloadRegistryCSV = () => {
+        try {
+            const headers = ['Name', 'Registration Number', 'Points', 'Campus', 'Category'];
+            const csvContent = [
+                headers.join(','),
+                ...members.map(m => [
+                    `"${m.name || 'Unknown'}"`,
+                    `"${m.studentRegNo}"`,
+                    m.totalPoints || 0,
+                    `"${m.campus}"`,
+                    `"${m.memberType || 'Visitor'}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `Doulos_Member_Registry_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setMsg({ type: 'success', text: 'Registry Export Started' });
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to export registry' });
         }
     };
 
     const handlePrintQR = (meeting) => {
         const qrSvg = document.querySelector('.qr-modal-content svg');
-        if (!qrSvg) return alert('QR code not found');
+        if (!qrSvg) {
+            setMsg({ type: 'error', text: 'QR code not found' });
+            return;
+        }
 
         const qrDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(qrSvg));
 
@@ -403,7 +599,7 @@ const AdminDashboard = () => {
             await api.patch(`/meetings/${meeting._id}`, { isActive: false });
             fetchMeetings();
         } catch (err) {
-            alert('Failed to close meeting');
+            setMsg({ type: 'error', text: 'Failed to close meeting' });
         }
     };
 
@@ -419,7 +615,7 @@ const AdminDashboard = () => {
             setEditingMember(null);
             fetchMembers();
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to save member');
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save member' });
         }
     };
 
@@ -502,14 +698,33 @@ const AdminDashboard = () => {
 
                 {msg && (
                     <div style={{
-                        padding: '1rem',
-                        marginBottom: '1rem',
-                        borderRadius: '0.5rem',
-                        background: msg.type === 'error' ? 'rgba(220, 38, 38, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                        color: msg.type === 'error' ? '#fca5a5' : '#6ee7b7',
-                        border: `1px solid ${msg.type === 'error' ? '#ef4444' : '#10b981'} `
+                        position: 'fixed',
+                        top: '2rem',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 2000,
+                        minWidth: '300px',
+                        padding: '1rem 1.5rem',
+                        borderRadius: '0.75rem',
+                        background: msg.type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)',
+                        color: 'white',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        backdropFilter: 'blur(10px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.75rem',
+                        fontWeight: 600,
+                        animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
                     }}>
-                        {msg.text}
+                        {msg.type === 'error' ? '⚠️' : '✅'} {msg.text}
+                        <style>{`
+                            @keyframes slideDown {
+                                0% { opacity: 0; transform: translate(-50%, -20px); }
+                                100% { opacity: 1; transform: translate(-50%, 0); }
+                            }
+                        `}</style>
                     </div>
                 )}
 
@@ -754,7 +969,7 @@ const AdminDashboard = () => {
                                                     if (isSuperUser || (now >= start && now <= end)) {
                                                         setSelectedMeeting(m);
                                                     } else {
-                                                        alert("QR Code is locked. It only opens during the scheduled meeting time.");
+                                                        setMsg({ type: 'error', text: 'QR Code is locked. It only opens during meeting time.' });
                                                     }
                                                 }}
                                             >
@@ -764,13 +979,16 @@ const AdminDashboard = () => {
                                         <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
                                             View Attendance
                                         </button>
-                                        {m.isActive && (
-                                            <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
-                                                <Pencil size={16} />
-                                            </button>
-                                        )}
-                                        {['developer', 'superadmin'].includes(userRole) && m.isActive && (
-                                            <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }} onClick={() => deleteMeeting(m._id)}>
+                                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                                            <Pencil size={16} />
+                                        </button>
+                                        {['developer', 'superadmin'].includes(userRole) && (
+                                            <button
+                                                className="btn"
+                                                style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
+                                                onClick={() => handleDeleteMeeting(m._id, m.name)}
+                                                title="Delete Meeting (Requires password)"
+                                            >
                                                 <Trash2 size={16} />
                                             </button>
                                         )}
@@ -788,8 +1006,8 @@ const AdminDashboard = () => {
                                     {members.length} members registered in the system
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem', marginRight: '0.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
                                     {['All', 'Athi River', 'Valley Road'].map(c => (
                                         <button
                                             key={c}
@@ -803,11 +1021,63 @@ const AdminDashboard = () => {
                                         >{c === 'Valley Road' ? 'Nairobi' : c}</button>
                                     ))}
                                 </div>
+                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
+                                    {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
+                                        <button
+                                            key={t}
+                                            onClick={() => setMemberTypeFilter(t)}
+                                            style={{
+                                                padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                                background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
+                                                color: memberTypeFilter === t ? '#a78bfa' : 'var(--color-text-dim)',
+                                                fontSize: '0.75rem', fontWeight: 600
+                                            }}
+                                        >{t}</button>
+                                    ))}
+                                </div>
+                                {memberTypeFilter === 'Recruit' && (
+                                    <button
+                                        className="btn"
+                                        style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                        onClick={handleGraduateAll}
+                                        title="Graduate all Recruits to Douloids"
+                                    >
+                                        <GraduationCap size={16} /> Graduate All Recruits
+                                    </button>
+                                )}
+                                {['developer', 'superadmin', 'admin'].includes(userRole) && (
+                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                        <button
+                                            className="btn"
+                                            style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                                            onClick={handleSetupTestAccount}
+                                            title="Designate a student as a permanent tester (will not show in reports)"
+                                        >
+                                            Setup Tester
+                                        </button>
+                                        <button
+                                            className="btn"
+                                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            onClick={handleResetAllPoints}
+                                            title="Reset all points to 0"
+                                        >
+                                            <RotateCcw size={14} /> Reset Points
+                                        </button>
+                                    </div>
+                                )}
                                 <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
                                     Sync
                                 </button>
                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={() => setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' })}>
                                     Add Member
+                                </button>
+                                <button
+                                    className="btn"
+                                    style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(37,170,225,0.2)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                    onClick={downloadRegistryCSV}
+                                    title="Export full registry to CSV"
+                                >
+                                    <FileSpreadsheet size={16} /> Export CSV
                                 </button>
                             </div>
                         </div>
@@ -918,7 +1188,14 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 ) : (
-                    <ReportsView meetings={meetings} members={members} onViewAttendance={setViewingAttendance} onDownload={downloadReport} />
+                    <ReportsView
+                        meetings={meetings}
+                        members={members}
+                        onViewAttendance={setViewingAttendance}
+                        onDownload={downloadReport}
+                        onDownloadCSV={downloadCSV}
+                        onDownloadCumulativeCSV={downloadCumulativeCSV}
+                    />
                 )}
 
                 {/* Member Insights & Profile Modal */}
@@ -1001,7 +1278,7 @@ const AdminDashboard = () => {
                                                 </div>
                                                 <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Attended</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.totalAttended} / {memberInsights.stats.totalMeetings}</div>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.physicalAttended}{memberInsights.stats.exemptedCount > 0 ? ` + ${memberInsights.stats.exemptedCount}E` : ''} / {memberInsights.stats.totalMeetings}</div>
                                                 </div>
                                                 <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
@@ -1029,46 +1306,36 @@ const AdminDashboard = () => {
                                                     {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
                                                         <div
                                                             key={idx}
-                                                            title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.attended ? 'Present' : h.isExempted ? 'Exempted' : 'Absent'}`}
+                                                            title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.isExempted ? 'Exempted' : h.attended ? 'Present' : 'Absent'}`}
                                                             style={{
                                                                 flex: 1,
                                                                 height: (h.attended || h.isExempted) ? '100%' : '15%',
-                                                                background: h.attended ? '#25AAE1' : h.isExempted ? '#FFD700' : 'rgba(255,255,255,0.1)',
+                                                                background: h.isExempted ? '#FFD700' : h.attended ? '#25AAE1' : 'rgba(255,255,255,0.1)',
                                                                 borderRadius: '2px',
                                                                 transition: 'all 0.3s ease',
-                                                                opacity: h.attended ? 1 : h.isExempted ? 1 : 0.3
+                                                                opacity: (h.attended || h.isExempted) ? 1 : 0.3
                                                             }}
                                                         />
                                                     ))}
                                                 </div>
                                             </div>
 
-                                            {/* Category Switch (Exemption Focus) */}
-                                            <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                                            {/* Category Display */}
+                                            <div className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
                                                 <div>
-                                                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Profile Category</h4>
-                                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Current Status: <strong style={{ color: editingMember.memberType === 'Exempted' ? '#f87171' : 'inherit' }}>{editingMember.memberType}</strong></p>
+                                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Profile Category</h4>
                                                 </div>
-                                                <select
-                                                    className="input-field"
-                                                    style={{ width: 'auto', minWidth: '150px' }}
-                                                    value={editingMember.memberType}
-                                                    onChange={async (e) => {
-                                                        const newType = e.target.value;
-                                                        try {
-                                                            await api.patch(`/members/${editingMember._id}`, { memberType: newType });
-                                                            setEditingMember({ ...editingMember, memberType: newType });
-                                                            fetchMembers();
-                                                        } catch (err) {
-                                                            alert('Failed to update status');
-                                                        }
-                                                    }}
-                                                >
-                                                    <option value="Douloid">Douloid</option>
-                                                    <option value="Recruit">Recruit</option>
-                                                    <option value="Visitor">Visitor</option>
-                                                    <option value="Exempted">Exempted</option>
-                                                </select>
+                                                <span style={{
+                                                    padding: '0.4rem 1rem',
+                                                    borderRadius: '2rem',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 700,
+                                                    background: editingMember.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(167, 139, 250, 0.1)',
+                                                    color: editingMember.memberType === 'Exempted' ? '#f87171' : '#a78bfa',
+                                                    border: editingMember.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(167, 139, 250, 0.2)'
+                                                }}>
+                                                    {editingMember.memberType.toUpperCase()}
+                                                </span>
                                             </div>
 
                                             {/* History List */}
@@ -1078,8 +1345,8 @@ const AdminDashboard = () => {
                                                     {memberInsights.history.slice(0, 10).map((h, idx) => (
                                                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
                                                             <span>{h.name}</span>
-                                                            <span style={{ color: h.attended ? '#4ade80' : h.isExempted ? '#FFD700' : '#f87171', fontWeight: 600 }}>
-                                                                {h.attended ? 'PRESENT' : h.isExempted ? 'EXEMPTED' : 'ABSENT'}
+                                                            <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+                                                                {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
                                                             </span>
                                                         </div>
                                                     ))}
@@ -1088,6 +1355,28 @@ const AdminDashboard = () => {
                                         </div>
                                     ) : (
                                         <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
+                                    )}
+                                    {/* Super Admin Actions */}
+                                    {['developer', 'superadmin'].includes(userRole) && (
+                                        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <button
+                                                className="btn"
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    color: '#ef4444',
+                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                    padding: '0.75rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.5rem'
+                                                }}
+                                                onClick={() => handleDeleteMember(editingMember._id, editingMember.name)}
+                                            >
+                                                <Trash2 size={16} /> Delete Member Permanentely
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -1107,7 +1396,7 @@ const AdminDashboard = () => {
                                 <button className="btn" style={{ padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance(null)}>Close</button>
                             </div>
                             <div style={{ overflow: 'auto', padding: '1rem', flex: 1 }}>
-                                <AttendanceTable meeting={viewingAttendance} />
+                                <AttendanceTable meeting={viewingAttendance} setMsg={setMsg} />
                             </div>
                         </div>
                     </div>
@@ -1146,7 +1435,7 @@ const AdminDashboard = () => {
                                         e.stopPropagation();
                                         const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
                                         navigator.clipboard.writeText(link);
-                                        alert('Link copied to clipboard!');
+                                        setMsg({ type: 'success', text: 'Link copied to clipboard!' });
                                     }}
                                 >
                                     <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
@@ -1186,7 +1475,7 @@ const AdminDashboard = () => {
                                         setEditingMeeting(null);
                                         fetchMeetings();
                                     } catch (err) {
-                                        alert('Failed to update');
+                                        setMsg({ type: 'error', text: 'Failed to update' });
                                     }
                                 }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
@@ -1237,7 +1526,7 @@ const AdminDashboard = () => {
     );
 };
 
-const ReportsView = ({ meetings, members, onViewAttendance, onDownload }) => {
+const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownloadCSV, onDownloadCumulativeCSV }) => {
     const [reportType, setReportType] = useState('summary'); // 'summary' or 'cumulative'
     const [filterSemester, setFilterSemester] = useState('Current');
     const [filterCampus, setFilterCampus] = useState('All');
@@ -1328,6 +1617,56 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload }) => {
                         <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Average per Meeting</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#facc15' }}>{averageAttendance}</div>
                     </div>
+                    {reportType === 'cumulative' && (
+                        <button
+                            className="btn btn-primary"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                            onClick={() => onDownloadCumulativeCSV(members.filter(m => filterCampus === 'All' || m.campus === filterCampus), filterSemester === 'Current' ? currentSemester : filterSemester)}
+                        >
+                            <Download size={18} /> Export All (CSV)
+                        </button>
+                    )}
+                </div>
+
+                {/* Visual Analytics */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div className="glass-panel" style={{ padding: '1.5rem', height: '300px' }}>
+                        <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7 }}>Attendance Trends</h3>
+                        <ResponsiveContainer width="100%" height="80%">
+                            <LineChart data={[...filteredMeetings].reverse().map(m => ({ name: new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: m.attendanceCount || 0 }))}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="name" stroke="var(--color-text-dim)" fontSize={12} />
+                                <YAxis stroke="var(--color-text-dim)" fontSize={12} />
+                                <Tooltip contentStyle={{ background: '#032540', border: '1px solid var(--glass-border)', borderRadius: '8px' }} />
+                                <Line type="monotone" dataKey="count" stroke="#25AAE1" strokeWidth={3} dot={{ r: 4, fill: '#25AAE1' }} activeDot={{ r: 6 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '1.5rem', height: '300px' }}>
+                        <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7 }}>Member Category Breakdown</h3>
+                        <ResponsiveContainer width="100%" height="80%">
+                            <PieChart>
+                                <Pie
+                                    data={[
+                                        { name: 'Douloids', value: members.filter(m => m.memberType === 'Douloid' && (filterCampus === 'All' || m.campus === filterCampus)).length },
+                                        { name: 'Recruits', value: members.filter(m => m.memberType === 'Recruit' && (filterCampus === 'All' || m.campus === filterCampus)).length },
+                                        { name: 'Visitors', value: members.filter(m => (m.memberType === 'Visitor' || !m.memberType) && (filterCampus === 'All' || m.campus === filterCampus)).length },
+                                    ]}
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    <Cell fill="#FFD700" />
+                                    <Cell fill="#a78bfa" />
+                                    <Cell fill="#25AAE1" />
+                                </Pie>
+                                <Tooltip contentStyle={{ background: '#032540', border: '1px solid var(--glass-border)', borderRadius: '8px' }} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
                 {reportType === 'summary' ? (
@@ -1358,8 +1697,15 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload }) => {
                                                 <Users size={16} />
                                             </button>
                                             <button
+                                                onClick={() => onDownloadCSV(m._id, m.name)}
+                                                title="Download CSV"
+                                                style={{ background: 'rgba(167, 139, 250, 0.15)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: '#a78bfa' }}
+                                            >
+                                                <FileSpreadsheet size={16} />
+                                            </button>
+                                            <button
                                                 onClick={() => onDownload(m._id, m.name)}
-                                                title="Download Report"
+                                                title="Download PDF/Print"
                                                 style={{ background: 'rgba(37, 170, 225, 0.15)', border: 'none', padding: '0.5rem', borderRadius: '0.3rem', cursor: 'pointer', color: '#25AAE1' }}
                                             >
                                                 <Download size={16} />
@@ -1415,7 +1761,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload }) => {
     );
 };
 
-const AttendanceTable = ({ meeting }) => {
+const AttendanceTable = ({ meeting, setMsg }) => {
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -1426,8 +1772,9 @@ const AttendanceTable = ({ meeting }) => {
         try {
             await api.delete(`/attendance/${id}`);
             setRecords(records.filter(r => r._id !== id));
+            setMsg({ type: 'success', text: 'Record deleted.' });
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to delete');
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to delete' });
         }
     };
 
@@ -1435,8 +1782,9 @@ const AttendanceTable = ({ meeting }) => {
         try {
             const res = await api.patch(`/attendance/${id}/exemption`);
             setRecords(records.map(r => r._id === id ? { ...r, isExempted: res.data.isExempted } : r));
+            setMsg({ type: 'success', text: `Status updated to ${res.data.isExempted ? 'Exempted' : 'Present'}` });
         } catch (err) {
-            alert('Failed to update exemption status');
+            setMsg({ type: 'error', text: 'Failed to update exemption status' });
         }
     };
 
@@ -1551,24 +1899,20 @@ const AttendanceTable = ({ meeting }) => {
                                         </td>
                                     )}
                                     <td style={{ padding: '1rem' }}>
-                                        <button
-                                            onClick={() => meeting.isActive && toggleExemption(r._id)}
-                                            disabled={!meeting.isActive}
+                                        <span
                                             style={{
-                                                padding: '0.25rem 0.5rem',
-                                                borderRadius: '0.4rem',
-                                                border: '1px solid',
+                                                padding: '0.3rem 0.6rem',
+                                                borderRadius: '2rem',
                                                 fontSize: '0.7rem',
                                                 fontWeight: 800,
-                                                cursor: meeting.isActive ? 'pointer' : 'default',
-                                                background: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.1)',
-                                                color: r.isExempted ? 'var(--color-text-dim)' : '#4ade80',
-                                                borderColor: r.isExempted ? 'rgba(255,255,255,0.1)' : 'rgba(74, 222, 128, 0.2)',
-                                                opacity: meeting.isActive ? 1 : 0.7
+                                                background: 'rgba(37, 170, 225, 0.1)',
+                                                color: '#25AAE1',
+                                                border: '1px solid rgba(37, 170, 225, 0.2)',
+                                                letterSpacing: '0.5px'
                                             }}
                                         >
-                                            {r.isExempted ? 'EXEMPTED' : 'PRESENT'}
-                                        </button>
+                                            PRESENT
+                                        </span>
                                     </td>
                                     {['developer', 'superadmin'].includes(userRole) && meeting.isActive && (
                                         <td style={{ padding: '0.5rem 1rem' }}>

@@ -75,27 +75,43 @@ export const submitAttendance = async (req, res) => {
             await member.save();
         }
 
-        // 9. Record Attendance
-        const attendance = new Attendance({
-            meeting: meeting._id,
-            meetingName: meeting.name,
-            campus: meeting.campus,
-            studentRegNo,
-            memberType: member.memberType,
-            responses: responses || { studentName: data.studentName, studentRegNo },
-            questionOfDay: meeting.questionOfDay,
-            deviceId
-        });
+        // 9. Record Attendance (Skip if Test Account)
+        if (!member.isTestAccount) {
+            const attendance = new Attendance({
+                meeting: meeting._id,
+                meetingName: meeting.name,
+                campus: meeting.campus,
+                studentRegNo,
+                memberType: member.memberType,
+                responses: responses || { studentName: data.studentName, studentRegNo },
+                questionOfDay: meeting.questionOfDay,
+                deviceId
+            });
+            await attendance.save();
+        }
 
-        await attendance.save();
+        // 10. Award Points & Reset Graduation Flag
+        const showGraduationCongrats = member.needsGraduationCongrats;
 
-        // 10. Award Points (Default +10 for attendance)
-        await Member.findOneAndUpdate({ studentRegNo }, { $inc: { totalPoints: 10 } });
+        const updateData = { needsGraduationCongrats: false };
+        if (!member.isTestAccount) {
+            // Only non-test accounts get points incremented
+            await Member.findOneAndUpdate({ studentRegNo }, {
+                $inc: { totalPoints: 10 },
+                $set: updateData
+            });
+        } else {
+            // Test accounts just get the flag reset
+            await Member.findOneAndUpdate({ studentRegNo }, {
+                $set: updateData
+            });
+        }
 
         res.status(201).json({
             message: 'Attendance recorded successfully',
             memberName: member.name,
-            memberType: member.memberType
+            memberType: member.memberType,
+            showGraduationCongrats
         });
 
     } catch (error) {
@@ -149,7 +165,9 @@ export const getStudentPortalData = async (req, res) => {
         });
 
         const totalMeetings = meetings.length;
-        const totalAttended = attendance.filter(a => !a.isExempted).length;
+        const physicalAttended = attendance.filter(a => !a.isExempted).length;
+        const exemptedCount = attendance.filter(a => a.isExempted).length;
+        const totalValid = physicalAttended + exemptedCount;
 
         res.json({
             studentRegNo,
@@ -157,8 +175,10 @@ export const getStudentPortalData = async (req, res) => {
             memberType: member?.memberType || 'Visitor',
             stats: {
                 totalMeetings,
-                totalAttended,
-                percentage: totalMeetings > 0 ? Math.round((totalAttended / totalMeetings) * 100) : 0
+                physicalAttended,
+                exemptedCount,
+                totalAttended: totalValid,
+                percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },
             history
         });

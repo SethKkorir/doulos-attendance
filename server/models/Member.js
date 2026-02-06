@@ -14,7 +14,9 @@ const memberSchema = new mongoose.Schema({
         required: true
     },
     totalPoints: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    isTestAccount: { type: Boolean, default: false },
+    needsGraduationCongrats: { type: Boolean, default: false }
 }, { timestamps: true });
 
 export default mongoose.model('Member', memberSchema);

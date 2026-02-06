@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -17,6 +17,15 @@ const CheckIn = () => {
     const [secretCode, setSecretCode] = useState('');
     const [memberInfo, setMemberInfo] = useState(null); // { name, type } from registry
     const [isLookingUp, setIsLookingUp] = useState(false);
+    const [showCongrats, setShowCongrats] = useState(false);
+
+    useEffect(() => {
+        let timer;
+        if (msg) {
+            timer = setTimeout(() => setMsg(''), 6000);
+        }
+        return () => clearTimeout(timer);
+    }, [msg]);
 
     const getFingerprint = () => {
         const n = window.navigator;
@@ -114,6 +123,9 @@ const CheckIn = () => {
             });
             setStatus('success');
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
+            if (res.data.showGraduationCongrats) {
+                setShowCongrats(true);
+            }
         } catch (err) {
             setStatus('error');
             setMsg(err.response?.data?.message || 'Submission failed. Please try again.');
@@ -142,9 +154,35 @@ const CheckIn = () => {
 
                 {status === 'idle' || status === 'submitting' ? (
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {msg && status === 'idle' && (
-                            <div style={{ padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderRadius: '0.5rem', fontSize: '0.85rem', border: '1px solid rgba(239, 68, 68, 0.2)', textAlign: 'center' }}>
-                                {msg}
+                        {msg && (
+                            <div style={{
+                                position: 'fixed',
+                                top: '2rem',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                zIndex: 2000,
+                                minWidth: '300px',
+                                padding: '1rem 1.5rem',
+                                borderRadius: '0.75rem',
+                                background: status === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)',
+                                color: 'white',
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                backdropFilter: 'blur(10px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.75rem',
+                                fontWeight: 600,
+                                animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                            }}>
+                                {status === 'error' ? '⚠️' : '✅'} {msg}
+                                <style>{`
+                            @keyframes slideDown {
+                                0% { opacity: 0; transform: translate(-50%, -20px); }
+                                100% { opacity: 1; transform: translate(-50%, 0); }
+                            }
+                        `}</style>
                             </div>
                         )}
 
@@ -344,12 +382,84 @@ const CheckIn = () => {
                                 Back to Form
                             </button>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>
-                                If you already checked in, you don't need to do it again.
                             </p>
                         </div>
                     </div>
                 )}
             </div>
+
+            {showCongrats && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    padding: '2rem', textAlign: 'center', backdropFilter: 'blur(15px)',
+                    overflow: 'hidden'
+                }}>
+                    <div className="fireworks-container" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', top: 0, left: 0 }}>
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className={`firework fw-${i}`} style={{
+                                position: 'absolute',
+                                left: `${10 + Math.random() * 80}%`,
+                                top: `${10 + Math.random() * 80}%`,
+                            }} />
+                        ))}
+                    </div>
+
+                    <div style={{
+                        position: 'relative', zIndex: 2,
+                        animation: 'congratsPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                    }}>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                            width: '120px', height: '120px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 0 50px rgba(255, 215, 0, 0.4)', margin: '0 auto 2rem'
+                        }}>
+                            <Trophy size={60} color="white" />
+                        </div>
+                        <h1 style={{ fontSize: '3rem', color: '#FFD700', marginBottom: '1rem', textShadow: '0 0 30px rgba(255, 215, 0, 0.5)', fontWeight: 900 }}>
+                            CONGRATULATIONS!
+                        </h1>
+                        <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem', color: 'white' }}>
+                            You have officially graduated to a DOULOID!
+                        </h2>
+                        <p style={{ maxWidth: '450px', lineHeight: 1.8, color: 'rgba(255,255,255,0.85)', marginBottom: '3rem' }}>
+                            A new chapter begins. Welcome to the elite family of Doulos!
+                        </p>
+                        <button
+                            className="btn"
+                            style={{ padding: '1.25rem 4rem', background: '#FFD700', color: '#000', fontWeight: 'bold', borderRadius: '3rem', fontSize: '1.2rem', cursor: 'pointer', border: 'none' }}
+                            onClick={() => setShowCongrats(false)}
+                        >
+                            THANK YOU! 🚀
+                        </button>
+                    </div>
+
+                    <style>{`
+                        @keyframes congratsPop {
+                            0% { transform: scale(0); opacity: 0; }
+                            100% { transform: scale(1); opacity: 1; }
+                        }
+                        .firework {
+                            width: 5px; height: 5px; border-radius: 50%;
+                            box-shadow: 0 0 #fff;
+                            animation: explode 2s infinite;
+                        }
+                        .fw-0 { animation-delay: 0s; color: gold; }
+                        .fw-1 { animation-delay: 0.5s; color: #fff; }
+                        .fw-2 { animation-delay: 1s; color: #FFD700; }
+                        .fw-3 { animation-delay: 1.5s; color: #FFA500; }
+                        @keyframes explode {
+                            0% { transform: scale(1); opacity: 1; }
+                            100% { 
+                                transform: scale(35); opacity: 0;
+                                box-shadow: -50px -50px 0 1px, 50px -50px 0 1px, 50px 50px 0 1px, -50px 50px 0 1px, 0 -70px 0 1px, -70px 0 0 1px, 70px 0 0 1px, 0 70px 0 1px;
+                            }
+                        }
+                    `}</style>
+                </div>
+            )}
 
             <p style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
                 Doulos Attendance System &bull; &copy; {new Date().getFullYear()}

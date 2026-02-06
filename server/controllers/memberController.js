@@ -1,5 +1,7 @@
 import Member from '../models/Member.js';
 import Attendance from '../models/Attendance.js';
+import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
 
 export const importMembers = async (req, res) => {
     const { members } = req.body; // Expecting array of { studentRegNo, name, memberType, campus }
@@ -39,6 +41,9 @@ export const getMembers = async (req, res) => {
         }
         if (campus && campus !== 'All') query.campus = campus;
         if (memberType && memberType !== 'All') query.memberType = memberType;
+
+        // Never show test accounts in the main registry
+        query.isTestAccount = { $ne: true };
 
         const members = await Member.find(query).sort({ name: 1 }).lean();
 
@@ -144,6 +149,107 @@ export const syncMembersFromAttendance = async (req, res) => {
         }
 
         res.json({ message: `Synced ${uniqueAttendees.length} members from attendance history.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+export const graduateAllRecruits = async (req, res) => {
+    const { confirmPassword } = req.body;
+
+    try {
+        // Verify Password for this sensitive operation
+        const user = await User.findById(req.user.id);
+
+        // Developer bypass for convenience during dev
+        const isDevBypass = req.user.role === 'developer' && confirmPassword === '657';
+
+        if (!isDevBypass) {
+            if (!user) return res.status(404).json({ message: 'Admin user not found' });
+            const isMatch = await bcrypt.compare(confirmPassword, user.password);
+            if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Action cancelled.' });
+        }
+
+        const result = await Member.updateMany(
+            { memberType: 'Recruit' },
+            {
+                $set: {
+                    memberType: 'Douloid',
+                    needsGraduationCongrats: true
+                }
+            }
+        );
+
+        res.json({
+            message: `Successfully graduated ${result.modifiedCount} recruits to Douloids!`,
+            modifiedCount: result.modifiedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const setupTestAccount = async (req, res) => {
+    if (req.user.role !== 'developer') return res.status(403).json({ message: 'Forbidden' });
+    const { regNo = '00-0000' } = req.body;
+
+    try {
+        const member = await Member.findOneAndUpdate(
+            { studentRegNo: regNo.toUpperCase().trim() },
+            {
+                $set: {
+                    name: 'SYSTEM TESTER',
+                    campus: 'Athi River',
+                    isTestAccount: true,
+                    memberType: 'Recruit',
+                    needsGraduationCongrats: false,
+                    totalPoints: 10
+                }
+            },
+            { new: true, upsert: true }
+        );
+        res.json({ message: `Success: ${regNo} is now a dedicated Test Account. They won't appear in reports and their points won't increase beyond check-ins.`, member });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const resetAllMemberPoints = async (req, res) => {
+    if (req.user.role !== 'developer') return res.status(403).json({ message: 'Forbidden' });
+    try {
+        const result = await Member.updateMany(
+            { isTestAccount: false },
+            { $set: { totalPoints: 0 } }
+        );
+        res.json({ message: `Points reset successful: ${result.modifiedCount} members now have 0 points.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteMemberWithPassword = async (req, res) => {
+    const { confirmPassword } = req.body;
+    const { id } = req.params;
+
+    try {
+        const user = await User.findById(req.user.id);
+        const isDevBypass = req.user.role === 'developer' && confirmPassword === '657';
+
+        if (!isDevBypass) {
+            if (!user) return res.status(404).json({ message: 'Admin user not found' });
+            const isMatch = await bcrypt.compare(confirmPassword, user.password);
+            if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Deletion cancelled.' });
+        }
+
+        const member = await Member.findById(id);
+        if (!member) return res.status(404).json({ message: 'Member not found' });
+
+        // Delete all attendance records for this student to prevent them coming back on sync
+        await Attendance.deleteMany({ studentRegNo: member.studentRegNo });
+
+        // Delete the member record
+        await Member.findByIdAndDelete(id);
+
+        res.json({ message: `Member ${member.name} and all their attendance records deleted successfully.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

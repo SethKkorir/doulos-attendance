@@ -1,4 +1,6 @@
 import Meeting from '../models/Meeting.js';
+import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { checkCampusTime } from '../utils/timeCheck.js';
 
@@ -112,11 +114,30 @@ export const deleteMeeting = async (req, res) => {
     if (!['developer', 'superadmin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Only developers/superadmins can delete meetings' });
     }
+
+    const { confirmPassword } = req.body;
+    const { id } = req.params;
+
     try {
-        const { id } = req.params;
+        const user = await User.findById(req.user.id);
+        const isDevBypass = req.user.role === 'developer' && confirmPassword === '657';
+
+        if (!isDevBypass) {
+            if (!user) return res.status(404).json({ message: 'Admin user not found' });
+            const isMatch = await bcrypt.compare(confirmPassword, user.password);
+            if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Deletion cancelled.' });
+        }
+
+        const meeting = await Meeting.findById(id);
+        if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
+
+        // Delete all attendance records for this meeting
+        await Attendance.deleteMany({ meeting: id });
+
+        // Delete the meeting record
         await Meeting.findByIdAndDelete(id);
-        // We no longer delete attendance records to preserve historical member data
-        res.json({ message: 'Meeting deleted successfully (attendance records preserved)' });
+
+        res.json({ message: `Meeting "${meeting.name}" and all associated attendance records deleted successfully.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

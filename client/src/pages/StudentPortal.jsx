@@ -12,6 +12,14 @@ const StudentPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    useEffect(() => {
+        let timer;
+        if (error) {
+            timer = setTimeout(() => setError(null), 5000);
+        }
+        return () => clearTimeout(timer);
+    }, [error]);
+
     const handleLogin = async (e) => {
         if (e) e.preventDefault();
         if (!regNo) return;
@@ -73,8 +81,34 @@ const StudentPortal = () => {
                     </form>
 
                     {error && (
-                        <div style={{ marginTop: '1rem', color: '#f87171', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                            {error}
+                        <div style={{
+                            position: 'fixed',
+                            top: '2rem',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 2000,
+                            minWidth: '300px',
+                            padding: '1rem 1.5rem',
+                            borderRadius: '0.75rem',
+                            background: 'rgba(239, 68, 68, 0.95)',
+                            color: 'white',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.75rem',
+                            fontWeight: 600,
+                            animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                        }}>
+                            ⚠️ {error}
+                            <style>{`
+                                @keyframes slideDown {
+                                    0% { opacity: 0; transform: translate(-50%, -20px); }
+                                    100% { opacity: 1; transform: translate(-50%, 0); }
+                                }
+                            `}</style>
                         </div>
                     )}
                 </div>
