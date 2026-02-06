@@ -82,51 +82,51 @@ const AdminLogin = () => {
 
             <div className="glass-panel" style={{
                 width: '100%',
-                maxWidth: '450px',
-                padding: '4rem 3.5rem 3.5rem',
+                maxWidth: '400px',
+                padding: '2.5rem 2rem',
                 textAlign: 'center',
                 position: 'relative',
                 zIndex: 10,
                 border: '1px solid var(--glass-border)',
-                borderRadius: '2rem',
-                boxShadow: '0 50px 100px -20px rgba(0, 0, 0, 0.5)',
+                borderRadius: '1.5rem',
+                boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.4)',
                 backdropFilter: 'blur(20px)'
             }}>
-                <div style={{ marginBottom: '3.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ position: 'relative' }}>
                         <div className="rotating-logo">
-                            <Logo size={180} showText={false} />
+                            <Logo size={80} showText={false} />
                         </div>
                         <div style={{
                             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                            width: '240px', height: '240px', borderRadius: '50%',
+                            width: '120px', height: '120px', borderRadius: '50%',
                             background: 'radial-gradient(circle, hsla(198, 76%, 51%, 0.1) 0%, transparent 70%)',
                             zIndex: -1,
                             animation: 'pulse 4s infinite'
                         }}></div>
                     </div>
                     <h1 style={{
-                        marginTop: '3rem',
-                        marginBottom: '0.75rem',
-                        fontSize: '2.5rem',
+                        marginTop: '1.5rem',
+                        marginBottom: '0.5rem',
+                        fontSize: '1.8rem',
                         fontWeight: 900,
                         letterSpacing: '-0.05em',
                         color: 'white',
-                        textShadow: '0 0 30px rgba(37, 170, 225, 0.3)'
+                        textShadow: '0 0 20px rgba(37, 170, 225, 0.3)'
                     }}>
                         ADMIN <span style={{ color: 'hsl(var(--color-primary))' }}>LOGIN</span>
                     </h1>
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '1rem',
+                        gap: '0.75rem',
                         width: '100%',
                         justifyContent: 'center',
                         color: 'var(--color-text-dim)',
                         opacity: 0.6
                     }}>
                         <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to right, transparent, currentColor)' }}></div>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase' }}>Secure Access</span>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Secure Access</span>
                         <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to left, transparent, currentColor)' }}></div>
                     </div>
                 </div>
@@ -134,10 +134,10 @@ const AdminLogin = () => {
                 <style>{`
                     .rotating-logo {
                         animation: rotateInfinite 60s linear infinite;
-                        filter: drop-shadow(0 0 40px hsla(198, 76%, 51%, 0.4));
+                        filter: drop-shadow(0 0 30px hsla(198, 76%, 51%, 0.3));
                     }
                     .light-mode .rotating-logo {
-                        filter: drop-shadow(0 0 30px hsla(198, 76%, 51%, 0.2));
+                        filter: drop-shadow(0 0 20px hsla(198, 76%, 51%, 0.2));
                     }
                     @keyframes rotateInfinite {
                         from { transform: rotate(0deg); }
@@ -150,58 +150,58 @@ const AdminLogin = () => {
                     }
                     .input-group label {
                         display: block;
-                        margin-bottom: 0.75rem;
-                        font-size: 0.65rem;
+                        margin-bottom: 0.5rem;
+                        font-size: 0.6rem;
                         color: var(--color-text-dim);
-                        font-weight: 900;
-                        letter-spacing: 2px;
+                        font-weight: 800;
+                        letter-spacing: 1.5px;
                         text-align: left;
                         text-transform: uppercase;
                         opacity: 0.8;
                     }
                     .input-field-premium {
-                        height: 60px;
+                        height: 45px;
                         background: rgba(0,0,0,0.3) !important;
                         border: 1px solid var(--glass-border) !important;
-                        border-radius: 1rem !important;
-                        font-size: 1rem !important;
-                        font-weight: 700 !important;
-                        letter-spacing: 1px !important;
+                        border-radius: 0.75rem !important;
+                        font-size: 0.9rem !important;
+                        font-weight: 600 !important;
+                        letter-spacing: 0.5px !important;
+                        padding: 0 1rem !important;
                     }
                     .input-field-premium:focus {
                         border-color: #25AAE1 !important;
-                        box-shadow: 0 0 20px rgba(37, 170, 225, 0.15) !important;
+                        box-shadow: 0 0 15px rgba(37, 170, 225, 0.15) !important;
                     }
                 `}</style>
 
                 {error && (
                     <div style={{
                         position: 'fixed',
-                        top: '2.5rem',
+                        top: '2rem',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         zIndex: 2000,
-                        minWidth: '320px',
-                        padding: '1.25rem 2rem',
-                        borderRadius: '1rem',
+                        minWidth: '280px',
+                        padding: '1rem 1.5rem',
+                        borderRadius: '0.75rem',
                         background: 'rgba(239, 68, 68, 0.15)',
                         color: '#f87171',
                         border: '1px solid rgba(239, 68, 68, 0.25)',
-                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+                        boxShadow: '0 15px 30px rgba(0, 0, 0, 0.4)',
                         backdropFilter: 'blur(20px)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '1rem',
-                        fontWeight: 800,
-                        fontSize: '0.9rem',
+                        gap: '0.75rem',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
                         animation: 'slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards'
                     }}>
                         <span>⚠️ LOGIN FAILED</span>
                     </div>
                 )}
-
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="input-group">
                         <label>Username</label>
                         <input
@@ -230,21 +230,21 @@ const AdminLogin = () => {
                         className="btn btn-primary"
                         style={{
                             width: '100%',
-                            height: '65px',
-                            fontSize: '1rem',
-                            marginTop: '1rem',
-                            letterSpacing: '3px',
-                            fontWeight: 900,
+                            height: '50px',
+                            fontSize: '0.9rem',
+                            marginTop: '0.5rem',
+                            letterSpacing: '2px',
+                            fontWeight: 800,
                             textTransform: 'uppercase',
-                            borderRadius: '1rem',
-                            boxShadow: '0 15px 30px -10px hsla(198, 76%, 51%, 0.4)'
+                            borderRadius: '0.75rem',
+                            boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)'
                         }}
                     >
                         LOG IN
                     </button>
                 </form>
 
-                <div style={{ marginTop: '3.5rem', fontSize: '0.7rem', opacity: 0.3, fontWeight: 800, letterSpacing: '2px', color: 'var(--color-text-dim)' }}>
+                <div style={{ marginTop: '2.5rem', fontSize: '0.65rem', opacity: 0.3, fontWeight: 700, letterSpacing: '1.5px', color: 'var(--color-text-dim)' }}>
                     DOULOS ATTENDANCE SYSTEM
                 </div>
             </div>

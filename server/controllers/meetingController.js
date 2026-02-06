@@ -72,33 +72,69 @@ export const getMeetings = async (req, res) => {
             { $sort: { date: -1 } }
         ]);
 
-        // 2. Auto-close expired meetings
+        // 2. Auto-close expired meetings based on EAT (East Africa Time)
         const now = new Date();
-        const eatTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
-        const eatYear = eatTime.getUTCFullYear();
-        const eatMonth = eatTime.getUTCMonth();
-        const eatDate = eatTime.getUTCDate();
-        const eatHour = eatTime.getUTCHours();
-        const eatMin = eatTime.getUTCMinutes();
-        const timeDecimal = eatHour + (eatMin / 60);
+        const eatFormat = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Africa/Nairobi',
+            hourCycle: 'h23',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        const [todayDate, todayTime] = eatFormat.format(now).split(', ');
+        const [eatH, eatM] = todayTime.split(':').map(Number);
+        const timeDecimal = eatH + (eatM / 60);
 
         const updates = [];
 
         meetings = meetings.map(m => {
             if (m.isActive && !m.isTestMeeting) {
-                const meetingDate = new Date(m.date);
-                // Create a comparison date for "Today" in EAT
-                const todayEAT = new Date(eatYear, eatMonth, eatDate);
-                const compareDate = new Date(meetingDate.getUTCFullYear(), meetingDate.getUTCMonth(), meetingDate.getUTCDate());
+                // Get meeting's day in Nairobi context
+                const meetingDateStr = eatFormat.format(new Date(m.date)).split(', ')[0];
 
+                const [startH, startM] = m.startTime.split(':').map(Number);
                 const [endH, endM] = m.endTime.split(':').map(Number);
-                const endVal = endH + (endM / 60);
 
-                const isPastDay = compareDate < todayEAT;
-                const isToday = compareDate.getTime() === todayEAT.getTime();
-                const isPastTime = timeDecimal >= endVal;
+                let rawEndVal = endH + (endM / 60);
+                const startVal = startH + (startM / 60);
 
-                if (isPastDay || (isToday && isPastTime)) {
+                // Handle midnight crossing (e.g., meeting goes from 22:00 to 01:00)
+                if (rawEndVal < startVal) {
+                    rawEndVal += 24;
+                }
+
+                const endVal = rawEndVal + 1.5; // 1.5-hour grace period
+
+                const isToday = meetingDateStr === todayDate;
+                let shouldFinalize = false;
+
+                if (meetingDateStr > todayDate) {
+                    // Future date - do not finalize
+                    shouldFinalize = false;
+                } else if (isToday) {
+                    // Today: Check if current time is past the end value
+                    if (timeDecimal >= endVal) shouldFinalize = true;
+                } else {
+                    // Past Day
+                    const mDate = new Date(meetingDateStr);
+                    const tDate = new Date(todayDate);
+                    const diffTime = tDate - mDate;
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays === 1 && endVal > 24) {
+                        // If meeting was yesterday but extended into today (past midnight)
+                        // Check if valid time has passed today (endVal - 24)
+                        if (timeDecimal >= (endVal - 24)) {
+                            shouldFinalize = true;
+                        }
+                    } else {
+                        // Not the immediate next day OR didn't extend past midnight -> Finalize
+                        shouldFinalize = true;
+                    }
+                }
+
+                if (shouldFinalize) {
+                    console.log(`[Meeting Control] Auto-finalizing "${m.name}": MeetingDay(${meetingDateStr}) Today(${todayDate}) Time(${timeDecimal.toFixed(2)}) End(${endVal.toFixed(2)})`);
                     m.isActive = false;
                     updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
                 }
@@ -196,7 +232,7 @@ export const getMeetingByCode = async (req, res) => {
             $or: [{ devotion: { $ne: '' } }, { announcements: { $ne: '' } }]
         }).sort({ date: -1 }).select('name date devotion iceBreaker announcements');
 
-        res.json({ ...meeting.toObject(), previousRecap });
+        res.json({ ...meeting.toObject(), previousRecap, serverStartTime: Date.now() });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

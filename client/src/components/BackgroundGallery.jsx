@@ -19,12 +19,12 @@ const BackgroundGallery = () => {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setFade(false); // Start fade out
+            setFade(false); // Start cross-fade
             setTimeout(() => {
                 setIndex((prev) => (prev + 1) % IMAGES.length);
-                setFade(true); // Fade back in with new image
-            }, 1000); // 1s transition time
-        }, 7000); // Change image every 7 seconds
+                setFade(true); // Fade back in
+            }, 1000);
+        }, 7000);
 
         return () => clearInterval(interval);
     }, []);
@@ -35,36 +35,31 @@ const BackgroundGallery = () => {
             inset: 0,
             zIndex: -2,
             overflow: 'hidden',
-            background: '#000' // Dark base
+            background: '#000'
         }}>
-            {/* The Image Layer */}
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundImage: `url("${FOLDER_PATH}${IMAGES[index]}")`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                transition: 'opacity 2s ease-in-out',
-                opacity: fade ? 0.85 : 0,
-                transform: 'none',
-            }} />
+            {/* The Image - Using <img> for better sharpness/scaling on UHD/4K screens */}
+            <img
+                src={`${FOLDER_PATH}${IMAGES[index]}`}
+                alt="Background"
+                style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    transition: 'opacity 2.5s ease-in-out',
+                    opacity: fade ? 1 : 0, // FULL QUALITY
+                    filter: 'brightness(0.9) contrast(1.1)' // Optimized for the "Doulos" aesthetic
+                }}
+            />
 
-            {/* Premium Vignette / Overlay - keeping it minimal for visibility */}
+            {/* Premium Protective Overlay - Keeps text clear while keeping images vibrant */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)',
+                background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 100%)',
                 zIndex: 1
-            }} />
-
-            {/* Optional subtle noise/texture for that premium feel */}
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                opacity: 0.03,
-                pointerEvents: 'none',
-                background: 'url("https://grains-img.vercel.app/noise.png")', // Example noise texture
-                zIndex: 2
             }} />
         </div>
     );

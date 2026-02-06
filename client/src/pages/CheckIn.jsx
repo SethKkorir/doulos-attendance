@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star, Clock } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -17,6 +17,9 @@ const CheckIn = () => {
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [msg, setMsg] = useState('');
+    const [timeLeft, setTimeLeft] = useState(25); // 25 seconds for the "Race"
+    const [serverStartTime, setServerStartTime] = useState(null);
+    const [isExpired, setIsExpired] = useState(false);
 
     useEffect(() => {
         let timer;
@@ -40,6 +43,11 @@ const CheckIn = () => {
             try {
                 const res = await api.get(`/meetings/code/${meetingCode}`);
                 setMeeting(res.data);
+                setServerStartTime(res.data.serverStartTime);
+
+                // Initialize timer
+                const sessionDuration = 25;
+                setTimeLeft(sessionDuration);
 
                 // Initialize responses with empty strings for each required field
                 const initialResponses = {};
@@ -67,6 +75,23 @@ const CheckIn = () => {
         };
         fetchMeeting();
     }, [meetingCode]);
+
+    useEffect(() => {
+        if (status !== 'idle' || !meeting) return;
+
+        const timer = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    setIsExpired(true);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [status, meeting]);
 
     const lookupMember = async (regNo) => {
         if (!regNo || regNo.length < 5) {
@@ -109,6 +134,7 @@ const CheckIn = () => {
             const res = await api.post('/attendance/submit', {
                 meetingCode,
                 deviceId,
+                serverStartTime,
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
@@ -181,8 +207,45 @@ const CheckIn = () => {
                 animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                 backdropFilter: 'blur(20px)'
             }}>
-                {status === 'idle' || status === 'submitting' ? (
+                {isExpired ? (
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                            <Clock size={40} color="#ef4444" />
+                        </div>
+                        <h2 style={{ color: '#ef4444', fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>SESSION EXPIRED</h2>
+                        <p style={{ marginBottom: '2rem', fontSize: '0.95rem', color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
+                            For security, you must submit your check-in within 20 seconds of scanning the physical banner.
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => window.location.reload()}
+                            style={{ width: '100%', height: '55px', borderRadius: '0.75rem' }}
+                        >
+                            RE-SCAN BANNER
+                        </button>
+                    </div>
+                ) : (status === 'idle' || status === 'submitting') ? (
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {/* Countdown Header */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.75rem 1rem',
+                            background: timeLeft < 10 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.1)',
+                            borderRadius: '0.75rem',
+                            border: `1px solid ${timeLeft < 10 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(37, 170, 225, 0.2)'}`,
+                            marginBottom: '1rem',
+                            animation: timeLeft < 10 ? 'pulse-border 1s infinite' : 'none'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: timeLeft < 10 ? '#f87171' : '#25AAE1' }}>
+                                <Clock size={16} />
+                                <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px' }}>SECURITY TIMER</span>
+                            </div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: timeLeft < 10 ? '#f87171' : '#25AAE1' }}>
+                                {timeLeft}s
+                            </div>
+                        </div>
                         {msg && (
                             <div style={{
                                 padding: '1rem',
@@ -570,6 +633,11 @@ const CheckIn = () => {
                                 transform: scale(35); opacity: 0;
                                 box-shadow: -50px -50px 0 1px, 50px -50px 0 1px, 50px 50px 0 1px, -50px 50px 0 1px, 0 -70px 0 1px, -70px 0 0 1px, 70px 0 0 1px, 0 70px 0 1px;
                             }
+                        }
+                        @keyframes pulse-border {
+                            0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+                            50% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+                            100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
                         }
                     `}</style>
                 </div>

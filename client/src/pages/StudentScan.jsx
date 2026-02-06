@@ -18,7 +18,35 @@ const StudentScan = () => {
         /* verbose= */ false
             );
 
-            scanner.render(async (decodedText) => {
+            scanner.render(async (decodedText, result) => {
+                // SECURITY: Screen vs Paper Detection (Digital Eye)
+                const video = document.querySelector('#reader video');
+                if (video) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth / 4; // Downscale for faster analysis
+                    canvas.height = video.videoHeight / 4;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                    let digitalScore = 0;
+
+                    // Logic: Check for high-frequency pixel patterns & excessive blue-light saturation
+                    for (let i = 0; i < imageData.length; i += 16) {
+                        const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2];
+                        // Screens tend to have a blue-light peak and very high local contrast (pixels)
+                        if (b > r + 30 && b > g + 30) digitalScore++;
+                    }
+
+                    // If score is high, it's likely a digital screen
+                    if (digitalScore > (canvas.width * canvas.height) / 100) {
+                        setStatus('error');
+                        setMsg('SECURITY ALERT: Digital Screen Detected. Please scan the physical printed banner. Photos/Screenshots are not allowed.');
+                        scanner.clear();
+                        return;
+                    }
+                }
+
                 let code = decodedText;
                 // If scanned text is a URL (e.g. from the dashboard QR), extract the code
                 if (decodedText.includes('/check-in/')) {

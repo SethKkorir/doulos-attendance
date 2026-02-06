@@ -4,7 +4,7 @@ import Member from '../models/Member.js';
 import { checkCampusTime } from '../utils/timeCheck.js';
 
 export const submitAttendance = async (req, res) => {
-    const { meetingCode, responses, memberType, secretCode, deviceId } = req.body;
+    const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime } = req.body;
 
     try {
         // 1. Find the meeting
@@ -13,6 +13,16 @@ export const submitAttendance = async (req, res) => {
 
         // 2. User & Role check
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+
+        // EXTRA SECURITY: 20-Second Freshness Timer (Proximity Timing)
+        if (serverStartTime && !isSuperUser && !meeting.isTestMeeting) {
+            const timeElapsed = Date.now() - serverStartTime;
+            if (timeElapsed > 25000) { // 25 seconds (20s + 5s buffer)
+                return res.status(403).json({
+                    message: "Scan Session Expired (20s limit). Please scan again at the physical banner. Shared QR codes are not allowed."
+                });
+            }
+        }
 
         // 3. Activity Check (Bypass for SuperUser or Test Meetings)
         if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
