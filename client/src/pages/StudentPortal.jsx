@@ -327,7 +327,7 @@ const StudentPortal = () => {
                             <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 900 }}>
                                 {data.stats.percentage > 80 ? 'ELITE DOULOID' : data.stats.percentage > 50 ? 'ACTIVE MEMBER' : 'RECRUIT'}
                             </h3>
-                            <p style={{ color: 'var(--color-text-dim)', margin: 0, fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto' }}>
+                            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto' }}>
                                 Total attendance: <strong>{data.stats.totalAttended}</strong> / {data.stats.totalMeetings} sessions.
                             </p>
 
