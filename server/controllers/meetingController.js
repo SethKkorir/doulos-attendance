@@ -32,7 +32,7 @@ const validateMeetingTime = (dateStr, startTime, endTime, campus) => {
 };
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, requiredFields, questionOfDay } = req.body;
+    const { name, date, campus, startTime, endTime, requiredFields, questionOfDay, location } = req.body;
 
     // Validation
     const error = validateMeetingTime(date, startTime, endTime, campus);
@@ -41,7 +41,7 @@ export const createMeeting = async (req, res) => {
     try {
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, code, requiredFields, questionOfDay
+            name, date, campus, startTime, endTime, code, requiredFields, questionOfDay, location
         });
         await meeting.save();
         res.status(201).json(meeting);

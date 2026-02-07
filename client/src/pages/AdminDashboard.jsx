@@ -33,7 +33,13 @@ const AdminDashboard = () => {
         ],
         questionOfDay: '',
         isTestMeeting: false,
-        secretRoomCode: ''
+        secretRoomCode: '',
+        location: {
+            latitude: null,
+            longitude: null,
+            radius: 200,
+            name: ''
+        }
     });
     const [msg, setMsg] = useState(null);
     const [viewingAttendance, setViewingAttendance] = useState(null); // Meeting object
@@ -1111,6 +1117,80 @@ const AdminDashboard = () => {
                                             </label>
                                         </div>
                                     )}
+
+                                    {/* Geo-Location Security Section */}
+                                    <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <label style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <MapPin size={16} /> Geo-Location Security
+                                            </label>
+                                            <button
+                                                type="button"
+                                                className="btn"
+                                                onClick={() => {
+                                                    if (navigator.geolocation) {
+                                                        navigator.geolocation.getCurrentPosition(
+                                                            (position) => {
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    location: {
+                                                                        ...formData.location,
+                                                                        latitude: position.coords.latitude,
+                                                                        longitude: position.coords.longitude
+                                                                    }
+                                                                });
+                                                                setMsg({ type: 'success', text: 'Location set to current position.' });
+                                                            },
+                                                            (error) => {
+                                                                setMsg({ type: 'error', text: 'Unable to retrieve location.' });
+                                                                console.error("Error getting location: ", error);
+                                                            }
+                                                        );
+                                                    } else {
+                                                        setMsg({ type: 'error', text: 'Geolocation is not supported by this browser.' });
+                                                    }
+                                                }}
+                                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.3)' }}
+                                            >
+                                                Set to Current Location
+                                            </button>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label>Location Name</label>
+                                                <input
+                                                    className="input-field"
+                                                    placeholder="e.g. Daystar Athi River Chapel"
+                                                    value={formData.location?.name || ''}
+                                                    onChange={e => setFormData({
+                                                        ...formData,
+                                                        location: { ...formData.location, name: e.target.value }
+                                                    })}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label>Radius (meters)</label>
+                                                <input
+                                                    type="number"
+                                                    className="input-field"
+                                                    placeholder="200"
+                                                    value={formData.location?.radius || 200}
+                                                    onChange={e => setFormData({
+                                                        ...formData,
+                                                        location: { ...formData.location, radius: Number(e.target.value) }
+                                                    })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {(formData.location?.latitude && formData.location?.longitude) && (
+                                            <div style={{ fontSize: '0.8rem', color: '#4ade80', background: 'rgba(74, 222, 128, 0.1)', padding: '0.5rem', borderRadius: '0.25rem', display: 'flex', gap: '1rem' }}>
+                                                <span>Lat: {formData.location.latitude.toFixed(6)}</span>
+                                                <span>Long: {formData.location.longitude.toFixed(6)}</span>
+                                            </div>
+                                        )}
+                                    </div>
 
 
 
