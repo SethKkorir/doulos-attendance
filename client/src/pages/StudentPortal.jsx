@@ -28,9 +28,13 @@ const StudentPortal = () => {
         setError(null);
         try {
             const res = await api.get(`/attendance/student/${regNo}`);
-            // Allow login if they are a registered member OR have attendance history
-            if (!res.data.isMember && res.data.history.length === 0 && res.data.stats.totalAttended === 0) {
-                setError("We couldn't find any attendance records or member profile for this Admission Number.");
+
+            // STRICT CHECK: IF NOT A MEMBER AND NO HISTORY -> BLOCK
+            // This handles "deleted" users effectively as they have no Member record.
+            if (!res.data.isMember && (!res.data.history || res.data.history.length === 0)) {
+                setError("Stranger Danger! 🚫 We don't have a record of this ID. Please register or attend a meeting first.");
+                setIsLoggedIn(false);
+                localStorage.removeItem('studentRegNo'); // Clear stale session
                 setLoading(false);
                 return;
             }
