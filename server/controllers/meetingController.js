@@ -72,7 +72,7 @@ export const getMeetings = async (req, res) => {
             { $sort: { date: -1 } }
         ]);
 
-        // 2. Auto-close expired meetings based on EAT (East Africa Time)
+        // 2. Auto-Activate and Auto-Finalize based on strict time windows
         const now = new Date();
         const eatFormat = new Intl.DateTimeFormat('en-CA', {
             timeZone: 'Africa/Nairobi',
@@ -83,60 +83,59 @@ export const getMeetings = async (req, res) => {
 
         const [todayDate, todayTime] = eatFormat.format(now).split(', ');
         const [eatH, eatM] = todayTime.split(':').map(Number);
-        const timeDecimal = eatH + (eatM / 60);
+        const timeDecimal = eatH + (eatM / 60); // Current time in decimal hours (EAT)
 
         const updates = [];
 
         meetings = meetings.map(m => {
-            if (m.isActive && !m.isTestMeeting) {
-                // Get meeting's day in Nairobi context
+            if (!m.isTestMeeting) {
+                // Get meeting's scheduled date string (YYYY-MM-DD)
                 const meetingDateStr = eatFormat.format(new Date(m.date)).split(', ')[0];
 
+                // Parse Schedule
                 const [startH, startM] = m.startTime.split(':').map(Number);
                 const [endH, endM] = m.endTime.split(':').map(Number);
 
-                let rawEndVal = endH + (endM / 60);
                 const startVal = startH + (startM / 60);
+                let endVal = endH + (endM / 60);
 
-                // Handle midnight crossing (e.g., meeting goes from 22:00 to 01:00)
-                if (rawEndVal < startVal) {
-                    rawEndVal += 24;
-                }
+                // Handle midnight crossing
+                if (endVal < startVal) endVal += 24;
 
-                const endVal = rawEndVal + 1.5; // 1.5-hour grace period
+                let shouldBeActive = false;
+                let statusReason = '';
 
-                const isToday = meetingDateStr === todayDate;
-                let shouldFinalize = false;
-
-                if (meetingDateStr > todayDate) {
-                    // Future date - do not finalize
-                    shouldFinalize = false;
-                } else if (isToday) {
-                    // Today: Check if current time is past the end value
-                    if (timeDecimal >= endVal) shouldFinalize = true;
-                } else {
-                    // Past Day
-                    const mDate = new Date(meetingDateStr);
-                    const tDate = new Date(todayDate);
-                    const diffTime = tDate - mDate;
-                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-                    if (diffDays === 1 && endVal > 24) {
-                        // If meeting was yesterday but extended into today (past midnight)
-                        // Check if valid time has passed today (endVal - 24)
-                        if (timeDecimal >= (endVal - 24)) {
-                            shouldFinalize = true;
-                        }
+                // Logic to determine if it SHOULD be active right now
+                if (meetingDateStr === todayDate) {
+                    // Meeting is TODAY
+                    if (timeDecimal >= startVal && timeDecimal <= endVal) {
+                        shouldBeActive = true;
+                        statusReason = 'Time Window Open';
+                    } else if (timeDecimal > endVal) {
+                        shouldBeActive = false;
+                        statusReason = 'Time Window Closed';
                     } else {
-                        // Not the immediate next day OR didn't extend past midnight -> Finalize
-                        shouldFinalize = true;
+                        shouldBeActive = false; // Not yet started
+                        statusReason = 'Not Yet Started';
                     }
+                } else if (meetingDateStr < todayDate) {
+                    // Meeting was in the PAST
+                    // Check if it extended past midnight into today?
+                    // For simplicity, if date is past, close it unless complex 24h logic needed.
+                    // Assuming meetings strictly adhere to the date + timeframe.
+                    shouldBeActive = false;
+                    statusReason = 'Date Passed';
+                } else {
+                    // Future date
+                    shouldBeActive = false;
+                    statusReason = 'Future Date';
                 }
 
-                if (shouldFinalize) {
-                    console.log(`[Meeting Control] Auto-finalizing "${m.name}": MeetingDay(${meetingDateStr}) Today(${todayDate}) Time(${timeDecimal.toFixed(2)}) End(${endVal.toFixed(2)})`);
-                    m.isActive = false;
-                    updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
+                // Apply Updates if Status Mismatch
+                if (m.isActive !== shouldBeActive) {
+                    console.log(`[Meeting Control] Auto-Update "${m.name}": Active(${m.isActive}) -> ShouldBe(${shouldBeActive}). Reason: ${statusReason}`);
+                    m.isActive = shouldBeActive;
+                    updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: shouldBeActive }));
                 }
             }
             return m;

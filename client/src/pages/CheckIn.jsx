@@ -17,9 +17,10 @@ const CheckIn = () => {
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [msg, setMsg] = useState('');
-    const [timeLeft, setTimeLeft] = useState(25); // 25 seconds for the "Race"
+    const [timeLeft, setTimeLeft] = useState(60); // 60 seconds for the "Race"
     const [serverStartTime, setServerStartTime] = useState(null);
     const [isExpired, setIsExpired] = useState(false);
+    const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
 
     useEffect(() => {
         let timer;
@@ -46,11 +47,10 @@ const CheckIn = () => {
                 setServerStartTime(res.data.serverStartTime);
 
                 // Initialize timer
-                const sessionDuration = 25;
+                const sessionDuration = 60;
                 setTimeLeft(sessionDuration);
 
                 // Initialize responses with empty strings for each required field
-                const initialResponses = {};
                 res.data.requiredFields.forEach(f => {
                     initialResponses[f.key] = '';
                 });
@@ -61,6 +61,13 @@ const CheckIn = () => {
 
                 const userRole = localStorage.getItem('role');
                 const isSuperUser = ['developer', 'superadmin'].includes(userRole);
+
+                // --- DUPLICATE CHECK-IN DETECTION (CLIENT-SIDE BANTER) ---
+                const localStatus = localStorage.getItem(`doulos_attendance_status_${meetingCode}`);
+                if (localStatus === 'success' && !isSuperUser) {
+                    setHasAlreadyCheckedIn(true);
+                    return; // Stop loading form
+                }
 
                 if (!res.data.isActive && !res.data.isTestMeeting && !isSuperUser) {
                     setStatus('error');
@@ -142,6 +149,7 @@ const CheckIn = () => {
             });
             setStatus('success');
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
+            localStorage.setItem(`doulos_attendance_status_${meetingCode}`, 'success'); // Mark as done locally
             if (res.data.showGraduationCongrats) {
                 setShowCongrats(true);
             }
@@ -200,14 +208,52 @@ const CheckIn = () => {
 
             <div className="glass-panel" style={{
                 width: '100%',
-                maxWidth: '500px',
+                maxWidth: '400px',
                 padding: '3rem',
                 border: '1px solid var(--glass-border)',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                 backdropFilter: 'blur(20px)'
             }}>
-                {isExpired ? (
+                {hasAlreadyCheckedIn ? (
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                        <div style={{ background: 'rgba(255, 215, 0, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                            <span style={{ fontSize: '3rem' }}>😎</span>
+                        </div>
+                        <h2 style={{ color: '#fbbf24', fontSize: '1.8rem', fontWeight: 900, marginBottom: '1rem', textTransform: 'uppercase' }}>
+                            Easy There, Douloid!
+                        </h2>
+                        <div style={{ fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.9)', marginBottom: '2.5rem', fontStyle: 'italic' }}>
+                            {meeting?.campus?.toLowerCase().includes('athi') ? (
+                                <>
+                                    "A banter wauh i see what you are trying to do, go to sleep..." 🛌💤
+                                    <br /><span style={{ fontSize: '0.8rem', opacity: 0.6, display: 'block', marginTop: '1rem' }}>(Seriously, you're already checked in!)</span>
+                                </>
+                            ) : (
+                                <>
+                                    "Nairobi traffic is enough stress, don't stress our database too!" 🚗💨
+                                    <br /><span style={{ fontSize: '0.8rem', opacity: 0.6, display: 'block', marginTop: '1rem' }}>(You're good! See you next week!)</span>
+                                </>
+                            )}
+                        </div>
+
+                        <button
+                            className="btn"
+                            onClick={() => window.location.href = '/portal'}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                fontWeight: 800,
+                                borderRadius: '0.75rem',
+                                color: 'white'
+                            }}
+                        >
+                            CHECK MY PORTAL
+                        </button>
+                    </div>
+                ) : isExpired ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                         <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                             <Clock size={40} color="#ef4444" />

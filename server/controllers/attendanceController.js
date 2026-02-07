@@ -17,9 +17,9 @@ export const submitAttendance = async (req, res) => {
         // EXTRA SECURITY: 20-Second Freshness Timer (Proximity Timing)
         if (serverStartTime && !isSuperUser && !meeting.isTestMeeting) {
             const timeElapsed = Date.now() - serverStartTime;
-            if (timeElapsed > 25000) { // 25 seconds (20s + 5s buffer)
+            if (timeElapsed > 65000) { // 60 seconds (+5s buffer)
                 return res.status(403).json({
-                    message: "Scan Session Expired (20s limit). Please scan again at the physical banner. Shared QR codes are not allowed."
+                    message: "Scan Session Expired (60s limit). Please scan again at the physical banner. Shared QR codes are not allowed."
                 });
             }
         }
@@ -75,7 +75,36 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 8. Duplicate check
+        // 8. One Meeting Per Week Check
+        // Calculate the week range for the current meeting
+        const meetingDate = new Date(meeting.date);
+        const dayOfWeek = meetingDate.getDay(); // 0 (Sun) - 6 (Sat)
+
+        // Assume week starts on Sunday
+        const startOfWeek = new Date(meetingDate);
+        startOfWeek.setDate(meetingDate.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        // Find any OTHER attendance by this student in this week range
+        // We use the 'timestamp' of the attendance record as the proxy for the meeting date, 
+        // which is accurate enough for preventing double check-ins in the same week.
+        const weeklyAttendance = await Attendance.findOne({
+            studentRegNo,
+            timestamp: { $gte: startOfWeek, $lte: endOfWeek },
+            meeting: { $ne: meeting._id } // Not this specific meeting
+        });
+
+        if (weeklyAttendance && !isSuperUser && !meeting.isTestMeeting) {
+            return res.status(409).json({
+                message: `You already checked in for ${weeklyAttendance.meetingName || 'another meeting'} this week. You can only attend one meeting per week!`
+            });
+        }
+
+        // 9. Duplicate check (This meeting)
         const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
         if (existing) {
             return res.status(409).json({ message: 'You have already signed in for this meeting.' });

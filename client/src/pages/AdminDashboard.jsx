@@ -5,8 +5,9 @@ import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, Users,
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
-    FileSpreadsheet
+    FileSpreadsheet, ChevronDown, UploadCloud
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -50,6 +51,7 @@ const AdminDashboard = () => {
     const [editingMember, setEditingMember] = useState(null);
     const [memberInsights, setMemberInsights] = useState(null);
     const [loadingInsights, setLoadingInsights] = useState(false);
+    const [showAddMenu, setShowAddMenu] = useState(false);
 
     useEffect(() => {
         if (!isDarkMode) {
@@ -60,6 +62,32 @@ const AdminDashboard = () => {
             localStorage.setItem('theme', 'dark');
         }
     }, [isDarkMode]);
+
+    // --- IDLE TIMER (AUTO LOCK) ---
+    useEffect(() => {
+        let timeout;
+
+        const resetTimer = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                // Auto lock after 5 minutes of inactivity
+                localStorage.clear();
+                window.location.href = '/admin';
+            }, 5 * 60 * 1000); // 5 minutes
+        };
+
+        // Events to listen for activity
+        const events = ['mousemove', 'keydown', 'click', 'scroll'];
+        events.forEach(event => window.addEventListener(event, resetTimer));
+
+        // Start timer initially
+        resetTimer();
+
+        return () => {
+            clearTimeout(timeout);
+            events.forEach(event => window.removeEventListener(event, resetTimer));
+        };
+    }, []);
 
     const fetchMeetings = async () => {
         try {
@@ -485,102 +513,183 @@ const AdminDashboard = () => {
         }
     };
 
-    const handlePrintQR = (meeting) => {
-        const qrSvg = document.querySelector('.qr-modal-content svg');
-        if (!qrSvg) {
-            setMsg({ type: 'error', text: 'QR code not found' });
-            return;
-        }
+    const handleFileImport = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
+        setImportLoading(true);
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                // Map data to expected format
+                const formattedMembers = data.map(row => {
+                    // Try to find keys case-insensitively
+                    const getVal = (possibleKeys) => {
+                        const key = Object.keys(row).find(k => possibleKeys.includes(k.toLowerCase().trim()));
+                        return key ? row[key] : null;
+                    };
+
+                    const name = getVal(['name', 'full name', 'student name', 'fullname']);
+                    const rawReg = getVal(['adm', 'adm no', 'admission', 'admission number', 'reg', 'reg no', 'registration', 'registration number']);
+
+                    // Formatting Ref No (e.g. 22-1234)
+                    let studentRegNo = '';
+                    if (rawReg) {
+                        let clean = String(rawReg).replace(/[^0-9]/g, ''); // 221234
+                        if (clean.length > 2) {
+                            studentRegNo = clean.slice(0, 2) + '-' + clean.slice(2);
+                        } else {
+                            studentRegNo = clean;
+                        }
+                    }
+
+                    // Flexible Category Mapping
+                    let type = getVal(['category', 'type', 'member type', 'role']) || 'Visitor';
+                    // Normalize common inputs
+                    if (type.toLowerCase().includes('douloid')) type = 'Douloid';
+                    else if (type.toLowerCase().includes('recruit')) type = 'Recruit';
+                    else if (type.toLowerCase().includes('visitor')) type = 'Visitor';
+
+                    const campus = getVal(['campus', 'location']) || 'Athi River'; // Default
+
+                    return {
+                        name: name,
+                        studentRegNo: studentRegNo,
+                        memberType: type,
+                        campus: campus
+                    };
+                }).filter(m => m.name && m.studentRegNo && m.studentRegNo.length > 3);
+
+                if (formattedMembers.length === 0) {
+                    setMsg({ type: 'error', text: 'No valid members found (Check your column names: Name, Adm No, Category)' });
+                    setImportLoading(false);
+                    return;
+                }
+
+                // Send to backend
+                await api.post('/members/import', { members: formattedMembers });
+                setMsg({ type: 'success', text: `Successfully imported ${formattedMembers.length} members!` });
+                fetchMembers();
+
+            } catch (err) {
+                console.error(err);
+                setMsg({ type: 'error', text: 'Failed to process file. Ensure it is a valid Excel/CSV.' });
+            } finally {
+                setImportLoading(false);
+                // Clear input
+                e.target.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const handlePrintQR = () => {
+        if (!selectedMeeting) return;
+
+        // Find the QR code SVG. 
+        // Note: The on-screen version is blurred, but the SVG data itself is valid.
+        // We will print it cleanly without the blur styles.
+        const qrSvg = document.querySelector('.qr-modal-content svg');
+        if (!qrSvg) return;
+
+        // Create a clean version of the SVG for printing (removing parent filters if any)
         const qrDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(qrSvg));
+        const meeting = selectedMeeting;
 
         const printHtml = `
-    < html >
-            <head>
-                <title>Doulos QR - ${meeting.name}</title>
-                <style>
-                    @page {
-                        size: A4;
-                        margin: 0;
-                    }
-                    body { 
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                        margin: 0;
-                        padding: 0;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 100vh;
-                        background-color: #f5f5f5;
-                    }
-                    .page {
-                        width: 210mm;
-                        height: 297mm;
-                        padding: 20mm;
-                        background: white;
-                        box-sizing: border-box;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: space-between;
-                        text-align: center;
-                    }
-                    .header { width: 100%; }
-                    .logo { height: 100px; margin-bottom: 15mm; }
-                    .meeting-name { font-size: 3rem; font-weight: 800; color: #032540; margin: 0; line-height: 1.1; }
-                    .details { font-size: 1.5rem; color: #1976d2; margin-top: 5mm; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-                    
-                    .qr-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-                    .qr-container { 
-                        padding: 15mm; 
-                        background: white; 
-                        border: 2mm solid #032540; 
-                        border-radius: 10mm;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-                    }
-                    .scan-text { margin-top: 10mm; font-size: 1.2rem; color: #555; font-weight: 500; }
-                    
-                    .footer-info { width: 100%; border-top: 2px solid #eee; padding-top: 10mm; }
-                    .date { font-size: 1.4rem; font-weight: 700; color: #032540; margin-bottom: 3mm; }
-                    .system-tag { font-size: 1rem; color: #888; letter-spacing: 2px; text-transform: uppercase; }
+            <html>
+                <head>
+                    <title>Doulos QR - ${meeting.name}</title>
+                    <style>
+                        @page {
+                            size: A4;
+                            margin: 0;
+                        }
+                        body { 
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                            margin: 0;
+                            padding: 0;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            background-color: #f5f5f5;
+                        }
+                        .page {
+                            width: 210mm;
+                            height: 297mm;
+                            padding: 20mm;
+                            background: white;
+                            box-sizing: border-box;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: space-between;
+                            text-align: center;
+                        }
+                        .header { width: 100%; }
+                        .logo { height: 100px; margin-bottom: 15mm; }
+                        .meeting-name { font-size: 3rem; font-weight: 800; color: #032540; margin: 0; line-height: 1.1; }
+                        .details { font-size: 1.5rem; color: #1976d2; margin-top: 5mm; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+                        
+                        .qr-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                        .qr-container { 
+                            padding: 15mm; 
+                            background: white; 
+                            border: 2mm solid #032540; 
+                            border-radius: 10mm;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+                        }
+                        .scan-text { margin-top: 10mm; font-size: 1.2rem; color: #555; font-weight: 500; }
+                        
+                        .footer-info { width: 100%; border-top: 2px solid #eee; padding-top: 10mm; }
+                        .date { font-size: 1.4rem; font-weight: 700; color: #032540; margin-bottom: 3mm; }
+                        .system-tag { font-size: 1rem; color: #888; letter-spacing: 2px; text-transform: uppercase; }
 
-                    @media print {
-                        body { background: none; }
-                        .page { box-shadow: none; margin: 0; width: 100%; height: 100%; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="page">
-                    <div class="header">
-                        <img src="${window.location.origin}/logo.png" class="logo" />
-                        <div class="meeting-name">${meeting.name}</div>
-                        <div class="details">${meeting.campus} ${meeting.campus.toLowerCase().includes('athi') ? 'Fellowship' : 'Meeting'}</div>
-                    </div>
-                    
-                    <div class="qr-section">
-                        <div class="qr-container">
-                            <img src="${qrDataUrl}" width="400" height="400" />
+                        @media print {
+                            body { background: none; }
+                            .page { box-shadow: none; margin: 0; width: 100%; height: 100%; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="page">
+                        <div class="header">
+                            <img src="${window.location.origin}/logo.png" class="logo" />
+                            <div class="meeting-name">${meeting.name}</div>
+                            <div class="details">${meeting.campus} ${meeting.campus.toLowerCase().includes('athi') ? 'Fellowship' : 'Meeting'}</div>
                         </div>
-                        <div class="scan-text">SCAN TO MARK ATTENDANCE</div>
+
+                        <div class="qr-section">
+                            <div class="qr-container">
+                                <img src="${qrDataUrl}" width="400" height="400" />
+                            </div>
+                            <div class="scan-text">SCAN TO MARK ATTENDANCE</div>
+                        </div>
+
+                        <div class="footer-info">
+                            <div class="date">${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                            <div class="system-tag">Doulos Solidarity &bull; Daystar University</div>
+                        </div>
                     </div>
-                    
-                    <div class="footer-info">
-                        <div class="date">${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                        <div class="system-tag">Doulos Solidarity &bull; Daystar University</div>
-                    </div>
-                </div>
-                <script>
-                    window.onload = () => { 
-                        setTimeout(() => {
-                            window.print();
-                            window.onafterprint = () => window.close();
-                        }, 500); 
-                    };
-                </script>
-            </body>
-            </html >
-    `;
+                    <script>
+                        window.onload = () => {
+                            setTimeout(() => {
+                                window.print();
+                                window.onafterprint = () => window.close();
+                            }, 500); 
+                        };
+                    </script>
+                </body>
+            </html>
+        `;
 
         const win = window.open('', '_blank');
         win.document.write(printHtml);
@@ -624,7 +733,7 @@ const AdminDashboard = () => {
     const handleResetDevice = async (memberId) => {
         if (!window.confirm('Are you sure you want to reset this student\'s device link? They will be able to check in with a new phone.')) return;
         try {
-            await api.post(`/members/${memberId}/reset-device`);
+            await api.post(`/ members / ${memberId}/reset-device`);
             setMsg({ type: 'success', text: 'Device link reset successfully!' });
             fetchMembers();
             setEditingMember(null);
@@ -977,12 +1086,19 @@ const AdminDashboard = () => {
                                                     const end = new Date(m.date);
                                                     end.setHours(endH, endM, 0, 0);
 
-                                                    const isSuperUser = ['developer', 'superadmin'].includes(userRole);
+                                                    // Use state 'userRole' which is initialized from localStorage
+                                                    const role = userRole || localStorage.getItem('role');
+                                                    const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
 
-                                                    if (isSuperUser || (now >= start && now <= end)) {
+                                                    const isWithinTime = now >= start && now <= end;
+
+                                                    if (isSuperUser || isWithinTime) {
                                                         setSelectedMeeting(m);
                                                     } else {
-                                                        setMsg({ type: 'error', text: 'QR Code is locked. It only opens during meeting time.' });
+                                                        // Developer Mode: Skip Time Restrictions
+                                                        if (window.confirm(`⚠️ Time Restriction ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code anyway?`)) {
+                                                            setSelectedMeeting(m);
+                                                        }
                                                     }
                                                 }}
                                             >
@@ -1080,22 +1196,81 @@ const AdminDashboard = () => {
                                         </button>
                                     )}
                                 </div>
-                                <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
-                                    Sync
-                                </button>
-                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={() => setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' })}>
-                                    Add Member
-                                </button>
-                                <button
-                                    className="btn"
-                                    style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(37,170,225,0.2)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                    onClick={downloadRegistryCSV}
-                                    title="Export full registry to CSV"
-                                >
-                                    <FileSpreadsheet size={16} /> Export CSV
-                                </button>
                             </div>
                         </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
+                                Sync
+                            </button>
+
+                            {/* Add Member Dropdown */}
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    onClick={() => setShowAddMenu(!showAddMenu)}
+                                >
+                                    <Plus size={16} /> Add Member <ChevronDown size={14} />
+                                </button>
+
+                                {showAddMenu && (
+                                    <div className="glass-panel" style={{
+                                        position: 'absolute',
+                                        top: '120%',
+                                        right: 0,
+                                        zIndex: 100,
+                                        background: 'hsl(var(--color-bg))',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '0.5rem',
+                                        padding: '0.5rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.25rem',
+                                        minWidth: '180px',
+                                        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)'
+                                    }}>
+                                        <button
+                                            className="btn"
+                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none' }}
+                                            onClick={() => {
+                                                setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' });
+                                                setShowAddMenu(false);
+                                            }}
+                                        >
+                                            <Users size={16} style={{ marginRight: '0.5rem', opacity: 0.7 }} /> Single Entry
+                                        </button>
+                                        <button
+                                            className="btn"
+                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none' }}
+                                            onClick={() => {
+                                                document.getElementById('import-file-input').click();
+                                                setShowAddMenu(false);
+                                            }}
+                                        >
+                                            <FileSpreadsheet size={16} style={{ marginRight: '0.5rem', opacity: 0.7 }} /> Import Excel / CSV
+                                        </button>
+                                    </div>
+                                )}
+                                <input
+                                    type="file"
+                                    id="import-file-input"
+                                    hidden
+                                    accept=".csv, .xlsx, .xls"
+                                    onChange={handleFileImport}
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            className="btn"
+                            style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(37,170,225,0.2)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                            onClick={downloadRegistryCSV}
+                            title="Export full registry to CSV"
+                        >
+                            <FileSpreadsheet size={16} /> Export CSV
+                        </button>
+
                         <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                             <div style={{ position: 'relative' }}>
                                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)' }} />
@@ -1211,285 +1386,324 @@ const AdminDashboard = () => {
                         onDownloadCSV={downloadCSV}
                         onDownloadCumulativeCSV={downloadCumulativeCSV}
                     />
-                )}
+                )
+                }
 
                 {/* Member Insights & Profile Modal */}
-                {editingMember && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
-                    }} onClick={() => { setEditingMember(null); setMemberInsights(null); }}>
-                        <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                                <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
-                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                                        <p style={{ color: 'var(--color-text-dim)', margin: 0 }}>{editingMember.studentRegNo} • {editingMember.campus}</p>
-                                        {memberInsights?.history?.[0] && !loadingInsights && (
-                                            <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', color: 'var(--color-text-dim)' }}>
-                                                Last seen: {new Date(memberInsights.history[0].date).toLocaleDateString()}
-                                            </span>
-                                        )}
+                {
+                    editingMember && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                            background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
+                        }} onClick={() => { setEditingMember(null); setMemberInsights(null); }}>
+                            <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                                    <div>
+                                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--color-text-dim)', margin: 0 }}>{editingMember.studentRegNo} • {editingMember.campus}</p>
+                                            {memberInsights?.history?.[0] && !loadingInsights && (
+                                                <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', color: 'var(--color-text-dim)' }}>
+                                                    Last seen: {new Date(memberInsights.history[0].date).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
+                                    <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); }} style={{ padding: '0.5rem 1rem' }}>Close</button>
                                 </div>
-                                <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); }} style={{ padding: '0.5rem 1rem' }}>Close</button>
-                            </div>
 
-                            {editingMember._id === 'NEW' ? (
-                                <form onSubmit={saveMember} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Full Name</label>
-                                            <input className="input-field" required value={editingMember.name} onChange={e => setEditingMember({ ...editingMember, name: e.target.value })} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Admission Number</label>
-                                            <input
-                                                className="input-field"
-                                                required
-                                                value={editingMember.studentRegNo}
-                                                onChange={e => {
-                                                    let val = e.target.value.replace(/\D/g, '');
-                                                    if (val.length > 2) {
-                                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                                    }
-                                                    setEditingMember({ ...editingMember, studentRegNo: val });
-                                                }}
-                                                placeholder="e.g. 22-0000"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Campus</label>
-                                            <select className="input-field" value={editingMember.campus} onChange={e => setEditingMember({ ...editingMember, campus: e.target.value })}>
-                                                <option value="Athi River">Athi River</option>
-                                                <option value="Valley Road">Valley Road</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Category</label>
-                                            <select className="input-field" value={editingMember.memberType} onChange={e => setEditingMember({ ...editingMember, memberType: e.target.value })}>
-                                                <option value="Douloid">Douloid</option>
-                                                <option value="Recruit">Recruit</option>
-                                                <option value="Visitor">Visitor</option>
-                                                <option value="Exempted">Exempted</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem' }}>Save Member</button>
-                                </form>
-                            ) : (
-                                <div>
-                                    {loadingInsights ? (
-                                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>Analyzing attendance data...</div>
-                                    ) : memberInsights ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                            {/* Stats Cards */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-                                                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Points</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFD700' }}>{editingMember.totalPoints || 0}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Attended</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.physicalAttended}{memberInsights.stats.exemptedCount > 0 ? ` + ${memberInsights.stats.exemptedCount}E` : ''} / {memberInsights.stats.totalMeetings}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: memberInsights.stats.percentage > 75 ? '#4ade80' : '#facc15' }}>{memberInsights.stats.percentage}%</div>
-                                                </div>
-                                            </div>
-
-                                            {/* Attendance Trend (Custom Chart) */}
+                                {editingMember._id === 'NEW' ? (
+                                    <form onSubmit={saveMember} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                                             <div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                                    <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Attendance Trend (Last 20)</h4>
-                                                    <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <div style={{ width: '8px', height: '8px', background: '#25AAE1', borderRadius: '2px' }}></div> Present
-                                                        </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <div style={{ width: '8px', height: '8px', background: '#FFD700', borderRadius: '2px' }}></div> Exempt
-                                                        </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <div style={{ width: '8px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}></div> Absent
-                                                        </div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Full Name</label>
+                                                <input className="input-field" required value={editingMember.name} onChange={e => setEditingMember({ ...editingMember, name: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Admission Number</label>
+                                                <input
+                                                    className="input-field"
+                                                    required
+                                                    value={editingMember.studentRegNo}
+                                                    onChange={e => {
+                                                        let val = e.target.value.replace(/\D/g, '');
+                                                        if (val.length > 2) {
+                                                            val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                                        }
+                                                        setEditingMember({ ...editingMember, studentRegNo: val });
+                                                    }}
+                                                    placeholder="e.g. 22-0000"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Campus</label>
+                                                <select className="input-field" value={editingMember.campus} onChange={e => setEditingMember({ ...editingMember, campus: e.target.value })}>
+                                                    <option value="Athi River">Athi River</option>
+                                                    <option value="Valley Road">Valley Road</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Category</label>
+                                                <select className="input-field" value={editingMember.memberType} onChange={e => setEditingMember({ ...editingMember, memberType: e.target.value })}>
+                                                    <option value="Douloid">Douloid</option>
+                                                    <option value="Recruit">Recruit</option>
+                                                    <option value="Visitor">Visitor</option>
+                                                    <option value="Exempted">Exempted</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem' }}>Save Member</button>
+                                    </form>
+                                ) : (
+                                    <div>
+                                        {loadingInsights ? (
+                                            <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>Analyzing attendance data...</div>
+                                        ) : memberInsights ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                                {/* Stats Cards */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                                                    <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Points</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFD700' }}>{editingMember.totalPoints || 0}</div>
+                                                    </div>
+                                                    <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Attended</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.physicalAttended}{memberInsights.stats.exemptedCount > 0 ? ` + ${memberInsights.stats.exemptedCount}E` : ''} / {memberInsights.stats.totalMeetings}</div>
+                                                    </div>
+                                                    <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: memberInsights.stats.percentage > 75 ? '#4ade80' : '#facc15' }}>{memberInsights.stats.percentage}%</div>
                                                     </div>
                                                 </div>
-                                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '100px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
-                                                    {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.isExempted ? 'Exempted' : h.attended ? 'Present' : 'Absent'}`}
-                                                            style={{
-                                                                flex: 1,
-                                                                height: (h.attended || h.isExempted) ? '100%' : '15%',
-                                                                background: h.isExempted ? '#FFD700' : h.attended ? '#25AAE1' : 'rgba(255,255,255,0.1)',
-                                                                borderRadius: '2px',
-                                                                transition: 'all 0.3s ease',
-                                                                opacity: (h.attended || h.isExempted) ? 1 : 0.3
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
 
-                                            {/* Category Display */}
-                                            <div className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                                {/* Attendance Trend (Custom Chart) */}
                                                 <div>
-                                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Profile Category</h4>
-                                                </div>
-                                                <span style={{
-                                                    padding: '0.4rem 1rem',
-                                                    borderRadius: '2rem',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: 700,
-                                                    background: editingMember.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(167, 139, 250, 0.1)',
-                                                    color: editingMember.memberType === 'Exempted' ? '#f87171' : '#a78bfa',
-                                                    border: editingMember.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(167, 139, 250, 0.2)'
-                                                }}>
-                                                    {editingMember.memberType.toUpperCase()}
-                                                </span>
-                                            </div>
-
-                                            {/* History List */}
-                                            <div>
-                                                <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Meeting History</h4>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                    {memberInsights.history.slice(0, 10).map((h, idx) => (
-                                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
-                                                            <span>{h.name}</span>
-                                                            <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-                                                                {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
-                                                            </span>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                        <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Attendance Trend (Last 20)</h4>
+                                                        <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <div style={{ width: '8px', height: '8px', background: '#25AAE1', borderRadius: '2px' }}></div> Present
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <div style={{ width: '8px', height: '8px', background: '#FFD700', borderRadius: '2px' }}></div> Exempt
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <div style={{ width: '8px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}></div> Absent
+                                                            </div>
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '100px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
+                                                        {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.isExempted ? 'Exempted' : h.attended ? 'Present' : 'Absent'}`}
+                                                                style={{
+                                                                    flex: 1,
+                                                                    height: (h.attended || h.isExempted) ? '100%' : '15%',
+                                                                    background: h.isExempted ? '#FFD700' : h.attended ? '#25AAE1' : 'rgba(255,255,255,0.1)',
+                                                                    borderRadius: '2px',
+                                                                    transition: 'all 0.3s ease',
+                                                                    opacity: (h.attended || h.isExempted) ? 1 : 0.3
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Category Display */}
+                                                <div className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                                    <div>
+                                                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Profile Category</h4>
+                                                    </div>
+                                                    <span style={{
+                                                        padding: '0.4rem 1rem',
+                                                        borderRadius: '2rem',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 700,
+                                                        background: editingMember.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(167, 139, 250, 0.1)',
+                                                        color: editingMember.memberType === 'Exempted' ? '#f87171' : '#a78bfa',
+                                                        border: editingMember.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(167, 139, 250, 0.2)'
+                                                    }}>
+                                                        {editingMember.memberType.toUpperCase()}
+                                                    </span>
+                                                </div>
+
+                                                {/* History List */}
+                                                <div>
+                                                    <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Meeting History</h4>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                        {memberInsights.history.slice(0, 10).map((h, idx) => (
+                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
+                                                                <span>{h.name}</span>
+                                                                <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+                                                                    {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
-                                    )}
-                                    {/* Super Admin Actions */}
-                                    <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                width: '100%',
-                                                background: 'rgba(37, 170, 225, 0.1)',
-                                                color: '#25AAE1',
-                                                border: '1px solid rgba(37, 170, 225, 0.2)',
-                                                padding: '0.75rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '0.5rem'
-                                            }}
-                                            onClick={() => handleResetDevice(editingMember._id)}
-                                        >
-                                            <RotateCcw size={16} /> Unlock Device / Reset Link
-                                        </button>
-
-                                        {['developer', 'superadmin'].includes(userRole) && (
+                                        ) : (
+                                            <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
+                                        )}
+                                        {/* Super Admin Actions */}
+                                        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                             <button
                                                 className="btn"
                                                 style={{
                                                     width: '100%',
-                                                    background: 'rgba(239, 68, 68, 0.1)',
-                                                    color: '#ef4444',
-                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                    background: 'rgba(37, 170, 225, 0.1)',
+                                                    color: '#25AAE1',
+                                                    border: '1px solid rgba(37, 170, 225, 0.2)',
                                                     padding: '0.75rem',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     gap: '0.5rem'
                                                 }}
-                                                onClick={() => handleDeleteMember(editingMember._id, editingMember.name)}
+                                                onClick={() => handleResetDevice(editingMember._id)}
                                             >
-                                                <Trash2 size={16} /> Delete Member Permanentely
+                                                <RotateCcw size={16} /> Unlock Device / Reset Link
                                             </button>
-                                        )}
+
+                                            {['developer', 'superadmin'].includes(userRole) && (
+                                                <button
+                                                    className="btn"
+                                                    style={{
+                                                        width: '100%',
+                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                        color: '#ef4444',
+                                                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                        padding: '0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                    onClick={() => handleDeleteMember(editingMember._id, editingMember.name)}
+                                                >
+                                                    <Trash2 size={16} /> Delete Member Permanentely
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Attendance View Modal */}
-                {viewingAttendance && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
-                    }}>
-                        <div className="glass-panel" style={{ width: '90%', maxWidth: '1000px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'hsl(var(--color-bg))', padding: 0, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-                            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 style={{ margin: 0 }}>{viewingAttendance.name} - Attendance</h3>
-                                <button className="btn" style={{ padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance(null)}>Close</button>
-                            </div>
-                            <div style={{ overflow: 'auto', padding: '1rem', flex: 1 }}>
-                                <AttendanceTable meeting={viewingAttendance} setMsg={setMsg} />
+                {
+                    viewingAttendance && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                            background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
+                        }}>
+                            <div className="glass-panel" style={{ width: '90%', maxWidth: '1000px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'hsl(var(--color-bg))', padding: 0, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+                                <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0 }}>{viewingAttendance.name} - Attendance</h3>
+                                    <button className="btn" style={{ padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance(null)}>Close</button>
+                                </div>
+                                <div style={{ overflow: 'auto', padding: '1rem', flex: 1 }}>
+                                    <AttendanceTable meeting={viewingAttendance} setMsg={setMsg} />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
-                {/* QR Modal */}
-                {selectedMeeting && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
-                    }} onClick={() => setSelectedMeeting(null)}>
-                        <div className="glass-panel qr-modal-content" style={{ padding: '2rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                            <h3 style={{ marginBottom: '1rem' }}>Scan to Check In</h3>
-                            <div style={{ background: 'white', padding: '1rem', display: 'inline-block', borderRadius: '0.5rem' }}>
-                                <QRCode
-                                    value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
-                                    size={256}
-                                    level="H"
-                                />
-                            </div>
-                            <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
-                            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>{selectedMeeting.campus} | {selectedMeeting.startTime} - {selectedMeeting.endTime}</p>
+                {
+                    selectedMeeting && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                            background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
+                        }} onClick={() => setSelectedMeeting(null)}>
+                            <div className="glass-panel qr-modal-content" style={{ padding: '2rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                <h3 style={{ marginBottom: '1rem' }}>Scan to Check In</h3>
 
-                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ padding: '0.5rem 1.5rem' }}
-                                    onClick={() => handlePrintQR(selectedMeeting)}
-                                >
-                                    <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
-                                </button>
-                                <button
-                                    className="btn"
-                                    style={{ background: 'var(--glass-bg)', color: 'var(--color-text)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
-                                        navigator.clipboard.writeText(link);
-                                        setMsg({ type: 'success', text: 'Link copied to clipboard!' });
-                                    }}
-                                >
-                                    <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
-                                </button>
-                                {['developer', 'superadmin'].includes(userRole) && (
-                                    <a
-                                        href={`/check-in/${selectedMeeting.code}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="btn"
-                                        style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', padding: '0.5rem 1rem', textDecoration: 'none' }}
-                                        onClick={(e) => e.stopPropagation()}
+                                {/* 
+                                SECURITY FEATURE: Screen Blur
+                                We blur the QR code on screen so it cannot be scanned directly.
+                                It must be printed to be scanned cleanly.
+                            */}
+                                <div style={{ position: 'relative', display: 'inline-block' }}>
+                                    <div style={{
+                                        background: 'white',
+                                        padding: '1rem',
+                                        borderRadius: '0.5rem',
+                                        filter: 'blur(15px)', // High blur to prevent scanning
+                                        opacity: 0.6,
+                                        userSelect: 'none',
+                                        pointerEvents: 'none'
+                                    }}>
+                                        <QRCode
+                                            value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
+                                            size={256}
+                                            level="H"
+                                        />
+                                    </div>
+
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '50%', left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        color: 'black',
+                                        fontWeight: '900',
+                                        fontSize: '1.2rem',
+                                        textTransform: 'uppercase',
+                                        textAlign: 'center',
+                                        width: '100%',
+                                        textShadow: '0 0 10px white'
+                                    }}>
+                                        <div>🚫 No Screen Scan</div>
+                                        <div style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Use "Print QR" Button</div>
+                                    </div>
+                                </div>
+
+                                <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
+                                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>{selectedMeeting.campus} | {selectedMeeting.startTime} - {selectedMeeting.endTime}</p>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ padding: '0.5rem 1.5rem' }}
+                                        onClick={() => handlePrintQR(selectedMeeting)}
                                     >
-                                        <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
-                                    </a >
-                                )}
+                                        <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
+                                    </button>
+                                    <button
+                                        className="btn"
+                                        style={{ background: 'var(--glass-bg)', color: 'var(--color-text)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
+                                            navigator.clipboard.writeText(link);
+                                            setMsg({ type: 'success', text: 'Link copied to clipboard!' });
+                                        }}
+                                    >
+                                        <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
+                                    </button>
+                                    {['developer', 'superadmin'].includes(userRole) && (
+                                        <a
+                                            href={`/check-in/${selectedMeeting.code}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="btn"
+                                            style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', padding: '0.5rem 1rem', textDecoration: 'none' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
+                                        </a >
+                                    )}
+                                </div >
+                                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', marginTop: '1.5rem', opacity: 0.7 }}>Click anywhere outside to close</p>
                             </div >
-                            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', marginTop: '1.5rem', opacity: 0.7 }}>Click anywhere outside to close</p>
                         </div >
-                    </div >
-                )}
+                    )
+                }
 
                 {/* Edit Meeting Modal */}
                 {
@@ -1552,10 +1766,9 @@ const AdminDashboard = () => {
                                 </form>
                             </div>
                         </div>
-                    )
-                }
-            </div >
-        </div >
+                    )}
+            </div>
+        </div>
     );
 };
 
