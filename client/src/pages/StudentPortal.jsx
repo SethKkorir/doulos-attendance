@@ -28,8 +28,9 @@ const StudentPortal = () => {
         setError(null);
         try {
             const res = await api.get(`/attendance/student/${regNo}`);
-            if (res.data.history.length === 0 && res.data.stats.totalAttended === 0) {
-                setError("We couldn't find any attendance records for this Admission Number. Have you checked in before?");
+            // Allow login if they are a registered member OR have attendance history
+            if (!res.data.isMember && res.data.history.length === 0 && res.data.stats.totalAttended === 0) {
+                setError("We couldn't find any attendance records or member profile for this Admission Number.");
                 setLoading(false);
                 return;
             }

@@ -8,7 +8,7 @@ export const submitAttendance = async (req, res) => {
 
     try {
         // 1. Find the meeting
-        const meeting = await Meeting.findOne({ code: meetingCode });
+        const meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
         if (!meeting) return res.status(404).json({ message: 'Invalid Meeting Code' });
 
         // 2. User & Role check
@@ -33,6 +33,38 @@ export const submitAttendance = async (req, res) => {
             const timeReview = checkCampusTime(meeting);
             if (!timeReview.allowed) {
                 return res.status(403).json({ message: timeReview.message });
+            }
+
+            // GEO-FENCE CHECK
+            // If the meeting has a set location (lat/long exist), we must validate the student's location
+            if (meeting.location && meeting.location.latitude && meeting.location.longitude) {
+                const { userLat, userLong } = req.body; // Expecting coordinates from frontend
+
+                if (!userLat || !userLong) {
+                    return res.status(403).json({ message: "Location Access Denied. You must enable GPS to check in." });
+                }
+
+                // Haversine Formula for distance in meters
+                const R = 6371e3; // Earth radius in meters
+                const φ1 = meeting.location.latitude * Math.PI / 180;
+                const φ2 = userLat * Math.PI / 180;
+                const Δφ = (userLat - meeting.location.latitude) * Math.PI / 180;
+                const Δλ = (userLong - meeting.location.longitude) * Math.PI / 180;
+
+                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+                const distance = R * c; // Distance in meters
+
+                console.log(`[GeoFence] User Distance: ${distance.toFixed(1)}m | Allowed Radius: ${meeting.location.radius}m`);
+
+                if (distance > meeting.location.radius) {
+                    return res.status(403).json({
+                        message: `You are too far from the venue (${distance.toFixed(0)}m away). You must be strictly within ${meeting.location.radius}m to check in.`
+                    });
+                }
             }
         }
 
@@ -228,6 +260,7 @@ export const getStudentPortalData = async (req, res) => {
                 totalAttended: totalValid,
                 percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },
+            isMember: !!member,
             history
         });
     } catch (error) {

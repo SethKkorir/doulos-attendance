@@ -1,4 +1,5 @@
 import Meeting from '../models/Meeting.js';
+import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -49,7 +50,7 @@ export const createMeeting = async (req, res) => {
     }
 };
 
-import Attendance from '../models/Attendance.js';
+
 
 export const getMeetings = async (req, res) => {
     try {
@@ -106,36 +107,28 @@ export const getMeetings = async (req, res) => {
                 let statusReason = '';
 
                 // Logic to determine if it SHOULD be active right now
-                if (meetingDateStr === todayDate) {
-                    // Meeting is TODAY
-                    if (timeDecimal >= startVal && timeDecimal <= endVal) {
-                        shouldBeActive = true;
-                        statusReason = 'Time Window Open';
-                    } else if (timeDecimal > endVal) {
+                // REVISED LOGIC: Only AUTO-CLOSE meetings. Do NOT auto-open or force-close early meetings.
+                // This allows Admins to open a meeting early manually if they want.
+
+                if (meetingDateStr < todayDate) {
+                    // Past Date -> Close
+                    if (m.isActive) {
+                        shouldBeActive = false;
+                        statusReason = 'Date Passed';
+                        updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
+                        console.log(`[Meeting Control] Auto-Close "${m.name}": Date Passed`);
+                    }
+                } else if (meetingDateStr === todayDate) {
+                    // Today
+                    if (timeDecimal > endVal && m.isActive) {
+                        // Time Passed -> Close
                         shouldBeActive = false;
                         statusReason = 'Time Window Closed';
-                    } else {
-                        shouldBeActive = false; // Not yet started
-                        statusReason = 'Not Yet Started';
+                        updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
+                        console.log(`[Meeting Control] Auto-Close "${m.name}": Time Window Closed`);
                     }
-                } else if (meetingDateStr < todayDate) {
-                    // Meeting was in the PAST
-                    // Check if it extended past midnight into today?
-                    // For simplicity, if date is past, close it unless complex 24h logic needed.
-                    // Assuming meetings strictly adhere to the date + timeframe.
-                    shouldBeActive = false;
-                    statusReason = 'Date Passed';
-                } else {
-                    // Future date
-                    shouldBeActive = false;
-                    statusReason = 'Future Date';
-                }
-
-                // Apply Updates if Status Mismatch
-                if (m.isActive !== shouldBeActive) {
-                    console.log(`[Meeting Control] Auto-Update "${m.name}": Active(${m.isActive}) -> ShouldBe(${shouldBeActive}). Reason: ${statusReason}`);
-                    m.isActive = shouldBeActive;
-                    updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: shouldBeActive }));
+                    // If it's before start time or during meeting time, RESPECT MANUAL SETTING.
+                    // do not force it to false.
                 }
             }
             return m;
@@ -202,10 +195,35 @@ export const updateMeetingStatus = async (req, res) => {
     }
 };
 
+export const setMeetingLocation = async (req, res) => {
+    const { id } = req.params;
+    const { latitude, longitude, radius, name } = req.body;
+
+    try {
+        const meeting = await Meeting.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    'location': {
+                        latitude,
+                        longitude,
+                        radius: radius || 200,
+                        name: name || 'Custom Location'
+                    }
+                }
+            },
+            { new: true }
+        );
+        res.json(meeting);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 
 export const getMeetingByCode = async (req, res) => {
     try {
-        const meeting = await Meeting.findOne({ code: req.params.code });
+        const meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
         if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
 
         // Check time restriction
@@ -231,7 +249,17 @@ export const getMeetingByCode = async (req, res) => {
             $or: [{ devotion: { $ne: '' } }, { announcements: { $ne: '' } }]
         }).sort({ date: -1 }).select('name date devotion iceBreaker announcements');
 
-        res.json({ ...meeting.toObject(), previousRecap, serverStartTime: Date.now() });
+        // Check if this device has already attended
+        let hasAttended = false;
+        if (req.query.deviceId) {
+            const existingRecord = await Attendance.findOne({
+                meeting: meeting._id,
+                deviceId: req.query.deviceId
+            });
+            if (existingRecord) hasAttended = true;
+        }
+
+        res.json({ ...meeting.toObject(), previousRecap, serverStartTime: Date.now(), hasAttended });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

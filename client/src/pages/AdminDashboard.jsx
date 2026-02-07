@@ -613,31 +613,177 @@ const AdminDashboard = () => {
                             margin: 0;
                         }
                         body { 
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                            font-family: 'Inter', system-ui, -apple-system, sans-serif;
                             margin: 0;
                             padding: 0;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
-                            background-color: #f5f5f5;
+                            background: black; /* Print background */
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
                         }
                         .page {
                             width: 210mm;
                             height: 297mm;
-                            padding: 20mm;
-                            background: white;
-                            box-sizing: border-box;
+                            position: relative;
+                            background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
+                            color: white;
+                            overflow: hidden;
                             display: flex;
                             flex-direction: column;
                             align-items: center;
-                            justify-content: space-between;
+                            justify-content: center;
                             text-align: center;
                         }
-                        .header { width: 100%; }
-                        .logo { height: 100px; margin-bottom: 15mm; }
-                        .meeting-name { font-size: 3rem; font-weight: 800; color: #032540; margin: 0; line-height: 1.1; }
-                        .details { font-size: 1.5rem; color: #1976d2; margin-top: 5mm; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+                        /* Decorative Background Elements */
+                        .glow-orb {
+                            position: absolute;
+                            border-radius: 50%;
+                            filter: blur(80px);
+                            opacity: 0.4;
+                            z-index: 0;
+                        }
+                        .orb-1 { top: -100px; right: -100px; width: 400px; height: 400px; background: #3b82f6; }
+                        .orb-2 { bottom: -100px; left: -100px; width: 500px; height: 500px; background: #8b5cf6; }
+
+                        .content {
+                            position: relative;
+                            z-index: 10;
+                            width: 100%;
+                            height: 100%;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: space-between; /* Space out header, QR, footer */
+                            padding: 25mm;
+                            box-sizing: border-box;
+                        }
+
+                        .header {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 15px;
+                        }
+                        
+                        .brand {
+                            font-size: 1.2rem;
+                            font-weight: 900;
+                            letter-spacing: 4px;
+                            text-transform: uppercase;
+                            color: rgba(255,255,255,0.5);
+                            border-bottom: 1px solid rgba(255,255,255,0.2);
+                            padding-bottom: 10px;
+                            margin-bottom: 10px;
+                        }
+
+                        .meeting-name { 
+                            font-size: 4rem; 
+                            font-weight: 900; 
+                            line-height: 1.1; 
+                            background: linear-gradient(to right, #fff, #cbd5e1);
+                            -webkit-background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                            margin: 0;
+                            max-width: 90%;
+                        }
+                        
+                        .details { 
+                            font-size: 1.8rem; 
+                            color: #94a3b8; 
+                            margin-top: 10px; 
+                            font-weight: 500; 
+                        }
+
+                        .qr-container {
+                            background: white;
+                            padding: 25px;
+                            border-radius: 30px;
+                            box-shadow: 0 0 60px rgba(59, 130, 246, 0.3);
+                            position: relative;
+                        }
+                        
+                        /* "Scan Me" Badge */
+                        .scan-badge {
+                            position: absolute;
+                            top: -20px;
+                            right: -20px;
+                            background: #ef4444;
+                            color: white;
+                            font-weight: 900;
+                            padding: 10px 20px;
+                            border-radius: 50px;
+                            transform: rotate(15deg);
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                            font-size: 1.2rem;
+                        }
+
+                        .qr-code {
+                            width: 400px;
+                            height: 400px;
+                            object-fit: contain;
+                        }
+
+                        .footer {
+                            width: 100%;
+                            border-top: 1px solid rgba(255,255,255,0.1);
+                            padding-top: 20px;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-end;
+                        }
+                        
+                        .instruction {
+                            text-align: left;
+                        }
+                        .instruction h3 {
+                            font-size: 1.5rem;
+                            color: #3b82f6;
+                            margin: 0 0 5px 0;
+                            text-transform: uppercase;
+                        }
+                        .instruction p {
+                            font-size: 1rem;
+                            color: #94a3b8;
+                            margin: 0;
+                            max-width: 300px;
+                        }
+                        
+                        .meta {
+                            text-align: right;
+                            font-size: 1rem;
+                            color: rgba(255,255,255,0.3);
+                        }
+
+                    </style>
+                </head>
+                <body>
+                    <div class="page">
+                        <div class="glow-orb orb-1"></div>
+                        <div class="glow-orb orb-2"></div>
+
+                        <div class="content">
+                            <div class="header">
+                                <div class="brand">Doulos Attendance</div>
+                                <h1 class="meeting-name">${meeting.name}</h1>
+                                <div class="details">${meeting.campus} &bull; ${meeting.startTime}</div>
+                            </div>
+
+                            <div class="qr-container">
+                                <div class="scan-badge">SCAN ME!</div>
+                                ${new XMLSerializer().serializeToString(qrSvg)}
+                            </div>
+
+                            <div class="footer">
+                                <div class="instruction">
+                                    <h3>Quick Check-In</h3>
+                                    <p>Open your camera or QR scanner to mark your attendance instantly.</p>
+                                </div>
+                                <div class="meta">
+                                    Generatd on ${new Date().toLocaleDateString()}<br/>
+                                    doulos.app
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                         
                         .qr-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
                         .qr-container { 
@@ -661,29 +807,38 @@ const AdminDashboard = () => {
                 </head>
                 <body>
                     <div class="page">
-                        <div class="header">
-                            <img src="${window.location.origin}/logo.png" class="logo" />
-                            <div class="meeting-name">${meeting.name}</div>
-                            <div class="details">${meeting.campus} ${meeting.campus.toLowerCase().includes('athi') ? 'Fellowship' : 'Meeting'}</div>
-                        </div>
+                        <div class="glow-orb orb-1"></div>
+                        <div class="glow-orb orb-2"></div>
 
-                        <div class="qr-section">
-                            <div class="qr-container">
-                                <img src="${qrDataUrl}" width="400" height="400" />
+                        <div class="content">
+                            <div class="header">
+                                <div class="brand">Doulos Attendance</div>
+                                <h1 class="meeting-name">${meeting.name}</h1>
+                                <div class="details">${meeting.campus} &bull; ${meeting.startTime}</div>
                             </div>
-                            <div class="scan-text">SCAN TO MARK ATTENDANCE</div>
-                        </div>
 
-                        <div class="footer-info">
-                            <div class="date">${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                            <div class="system-tag">Doulos Solidarity &bull; Daystar University</div>
+                            <div class="qr-container">
+                                <div class="scan-badge">SCAN ME!</div>
+                                <img src="${qrDataUrl}" class="qr-code" />
+                            </div>
+
+                            <div class="footer">
+                                <div class="instruction">
+                                    <h3>Quick Check-In</h3>
+                                    <p>Open your camera or QR scanner to mark your attendance instantly.</p>
+                                </div>
+                                <div class="meta">
+                                    ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
+                                    Doulos Solidarity
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <script>
                         window.onload = () => {
                             setTimeout(() => {
                                 window.print();
-                                window.onafterprint = () => window.close();
+                                // window.onafterprint = () => window.close(); // Optional: Close after print
                             }, 500); 
                         };
                     </script>
@@ -1629,38 +1784,17 @@ const AdminDashboard = () => {
                                 We blur the QR code on screen so it cannot be scanned directly.
                                 It must be printed to be scanned cleanly.
                             */}
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                    <div style={{
-                                        background: 'white',
-                                        padding: '1rem',
-                                        borderRadius: '0.5rem',
-                                        filter: 'blur(15px)', // High blur to prevent scanning
-                                        opacity: 0.6,
-                                        userSelect: 'none',
-                                        pointerEvents: 'none'
-                                    }}>
-                                        <QRCode
-                                            value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
-                                            size={256}
-                                            level="H"
-                                        />
-                                    </div>
-
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '50%', left: '50%',
-                                        transform: 'translate(-50%, -50%)',
-                                        color: 'black',
-                                        fontWeight: '900',
-                                        fontSize: '1.2rem',
-                                        textTransform: 'uppercase',
-                                        textAlign: 'center',
-                                        width: '100%',
-                                        textShadow: '0 0 10px white'
-                                    }}>
-                                        <div>🚫 No Screen Scan</div>
-                                        <div style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Use "Print QR" Button</div>
-                                    </div>
+                                <div style={{
+                                    background: 'white',
+                                    padding: '1rem',
+                                    borderRadius: '0.5rem',
+                                    display: 'inline-block'
+                                }}>
+                                    <QRCode
+                                        value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
+                                        size={256}
+                                        level="H"
+                                    />
                                 </div>
 
                                 <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
@@ -1762,6 +1896,93 @@ const AdminDashboard = () => {
                                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                         <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
                                         <button type="button" className="btn" onClick={() => setEditingMeeting(null)} style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Cancel</button>
+                                    </div>
+
+                                    {/* Location Settings */}
+                                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                                        <h4 style={{ marginBottom: '1rem' }}>Geo-Location Security</h4>
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '1rem' }}>
+                                                Set the allowed check-in zone to your current location.
+                                                Students must be within <strong>{editingMeeting.location?.radius || 200} meters</strong> of this point.
+                                            </p>
+
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '0.8rem' }}>Location Name</label>
+                                                    <input
+                                                        className="input-field"
+                                                        value={editingMeeting.location?.name || ''}
+                                                        onChange={e => setEditingMeeting({
+                                                            ...editingMeeting,
+                                                            location: { ...editingMeeting.location, name: e.target.value }
+                                                        })}
+                                                        placeholder="e.g. Athi River Chapel"
+                                                    />
+                                                </div>
+                                                <div style={{ width: '100px' }}>
+                                                    <label style={{ fontSize: '0.8rem' }}>Radius (m)</label>
+                                                    <input
+                                                        type="number"
+                                                        className="input-field"
+                                                        value={editingMeeting.location?.radius || 200}
+                                                        onChange={e => setEditingMeeting({
+                                                            ...editingMeeting,
+                                                            location: { ...editingMeeting.location, radius: parseInt(e.target.value) || 200 }
+                                                        })}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!navigator.geolocation) {
+                                                        setMsg({ type: 'error', text: 'Geolocation is not supported by your browser' });
+                                                        return;
+                                                    }
+                                                    navigator.geolocation.getCurrentPosition(
+                                                        async (position) => {
+                                                            const { latitude, longitude } = position.coords;
+                                                            try {
+                                                                await api.post(`/meetings/${editingMeeting._id}/location`, {
+                                                                    latitude,
+                                                                    longitude,
+                                                                    radius: editingMeeting.location?.radius || 200,
+                                                                    name: editingMeeting.location?.name || 'My Current Location'
+                                                                });
+                                                                setMsg({ type: 'success', text: 'Location updated to your current position!' });
+                                                                fetchMeetings();
+                                                                setEditingMeeting(null);
+                                                            } catch (err) {
+                                                                setMsg({ type: 'error', text: 'Failed to update location' });
+                                                            }
+                                                        },
+                                                        (err) => {
+                                                            setMsg({ type: 'error', text: 'Could not get your location. Allow permission.' });
+                                                        }
+                                                    );
+                                                }}
+                                                className="btn"
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'rgba(37, 170, 225, 0.1)',
+                                                    color: '#25AAE1',
+                                                    border: '1px solid rgba(37, 170, 225, 0.2)',
+                                                    display: 'flex',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem'
+                                                }}
+                                            >
+                                                <MapPin size={16} /> Set to My Current Position
+                                            </button>
+                                            {editingMeeting.location?.latitude && (
+                                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#4ade80', textAlign: 'center' }}>
+                                                    ✅ Location Active: {editingMeeting.location.latitude.toFixed(4)}, {editingMeeting.location.longitude.toFixed(4)}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </form>
                             </div>

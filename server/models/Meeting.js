@@ -24,7 +24,13 @@ const meetingSchema = new mongoose.Schema({
     devotion: { type: String, default: '' },
     iceBreaker: { type: String, default: '' },
     announcements: { type: String, default: '' },
-    secretRoomCode: { type: String, default: '' }
+    secretRoomCode: { type: String, default: '' },
+    location: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        radius: { type: Number, default: 200 }, // Default 200 meters
+        name: { type: String, default: '' } // e.g. "Daystar Athi River Chapel"
+    }
 }, { timestamps: true });
 
 export default mongoose.model('Meeting', meetingSchema);

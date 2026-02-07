@@ -7,7 +7,8 @@ import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 
 const CheckIn = () => {
-    const { meetingCode } = useParams();
+    const params = useParams();
+    const meetingCode = (params.meetingCode?.replace(/\/$/, '') || '').toLowerCase();
     const [meeting, setMeeting] = useState(null);
     const [responses, setResponses] = useState({});
     const [memberType, setMemberType] = useState(''); // Douloid, Recruit, Visitor
@@ -40,9 +41,12 @@ const CheckIn = () => {
     };
 
     useEffect(() => {
+        if (!meetingCode) return;
+
         const fetchMeeting = async () => {
             try {
-                const res = await api.get(`/meetings/code/${meetingCode}`);
+                const deviceId = getPersistentDeviceId();
+                const res = await api.get(`/meetings/code/${meetingCode}?deviceId=${deviceId}`);
                 setMeeting(res.data);
                 setServerStartTime(res.data.serverStartTime);
 
@@ -51,6 +55,7 @@ const CheckIn = () => {
                 setTimeLeft(sessionDuration);
 
                 // Initialize responses with empty strings for each required field
+                const initialResponses = {};
                 res.data.requiredFields.forEach(f => {
                     initialResponses[f.key] = '';
                 });
@@ -62,11 +67,18 @@ const CheckIn = () => {
                 const userRole = localStorage.getItem('role');
                 const isSuperUser = ['developer', 'superadmin'].includes(userRole);
 
-                // --- DUPLICATE CHECK-IN DETECTION (CLIENT-SIDE BANTER) ---
+                // --- DUPLICATE CHECK-IN DETECTION ---
+                // Check both LocalStorage AND Server-Side Record
                 const localStatus = localStorage.getItem(`doulos_attendance_status_${meetingCode}`);
-                if (localStatus === 'success' && !isSuperUser) {
+                const serverHasAttended = res.data.hasAttended;
+
+                if ((localStatus === 'success' || serverHasAttended) && !isSuperUser) {
                     setHasAlreadyCheckedIn(true);
                     return; // Stop loading form
+                }
+
+                if ((localStatus === 'success' || serverHasAttended) && isSuperUser) {
+                    setMsg("Admin Notice: You have already checked in on this device. (Bypassing lock for testing)");
                 }
 
                 // --- STRICT LOCK CHECK (Security Layer) ---
@@ -85,8 +97,17 @@ const CheckIn = () => {
                     setStatus('idle');
                 }
             } catch (err) {
+                console.error("Fetch Meeting Error:", err);
+                // If it's a 404, it's definitely invalid. 
+                // If it's a 500 or network error, it might be temporary.
+                if (err.response?.status === 404) {
+                    setMsg('Invalid meeting link. Please check with an admin.');
+                } else if (err.response?.status === 403) {
+                    setMsg(err.response.data.message || 'Access Denied');
+                } else {
+                    setMsg('Connection error. Please try again.');
+                }
                 setStatus('error');
-                setMsg(err.response?.data?.message || 'Invalid or expired meeting link');
             }
         };
         fetchMeeting();
@@ -142,15 +163,52 @@ const CheckIn = () => {
         }
     };
 
+    const [isLocating, setIsLocating] = useState(false);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        let userLocation = { lat: null, long: null };
+
+        // Check if meeting requires location
+        if (meeting?.location?.latitude) {
+            setIsLocating(true);
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+                userLocation.lat = position.coords.latitude;
+                userLocation.long = position.coords.longitude;
+            } catch (error) {
+                setIsLocating(false);
+                setStatus('error');
+                if (error.code === 1) {
+                    setMsg("Location access denied. You MUST enable GPS to check in.");
+                } else if (error.code === 2) {
+                    setMsg("Location unavailable. Try moving to a clear area.");
+                } else if (error.code === 3) {
+                    setMsg("Location request timed out.");
+                } else {
+                    setMsg("Could not verify your location.");
+                }
+                return;
+            }
+            setIsLocating(false);
+        }
+
         setStatus('submitting');
         try {
             const deviceId = getPersistentDeviceId();
             const res = await api.post('/attendance/submit', {
-                meetingCode,
+                meetingCode: meetingCode.toLowerCase(),
                 deviceId,
                 serverStartTime,
+                userLat: userLocation.lat,
+                userLong: userLocation.long,
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
@@ -472,7 +530,7 @@ const CheckIn = () => {
                         <button
                             type="submit"
                             className="btn btn-primary"
-                            disabled={status === 'submitting'}
+                            disabled={status === 'submitting' || isLocating}
                             style={{
                                 height: '65px',
                                 marginTop: '1.5rem',
@@ -484,10 +542,10 @@ const CheckIn = () => {
                                 boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
                             }}
                         >
-                            {status === 'submitting' ? (
+                            {status === 'submitting' || isLocating ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
                                     <div className="loading-spinner-small"></div>
-                                    SUBMITTING...
+                                    {isLocating ? 'VERIFYING LOCATION...' : 'SUBMITTING...'}
                                 </div>
                             ) : 'COMPLETE CHECK-IN'}
                         </button>

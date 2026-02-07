@@ -2,20 +2,31 @@ import { useEffect, useState } from 'react';
 
 const ValentineRain = () => {
     const [elements, setElements] = useState([]);
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        const icons = ['🌸', '🌹', '🌺', '💗', '💞', '🌷', '💐'];
-        const count = 20;
-        const newElements = Array.from({ length: count }).map((_, i) => ({
-            id: i,
-            icon: icons[Math.floor(Math.random() * icons.length)],
-            left: Math.random() * 100,
-            animationDuration: 5 + Math.random() * 10,
-            delay: Math.random() * 5,
-            size: 1 + Math.random() * 1.5
-        }));
-        setElements(newElements);
+        const now = new Date();
+        const month = now.getMonth(); // 0-indexed (1 is Feb)
+        const day = now.getDate();
+
+        // Check if date is between Feb 1st and Feb 15th
+        if (month === 1 && day >= 1 && day <= 15) {
+            setIsVisible(true);
+            const icons = ['🌸', '🌹', '🌺', '💗', '💞', '🌷', '💐'];
+            const count = 20;
+            const newElements = Array.from({ length: count }).map((_, i) => ({
+                id: i,
+                icon: icons[Math.floor(Math.random() * icons.length)],
+                left: Math.random() * 100,
+                animationDuration: 5 + Math.random() * 10,
+                delay: Math.random() * 5,
+                size: 1 + Math.random() * 1.5
+            }));
+            setElements(newElements);
+        }
     }, []);
+
+    if (!isVisible) return null;
 
     return (
         <div style={{
