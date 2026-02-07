@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star, Clock, Lock } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -67,6 +67,15 @@ const CheckIn = () => {
                 if (localStatus === 'success' && !isSuperUser) {
                     setHasAlreadyCheckedIn(true);
                     return; // Stop loading form
+                }
+
+                // --- STRICT LOCK CHECK (Security Layer) ---
+                const lockData = localStorage.getItem(`doulos_attendance_lock_${meetingCode}`);
+                if (lockData) {
+                    const { reason } = JSON.parse(lockData);
+                    setStatus('locked');
+                    setMsg(reason || 'Access Denied');
+                    return;
                 }
 
                 if (!res.data.isActive && !res.data.isTestMeeting && !isSuperUser) {
@@ -154,8 +163,24 @@ const CheckIn = () => {
                 setShowCongrats(true);
             }
         } catch (err) {
-            setStatus('error');
-            setMsg(err.response?.data?.message || 'Submission failed. Please try again.');
+            const errorMsg = err.response?.data?.message || 'Submission failed. Please try again.';
+            const status = err.response?.status;
+
+            // Lock out on specific violations (403 Forbidden / 409 Conflict)
+            // e.g. Device Mismatch, One Scan Per Week, Time Violation
+            if (status === 403 || status === 409) {
+                localStorage.setItem(`doulos_attendance_lock_${meetingCode}`, JSON.stringify({
+                    reason: errorMsg,
+                    timestamp: Date.now()
+                }));
+                setStatus('locked');
+                setMsg(errorMsg);
+                // Optional: Redirect to dashboard after a delay
+                setTimeout(() => window.location.href = '/portal', 4000);
+            } else {
+                setStatus('error');
+                setMsg(errorMsg);
+            }
         }
     };
 
@@ -584,6 +609,29 @@ const CheckIn = () => {
                                 CLOSE
                             </button>
                         </div>
+                    </div>
+                ) : status === 'locked' ? (
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                            <Lock size={60} color="#ef4444" />
+                        </div>
+                        <h2 style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>ACCESS DENIED</h2>
+                        <p style={{ marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.8)' }}>
+                            {msg}
+                        </p>
+
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => window.location.href = '/portal'}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                fontWeight: 800,
+                                borderRadius: '0.75rem'
+                            }}
+                        >
+                            GO TO PORTAL
+                        </button>
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import api from '../api';
-import { CheckCircle, XCircle, ScanLine } from 'lucide-react';
+import { CheckCircle, XCircle, ScanLine, Lock } from 'lucide-react';
 import ValentineRain from '../components/ValentineRain';
 
 const StudentScan = () => {
@@ -54,6 +54,16 @@ const StudentScan = () => {
                     code = parts[parts.length - 1].replace(/\/$/, ''); // handle trailing slash
                 }
 
+                // Check for local lock
+                const lockData = localStorage.getItem(`doulos_attendance_lock_${code}`);
+                if (lockData) {
+                    const { reason } = JSON.parse(lockData);
+                    setMsg(reason);
+                    setStatus('locked');
+                    scanner.clear();
+                    return;
+                }
+
                 setStatus('submitting'); // Show a loading state
                 try {
                     // Pre-verify the meeting link/time
@@ -89,9 +99,23 @@ const StudentScan = () => {
             });
             setStatus('success');
             setMsg('Attendance Recorded Successfully!');
+
         } catch (err) {
-            setStatus('error');
-            setMsg(err.response?.data?.message || 'Submission Failed');
+            const errorMsg = err.response?.data?.message || 'Submission Failed';
+            const status = err.response?.status;
+
+            if (status === 403 || status === 409) {
+                localStorage.setItem(`doulos_attendance_lock_${scannedCode}`, JSON.stringify({
+                    reason: errorMsg,
+                    timestamp: Date.now()
+                }));
+                setStatus('locked');
+                setMsg(errorMsg);
+                setTimeout(() => window.location.href = '/portal', 4000);
+            } else {
+                setStatus('error');
+                setMsg(errorMsg);
+            }
         }
     };
 
@@ -260,6 +284,24 @@ const StudentScan = () => {
                         <h2 style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem' }}>FAILED</h2>
                         <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '2.5rem' }}>{msg}</p>
                         <button className="btn" onClick={reset} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.75rem' }}>TRY AGAIN</button>
+                    </div>
+                )}
+
+                {status === 'locked' && (
+                    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                        <div style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            width: '90px', height: '90px',
+                            borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 1.5rem',
+                            border: '1px solid rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Lock size={50} color="#ef4444" />
+                        </div>
+                        <h2 style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem' }}>ACCESS DENIED</h2>
+                        <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '2.5rem' }}>{msg}</p>
+                        <button className="btn btn-primary" onClick={() => window.location.href = '/portal'} style={{ width: '100%', padding: '1.25rem', borderRadius: '1rem', fontWeight: 900 }}>GO TO PORTAL</button>
                     </div>
                 )}
             </div>

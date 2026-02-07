@@ -62,7 +62,7 @@ export const submitAttendance = async (req, res) => {
                 await member.save();
             } else if (member.linkedDeviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !member.isTestAccount) {
                 return res.status(403).json({
-                    message: "Device Mismatch. This Admission Number is linked to a different phone. Please contact Admin if you have a new phone."
+                    message: "Device Mismatch. This Admission Number is linked to a different phone. Please contact G9s if you have a new phone."
                 });
             }
         }
