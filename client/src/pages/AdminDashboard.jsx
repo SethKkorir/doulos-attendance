@@ -697,7 +697,7 @@ const AdminDashboard = () => {
                             font-family: 'Inter', system-ui, -apple-system, sans-serif;
                             margin: 0;
                             padding: 0;
-                            background: black; /* Print background */
+                            background: white; /* Print background - Changed to white */
                             -webkit-print-color-adjust: exact !important;
                             print-color-adjust: exact !important;
                         }
@@ -705,8 +705,8 @@ const AdminDashboard = () => {
                             width: 210mm;
                             height: 297mm;
                             position: relative;
-                            background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
-                            color: white;
+                            background: white; /* Changed to white */
+                            color: black; /* Changed to black */
                             overflow: hidden;
                             display: flex;
                             flex-direction: column;
@@ -714,16 +714,6 @@ const AdminDashboard = () => {
                             justify-content: center;
                             text-align: center;
                         }
-                        /* Decorative Background Elements */
-                        .glow-orb {
-                            position: absolute;
-                            border-radius: 50%;
-                            filter: blur(80px);
-                            opacity: 0.4;
-                            z-index: 0;
-                        }
-                        .orb-1 { top: -100px; right: -100px; width: 400px; height: 400px; background: #3b82f6; }
-                        .orb-2 { bottom: -100px; left: -100px; width: 500px; height: 500px; background: #8b5cf6; }
 
                         .content {
                             position: relative;
@@ -760,28 +750,36 @@ const AdminDashboard = () => {
                             font-size: 4rem; 
                             font-weight: 900; 
                             line-height: 1.1; 
-                            background: linear-gradient(to right, #fff, #cbd5e1);
-                            -webkit-background-clip: text;
-                            -webkit-text-fill-color: transparent;
+                        .meeting-title {
+                            font-size: 4rem;
+                            font-weight: 900;
+                            line-height: 1.1;
+                            color: #032540; /* Changed for print */
                             margin: 0;
                             max-width: 90%;
                         }
-                        
-                        .details { 
-                            font-size: 1.8rem; 
-                            color: #94a3b8; 
-                            margin-top: 10px; 
-                            font-weight: 500; 
+
+                        .meeting-meta {
+                            font-size: 1.8rem;
+                            color: #555; /* Changed for print */
+                            margin-top: 10px;
+                            font-weight: 500;
                         }
 
-                        .qr-container {
-                            background: white;
-                            padding: 25px;
-                            border-radius: 30px;
-                            box-shadow: 0 0 60px rgba(59, 130, 246, 0.3);
+                        .qr-outer-container {
                             position: relative;
+                            padding: 10px;
+                            background: white;
+                            border-radius: 30px;
+                            border: 2px solid #eee;
                         }
-                        
+
+                        .qr-inner-wrapper {
+                            padding: 25px;
+                            background: white;
+                            border-radius: 20px;
+                        }
+
                         /* "Scan Me" Badge */
                         .scan-badge {
                             position: absolute;
@@ -805,13 +803,13 @@ const AdminDashboard = () => {
 
                         .footer {
                             width: 100%;
-                            border-top: 1px solid rgba(255,255,255,0.1);
+                            border-top: 1px solid #eee; /* Changed for print */
                             padding-top: 20px;
                             display: flex;
                             justify-content: space-between;
                             align-items: flex-end;
                         }
-                        
+
                         .instruction {
                             text-align: left;
                         }
@@ -823,62 +821,16 @@ const AdminDashboard = () => {
                         }
                         .instruction p {
                             font-size: 1rem;
-                            color: #94a3b8;
+                            color: #555; /* Changed for print */
                             margin: 0;
                             max-width: 300px;
                         }
-                        
+
                         .meta {
                             text-align: right;
                             font-size: 1rem;
-                            color: rgba(255,255,255,0.3);
+                            color: #888; /* Changed for print */
                         }
-
-                    </style>
-                </head>
-                <body>
-                    <div class="page">
-                        <div class="glow-orb orb-1"></div>
-                        <div class="glow-orb orb-2"></div>
-
-                        <div class="content">
-                            <div class="header">
-                                <div class="brand">Doulos Attendance</div>
-                                <h1 class="meeting-name">${meeting.name}</h1>
-                                <div class="details">${meeting.campus} &bull; ${meeting.startTime}</div>
-                            </div>
-
-                            <div class="qr-container">
-                                <div class="scan-badge">SCAN ME!</div>
-                                ${new XMLSerializer().serializeToString(qrSvg)}
-                            </div>
-
-                            <div class="footer">
-                                <div class="instruction">
-                                    <h3>Quick Check-In</h3>
-                                    <p>Open your camera or QR scanner to mark your attendance instantly.</p>
-                                </div>
-                                <div class="meta">
-                                    Generatd on ${new Date().toLocaleDateString()}<br/>
-                                    doulos.app
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                        
-                        .qr-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-                        .qr-container { 
-                            padding: 15mm; 
-                            background: white; 
-                            border: 2mm solid #032540; 
-                            border-radius: 10mm;
-                            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-                        }
-                        .scan-text { margin-top: 10mm; font-size: 1.2rem; color: #555; font-weight: 500; }
-                        
-                        .footer-info { width: 100%; border-top: 2px solid #eee; padding-top: 10mm; }
-                        .date { font-size: 1.4rem; font-weight: 700; color: #032540; margin-bottom: 3mm; }
-                        .system-tag { font-size: 1rem; color: #888; letter-spacing: 2px; text-transform: uppercase; }
 
                         @media print {
                             body { background: none; }
@@ -888,19 +840,22 @@ const AdminDashboard = () => {
                 </head>
                 <body>
                     <div class="page">
-                        <div class="glow-orb orb-1"></div>
-                        <div class="glow-orb orb-2"></div>
-
                         <div class="content">
                             <div class="header">
-                                <div class="brand">Doulos Attendance</div>
-                                <h1 class="meeting-name">${meeting.name}</h1>
-                                <div class="details">${meeting.campus} &bull; ${meeting.startTime}</div>
+                                <span class="brand">DOULOS SOLIDARITY</span>
+                                <h1 class="meeting-title">${meeting.name}</h1>
+                                <div class="meeting-meta">
+                                    <span>ATHI RIVER CAMPUS</span>
+                                    <span>•</span>
+                                    <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                </div>
                             </div>
 
-                            <div class="qr-container">
+                            <div class="qr-outer-container">
                                 <div class="scan-badge">SCAN ME!</div>
-                                <img src="${qrDataUrl}" class="qr-code" />
+                                <div class="qr-inner-wrapper">
+                                    ${new XMLSerializer().serializeToString(qrSvg)}
+                                </div>
                             </div>
 
                             <div class="footer">
@@ -955,12 +910,14 @@ const AdminDashboard = () => {
         try {
             if (editingMember._id === 'NEW') {
                 await api.post('/members', editingMember);
+                const firstName = editingMember.name.split(' ')[0];
+                setMsg({ type: 'success', text: `Success! ${firstName} has been added to the registry.` });
             } else {
                 await api.patch(`/members/${editingMember._id}`, editingMember);
+                setMsg({ type: 'success', text: 'Member profile updated!' });
             }
-            setMsg({ type: 'success', text: 'Member profile updated!' });
-            setEditingMember(null);
             fetchMembers();
+            setEditingMember(null);
         } catch (err) {
             setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save member' });
         }
@@ -1510,8 +1467,8 @@ const AdminDashboard = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button className="btn" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
-                                Sync
+                            <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(37,170,225,0.2)' }} onClick={handleSyncRegistry}>
+                                Sync Registry
                             </button>
 
                             {/* Add Member Dropdown */}
@@ -1542,7 +1499,7 @@ const AdminDashboard = () => {
                                     }}>
                                         <button
                                             className="btn"
-                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none' }}
+                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none', color: 'var(--color-text)' }}
                                             onClick={() => {
                                                 setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' });
                                                 setShowAddMenu(false);
@@ -1552,7 +1509,7 @@ const AdminDashboard = () => {
                                         </button>
                                         <button
                                             className="btn"
-                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none' }}
+                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none', color: 'var(--color-text)' }}
                                             onClick={() => {
                                                 document.getElementById('import-file-input').click();
                                                 setShowAddMenu(false);
