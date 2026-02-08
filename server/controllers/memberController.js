@@ -188,6 +188,33 @@ export const graduateAllRecruits = async (req, res) => {
     }
 };
 
+export const graduateMember = async (req, res) => {
+    try {
+        const member = await Member.findByIdAndUpdate(
+            req.params.id,
+            { $set: { memberType: 'Douloid', needsGraduationCongrats: true } },
+            { new: true }
+        );
+        res.json({ message: `Successfully graduated ${member ? member.name : 'member'} to Douloid!`, member });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const resetMemberPoints = async (req, res) => {
+    if (!['developer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Forbidden' });
+    try {
+        const member = await Member.findByIdAndUpdate(
+            req.params.id,
+            { totalPoints: 0 },
+            { new: true }
+        );
+        res.json({ message: `Points reset to 0.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const setupTestAccount = async (req, res) => {
     if (req.user.role !== 'developer') return res.status(403).json({ message: 'Forbidden' });
     const { regNo = '00-0000' } = req.body;
@@ -214,7 +241,7 @@ export const setupTestAccount = async (req, res) => {
 };
 
 export const resetAllMemberPoints = async (req, res) => {
-    if (req.user.role !== 'developer') return res.status(403).json({ message: 'Forbidden' });
+    if (!['developer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Forbidden' });
     try {
         const result = await Member.updateMany(
             { isTestAccount: false },

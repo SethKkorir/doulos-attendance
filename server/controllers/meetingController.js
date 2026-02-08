@@ -32,7 +32,33 @@ const validateMeetingTime = (dateStr, startTime, endTime, campus) => {
 };
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, requiredFields, questionOfDay, location } = req.body;
+    const { name, date, campus, startTime, endTime, requiredFields, questionOfDay, location, isTestMeeting } = req.body;
+
+    // 1. Restriction: One meeting per week per campus for regular admins
+    if (!['developer', 'superadmin'].includes(req.user.role)) {
+        const meetingDate = new Date(date);
+        const dayOfWeek = meetingDate.getDay(); // 0 (Sun) - 6 (Sat)
+
+        // Calculate start of week (Sunday 00:00) and end of week (Saturday 23:59)
+        const startOfWeek = new Date(meetingDate);
+        startOfWeek.setDate(meetingDate.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        const existingMeeting = await Meeting.findOne({
+            campus,
+            date: { $gte: startOfWeek, $lte: endOfWeek }
+        });
+
+        if (existingMeeting) {
+            return res.status(403).json({
+                message: `Creation Denied: A meeting already exists for ${campus} this week (${new Date(existingMeeting.date).toLocaleDateString()}). Only SuperAdmins can create multiple meetings per week.`
+            });
+        }
+    }
 
     // Validation
     const error = validateMeetingTime(date, startTime, endTime, campus);
@@ -41,7 +67,7 @@ export const createMeeting = async (req, res) => {
     try {
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, code, requiredFields, questionOfDay, location
+            name, date, campus, startTime, endTime, code, requiredFields, questionOfDay, location, isTestMeeting
         });
         await meeting.save();
         res.status(201).json(meeting);
@@ -55,7 +81,22 @@ export const createMeeting = async (req, res) => {
 export const getMeetings = async (req, res) => {
     try {
         // 1. Fetch meetings with attendance count
-        let meetings = await Meeting.aggregate([
+        const pipeline = [];
+
+        // Filter by Campus for regular admins (but allow history/finalized meetings from all campuses)
+        if (req.user && !['developer', 'superadmin'].includes(req.user.role)) {
+            const userCampus = req.user.campus || 'Athi River';
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { campus: userCampus },
+                        { isActive: false }
+                    ]
+                }
+            });
+        }
+
+        pipeline.push(
             {
                 $lookup: {
                     from: 'attendances',
@@ -71,7 +112,9 @@ export const getMeetings = async (req, res) => {
             },
             { $project: { attendance: 0 } },
             { $sort: { date: -1 } }
-        ]);
+
+        );
+        let meetings = await Meeting.aggregate(pipeline);
 
         // 2. Auto-Activate and Auto-Finalize based on strict time windows
         const now = new Date();
@@ -103,32 +146,23 @@ export const getMeetings = async (req, res) => {
                 // Handle midnight crossing
                 if (endVal < startVal) endVal += 24;
 
-                let shouldBeActive = false;
-                let statusReason = '';
-
                 // Logic to determine if it SHOULD be active right now
                 // REVISED LOGIC: Only AUTO-CLOSE meetings. Do NOT auto-open or force-close early meetings.
-                // This allows Admins to open a meeting early manually if they want.
-
                 if (meetingDateStr < todayDate) {
                     // Past Date -> Close
                     if (m.isActive) {
-                        shouldBeActive = false;
-                        statusReason = 'Date Passed';
                         updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
                         console.log(`[Meeting Control] Auto-Close "${m.name}": Date Passed`);
+                        return { ...m, isActive: false };
                     }
                 } else if (meetingDateStr === todayDate) {
                     // Today
                     if (timeDecimal > endVal && m.isActive) {
                         // Time Passed -> Close
-                        shouldBeActive = false;
-                        statusReason = 'Time Window Closed';
                         updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
                         console.log(`[Meeting Control] Auto-Close "${m.name}": Time Window Closed`);
+                        return { ...m, isActive: false };
                     }
-                    // If it's before start time or during meeting time, RESPECT MANUAL SETTING.
-                    // do not force it to false.
                 }
             }
             return m;

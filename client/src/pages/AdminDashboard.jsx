@@ -58,6 +58,7 @@ const AdminDashboard = () => {
     const [memberInsights, setMemberInsights] = useState(null);
     const [loadingInsights, setLoadingInsights] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [meetingSemesterFilter, setMeetingSemesterFilter] = useState('Current');
 
     useEffect(() => {
         if (!isDarkMode) {
@@ -224,35 +225,7 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleGraduateAll = async () => {
-        const password = window.prompt('SECURITY CHECK: Please enter your admin password to confirm graduating ALL recruits:');
-        if (!password) return;
 
-        setImportLoading(true);
-        try {
-            const res = await api.post('/members/graduate-all', { confirmPassword: password });
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Graduation failed: ' + (err.response?.data?.message || 'Server error') });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const handleResetAllPoints = async () => {
-        if (!window.confirm('CRITICAL: This will reset points for ALL members (except test accounts) back to 0. This cannot be undone. Proceed?')) return;
-        setImportLoading(true);
-        try {
-            const res = await api.post('/members/reset-all-points');
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Reset failed' });
-        } finally {
-            setImportLoading(false);
-        }
-    };
 
     const handleDeleteMember = async (id, name) => {
         const password = window.prompt(`SECURITY CHECK: Please enter your admin password to CONFIRM DELETING ${name}:`);
@@ -893,13 +866,14 @@ const AdminDashboard = () => {
     };
 
     const toggleStatus = async (meeting) => {
-        if (!meeting.isActive) return; // Already closed, can't reopen
+        if (!meeting.isActive) return; // Status can't be changed once closed
 
         if (!window.confirm('Are you sure you want to CLOSE this meeting? Once closed, it cannot be reopened and the QR code will be disabled.')) return;
 
         try {
             await api.patch(`/meetings/${meeting._id}`, { isActive: false });
             fetchMeetings();
+            setMsg({ type: 'success', text: 'Meeting finalized.' });
         } catch (err) {
             setMsg({ type: 'error', text: 'Failed to close meeting' });
         }
@@ -911,15 +885,74 @@ const AdminDashboard = () => {
             if (editingMember._id === 'NEW') {
                 await api.post('/members', editingMember);
                 const firstName = editingMember.name.split(' ')[0];
-                setMsg({ type: 'success', text: `Success! ${firstName} has been added to the registry.` });
+                setMsg({ type: 'success', text: `Success! ${firstName} has been added! Ready for next.` });
+                // Reset form for next entry, keeping campus
+                setEditingMember(prev => ({
+                    ...prev,
+                    name: '',
+                    studentRegNo: '',
+                    memberType: 'Visitor'
+                }));
             } else {
                 await api.patch(`/members/${editingMember._id}`, editingMember);
                 setMsg({ type: 'success', text: 'Member profile updated!' });
+                setEditingMember(null);
             }
             fetchMembers();
             setEditingMember(null);
         } catch (err) {
             setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save member' });
+        }
+    };
+
+    const handleResetAllPoints = async () => {
+        if (!window.confirm('Are you sure you want to reset ALL points for ALL members? This cannot be undone.')) return;
+        try {
+            await api.post('/members/reset-all-points');
+            setMsg({ type: 'success', text: 'All points have been reset.' });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to reset points' });
+        }
+    };
+
+    const handleGraduateAll = async () => {
+        if (!window.confirm('Are you sure you want to graduate all Recruits to Douloids?')) return;
+        const pwd = prompt('Enter admin password to confirm:');
+        if (!pwd) return;
+        try {
+            await api.post('/members/graduate-all', { confirmPassword: pwd });
+            setMsg({ type: 'success', text: 'All recruits graduated!' });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to graduate recruits' });
+        }
+    };
+
+    const handleGraduateMember = async (memberId) => {
+        if (!window.confirm('Graduate this member to Douloid status?')) return;
+        try {
+            await api.post(`/members/${memberId}/graduate`);
+            setMsg({ type: 'success', text: 'Member graduated!' });
+            fetchMemberInsights(editingMember.studentRegNo); // Refresh insights
+            fetchMembers(); // Refresh list
+            if (editingMember) setEditingMember(prev => ({ ...prev, memberType: 'Douloid' }));
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to graduate member' });
+        }
+    };
+
+    // Reset points for INDIVIDUAL member (requested for testing in insights)
+    const handleResetMemberPoints = async (memberId) => {
+        if (!window.confirm('Reset this member\'s points to 0?')) return;
+        try {
+            await api.post(`/members/${memberId}/reset-points`);
+            setMsg({ type: 'success', text: 'Points reset.' });
+            fetchMemberInsights(editingMember.studentRegNo); // Refresh insights
+            fetchMembers();
+            if (editingMember) setEditingMember(prev => ({ ...prev, totalPoints: 0 }));
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to reset points' });
         }
     };
 
@@ -937,6 +970,129 @@ const AdminDashboard = () => {
 
     const totalAttendanceCount = meetings.reduce((acc, current) => acc + (current.attendanceCount || 0), 0);
     const activeMeetingsCount = meetings.filter(m => m.isActive).length;
+
+    const renderMeetingCard = (m) => (
+        <div key={m._id} className="glass-panel" style={{ padding: '1.5rem', position: 'relative', transition: 'all 0.3s ease', border: m.isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                        <MapPin size={14} /> {m.campus}
+                    </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <button
+                        onClick={() => toggleStatus(m)}
+                        disabled={!m.isActive}
+                        style={{
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: '2rem',
+                            fontSize: '0.7rem',
+                            fontWeight: 'bold',
+                            background: m.isActive ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                            color: m.isActive ? '#4ade80' : '#f87171',
+                            border: m.isActive ? '1px solid #4ade80' : '1px solid #f87171',
+                            cursor: m.isActive ? 'pointer' : 'default',
+                            opacity: m.isActive ? 1 : 0.8
+                        }}
+                    >
+                        {m.isActive ? '• ACTIVE' : 'FINALIZED'}
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-text-dim)', fontSize: '0.8rem' }}>
+                        <Users size={14} /> {m.attendanceCount || 0}
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                    <Calendar size={14} /> {new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                    <Clock size={14} /> {m.startTime} - {m.endTime}
+                </div>
+            </div>
+
+            {m.isActive && (
+                <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+                    <input
+                        className="input-field"
+                        placeholder="e.g. 22-0000"
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+                        value={quickRegNo}
+                        onChange={e => {
+                            let val = e.target.value.replace(/\D/g, '');
+                            if (val.length > 2) {
+                                val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                            }
+                            setQuickRegNo(val);
+                        }}
+                    />
+                    <button
+                        className="btn btn-primary"
+                        style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
+                        onClick={() => handleQuickCheckIn(m._id)}
+                        disabled={quickCheckInLoading}
+                    >
+                        {quickCheckInLoading ? '...' : <Plus size={16} />}
+                    </button>
+                </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {m.isActive && (
+                    <button
+                        className="btn"
+                        style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
+                        onClick={() => {
+                            const now = new Date();
+                            const [startH, startM] = m.startTime.split(':').map(Number);
+                            const [endH, endM] = m.endTime.split(':').map(Number);
+
+                            const start = new Date(m.date);
+                            start.setHours(startH, startM, 0, 0);
+
+                            const end = new Date(m.date);
+                            end.setHours(endH, endM, 0, 0);
+
+                            // Use state 'userRole' which is initialized from localStorage
+                            const role = userRole || localStorage.getItem('role');
+                            const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
+
+                            const isWithinTime = now >= start && now <= end;
+
+                            if (isSuperUser || isWithinTime) {
+                                setSelectedMeeting(m);
+                            } else {
+                                // Developer Mode: Skip Time Restrictions
+                                if (window.confirm(`⚠️ Time Restriction ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code anyway?`)) {
+                                    setSelectedMeeting(m);
+                                }
+                            }
+                        }}
+                    >
+                        <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
+                    </button>
+                )}
+                <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
+                    View Attendance
+                </button>
+                <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                    <Pencil size={16} />
+                </button>
+                {['developer', 'superadmin'].includes(userRole) && (
+                    <button
+                        className="btn"
+                        style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
+                        onClick={() => handleDeleteMeeting(m._id, m.name)}
+                        title="Delete Meeting (Requires password)"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
 
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
@@ -1097,8 +1253,16 @@ const AdminDashboard = () => {
 
                         {/* Create Form */}
                         {showCreate && (
-                            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px' }}>
-                                <h3>Create Meeting</h3>
+                            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px', position: 'relative' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h3 style={{ margin: 0 }}>Create Meeting</h3>
+                                    <button
+                                        onClick={() => setShowCreate(false)}
+                                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}
+                                    >
+                                        <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                    </button>
+                                </div>
                                 <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <label>Meeting Name</label>
@@ -1260,6 +1424,69 @@ const AdminDashboard = () => {
                                         </p>
                                     </div>
 
+                                    {/* Location Settings */}
+                                    <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <label style={{ fontWeight: 'bold' }}>Geo-Location Security (Optional)</label>
+                                            <button
+                                                type="button"
+                                                className="btn"
+                                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1' }}
+                                                onClick={() => {
+                                                    if (!navigator.geolocation) {
+                                                        setMsg({ type: 'error', text: 'Geolocation not supported' });
+                                                        return;
+                                                    }
+                                                    navigator.geolocation.getCurrentPosition(
+                                                        (pos) => {
+                                                            setFormData({
+                                                                ...formData,
+                                                                location: {
+                                                                    ...formData.location,
+                                                                    latitude: pos.coords.latitude,
+                                                                    longitude: pos.coords.longitude,
+                                                                    name: formData.location.name || 'Current Venue'
+                                                                }
+                                                            });
+                                                            setMsg({ type: 'success', text: 'Current coordinates captured!' });
+                                                        },
+                                                        (err) => setMsg({ type: 'error', text: 'Location access denied' })
+                                                    );
+                                                }}
+                                            >
+                                                <MapPin size={14} style={{ marginRight: '0.2rem' }} /> Use My Current Location
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem' }}>Location Name (e.g. SRC Room)</label>
+                                                <input
+                                                    className="input-field"
+                                                    value={formData.location.name}
+                                                    onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })}
+                                                    placeholder="e.g. Athi River Chapel"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem' }}>Radius (meters)</label>
+                                                <input
+                                                    type="number"
+                                                    className="input-field"
+                                                    value={formData.location.radius}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setFormData({ ...formData, location: { ...formData.location, radius: val === '' ? '' : parseInt(val) } });
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        {formData.location.latitude && (
+                                            <p style={{ fontSize: '0.75rem', color: '#4ade80', marginTop: '0.5rem' }}>
+                                                📍 Coordinates set: {formData.location.latitude.toFixed(4)}, {formData.location.longitude.toFixed(4)}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div style={{ gridColumn: '1 / -1', marginTop: '1rem' }}>
                                         <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>Create Meeting</button>
                                     </div>
@@ -1268,288 +1495,213 @@ const AdminDashboard = () => {
                         )}
 
                         {/* Meetings List */}
-                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                            {meetings.map(m => (
-                                <div key={m._id} className="glass-panel" style={{ padding: '1.5rem', position: 'relative', transition: 'all 0.3s ease', border: m.isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--glass-border)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                                                <MapPin size={14} /> {m.campus}
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                            <button
-                                                onClick={() => toggleStatus(m)}
-                                                disabled={!m.isActive}
-                                                style={{
-                                                    padding: '0.25rem 0.6rem',
-                                                    borderRadius: '2rem',
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 'bold',
-                                                    background: m.isActive ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                                                    color: m.isActive ? '#4ade80' : '#f87171',
-                                                    border: m.isActive ? '1px solid #4ade80' : '1px solid #f87171',
-                                                    cursor: m.isActive ? 'pointer' : 'default',
-                                                    opacity: m.isActive ? 1 : 0.8
-                                                }}
-                                            >
-                                                {m.isActive ? '• ACTIVE' : 'FINALIZED'}
-                                            </button>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-text-dim)', fontSize: '0.8rem' }}>
-                                                <Users size={14} /> {m.attendanceCount || 0}
-                                            </div>
-                                        </div>
-                                    </div>
+                        {/* Segregated Meetings View */}
+                        {(() => {
+                            const getSem = (d) => {
+                                const date = new Date(d);
+                                const m = date.getMonth();
+                                const y = date.getFullYear();
+                                if (m <= 3) return `Jan Semester ${y}`;
+                                if (m <= 7) return `May Semester ${y}`;
+                                return `Sept Semester ${y}`;
+                            };
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                                            <Calendar size={14} /> {new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                                            <Clock size={14} /> {m.startTime} - {m.endTime}
-                                        </div>
-                                    </div>
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
 
-                                    {m.isActive && (
-                                        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
-                                            <input
-                                                className="input-field"
-                                                placeholder="e.g. 22-0000"
-                                                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-                                                value={quickRegNo}
-                                                onChange={e => {
-                                                    let val = e.target.value.replace(/\D/g, '');
-                                                    if (val.length > 2) {
-                                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                                    }
-                                                    setQuickRegNo(val);
-                                                }}
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
-                                                onClick={() => handleQuickCheckIn(m._id)}
-                                                disabled={quickCheckInLoading}
-                                            >
-                                                {quickCheckInLoading ? '...' : <Plus size={16} />}
-                                            </button>
+                            const activeList = meetings.filter(m => m.isActive);
+                            const historyList = meetings.filter(m => !m.isActive);
+
+                            const semesters = Array.from(new Set(historyList.map(m => getSem(m.date))));
+                            const currentSem = getSem(new Date());
+
+                            const filteredHistory = historyList.filter(m => {
+                                if (meetingSemesterFilter === 'All') return true;
+                                const target = meetingSemesterFilter === 'Current' ? currentSem : meetingSemesterFilter;
+                                return getSem(m.date) === target;
+                            });
+
+                            return (
+                                <div>
+                                    {/* Active & Upcoming Section */}
+                                    <h3 style={{ margin: '0 0 1rem 0', opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                                        Active & Upcoming
+                                    </h3>
+
+                                    {activeList.length === 0 ? (
+                                        <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', marginBottom: '2rem', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                            <p style={{ margin: 0, color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>No active or upcoming meetings scheduled.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                                            {activeList.map(m => renderMeetingCard(m))}
                                         </div>
                                     )}
 
-                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                        {m.isActive && (
+                                    {/* History Section */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
+                                        <h3 style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Archived History</h3>
+                                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
                                             <button
-                                                className="btn"
-                                                style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
-                                                onClick={() => {
-                                                    const now = new Date();
-                                                    const [startH, startM] = m.startTime.split(':').map(Number);
-                                                    const [endH, endM] = m.endTime.split(':').map(Number);
-
-                                                    const start = new Date(m.date);
-                                                    start.setHours(startH, startM, 0, 0);
-
-                                                    const end = new Date(m.date);
-                                                    end.setHours(endH, endM, 0, 0);
-
-                                                    // Use state 'userRole' which is initialized from localStorage
-                                                    const role = userRole || localStorage.getItem('role');
-                                                    const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
-
-                                                    const isWithinTime = now >= start && now <= end;
-
-                                                    if (isSuperUser || isWithinTime) {
-                                                        setSelectedMeeting(m);
-                                                    } else {
-                                                        // Developer Mode: Skip Time Restrictions
-                                                        if (window.confirm(`⚠️ Time Restriction ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code anyway?`)) {
-                                                            setSelectedMeeting(m);
-                                                        }
-                                                    }
+                                                onClick={() => setMeetingSemesterFilter('Current')}
+                                                style={{
+                                                    padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none',
+                                                    background: meetingSemesterFilter === 'Current' ? 'hsl(var(--color-primary))' : 'transparent',
+                                                    color: meetingSemesterFilter === 'Current' ? 'white' : 'var(--color-text-dim)',
+                                                    fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
                                                 }}
-                                            >
-                                                <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
-                                            </button>
-                                        )}
-                                        <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
-                                            View Attendance
-                                        </button>
-                                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
-                                            <Pencil size={16} />
-                                        </button>
-                                        {['developer', 'superadmin'].includes(userRole) && (
+                                            >Current</button>
+                                            {semesters.filter(s => s !== currentSem).map(s => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => setMeetingSemesterFilter(s)}
+                                                    style={{
+                                                        padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none',
+                                                        background: meetingSemesterFilter === s ? 'hsl(var(--color-primary))' : 'transparent',
+                                                        color: meetingSemesterFilter === s ? 'white' : 'var(--color-text-dim)',
+                                                        fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                                                    }}
+                                                >{s}</button>
+                                            ))}
                                             <button
-                                                className="btn"
-                                                style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
-                                                onClick={() => handleDeleteMeeting(m._id, m.name)}
-                                                title="Delete Meeting (Requires password)"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        )}
+                                                onClick={() => setMeetingSemesterFilter('All')}
+                                                style={{
+                                                    padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none',
+                                                    background: meetingSemesterFilter === 'All' ? 'hsl(var(--color-primary))' : 'transparent',
+                                                    color: meetingSemesterFilter === 'All' ? 'white' : 'var(--color-text-dim)',
+                                                    fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                                                }}
+                                            >All Time</button>
+                                        </div>
                                     </div>
+
+                                    {filteredHistory.length === 0 ? (
+                                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No past meetings found in this period.</div>
+                                    ) : (
+                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                            {filteredHistory.map(m => renderMeetingCard(m))}
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })()}
                     </>
                 ) : activeTab === 'members' ? (
-                    <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Members Registry</h2>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                    {members.length} members registered in the system
+                    <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+                        {/* Registry Header & Toolbar */}
+                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Members Registry</h2>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginTop: '0.25rem' }}>
+                                        {members.length} members registered in the system
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                                    <button
+                                        className="btn"
+                                        style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.85rem', padding: '0.6rem 1rem', border: '1px solid rgba(37,170,225,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        onClick={downloadRegistryCSV}
+                                        title="Export full registry to CSV"
+                                    >
+                                        <FileSpreadsheet size={16} /> Export CSV
+                                    </button>
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                            onClick={() => setShowAddMenu(!showAddMenu)}
+                                        >
+                                            <Plus size={18} /> Add Member <ChevronDown size={14} />
+                                        </button>
+                                        {showAddMenu && (
+                                            <div className="glass-panel" style={{
+                                                position: 'absolute', top: '115%', right: 0, zIndex: 100,
+                                                background: 'hsl(var(--color-bg))', border: '1px solid var(--glass-border)',
+                                                borderRadius: '0.5rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
+                                                gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)'
+                                            }}>
+                                                <button className="btn" style={{ justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'var(--color-text)' }}
+                                                    onClick={() => { setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' }); setShowAddMenu(false); }}>
+                                                    <Users size={16} style={{ marginRight: '0.75rem', opacity: 0.7 }} /> Single Entry
+                                                </button>
+                                                <button className="btn" style={{ justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'var(--color-text)' }}
+                                                    onClick={() => { document.getElementById('import-file-input').click(); setShowAddMenu(false); }}>
+                                                    <FileSpreadsheet size={16} style={{ marginRight: '0.75rem', opacity: 0.7 }} /> Import Excel / CSV
+                                                </button>
+                                            </div>
+                                        )}
+                                        <input type="file" id="import-file-input" hidden accept=".csv, .xlsx, .xls" onChange={handleFileImport} />
+                                    </div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
+
+                            {/* Toolbar: Search & Filters */}
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ position: 'relative', flex: '1 1 300px' }}>
+                                    <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)' }} />
+                                    <input
+                                        placeholder="Search by name or admission number..."
+                                        className="input-field"
+                                        style={{ paddingLeft: '3rem', width: '100%' }}
+                                        value={memberSearch}
+                                        onChange={e => setMemberSearch(e.target.value)}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
                                     {['All', 'Athi River', 'Valley Road'].map(c => (
-                                        <button
-                                            key={c}
-                                            onClick={() => setMemberCampusFilter(c)}
+                                        <button key={c} onClick={() => setMemberCampusFilter(c)}
                                             style={{
-                                                padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                                padding: '0.5rem 1rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
                                                 background: memberCampusFilter === c ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
                                                 color: memberCampusFilter === c ? '#25AAE1' : 'var(--color-text-dim)',
-                                                fontSize: '0.75rem', fontWeight: 600
+                                                fontSize: '0.8rem', fontWeight: 600
                                             }}
                                         >{c === 'Valley Road' ? 'Nairobi' : c}</button>
                                     ))}
                                 </div>
-                                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
                                     {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
-                                        <button
-                                            key={t}
-                                            onClick={() => setMemberTypeFilter(t)}
+                                        <button key={t} onClick={() => setMemberTypeFilter(t)}
                                             style={{
-                                                padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                                padding: '0.5rem 1rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
                                                 background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
                                                 color: memberTypeFilter === t ? '#a78bfa' : 'var(--color-text-dim)',
-                                                fontSize: '0.75rem', fontWeight: 600
+                                                fontSize: '0.8rem', fontWeight: 600
                                             }}
                                         >{t}</button>
                                     ))}
                                 </div>
-                                {memberTypeFilter === 'Recruit' && (
-                                    <button
-                                        className="btn"
-                                        style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                        onClick={handleGraduateAll}
-                                        title="Graduate all Recruits to Douloids"
-                                    >
-                                        <GraduationCap size={16} /> Graduate All Recruits
+
+                                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                    <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
+                                        <RotateCcw size={14} style={{ marginRight: '0.4rem' }} /> Sync
                                     </button>
-                                )}
-                                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                    {userRole === 'superadmin' && (
-                                        <button
-                                            className="btn"
-                                            style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
-                                            onClick={handleSetupTestAccount}
-                                            title="Designate a student as a permanent tester (will not show in reports)"
-                                        >
-                                            Setup Tester
+                                    {memberTypeFilter === 'Recruit' && (
+                                        <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
+                                            <GraduationCap size={16} /> Graduate All
                                         </button>
                                     )}
-                                    {['developer', 'superadmin', 'admin'].includes(userRole) && (
-                                        <button
-                                            className="btn"
-                                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                            onClick={handleResetAllPoints}
-                                            title="Reset all points to 0"
-                                        >
-                                            <RotateCcw size={14} /> Reset Points
-                                        </button>
+                                    {['developer', 'superadmin'].includes(userRole) && (
+                                        <>
+                                            <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                                                onClick={handleSetupTestAccount} title="Designate a student as a permanent tester">
+                                                Setup Tester
+                                            </button>
+                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                onClick={handleResetAllPoints} title="Reset all points to 0">
+                                                <Trash2 size={14} /> Reset Points
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(37,170,225,0.2)' }} onClick={handleSyncRegistry}>
-                                Sync Registry
-                            </button>
 
-                            {/* Add Member Dropdown */}
-                            <div style={{ position: 'relative' }}>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                    onClick={() => setShowAddMenu(!showAddMenu)}
-                                >
-                                    <Plus size={16} /> Add Member <ChevronDown size={14} />
-                                </button>
-
-                                {showAddMenu && (
-                                    <div className="glass-panel" style={{
-                                        position: 'absolute',
-                                        top: '120%',
-                                        right: 0,
-                                        zIndex: 100,
-                                        background: 'hsl(var(--color-bg))',
-                                        border: '1px solid var(--glass-border)',
-                                        borderRadius: '0.5rem',
-                                        padding: '0.5rem',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '0.25rem',
-                                        minWidth: '180px',
-                                        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)'
-                                    }}>
-                                        <button
-                                            className="btn"
-                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none', color: 'var(--color-text)' }}
-                                            onClick={() => {
-                                                setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' });
-                                                setShowAddMenu(false);
-                                            }}
-                                        >
-                                            <Users size={16} style={{ marginRight: '0.5rem', opacity: 0.7 }} /> Single Entry
-                                        </button>
-                                        <button
-                                            className="btn"
-                                            style={{ justifyContent: 'flex-start', padding: '0.6rem', fontSize: '0.85rem', background: 'transparent', border: 'none', color: 'var(--color-text)' }}
-                                            onClick={() => {
-                                                document.getElementById('import-file-input').click();
-                                                setShowAddMenu(false);
-                                            }}
-                                        >
-                                            <UploadCloud size={16} style={{ marginRight: '0.5rem', opacity: 0.7 }} /> Import File
-                                        </button>
-                                    </div>
-                                )}
-                                <input
-                                    type="file"
-                                    id="import-file-input"
-                                    hidden
-                                    accept=".csv, .xlsx, .xls, .pdf, .docx, .doc"
-                                    onChange={handleFileImport}
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            className="btn"
-                            style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(37,170,225,0.2)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                            onClick={downloadRegistryCSV}
-                            title="Export full registry to CSV"
-                        >
-                            <FileSpreadsheet size={16} /> Export CSV
-                        </button>
-
-                        <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ position: 'relative' }}>
-                                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)' }} />
-                                <input
-                                    placeholder="Search registry by name or admission number..."
-                                    className="input-field"
-                                    style={{ paddingLeft: '3rem' }}
-                                    value={memberSearch}
-                                    onChange={e => setMemberSearch(e.target.value)}
-                                />
-                            </div>
-                        </div>
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
@@ -1742,6 +1894,14 @@ const AdminDashboard = () => {
                                                     <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                         <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
                                                         <div style={{ fontSize: '1.5rem', fontWeight: 800, color: memberInsights.stats.percentage > 75 ? '#4ade80' : '#facc15' }}>{memberInsights.stats.percentage}%</div>
+                                                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '0.5rem', overflow: 'hidden' }}>
+                                                            <div style={{
+                                                                width: `${Math.min(memberInsights.stats.percentage, 100)}%`,
+                                                                height: '100%',
+                                                                background: memberInsights.stats.percentage > 75 ? '#4ade80' : memberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444',
+                                                                transition: 'width 0.5s ease'
+                                                            }}></div>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -1835,6 +1995,46 @@ const AdminDashboard = () => {
                                                 <RotateCcw size={16} /> Unlock Device / Reset Link
                                             </button>
 
+                                            {editingMember.memberType === 'Recruit' && (
+                                                <button
+                                                    className="btn"
+                                                    style={{
+                                                        width: '100%',
+                                                        background: 'rgba(167, 139, 250, 0.1)',
+                                                        color: '#a78bfa',
+                                                        border: '1px solid rgba(167, 139, 250, 0.2)',
+                                                        padding: '0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                    onClick={() => handleGraduateMember(editingMember._id)}
+                                                >
+                                                    <GraduationCap size={16} /> Graduate / Promote
+                                                </button>
+                                            )}
+
+                                            {['developer', 'superadmin'].includes(userRole) && (
+                                                <button
+                                                    className="btn"
+                                                    style={{
+                                                        width: '100%',
+                                                        background: 'rgba(234, 179, 8, 0.1)',
+                                                        color: '#eab308',
+                                                        border: '1px solid rgba(234, 179, 8, 0.2)',
+                                                        padding: '0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                    onClick={() => handleResetMemberPoints(editingMember._id)}
+                                                >
+                                                    <RotateCcw size={16} /> Reset Points (Set to 0)
+                                                </button>
+                                            )}
+
                                             {['developer', 'superadmin'].includes(userRole) && (
                                                 <button
                                                     className="btn"
@@ -1909,7 +2109,15 @@ const AdminDashboard = () => {
                                     />
                                 </div>
 
-                                <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
+
+                                <div style={{ margin: '1.5rem 0' }}>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>MANUAL CODE</div>
+                                    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-primary))', letterSpacing: '4px', lineHeight: 1 }}>
+                                        {selectedMeeting.code.toUpperCase()}
+                                    </div>
+                                </div>
+
+                                <p style={{ marginTop: '0', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
                                 <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>{selectedMeeting.campus} | {selectedMeeting.startTime} - {selectedMeeting.endTime}</p>
 
                                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
@@ -1946,10 +2154,10 @@ const AdminDashboard = () => {
                                     )}
                                 </div >
                                 <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', marginTop: '1.5rem', opacity: 0.7 }}>Click anywhere outside to close</p>
-                            </div >
-                        </div >
-                    )
-                }
+                            </div>
+                        </div>
+                    )}
+
 
                 {/* Edit Meeting Modal */}
                 {
@@ -1980,7 +2188,7 @@ const AdminDashboard = () => {
                                             value={editingMeeting.devotion || ''}
                                             onChange={e => setEditingMeeting({ ...editingMeeting, devotion: e.target.value })}
                                             placeholder="e.g. John 3:16 - The Heart of Service"
-                                        />
+                                        ></textarea>
                                     </div>
 
                                     <div>
@@ -1991,7 +2199,7 @@ const AdminDashboard = () => {
                                             value={editingMeeting.iceBreaker || ''}
                                             onChange={e => setEditingMeeting({ ...editingMeeting, iceBreaker: e.target.value })}
                                             placeholder="e.g. Two Truths and a Lie"
-                                        />
+                                        ></textarea>
                                     </div>
 
                                     <div>
@@ -2002,7 +2210,7 @@ const AdminDashboard = () => {
                                             value={editingMeeting.announcements || ''}
                                             onChange={e => setEditingMeeting({ ...editingMeeting, announcements: e.target.value })}
                                             placeholder="Check your emails for the retreat info!"
-                                        />
+                                        ></textarea>
                                     </div>
 
                                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -2037,11 +2245,14 @@ const AdminDashboard = () => {
                                                     <input
                                                         type="number"
                                                         className="input-field"
-                                                        value={editingMeeting.location?.radius || 200}
-                                                        onChange={e => setEditingMeeting({
-                                                            ...editingMeeting,
-                                                            location: { ...editingMeeting.location, radius: parseInt(e.target.value) || 200 }
-                                                        })}
+                                                        value={editingMeeting.location?.radius || ''}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setEditingMeeting({
+                                                                ...editingMeeting,
+                                                                location: { ...editingMeeting.location, radius: val === '' ? '' : parseInt(val) }
+                                                            });
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
@@ -2085,13 +2296,12 @@ const AdminDashboard = () => {
                                                     justifyContent: 'center',
                                                     alignItems: 'center',
                                                     gap: '0.5rem'
-                                                }}
-                                            >
-                                                <MapPin size={16} /> Set to My Current Position
+                                                }}>
+                                                <MapPin size={16} /> Mark Current Location
                                             </button>
-                                            {editingMeeting.location?.latitude && (
+                                            {editingMeeting.location && editingMeeting.location.latitude && (
                                                 <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#4ade80', textAlign: 'center' }}>
-                                                    ✅ Location Active: {editingMeeting.location.latitude.toFixed(4)}, {editingMeeting.location.longitude.toFixed(4)}
+                                                    Check-in Allowed Nearby: {editingMeeting.location.name || 'Set Location'}
                                                 </div>
                                             )}
                                         </div>
@@ -2099,7 +2309,8 @@ const AdminDashboard = () => {
                                 </form>
                             </div>
                         </div>
-                    )}
+                    )
+                }
             </div>
         </div>
     );
@@ -2503,53 +2714,58 @@ const AttendanceTable = ({ meeting, setMsg }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredRecords.map((r, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }}>
-                                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                        {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td style={{ padding: '1rem', fontSize: '0.9rem', fontWeight: 600, color: 'hsl(var(--color-primary))' }}>
-                                        {r.memberType || 'Visitor'}
-                                    </td>
-                                    {headers.map(h => (
-                                        <td key={h} style={{ padding: '1rem', fontSize: '0.9rem' }}>
-                                            {r.responses?.[h] || '-'}
+                            {filteredRecords.map((r, i) => {
+                                const responses = r.responses || {};
+                                return (
+                                    <tr key={i} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }}>
+                                        <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
+                                            {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </td>
-                                    ))}
-                                    {hasDailyQuestion && (
-                                        <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#a78bfa' }}>
-                                            {r.responses?.dailyQuestionAnswer || '-'}
+                                        <td style={{ padding: '1rem', fontSize: '1rem' }}>
+                                            {r.memberType === 'Douloid' ? '🦁' : r.memberType === 'Recruit' ? '⚔️' : '👋'} {r.memberType}
                                         </td>
-                                    )}
-                                    <td style={{ padding: '1rem' }}>
-                                        <span
-                                            style={{
-                                                padding: '0.3rem 0.6rem',
-                                                borderRadius: '2rem',
-                                                fontSize: '0.7rem',
-                                                fontWeight: 800,
-                                                background: 'rgba(37, 170, 225, 0.1)',
-                                                color: '#25AAE1',
-                                                border: '1px solid rgba(37, 170, 225, 0.2)',
-                                                letterSpacing: '0.5px'
-                                            }}
-                                        >
-                                            PRESENT
-                                        </span>
-                                    </td>
-                                    {['developer', 'superadmin'].includes(userRole) && meeting.isActive && (
-                                        <td style={{ padding: '0.5rem 1rem' }}>
+                                        {headers.map(h => (
+                                            <td key={h} style={{ padding: '1rem', fontSize: '0.9rem' }}>
+                                                {responses[h] || '-'}
+                                            </td>
+                                        ))}
+                                        {hasDailyQuestion && (
+                                            <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#a78bfa' }}>
+                                                {responses.dailyQuestionAnswer || '-'}
+                                            </td>
+                                        )}
+                                        <td style={{ padding: '1rem' }}>
                                             <button
-                                                onClick={() => deleteRecord(r._id)}
-                                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                title="Delete Record"
+                                                onClick={() => toggleExemption(r._id)}
+                                                style={{
+                                                    padding: '0.3rem 0.6rem',
+                                                    borderRadius: '2rem',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 800,
+                                                    background: r.isExempted ? 'rgba(250, 204, 21, 0.1)' : 'rgba(37, 170, 225, 0.1)',
+                                                    color: r.isExempted ? '#facc15' : '#25AAE1',
+                                                    border: r.isExempted ? '1px solid rgba(250, 204, 21, 0.2)' : '1px solid rgba(37, 170, 225, 0.2)',
+                                                    letterSpacing: '0.5px',
+                                                    cursor: 'pointer'
+                                                }}
                                             >
-                                                <Trash2 size={16} />
+                                                {r.isExempted ? 'EXEMPTED' : 'PRESENT'}
                                             </button>
                                         </td>
-                                    )}
-                                </tr>
-                            ))}
+                                        {['developer', 'superadmin'].includes(userRole) && (
+                                            <td style={{ padding: '0.5rem 1rem' }}>
+                                                <button
+                                                    onClick={() => deleteRecord(r._id)}
+                                                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    title="Delete Record"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

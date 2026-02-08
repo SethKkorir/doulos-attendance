@@ -29,15 +29,6 @@ const StudentPortal = () => {
         try {
             const res = await api.get(`/attendance/student/${regNo}`);
 
-            // STRICT CHECK: IF NOT A MEMBER AND NO HISTORY -> BLOCK
-            // This handles "deleted" users effectively as they have no Member record.
-            if (!res.data.isMember && (!res.data.history || res.data.history.length === 0)) {
-                setError("Stranger Danger! 🚫 We don't have a record of this ID. Please register or attend a meeting first.");
-                setIsLoggedIn(false);
-                localStorage.removeItem('studentRegNo'); // Clear stale session
-                setLoading(false);
-                return;
-            }
             setData(res.data);
             setIsLoggedIn(true);
             localStorage.setItem('studentRegNo', regNo.toUpperCase());
@@ -330,7 +321,11 @@ const StudentPortal = () => {
                             </div>
 
                             <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 900 }}>
-                                {data.stats.percentage > 80 ? 'ELITE DOULOID' : data.stats.percentage > 50 ? 'ACTIVE MEMBER' : 'RECRUIT'}
+                                {
+                                    ['Douloid', 'Recruit', 'Visitor', 'Exempted'].includes(data.memberType)
+                                        ? data.memberType.toUpperCase()
+                                        : (data.stats.percentage > 80 ? 'ELITE DOULOID' : data.stats.percentage > 50 ? 'ACTIVE MEMBER' : 'RECRUIT')
+                                }
                             </h3>
                             <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto' }}>
                                 Total attendance: <strong>{data.stats.totalAttended}</strong> / {data.stats.totalMeetings} sessions.
@@ -364,6 +359,37 @@ const StudentPortal = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Quick Check-In for Laptop/No-Phone Users */}
+                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', border: '1px solid rgba(37,170,225,0.2)', background: 'rgba(37,170,225,0.05)' }}>
+                    <div>
+                        <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', fontWeight: 900, color: '#25AAE1' }}>HAVE A MEETING CODE?</h3>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Use this if you can't scan the QR code.</p>
+                    </div>
+                    <form onSubmit={(e) => {
+                        e.preventDefault();
+                        const code = e.target.elements.code.value.trim();
+                        if (code) window.location.href = `/check-in/${code}`;
+                    }} style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input
+                            name="code"
+                            placeholder="CODE"
+                            style={{
+                                width: '100px',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid var(--glass-border)',
+                                background: 'rgba(0,0,0,0.3)',
+                                color: 'white',
+                                fontWeight: 800,
+                                textAlign: 'center',
+                                textTransform: 'uppercase'
+                            }}
+                            required
+                        />
+                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>GO</button>
+                    </form>
                 </div>
 
                 {/* Service Record Timeline */}

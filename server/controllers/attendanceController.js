@@ -219,18 +219,33 @@ export const getStudentPortalData = async (req, res) => {
         // 1. Get member details from Registry
         const member = await Member.findOne({ studentRegNo });
 
-        // 2. Get student's attendance history
-        const attendance = await Attendance.find({ studentRegNo });
-        const attendedMeetingIds = attendance.map(a => a.meeting.toString());
+        if (!member) {
+            return res.status(404).json({ message: "Access Denied: You must be a registered member to access the Doulos Portal. Please see an admin." });
+        }
 
-        // 3. Get all meetings
-        const meetings = await Meeting.find().sort({ date: -1 });
+        // 2. Get student's full attendance history
+        const attendanceRecords = await Attendance.find({ studentRegNo }).sort({ timestamp: -1 });
 
-        // 4. Map meetings with attendance status
-        const history = meetings.map(m => {
-            const record = attendance.find(a => a.meeting.toString() === m._id.toString());
-            const attended = !!record;
-            return {
+        // 3. Get all meetings of the student's default campus
+        const campusMeetings = await Meeting.find({ campus: member.campus }).sort({ date: -1 });
+
+        // 4. Helper to get start of week (Sunday)
+        const getWeekStart = (date) => {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day;
+            const start = new Date(d.setDate(diff));
+            start.setHours(0, 0, 0, 0);
+            return start.getTime();
+        };
+
+        // 5. Group by week
+        const weeklyData = new Map();
+
+        // Initialize with campus meetings as 'ABSENT'
+        campusMeetings.forEach(m => {
+            const weekKey = getWeekStart(m.date);
+            weeklyData.set(weekKey, {
                 _id: m._id,
                 name: m.name,
                 date: m.date,
@@ -238,21 +253,54 @@ export const getStudentPortalData = async (req, res) => {
                 devotion: m.devotion,
                 iceBreaker: m.iceBreaker,
                 announcements: m.announcements,
-                attended,
-                isExempted: record?.isExempted || false,
-                attendanceTime: attended ? record.timestamp : null
-            };
+                attended: false,
+                isExempted: false,
+                attendanceTime: null
+            });
         });
 
-        const totalMeetings = meetings.length;
-        const physicalAttended = attendance.filter(a => !a.isExempted).length;
-        const exemptedCount = attendance.filter(a => a.isExempted).length;
+        // Overlay with actual attendance (which might be from a different campus/meeting)
+        // We fetch meeting details for non-campus meetings if needed
+        const attendedMeetingIds = attendanceRecords.map(a => a.meeting);
+        const attendedMeetings = await Meeting.find({ _id: { $in: attendedMeetingIds } });
+
+        attendanceRecords.forEach(record => {
+            // We use the meeting's date for week grouping, not the check-in time, 
+            // to align with the scheduled meeting week.
+            const meeting = attendedMeetings.find(m => m._id.toString() === record.meeting.toString());
+            if (!meeting) return;
+
+            const weekKey = getWeekStart(meeting.date);
+
+            // If they attended a meeting this week, it overrides the 'ABSENT' record
+            // regardless of whether it's the default campus meeting or not.
+            weeklyData.set(weekKey, {
+                _id: meeting._id,
+                name: meeting.name,
+                date: meeting.date,
+                campus: meeting.campus,
+                devotion: meeting.devotion,
+                iceBreaker: meeting.iceBreaker,
+                announcements: meeting.announcements,
+                attended: true,
+                isExempted: record.isExempted || false,
+                attendanceTime: record.timestamp
+            });
+        });
+
+        // Convert Map to sorted array
+        const history = Array.from(weeklyData.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Stats calculation
+        const totalMeetings = campusMeetings.length; // Baseline is their campus meetings
+        const physicalAttended = attendanceRecords.filter(a => !a.isExempted).length;
+        const exemptedCount = attendanceRecords.filter(a => a.isExempted).length;
         const totalValid = physicalAttended + exemptedCount;
 
         res.json({
             studentRegNo,
-            memberName: member?.name || 'Visitor',
-            memberType: member?.memberType || 'Visitor',
+            memberName: member.name || 'Visitor',
+            memberType: member.memberType || 'Visitor',
             stats: {
                 totalMeetings,
                 physicalAttended,

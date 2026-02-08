@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMembers, importMembers, updateMember, createMember, addPoints, syncMembersFromAttendance, graduateAllRecruits, setupTestAccount, resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock } from '../controllers/memberController.js';
+import { getMembers, importMembers, updateMember, createMember, addPoints, syncMembersFromAttendance, graduateAllRecruits, setupTestAccount, resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock, graduateMember, resetMemberPoints } from '../controllers/memberController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -15,5 +15,7 @@ router.post('/:id/delete-secure', verifyAdmin, deleteMemberWithPassword);
 router.patch('/:id', verifyAdmin, updateMember);
 router.post('/:id/points', verifyAdmin, addPoints);
 router.post('/:id/reset-device', verifyAdmin, resetDeviceLock);
+router.post('/:id/graduate', verifyAdmin, graduateMember);
+router.post('/:id/reset-points', verifyAdmin, resetMemberPoints);
 
 export default router;
