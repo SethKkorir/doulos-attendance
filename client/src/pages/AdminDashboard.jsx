@@ -899,7 +899,6 @@ const AdminDashboard = () => {
                 setEditingMember(null);
             }
             fetchMembers();
-            setEditingMember(null);
         } catch (err) {
             setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save member' });
         }
