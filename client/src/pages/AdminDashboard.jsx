@@ -519,12 +519,46 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleFileImport = (e) => {
+    // --- SMART FILE IMPORT LOGIC ---
+    const handleFileImport = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         setImportLoading(true);
+        const fileType = file.name.split('.').pop().toLowerCase();
 
+        try {
+            if (fileType === 'xlsx' || fileType === 'xls' || fileType === 'csv') {
+                handleExcelImport(file);
+            } else if (fileType === 'docx' || fileType === 'doc') {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                processExtractedText(result.value);
+            } else if (fileType === 'pdf') {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n';
+                }
+                processExtractedText(fullText);
+            } else {
+                setMsg({ type: 'error', text: 'Unsupported file format. Please use PDF, Word, or Excel files.' });
+                setImportLoading(false);
+            }
+        } catch (err) {
+            console.error(err);
+            setMsg({ type: 'error', text: 'Failed to process file: ' + (err.message || 'Unknown error') });
+            setImportLoading(false);
+        } finally {
+            e.target.value = '';
+        }
+    };
+
+    const handleExcelImport = (file) => {
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
@@ -533,67 +567,108 @@ const AdminDashboard = () => {
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
-
-                // Map data to expected format
-                const formattedMembers = data.map(row => {
-                    // Try to find keys case-insensitively
-                    const getVal = (possibleKeys) => {
-                        const key = Object.keys(row).find(k => possibleKeys.includes(k.toLowerCase().trim()));
-                        return key ? row[key] : null;
-                    };
-
-                    const name = getVal(['name', 'full name', 'student name', 'fullname']);
-                    const rawReg = getVal(['adm', 'adm no', 'admission', 'admission number', 'reg', 'reg no', 'registration', 'registration number']);
-
-                    // Formatting Ref No (e.g. 22-1234)
-                    let studentRegNo = '';
-                    if (rawReg) {
-                        let clean = String(rawReg).replace(/[^0-9]/g, ''); // 221234
-                        if (clean.length > 2) {
-                            studentRegNo = clean.slice(0, 2) + '-' + clean.slice(2);
-                        } else {
-                            studentRegNo = clean;
-                        }
-                    }
-
-                    // Flexible Category Mapping
-                    let type = getVal(['category', 'type', 'member type', 'role']) || 'Visitor';
-                    // Normalize common inputs
-                    if (type.toLowerCase().includes('douloid')) type = 'Douloid';
-                    else if (type.toLowerCase().includes('recruit')) type = 'Recruit';
-                    else if (type.toLowerCase().includes('visitor')) type = 'Visitor';
-
-                    const campus = getVal(['campus', 'location']) || 'Athi River'; // Default
-
-                    return {
-                        name: name,
-                        studentRegNo: studentRegNo,
-                        memberType: type,
-                        campus: campus
-                    };
-                }).filter(m => m.name && m.studentRegNo && m.studentRegNo.length > 3);
-
-                if (formattedMembers.length === 0) {
-                    setMsg({ type: 'error', text: 'No valid members found (Check your column names: Name, Adm No, Category)' });
-                    setImportLoading(false);
-                    return;
-                }
-
-                // Send to backend
-                await api.post('/members/import', { members: formattedMembers });
-                setMsg({ type: 'success', text: `Successfully imported ${formattedMembers.length} members!` });
-                fetchMembers();
-
+                processImportedData(data, 'excel');
             } catch (err) {
-                console.error(err);
-                setMsg({ type: 'error', text: 'Failed to process file. Ensure it is a valid Excel/CSV.' });
-            } finally {
+                setMsg({ type: 'error', text: 'Failed to parse Excel file' });
                 setImportLoading(false);
-                // Clear input
-                e.target.value = '';
             }
         };
         reader.readAsBinaryString(file);
+    };
+
+    const processExtractedText = (text) => {
+        const lines = text.split(/\r?\n/);
+        const membersFound = [];
+
+        // Regex for Admission Number (e.g., 22-1234, 221234, 22 1234)
+        const regNoRegex = /(\d{2})[- ]?(\d{4})/g;
+
+        lines.forEach(line => {
+            let match;
+            while ((match = regNoRegex.exec(line)) !== null) {
+                const stdRegNo = `${match[1]}-${match[2]}`;
+                const lowerLine = line.toLowerCase();
+
+                // Campus heuristics
+                let campus = 'Athi River';
+                if (lowerLine.includes('valley') || lowerLine.includes('nairobi')) campus = 'Valley Road';
+
+                // Member type heuristics
+                let memberType = 'Visitor';
+                if (lowerLine.includes('douloid')) memberType = 'Douloid';
+                else if (lowerLine.includes('recruit')) memberType = 'Recruit';
+                else if (lowerLine.includes('exempt')) memberType = 'Exempted';
+
+                // Name extraction (remove reg no and keywords, assume rest is name)
+                let nameCandidate = line.replace(match[0], '')
+                    .replace(/athi river|valley road|douloid|recruit|visitor|exempted/gi, '')
+                    .replace(/[,\t|-]/g, ' ')
+                    .trim()
+                    .replace(/\s+/g, ' ');
+
+                if (nameCandidate.length > 2) {
+                    membersFound.push({
+                        name: nameCandidate,
+                        studentRegNo: stdRegNo,
+                        campus,
+                        memberType
+                    });
+                }
+            }
+        });
+
+        processImportedData(membersFound, 'text');
+    };
+
+    const processImportedData = async (data, source) => {
+        let formattedMembers = [];
+
+        if (source === 'excel') {
+            formattedMembers = data.map(row => {
+                const getVal = (possibleKeys) => {
+                    const key = Object.keys(row).find(k => possibleKeys.includes(k.toLowerCase().trim()));
+                    return key ? row[key] : null;
+                };
+
+                const name = getVal(['name', 'full name', 'student name', 'fullname']);
+                const rawReg = getVal(['adm', 'adm no', 'admission', 'admission number', 'reg', 'reg no', 'registration', 'registration number']);
+
+                if (!name || !rawReg) return null;
+
+                let studentRegNo = '';
+                let clean = String(rawReg).replace(/[^0-9]/g, '');
+                if (clean.length > 2) studentRegNo = clean.slice(0, 2) + '-' + clean.slice(2);
+                else studentRegNo = clean;
+
+                let type = getVal(['category', 'type', 'member type', 'role']) || 'Visitor';
+                if (type.toLowerCase().includes('douloid')) type = 'Douloid';
+                else if (type.toLowerCase().includes('recruit')) type = 'Recruit';
+                else if (type.toLowerCase().includes('visitor')) type = 'Visitor';
+
+                const campus = getVal(['campus', 'location']) || 'Athi River';
+
+                return { name, studentRegNo, memberType: type, campus };
+            }).filter(m => m !== null);
+        } else {
+            formattedMembers = data;
+        }
+
+        if (formattedMembers.length === 0) {
+            setMsg({ type: 'error', text: 'No valid members found in file.' });
+            setImportLoading(false);
+            return;
+        }
+
+        try {
+            await api.post('/members/import', { members: formattedMembers });
+            setMsg({ type: 'success', text: `Imported ${formattedMembers.length} members successfully!` });
+            fetchMembers();
+            setShowAddMenu(false);
+        } catch (error) {
+            setMsg({ type: 'error', text: 'Import failed: ' + (error.response?.data?.message || error.message) });
+        } finally {
+            setImportLoading(false);
+        }
     };
 
     const handlePrintQR = () => {
@@ -1483,7 +1558,7 @@ const AdminDashboard = () => {
                                                 setShowAddMenu(false);
                                             }}
                                         >
-                                            <FileSpreadsheet size={16} style={{ marginRight: '0.5rem', opacity: 0.7 }} /> Import Excel / CSV
+                                            <UploadCloud size={16} style={{ marginRight: '0.5rem', opacity: 0.7 }} /> Import File
                                         </button>
                                     </div>
                                 )}
@@ -1491,7 +1566,7 @@ const AdminDashboard = () => {
                                     type="file"
                                     id="import-file-input"
                                     hidden
-                                    accept=".csv, .xlsx, .xls"
+                                    accept=".csv, .xlsx, .xls, .pdf, .docx, .doc"
                                     onChange={handleFileImport}
                                 />
                             </div>
