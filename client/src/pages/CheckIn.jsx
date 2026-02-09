@@ -258,10 +258,10 @@ const CheckIn = () => {
 
             <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '2.5rem', animation: 'fadeIn 0.8s ease-out' }}>
                 <div style={{ animation: 'rotateLogo 30s linear infinite', display: 'inline-block', marginBottom: '1.5rem' }}>
-                    <Logo size={90} showText={false} />
+                    <Logo size={80} showText={false} />
                 </div>
                 <h1 style={{
-                    fontSize: '2.5rem',
+                    fontSize: '1.8rem',
                     fontWeight: 900,
                     letterSpacing: '-0.05em',
                     margin: 0,
@@ -292,8 +292,9 @@ const CheckIn = () => {
             <div className="glass-panel" style={{
                 width: '100%',
                 maxWidth: '400px',
-                padding: '3rem',
+                padding: '2.5rem 2rem',
                 border: '1px solid var(--glass-border)',
+                borderRadius: '1.5rem',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                 backdropFilter: 'blur(20px)'
@@ -303,7 +304,7 @@ const CheckIn = () => {
                         <div style={{ background: 'rgba(255, 215, 0, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
                             <span style={{ fontSize: '3rem' }}>😎</span>
                         </div>
-                        <h2 style={{ color: '#fbbf24', fontSize: '1.8rem', fontWeight: 900, marginBottom: '1rem', textTransform: 'uppercase' }}>
+                        <h2 style={{ color: '#fbbf24', fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', textTransform: 'uppercase' }}>
                             Easy There, Douloid!
                         </h2>
                         <div style={{ fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.9)', marginBottom: '2.5rem', fontStyle: 'italic' }}>
@@ -448,8 +449,8 @@ const CheckIn = () => {
                                                 className="input-field"
                                                 placeholder={field.key === 'studentRegNo' ? 'ADMISSION NO (22-0000)' : field.label}
                                                 style={{
-                                                    height: '55px',
-                                                    fontSize: '1rem',
+                                                    height: '45px',
+                                                    fontSize: '0.9rem',
                                                     fontWeight: 700,
                                                     paddingLeft: '1.25rem',
                                                     background: isLocked ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
@@ -532,11 +533,11 @@ const CheckIn = () => {
                             className="btn btn-primary"
                             disabled={status === 'submitting' || isLocating}
                             style={{
-                                height: '65px',
+                                height: '50px',
                                 marginTop: '1.5rem',
-                                fontSize: '1.1rem',
+                                fontSize: '0.9rem',
                                 fontWeight: 900,
-                                borderRadius: '1rem',
+                                borderRadius: '0.75rem',
                                 letterSpacing: '1px',
                                 textTransform: 'uppercase',
                                 boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
@@ -637,7 +638,7 @@ const CheckIn = () => {
                         }}>
                             <CheckCircle size={64} color="#4ade80" />
                         </div>
-                        <h2 style={{ color: '#4ade80', marginBottom: '1rem', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.05em' }}>CHECK-IN SUCCESSFUL</h2>
+                        <h2 style={{ color: '#4ade80', marginBottom: '1rem', fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.05em' }}>CHECK-IN SUCCESSFUL</h2>
                         <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', fontSize: '1.1rem' }}>
                             Your attendance for <strong>{meeting?.name}</strong> has been successfully recorded.
                         </p>
@@ -673,7 +674,7 @@ const CheckIn = () => {
                         <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
                             <Lock size={60} color="#ef4444" />
                         </div>
-                        <h2 style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>ACCESS DENIED</h2>
+                        <h2 style={{ color: '#ef4444', fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>ACCESS DENIED</h2>
                         <p style={{ marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.8)' }}>
                             {msg}
                         </p>
@@ -696,7 +697,7 @@ const CheckIn = () => {
                         <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
                             <XCircle size={60} color="#ef4444" />
                         </div>
-                        <h2 style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>CHECK-IN FAILED</h2>
+                        <h2 style={{ color: '#ef4444', fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>CHECK-IN FAILED</h2>
                         <p style={{ marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.8)' }}>{msg}</p>
 
                         <button

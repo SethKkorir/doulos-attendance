@@ -70,12 +70,12 @@ const StudentPortal = () => {
                             animation: 'rotateLogo 30s linear infinite',
                             display: 'flex', justifyContent: 'center', alignItems: 'center'
                         }}>
-                            <Logo size={120} showText={false} />
+                            <Logo size={80} showText={false} />
                         </div>
                     </div>
                     <h1 style={{
                         marginTop: '2rem',
-                        fontSize: '3rem',
+                        fontSize: '1.8rem',
                         fontWeight: 900,
                         letterSpacing: '-0.05em',
                         color: 'white',
@@ -87,10 +87,11 @@ const StudentPortal = () => {
 
                 <div className="glass-panel" style={{
                     width: '100%',
-                    maxWidth: '450px',
-                    padding: '3rem',
+                    maxWidth: '400px',
+                    padding: '2.5rem 2rem',
                     textAlign: 'center',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '1.5rem',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                     animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                     backdropFilter: 'blur(20px)'
@@ -136,12 +137,12 @@ const StudentPortal = () => {
                                 required
                                 style={{
                                     paddingLeft: '3.5rem',
-                                    fontSize: '1rem',
+                                    fontSize: '0.9rem',
                                     fontWeight: 700,
                                     letterSpacing: '2px',
-                                    height: '60px',
+                                    height: '45px',
                                     background: 'rgba(0,0,0,0.3)',
-                                    borderRadius: '1rem'
+                                    borderRadius: '0.75rem'
                                 }}
                             />
                         </div>
@@ -150,10 +151,10 @@ const StudentPortal = () => {
                             className="btn btn-primary"
                             disabled={loading}
                             style={{
-                                height: '60px',
-                                fontSize: '1rem',
-                                fontWeight: 900,
-                                borderRadius: '1rem',
+                                height: '50px',
+                                fontSize: '0.9rem',
+                                fontWeight: 800,
+                                borderRadius: '0.75rem',
                                 letterSpacing: '1px',
                                 textTransform: 'uppercase',
                                 boxShadow: '0 10px 20px -5px hsl(var(--color-primary) / 0.3)'

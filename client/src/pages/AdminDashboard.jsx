@@ -958,7 +958,7 @@ const AdminDashboard = () => {
     const handleResetDevice = async (memberId) => {
         if (!window.confirm('Are you sure you want to reset this student\'s device link? They will be able to check in with a new phone.')) return;
         try {
-            await api.post(`/ members / ${memberId}/reset-device`);
+            await api.post(`/members/${memberId}/reset-device`);
             setMsg({ type: 'success', text: 'Device link reset successfully!' });
             fetchMembers();
             setEditingMember(null);
