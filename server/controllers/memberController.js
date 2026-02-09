@@ -161,7 +161,7 @@ export const graduateAllRecruits = async (req, res) => {
         const user = await User.findById(req.user.id);
 
         // Developer bypass for convenience during dev
-        const isDevBypass = req.user.role === 'developer' && confirmPassword === '657';
+        const isDevBypass = ['developer', 'superadmin'].includes(req.user.role) && confirmPassword === '657';
 
         if (!isDevBypass) {
             if (!user) return res.status(404).json({ message: 'Admin user not found' });
@@ -259,7 +259,7 @@ export const deleteMemberWithPassword = async (req, res) => {
 
     try {
         const user = await User.findById(req.user.id);
-        const isDevBypass = req.user.role === 'developer' && confirmPassword === '657';
+        const isDevBypass = ['developer', 'superadmin'].includes(req.user.role) && confirmPassword === '657';
 
         if (!isDevBypass) {
             if (!user) return res.status(404).json({ message: 'Admin user not found' });

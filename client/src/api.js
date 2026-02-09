@@ -19,4 +19,24 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Add a response interceptor to handle global errors (like 401 Unauthorized)
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // Token expired or invalid - ignore if we are already on login page or check-in
+            const isRestrictedPath = window.location.pathname.startsWith('/admin/dashboard');
+
+            if (isRestrictedPath) {
+                console.warn('Session expired or unauthorized. Logging out...');
+                localStorage.removeItem('token');
+                localStorage.removeItem('role');
+                localStorage.removeItem('username');
+                window.location.href = '/admin?expired=true';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

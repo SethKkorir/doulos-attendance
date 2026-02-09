@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import meetingRoutes from './routes/meetingRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import memberRoutes from './routes/memberRoutes.js';
+import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
 
@@ -76,6 +77,9 @@ app.use('/api/members', memberRoutes);
 app.get('/', (req, res) => {
     res.send('Doulos Attendance API Running');
 });
+
+// Error Handling
+app.use(errorHandler);
 
 // Start Server locally
 if (process.env.NODE_ENV !== 'production') {

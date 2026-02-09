@@ -21,6 +21,11 @@ const AdminLogin = () => {
     }, [error]);
 
     useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('expired')) {
+            setError('Your session has expired. Please login again.');
+        }
+
         if (localStorage.getItem('token')) {
             navigate('/admin/dashboard');
         }

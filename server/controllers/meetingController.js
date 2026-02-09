@@ -32,7 +32,7 @@ const validateMeetingTime = (dateStr, startTime, endTime, campus) => {
 };
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, requiredFields, questionOfDay, location, isTestMeeting } = req.body;
+    const { name, date, campus, startTime, endTime, semester, requiredFields, questionOfDay, location, isTestMeeting } = req.body;
 
     // 1. Restriction: One meeting per week per campus for regular admins
     if (!['developer', 'superadmin'].includes(req.user.role)) {
@@ -67,7 +67,7 @@ export const createMeeting = async (req, res) => {
     try {
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, code, requiredFields, questionOfDay, location, isTestMeeting
+            name, date, campus, startTime, endTime, semester, code, requiredFields, questionOfDay, location, isTestMeeting
         });
         await meeting.save();
         res.status(201).json(meeting);
@@ -195,7 +195,7 @@ export const deleteMeeting = async (req, res) => {
 
     try {
         const user = await User.findById(req.user.id);
-        const isDevBypass = req.user.role === 'developer' && confirmPassword === '657';
+        const isDevBypass = ['developer', 'superadmin'].includes(req.user.role) && confirmPassword === '657';
 
         if (!isDevBypass) {
             if (!user) return res.status(404).json({ message: 'Admin user not found' });

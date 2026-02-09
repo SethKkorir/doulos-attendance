@@ -317,7 +317,7 @@ export const getStudentPortalData = async (req, res) => {
 };
 
 export const manualCheckIn = async (req, res) => {
-    const { meetingId, studentRegNo } = req.body;
+    const { meetingId, studentRegNo, name } = req.body;
     try {
         const regNo = studentRegNo.trim().toUpperCase();
 
@@ -332,7 +332,7 @@ export const manualCheckIn = async (req, res) => {
         if (!member) {
             member = new Member({
                 studentRegNo: regNo,
-                name: 'Manual Entry',
+                name: name || 'Manual Entry',
                 memberType: 'Visitor',
                 campus: meeting.campus
             });

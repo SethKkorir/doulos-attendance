@@ -27,6 +27,7 @@ const AdminDashboard = () => {
         campus: 'Athi River',
         startTime: '20:30',
         endTime: '23:00',
+        semester: 'JAN-APR 2026',
         requiredFields: [
             { label: 'Full Name', key: 'studentName', required: true },
             { label: 'Admission Number', key: 'studentRegNo', required: true }
@@ -291,16 +292,50 @@ const AdminDashboard = () => {
         const reg = regNoOverride || quickRegNo;
         if (!reg) return;
 
+        // Smart Lookup: Find member in registry
+        const member = members.find(m => m.studentRegNo === reg);
+        const meeting = meetings.find(m => m._id === meetingId);
+        let studentName = member ? member.name : null;
+
+        // 1. Weekly Duplicate Alert
+        if (member && member.lastSeen) {
+            const meetingDate = new Date(meeting.date);
+            const startOfWeek = new Date(meetingDate);
+            startOfWeek.setDate(meetingDate.getDate() - meetingDate.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+
+            const lastSeenDate = new Date(member.lastSeen);
+            if (lastSeenDate >= startOfWeek && lastSeenDate <= endOfWeek) {
+                const dayName = lastSeenDate.toLocaleDateString('en-US', { weekday: 'long' });
+                if (!window.confirm(`⚠️ DUPLICATE ALERT ⚠️\n\n${member.name} (${reg}) already checked in this week (on ${dayName}).\n\nDo you want to proceed with this manual entry anyway?`)) {
+                    return;
+                }
+            }
+        }
+
+        // 2. New Student Onboarding
+        if (!member) {
+            studentName = window.prompt(`Registration Required!\n\nAdmission number ${reg} is not in the registry.\nPlease enter the student's full name to add them:`);
+            if (!studentName) return; // Cancel if no name provided
+        }
+
         setQuickCheckInLoading(true);
         try {
             await api.post('/attendance/manual', {
                 meetingId,
-                studentRegNo: reg
+                studentRegNo: reg,
+                name: studentName // Pass the name (either found or prompted)
             });
-            setMsg({ type: 'success', text: `Checked in ${reg} successfully!` });
+
+            const displayName = studentName || reg;
+            setMsg({ type: 'success', text: `Success! ${displayName} has been checked in.` });
             setQuickRegNo('');
-            fetchMeetings(); // Refresh counts
-            if (activeTab === 'members') fetchMembers();
+            fetchMeetings(); // Refresh stats
+            fetchMembers(); // Refresh registry to include new member
         } catch (err) {
             setMsg({ type: 'error', text: err.response?.data?.message || 'Manual check-in failed' });
         } finally {
@@ -866,16 +901,26 @@ const AdminDashboard = () => {
     };
 
     const toggleStatus = async (meeting) => {
-        if (!meeting.isActive) return; // Status can't be changed once closed
+        const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(userRole);
 
-        if (!window.confirm('Are you sure you want to CLOSE this meeting? Once closed, it cannot be reopened and the QR code will be disabled.')) return;
+        if (!meeting.isActive && !isSuperUser) {
+            setMsg({ type: 'error', text: 'Finalized meetings can only be reopened by a SuperAdmin.' });
+            return;
+        }
+
+        const action = meeting.isActive ? 'CLOSE' : 'REOPEN';
+        const confirmMsg = meeting.isActive
+            ? 'Are you sure you want to CLOSE this meeting? This will finalize it.'
+            : 'Are you sure you want to REOPEN this meeting? This will enable the QR code and student access again.';
+
+        if (!window.confirm(confirmMsg)) return;
 
         try {
-            await api.patch(`/meetings/${meeting._id}`, { isActive: false });
+            await api.patch(`/meetings/${meeting._id}`, { isActive: !meeting.isActive });
             fetchMeetings();
-            setMsg({ type: 'success', text: 'Meeting finalized.' });
+            setMsg({ type: 'success', text: `Meeting ${meeting.isActive ? 'finalized' : 'reopened'} successfully!` });
         } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to close meeting' });
+            setMsg({ type: 'error', text: `Failed to ${action.toLowerCase()} meeting` });
         }
     };
 
@@ -1012,7 +1057,7 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {m.isActive && (
+            {(m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
                 <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
                     <input
                         className="input-field"
@@ -1286,6 +1331,14 @@ const AdminDashboard = () => {
                                         <label>End Time</label>
                                         <input type="time" className="input-field" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
                                     </div>
+                                    <div>
+                                        <label>Reporting Semester</label>
+                                        <select className="input-field" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}>
+                                            <option value="JAN-APR 2026">JAN-APR 2026</option>
+                                            <option value="MAY-AUG 2026">MAY-AUG 2026</option>
+                                            <option value="SEP-DEC 2026">SEP-DEC 2026</option>
+                                        </select>
+                                    </div>
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <label>Question of the Day (Optional)</label>
                                         <input
@@ -1313,79 +1366,8 @@ const AdminDashboard = () => {
                                         </div>
                                     )}
 
-                                    {/* Geo-Location Security Section */}
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                            <label style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <MapPin size={16} /> Geo-Location Security
-                                            </label>
-                                            <button
-                                                type="button"
-                                                className="btn"
-                                                onClick={() => {
-                                                    if (navigator.geolocation) {
-                                                        navigator.geolocation.getCurrentPosition(
-                                                            (position) => {
-                                                                setFormData({
-                                                                    ...formData,
-                                                                    location: {
-                                                                        ...formData.location,
-                                                                        latitude: position.coords.latitude,
-                                                                        longitude: position.coords.longitude
-                                                                    }
-                                                                });
-                                                                setMsg({ type: 'success', text: 'Location set to current position.' });
-                                                            },
-                                                            (error) => {
-                                                                setMsg({ type: 'error', text: 'Unable to retrieve location.' });
-                                                                console.error("Error getting location: ", error);
-                                                            }
-                                                        );
-                                                    } else {
-                                                        setMsg({ type: 'error', text: 'Geolocation is not supported by this browser.' });
-                                                    }
-                                                }}
-                                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.3)' }}
-                                            >
-                                                Set to Current Location
-                                            </button>
-                                        </div>
 
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                <label>Location Name</label>
-                                                <input
-                                                    className="input-field"
-                                                    placeholder="e.g. Daystar Athi River Chapel"
-                                                    value={formData.location?.name || ''}
-                                                    onChange={e => setFormData({
-                                                        ...formData,
-                                                        location: { ...formData.location, name: e.target.value }
-                                                    })}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                <label>Radius (meters)</label>
-                                                <input
-                                                    type="number"
-                                                    className="input-field"
-                                                    placeholder="200"
-                                                    value={formData.location?.radius || 200}
-                                                    onChange={e => setFormData({
-                                                        ...formData,
-                                                        location: { ...formData.location, radius: Number(e.target.value) }
-                                                    })}
-                                                />
-                                            </div>
-                                        </div>
 
-                                        {(formData.location?.latitude && formData.location?.longitude) && (
-                                            <div style={{ fontSize: '0.8rem', color: '#4ade80', background: 'rgba(74, 222, 128, 0.1)', padding: '0.5rem', borderRadius: '0.25rem', display: 'flex', gap: '1rem' }}>
-                                                <span>Lat: {formData.location.latitude.toFixed(6)}</span>
-                                                <span>Long: {formData.location.longitude.toFixed(6)}</span>
-                                            </div>
-                                        )}
-                                    </div>
 
 
 
@@ -2170,14 +2152,90 @@ const AdminDashboard = () => {
                                 <form onSubmit={async (e) => {
                                     e.preventDefault();
                                     try {
-                                        await api.patch(`/meetings/${editingMeeting._id}`, editingMeeting);
+                                        // Format date and clean up
+                                        const updateData = {
+                                            ...editingMeeting,
+                                            date: new Date(editingMeeting.date).toISOString()
+                                        };
+                                        await api.patch(`/meetings/${editingMeeting._id}`, updateData);
                                         setMsg({ type: 'success', text: 'Meeting updated!' });
                                         setEditingMeeting(null);
                                         fetchMeetings();
                                     } catch (err) {
-                                        setMsg({ type: 'error', text: 'Failed to update' });
+                                        setMsg({ type: 'error', text: 'Failed to update: ' + (err.response?.data?.message || err.message) });
                                     }
                                 }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)', pb: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label>Meeting Name</label>
+                                            <input
+                                                className="input-field"
+                                                value={editingMeeting.name || ''}
+                                                onChange={e => setEditingMeeting({ ...editingMeeting, name: e.target.value })}
+                                                placeholder="e.g. Weekly Doulos"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label>Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="input-field"
+                                                    value={editingMeeting.date ? new Date(editingMeeting.date).toISOString().split('T')[0] : ''}
+                                                    onChange={e => setEditingMeeting({ ...editingMeeting, date: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label>Campus</label>
+                                                <select
+                                                    className="input-field"
+                                                    value={editingMeeting.campus}
+                                                    onChange={e => setEditingMeeting({ ...editingMeeting, campus: e.target.value })}
+                                                >
+                                                    <option value="Athi River">Athi River</option>
+                                                    <option value="Valley Road">Valley Road</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label>Start Time</label>
+                                                <input
+                                                    type="time"
+                                                    className="input-field"
+                                                    value={editingMeeting.startTime || ''}
+                                                    onChange={e => setEditingMeeting({ ...editingMeeting, startTime: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label>End Time</label>
+                                                <input
+                                                    type="time"
+                                                    className="input-field"
+                                                    value={editingMeeting.endTime || ''}
+                                                    onChange={e => setEditingMeeting({ ...editingMeeting, endTime: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label>Question Of The Day</label>
+                                            <input
+                                                className="input-field"
+                                                value={editingMeeting.questionOfDay || ''}
+                                                onChange={e => setEditingMeeting({ ...editingMeeting, questionOfDay: e.target.value })}
+                                                placeholder="e.g. What are you grateful for?"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label>Reporting Semester</label>
+                                            <select className="input-field" value={editingMeeting.semester || 'JAN-APR 2026'} onChange={e => setEditingMeeting({ ...editingMeeting, semester: e.target.value })}>
+                                                <option value="JAN-APR 2026">JAN-APR 2026</option>
+                                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
+                                                <option value="SEP-DEC 2026">SEP-DEC 2026</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
                                     <div>
                                         <label>Devotion (Topic / Verse)</label>
