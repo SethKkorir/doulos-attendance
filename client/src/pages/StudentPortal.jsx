@@ -12,6 +12,8 @@ const StudentPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [whatsappLink, setWhatsappLink] = useState('');
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'history', 'community'
+    const [comingSoon, setComingSoon] = useState(null); // Title of feature
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -334,259 +336,300 @@ const StudentPortal = () => {
     }
 
     return (
-        <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden', paddingBottom: '5rem' }}>
+        <div style={{ position: 'relative', minHeight: '100vh', background: 'var(--color-bg)', color: 'white', overflowX: 'hidden' }}>
             <BackgroundGallery />
             <ValentineRain />
 
-            <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '1.5rem' }}>
+            {/* Coming Soon Backdrop */}
+            {comingSoon && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 2000, animation: 'fadeIn 0.3s'
+                }} onClick={() => setComingSoon(null)}>
+                    <div className="glass-panel" style={{
+                        padding: '3rem', textAlign: 'center', maxWidth: '400px',
+                        border: '1px solid hsl(var(--color-primary))',
+                        animation: 'congratsPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{
+                            width: '80px', height: '80px', borderRadius: '50%',
+                            background: 'rgba(37, 170, 225, 0.1)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem',
+                            color: '#25AAE1'
+                        }}>
+                            <Sparkles size={40} className="animate-pulse" />
+                        </div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>{comingSoon}</h2>
+                        <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem', fontSize: '0.9rem' }}>
+                            We are currently building this feature to make your Doulos experience even better. Stay tuned!
+                        </p>
+                        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setComingSoon(null)}>
+                            GOT IT 🚀
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <div className="container" style={{ position: 'relative', zIndex: 1, padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
                 {/* Modern Header */}
                 <header style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '3rem',
-                    padding: '1rem',
-                    background: 'var(--glass-bg)',
-                    borderRadius: '1.25rem',
-                    border: '1px solid var(--glass-border)',
-                    backdropFilter: 'blur(10px)'
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginTop: '1rem', marginBottom: '2rem', padding: '1.25rem',
+                    background: 'rgba(255, 255, 255, 0.03)', borderRadius: '1.5rem',
+                    border: '1px solid rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(20px)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ animation: 'rotateLogo 60s linear infinite' }}>
-                            <Logo size={45} showText={false} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{
+                            width: '50px', height: '50px', borderRadius: '15px',
+                            background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #032540 100%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 10px 20px rgba(37, 170, 225, 0.3)',
+                            animation: 'rotateLogo 60s linear infinite'
+                        }}>
+                            <Logo size={30} showText={false} />
                         </div>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '2px', color: 'hsl(var(--color-primary))' }}>DOULOS PORTAL</h2>
-                            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-dim)', opacity: 0.8 }}>ID: {data.studentRegNo}</p>
+                            <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, letterSpacing: '2px', color: 'hsl(var(--color-primary))' }}>DOULOS <span style={{ color: 'white' }}>PORTAL</span></h2>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                                <span style={{
+                                    padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'rgba(37, 170, 225, 0.2)',
+                                    fontSize: '0.65rem', fontWeight: 800, color: '#25AAE1'
+                                }}>{data.memberType?.toUpperCase()}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 600 }}>ID: {data.studentRegNo}</span>
+                            </div>
                         </div>
                     </div>
-                    <button className="btn" onClick={handleLogout} style={{
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        color: '#f87171',
-                        padding: '0.5rem 1.25rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        borderRadius: '0.75rem',
-                        border: '1px solid rgba(239, 68, 68, 0.2)'
+                    <button className="btn-icon" onClick={handleLogout} style={{
+                        background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.1)'
                     }}>
-                        <LogOut size={14} style={{ marginRight: '0.5rem' }} /> LOGOUT
+                        <LogOut size={20} />
                     </button>
                 </header>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', lg: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
-                    {/* Progress Card */}
-                    <div className="glass-panel" style={{
-                        padding: '2.5rem',
-                        textAlign: 'center',
-                        position: 'relative',
-                        overflow: 'hidden'
-                    }}>
-                        <div style={{
-                            position: 'absolute', top: '-20%', right: '-10%',
-                            width: '200px', height: '200px',
-                            background: 'radial-gradient(circle, hsl(var(--color-primary) / 0.1) 0%, transparent 70%)',
-                            zIndex: 0
-                        }}></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', lg: '8fr 4fr', gap: '1.5rem' }} className="portal-grid">
+                    {/* Main Content Area */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                        <div style={{ position: 'relative', zIndex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                                <div style={{ position: 'relative', width: '160px', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <svg style={{ transform: 'rotate(-90deg)', width: '160px', height: '160px' }}>
-                                        <circle
-                                            cx="80" cy="80" r="70"
-                                            fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12"
-                                        />
-                                        <circle
-                                            cx="80" cy="80" r="70"
-                                            fill="none" stroke="hsl(var(--color-primary))" strokeWidth="12"
-                                            strokeDasharray="439.8"
-                                            strokeDashoffset={439.8 - (439.8 * data.stats.percentage / 100)}
+                        {/* Welcome Banner */}
+                        <div className="glass-panel" style={{
+                            padding: '2.5rem', position: 'relative', overflow: 'hidden',
+                            background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, rgba(3, 37, 64, 0.4) 100%)',
+                            border: '1px solid rgba(37, 170, 225, 0.2)'
+                        }}>
+                            <div style={{ position: 'relative', zIndex: 2 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#B0B0B0', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '2px', marginBottom: '1rem', textTransform: 'uppercase' }}>
+                                    <Sparkles size={14} color="#facc15" /> Welcome Back
+                                </div>
+                                <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>
+                                    Hi, <span style={{ color: 'hsl(var(--color-primary))' }}>{data.memberName?.split(' ')[0] || 'Member'}!</span>
+                                </h1>
+                                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1rem', lineHeight: 1.6, maxWidth: '400px' }}>
+                                    Your consistency is your superpower. You've attended {data.stats.totalAttended} sessions so far!
+                                </p>
+                            </div>
+
+                            {/* Stats Circle - Redesigned */}
+                            <div style={{
+                                position: 'absolute', right: '5%', top: '50%', transform: 'translateY(-50%)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center'
+                            }} className="header-stats">
+                                <div style={{ position: 'relative', width: '120px', height: '120px' }}>
+                                    <svg width="120" height="120" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+                                        <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--color-primary))" strokeWidth="10"
+                                            strokeDasharray="314.15"
+                                            strokeDashoffset={314.15 - (314.15 * data.stats.percentage / 100)}
                                             strokeLinecap="round"
-                                            style={{ transition: 'stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                                            style={{ filter: 'drop-shadow(0 0 8px hsl(var(--color-primary) / 0.5))', transition: 'stroke-dashoffset 2s ease-out' }}
                                         />
                                     </svg>
-                                    <div style={{ position: 'absolute', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-2px' }}>
-                                            {data.stats.percentage}<span style={{ fontSize: '1rem', verticalAlign: 'top', marginLeft: '2px' }}>%</span>
-                                        </div>
-                                        <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5, letterSpacing: '1px' }}>ATTENDANCE</div>
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 900 }}>{data.stats.percentage}%</div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 900 }}>
-                                {
-                                    ['Douloid', 'Recruit', 'Visitor', 'Exempted'].includes(data.memberType)
-                                        ? data.memberType.toUpperCase()
-                                        : (data.stats.percentage > 80 ? 'ELITE DOULOID' : data.stats.percentage > 50 ? 'ACTIVE MEMBER' : 'RECRUIT')
-                                }
-                            </h3>
-                            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto' }}>
-                                Total attendance: <strong>{data.stats.totalAttended}</strong> / {data.stats.totalMeetings} sessions.
-                            </p>
-
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2.5rem' }}>
-                                <div style={{
-                                    background: 'var(--glass-bg)',
-                                    padding: '1rem 1.5rem',
-                                    borderRadius: '1rem',
-                                    border: '1px solid rgba(255, 215, 0, 0.2)',
-                                    flex: 1,
-                                    maxWidth: '140px'
-                                }}>
-                                    <Trophy size={20} color="#FFD700" style={{ marginBottom: '0.5rem' }} />
-                                    <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', letterSpacing: '1px' }}>STANDING</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#FFD700' }}>{data.stats.totalAttended > 5 ? 'GOLD' : 'SILVER'}</div>
-                                </div>
-                                <div style={{
-                                    background: 'var(--glass-bg)',
-                                    padding: '1rem 1.5rem',
-                                    borderRadius: '1rem',
-                                    border: '1px solid rgba(37, 170, 225, 0.2)',
-                                    flex: 1,
-                                    maxWidth: '140px'
-                                }}>
-                                    <Star size={20} color="#25AAE1" style={{ marginBottom: '0.5rem' }} />
-                                    <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', letterSpacing: '1px' }}>STREAK</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#25AAE1' }}>ACTIVE</div>
-                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'hsl(var(--color-primary))', marginTop: '0.5rem', letterSpacing: '1px' }}>RATIO</div>
                             </div>
                         </div>
+
+                        {/* Navigation Tabs */}
+                        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', width: 'fit-content' }}>
+                            {['overview', 'history'].map(tab => (
+                                <button key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    style={{
+                                        padding: '0.6rem 1.5rem', borderRadius: '0.75rem', border: 'none',
+                                        fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                                        background: activeTab === tab ? 'hsl(var(--color-primary))' : 'transparent',
+                                        color: activeTab === tab ? 'white' : 'var(--color-text-dim)',
+                                        transition: 'all 0.3s'
+                                    }}
+                                >
+                                    {tab.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+
+                        {activeTab === 'overview' ? (
+                            <>
+                                {/* Quick Access Actions */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                    <div className="glass-panel action-card" onClick={() => setComingSoon('Monthly Contribution')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(74, 222, 128, 0.1)' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                                            <Star size={20} />
+                                        </div>
+                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Monthly Contribution</h3>
+                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Support church projects and events.</p>
+                                    </div>
+                                    <div className="glass-panel action-card" onClick={() => setComingSoon('20 Bob Challenge')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                                            <Trophy size={20} />
+                                        </div>
+                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>20 Bob Challenge</h3>
+                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Small change, big impact. Join today!</p>
+                                    </div>
+                                    <div className="glass-panel action-card" onClick={() => setComingSoon('Doulos ChatBot')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(167, 139, 250, 0.1)' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                                            <MessageCircle size={20} />
+                                        </div>
+                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Doulos AI Chat</h3>
+                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Ask questions about Doulos or the faith.</p>
+                                    </div>
+                                </div>
+
+                                {/* Quick Check-in Section */}
+                                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #25AAE1' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '12px' }}>
+                                            <Calendar size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>ATTENDANCE CHECK-IN</h3>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Scan QR or enter manual code from leaderboard.</p>
+                                        </div>
+                                    </div>
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const code = e.target.elements.code.value.trim();
+                                        if (code) window.location.href = `/check-in/${code}`;
+                                    }} style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <input name="code" placeholder="CODE" className="input-field" style={{ width: '100px', height: '40px', textAlign: 'center', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase' }} required />
+                                        <button className="btn btn-primary" style={{ padding: '0 1.25rem', height: '40px', fontSize: '0.8rem', fontWeight: 800 }}>GO</button>
+                                    </form>
+                                </div>
+
+                                {/* Stats Overview Cards */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                    <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '2px', marginBottom: '0.5rem' }}>STANDING</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#facc15' }}>{data.stats.totalAttended > 5 ? 'GOLD' : 'SILVER'}</div>
+                                    </div>
+                                    <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '2px', marginBottom: '0.5rem' }}>TOTAL SESSIONS</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#25AAE1' }}>{data.stats.totalAttended} / {data.stats.totalMeetings}</div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            /* History List - Refined */
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {data.history.map((m, i) => (
+                                    <div key={m._id} className="glass-panel" style={{
+                                        padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        borderLeft: `4px solid ${m.attended ? '#4ade80' : '#f87171'}`,
+                                        animation: `slideUp 0.4s ease-out ${i * 0.05}s both`
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                            <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{new Date(m.date).getDate()}</div>
+                                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>
+                                                    {new Date(m.date).toLocaleString('default', { month: 'short' })}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>{m.name}</h4>
+                                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 600 }}>{m.campus}</p>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: m.attended ? '#4ade80' : '#f87171' }}>
+                                            {m.attended ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 900 }}>{m.attended ? 'VERIFIED' : 'ABSENT'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
 
-                {/* Quick Check-In for Laptop/No-Phone Users */}
-                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', border: '1px solid rgba(37,170,225,0.2)', background: 'rgba(37,170,225,0.05)' }}>
-                    <div>
-                        <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', fontWeight: 900, color: '#25AAE1' }}>HAVE A MEETING CODE?</h3>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Use this if you can't scan the QR code.</p>
-                    </div>
-                    <form onSubmit={(e) => {
-                        e.preventDefault();
-                        const code = e.target.elements.code.value.trim();
-                        if (code) window.location.href = `/check-in/${code}`;
-                    }} style={{ display: 'flex', gap: '0.5rem' }}>
-                        <input
-                            name="code"
-                            placeholder="CODE"
-                            style={{
-                                width: '100px',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '0.5rem',
-                                border: '1px solid var(--glass-border)',
-                                background: 'rgba(0,0,0,0.3)',
-                                color: 'white',
-                                fontWeight: 800,
-                                textAlign: 'center',
-                                textTransform: 'uppercase'
-                            }}
-                            required
-                        />
-                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>GO</button>
-                    </form>
-                </div>
-
-                {/* Service Record Timeline */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                    <div style={{ height: '2px', flex: 1, background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.1))' }}></div>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem', fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                        <Calendar size={18} /> Attendance History
-                    </h3>
-                    <div style={{ height: '2px', flex: 1, background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.1))' }}></div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {data.history.map((m, i) => (
-                        <div key={m._id} className="glass-panel" style={{
-                            padding: '0',
-                            overflow: 'hidden',
-                            border: '1px solid var(--glass-border)',
-                            background: m.attended ? 'rgba(37, 170, 225, 0.02)' : 'rgba(239, 68, 68, 0.02)',
-                            animation: `slideUp 0.5s ease-out ${i * 0.1}s both`
+                    {/* Sidebar / Secondary Info */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {/* Quote Card */}
+                        <div className="glass-panel" style={{
+                            padding: '2rem', background: 'rgba(255,215,0,0.02)', border: '1px solid rgba(255,215,0,0.1)'
                         }}>
-                            <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                    <div style={{
-                                        width: '4px', height: '40px',
-                                        background: m.attended ? '#4ade80' : '#f87171',
-                                        borderRadius: '2px',
-                                        boxShadow: m.attended ? '0 0 10px #4ade80' : 'none'
-                                    }}></div>
+                            <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', fontWeight: 800, color: '#facc15', letterSpacing: '2px' }}>TODAY'S MOTIVATION</h3>
+                            <p style={{ display: 'flex', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 600, fontStyle: 'italic', lineHeight: 1.5, color: '#fde68a' }}>
+                                <span style={{ fontSize: '2rem', color: '#facc15', opacity: 0.3, lineHeight: 1 }}>"</span>
+                                Consistency is what transforms average into excellence.
+                                <span style={{ fontSize: '2rem', color: '#facc15', opacity: 0.3, lineHeight: 1, alignSelf: 'flex-end' }}>"</span>
+                            </p>
+                        </div>
+
+                        {/* Rewards / Badges */}
+                        <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '2px', color: 'var(--color-text-dim)' }}>ACHIEVEMENTS</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Trophy size={18} color="#25AAE1" />
+                                    </div>
                                     <div>
-                                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.01em' }}>{m.name}</h4>
-                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                            {new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} &bull; {m.campus}
-                                        </p>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Early Bird</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>Check in before 7:00 PM</div>
                                     </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    {m.attended ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#4ade80' }}>
-                                            <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px' }}>VERIFIED</span>
-                                            <CheckCircle size={20} />
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f87171', opacity: 0.8 }}>
-                                            <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px' }}>ABSENT</span>
-                                            <XCircle size={20} />
-                                        </div>
-                                    )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', opacity: 0.4 }}>
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Star size={18} color="#aaa" />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Perfect Month</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>Attend all 4 Sundays</div>
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* Recap Section */}
-                            {(m.devotion || m.iceBreaker || m.announcements) ? (
-                                <div style={{
-                                    padding: '1.5rem',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                                    gap: '1.5rem',
-                                    borderTop: '1px solid rgba(255,255,255,0.05)'
-                                }}>
-                                    {m.devotion && (
-                                        <div style={{ position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#a78bfa' }}>
-                                                <BookOpen size={14} />
-                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px' }}>Devotion</span>
-                                            </div>
-                                            <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.6', color: 'rgba(255,255,255,0.8)' }}>{m.devotion}</p>
-                                        </div>
-                                    )}
-                                    {m.iceBreaker && (
-                                        <div style={{ position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#25AAE1' }}>
-                                                <Music size={14} />
-                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px' }}>Ice Breaker</span>
-                                            </div>
-                                            <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.6', color: 'rgba(255,255,255,0.8)' }}>{m.iceBreaker}</p>
-                                        </div>
-                                    )}
-                                    {m.announcements && (
-                                        <div style={{
-                                            background: 'rgba(250, 204, 21, 0.05)',
-                                            padding: '1.25rem',
-                                            borderRadius: '1rem',
-                                            border: '1px solid rgba(250, 204, 21, 0.1)',
-                                            gridColumn: '1 / -1'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#facc15' }}>
-                                                <Bell size={14} />
-                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px' }}>Announcements</span>
-                                            </div>
-                                            <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.6', color: '#fde68a' }}>{m.announcements}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div style={{ padding: '1rem', textAlign: 'center', background: 'rgba(0,0,0,0.1)', opacity: 0.4 }}>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, fontStyle: 'italic', letterSpacing: '1px' }}>NO DETAILS PROVIDED</p>
-                                </div>
-                            )}
                         </div>
-                    ))}
+                    </div>
                 </div>
             </div>
+
+            <style>{`
+                .container { width: 100%; max-width: 1200px; padding: 1.5rem; }
+                .action-card:hover { 
+                    transform: translateY(-5px); 
+                    background: rgba(255,255,255,0.05);
+                    border-color: rgba(37, 170, 225, 0.3) !important;
+                }
+                @media (max-width: 992px) {
+                    .portal-grid { grid-template-columns: 1fr !important; }
+                    .header-stats { position: relative !important; right: auto !important; top: auto !important; transform: none !important; margin-top: 2rem; }
+                }
+                @keyframes rotateLogo {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                @keyframes congratsPop {
+                    0% { transform: scale(0.8); opacity: 0; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+                .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: .5; }
+                }
+            `}</style>
         </div>
     );
 };
