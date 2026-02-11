@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send, Bot } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import Logo from '../components/Logo';
@@ -96,9 +96,21 @@ const StudentPortal = () => {
         setChatInput('');
         setIsTyping(true);
 
+        // Determine greeting based on time
+        const hour = new Date().getHours();
+        let timeGreeting = 'Day';
+        if (hour < 12) timeGreeting = 'Morning';
+        else if (hour < 18) timeGreeting = 'Afternoon';
+        else timeGreeting = 'Evening';
+
+        const name = data.memberName ? data.memberName.split(' ')[0] : 'Member';
+
         setTimeout(() => {
             setIsTyping(false);
-            setChatMessages(prev => [...prev, { sender: 'bot', text: 'Coming Soon 🚀' }]);
+            setChatMessages(prev => [...prev, {
+                sender: 'bot',
+                text: `Good ${timeGreeting}, ${name}! 👋 I am the Doulos AI Assistant. I'm currently being built to help you with all things Doulos. This feature is coming very soon!`
+            }]);
         }, 1500);
     };
 
@@ -638,8 +650,15 @@ const StudentPortal = () => {
                         {/* Chat Header */}
                         <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.1)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '10px', height: '10px', background: '#4ade80', borderRadius: '50%', boxShadow: '0 0 10px #4ade80' }}></div>
-                                <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Doulos AI</span>
+                                <div style={{
+                                    width: '32px', height: '32px', borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, #25AAE1 0%, #3b82f6 100%)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 4px 12px rgba(37, 170, 225, 0.3)'
+                                }}>
+                                    <Bot size={20} color="white" />
+                                </div>
+                                <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.5px' }}>Doulos Bot</span>
                             </div>
                             <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><XCircle size={20} /></button>
                         </div>
@@ -691,9 +710,10 @@ const StudentPortal = () => {
                         width: '60px', height: '60px', borderRadius: '50%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 10px 30px rgba(37, 170, 225, 0.4)',
-                        animation: 'bounce 2s infinite'
+                        animation: 'bounce 2s infinite',
+                        background: 'linear-gradient(135deg, #25AAE1 0%, #3b82f6 100%)'
                     }}>
-                        <MessageCircle size={30} />
+                        <Bot size={32} />
                     </button>
                 )}
             </div>
