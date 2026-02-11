@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import Logo from '../components/Logo';
@@ -11,6 +11,19 @@ const StudentPortal = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [whatsappLink, setWhatsappLink] = useState('');
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/settings/whatsapp_link');
+                setWhatsappLink(res.data.value || '');
+            } catch (err) {
+                console.error('Failed to fetch settings');
+            }
+        };
+        fetchSettings();
+    }, []);
 
     useEffect(() => {
         let timer;
@@ -44,6 +57,24 @@ const StudentPortal = () => {
         setIsLoggedIn(false);
         setData(null);
         setRegNo('');
+    };
+
+    const handleJoinGroup = async () => {
+        if (!whatsappLink) {
+            alert("WhatsApp group link not yet set. Please contact G9 leaders.");
+            return;
+        }
+
+        try {
+            await api.post(`/members/clear-congrats/${data.studentRegNo}`);
+            window.open(whatsappLink, '_blank');
+            // Refresh logic - the reload should be triggered by the state update if needed
+            // but for now let's just update local data to be safe
+            setData({ ...data, needsGraduationCongrats: false, memberType: 'Douloid' });
+        } catch (err) {
+            console.error('Failed to clear congrats status');
+            window.open(whatsappLink, '_blank');
+        }
     };
 
     useEffect(() => {
@@ -81,7 +112,7 @@ const StudentPortal = () => {
                         color: 'white',
                         textShadow: '0 0 40px rgba(255, 255, 255, 0.3)'
                     }}>
-                        STUDENT <span style={{ color: 'hsl(var(--color-primary))' }}>PORTAL</span>
+                        DOULOS <span style={{ color: 'hsl(var(--color-primary))' }}>PORTAL</span>
                     </h1>
                 </div>
 
@@ -109,7 +140,7 @@ const StudentPortal = () => {
                         gap: '0.75rem'
                     }}>
                         <div style={{ height: '1px', width: '20px', background: 'rgba(255,255,255,0.1)' }}></div>
-                        Student Login
+                        Member Login
                         <div style={{ height: '1px', width: '20px', background: 'rgba(255,255,255,0.1)' }}></div>
                     </div>
 
@@ -217,6 +248,14 @@ const StudentPortal = () => {
                         30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
                         40%, 60% { transform: translate3d(4px, 0, 0); }
                     }
+                    @keyframes slideUp {
+                        from { transform: translateY(30px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                    @keyframes bounce {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-10px); }
+                    }
                     .loading-spinner-small {
                         width: 16px; height: 16px;
                         border: 2px solid rgba(255,255,255,0.3);
@@ -235,7 +274,61 @@ const StudentPortal = () => {
             <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', gap: '1.5rem' }}>
                 <BackgroundGallery />
                 <div className="loading-spinner-small" style={{ width: '50px', height: '50px', borderTopColor: '#25AAE1' }}></div>
-                <p style={{ color: 'var(--color-primary)', fontWeight: 700, letterSpacing: '2px' }}>LOADING PORTAL...</p>
+                <p style={{ color: 'var(--color-primary)', fontWeight: 700, letterSpacing: '2px' }}>LOADING DOULOS PORTAL...</p>
+            </div>
+        );
+    }
+
+    if (isLoggedIn && data?.needsGraduationCongrats) {
+        return (
+            <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <BackgroundGallery />
+                <ValentineRain />
+                <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '2rem', maxWidth: '600px', width: '100%' }}>
+                    <div className="glass-panel" style={{ padding: '3rem 2rem', border: '2px solid hsl(var(--color-primary))', background: 'rgba(0,0,0,0.8)', boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)', animation: 'slideUp 0.8s' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <Sparkles size={40} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
+                            <GraduationCap size={48} color="hsl(var(--color-primary))" />
+                            <Sparkles size={40} color="#FFD700" style={{ animation: 'bounce 2s infinite 1s' }} />
+                        </div>
+
+                        <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '-1px' }}>
+                            Welcome to the <span style={{ color: 'hsl(var(--color-primary))' }}>Family!</span>
+                        </h1>
+                        <p style={{ fontSize: '1.25rem', color: '#4ade80', fontWeight: 700, marginBottom: '2rem' }}>
+                            You are now officially a Douloid!
+                        </p>
+
+                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '1rem', marginBottom: '2.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'rgba(255,255,255,0.8)', margin: 0 }}>
+                                Your journey doesn't end here. To access your portal and stay updated with our community, please join our official Doulos Family WhatsApp group.
+                            </p>
+                        </div>
+
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleJoinGroup}
+                            style={{
+                                width: '100%',
+                                padding: '1.25rem',
+                                fontSize: '1.1rem',
+                                fontWeight: 900,
+                                borderRadius: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.75rem',
+                                boxShadow: '0 15px 30px -5px hsl(var(--color-primary) / 0.4)'
+                            }}
+                        >
+                            <MessageCircle size={24} /> JOIN DOULOS FAMILY WHATSAPP
+                        </button>
+
+                        <p style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: 'var(--color-text-dim)', opacity: 0.6 }}>
+                            * Clicking join will unlock your Doulos portal dashboard.
+                        </p>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -263,7 +356,7 @@ const StudentPortal = () => {
                             <Logo size={45} showText={false} />
                         </div>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '2px', color: 'hsl(var(--color-primary))' }}>STUDENT PORTAL</h2>
+                            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '2px', color: 'hsl(var(--color-primary))' }}>DOULOS PORTAL</h2>
                             <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-dim)', opacity: 0.8 }}>ID: {data.studentRegNo}</p>
                         </div>
                     </div>

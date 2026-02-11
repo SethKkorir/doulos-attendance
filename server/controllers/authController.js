@@ -69,3 +69,45 @@ export const promoteToDeveloper = async (req, res) => {
         res.status(500).json({ message: 'Error updating user', error: error.message });
     }
 };
+
+export const getUsers = async (req, res) => {
+    try {
+        const users = await User.find({}, '-password').sort({ username: 1 });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching users', error: error.message });
+    }
+};
+
+export const updateUser = async (req, res) => {
+    const { id } = req.params;
+    const { username, role, campus, password } = req.body;
+
+    try {
+        const updateData = { username, role, campus };
+        if (password) {
+            updateData.password = password; // Pre-save hook will hash it
+        }
+
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        Object.assign(user, updateData);
+        await user.save();
+
+        res.json({ message: 'User updated successfully', user: { _id: user._id, username: user.username, role: user.role, campus: user.campus } });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating user', error: error.message });
+    }
+};
+
+export const deleteUser = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const user = await User.findByIdAndDelete(id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting user', error: error.message });
+    }
+};

@@ -142,17 +142,11 @@ export const submitAttendance = async (req, res) => {
             return res.status(409).json({ message: 'You have already signed in for this meeting.' });
         }
 
-        // 8. Member Registry Lookup & Points (Already fetched above for device check)
+        // 8. Member Registry Lookup
         if (!member) {
-            // Auto-track new visitor
-            member = new Member({
-                studentRegNo,
-                name: data.studentName || 'New Visitor',
-                memberType: 'Visitor',
-                campus: meeting.campus,
-                linkedDeviceId: deviceId
+            return res.status(403).json({
+                message: "Access Denied: Your Admission Number is not in the Doulos Registry. Please contact G9s to be added."
             });
-            await member.save();
         }
 
         // 9. Record Attendance (Skip if Test Account)
@@ -170,20 +164,13 @@ export const submitAttendance = async (req, res) => {
             await attendance.save();
         }
 
-        // 10. Award Points & Reset Graduation Flag
+        // 10. Award Points
         const showGraduationCongrats = member.needsGraduationCongrats;
 
-        const updateData = { needsGraduationCongrats: false };
         if (!member.isTestAccount) {
             // Only non-test accounts get points incremented
             await Member.findOneAndUpdate({ studentRegNo }, {
-                $inc: { totalPoints: 10 },
-                $set: updateData
-            });
-        } else {
-            // Test accounts just get the flag reset
-            await Member.findOneAndUpdate({ studentRegNo }, {
-                $set: updateData
+                $inc: { totalPoints: 10 }
             });
         }
 
@@ -301,6 +288,7 @@ export const getStudentPortalData = async (req, res) => {
             studentRegNo,
             memberName: member.name || 'Visitor',
             memberType: member.memberType || 'Visitor',
+            needsGraduationCongrats: member.needsGraduationCongrats || false,
             stats: {
                 totalMeetings,
                 physicalAttended,

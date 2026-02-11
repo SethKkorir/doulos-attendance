@@ -256,6 +256,42 @@ const CheckIn = () => {
             <BackgroundGallery />
             <ValentineRain />
 
+            {/* Error Popover */}
+            {(msg && (status === 'error' || status === 'locked')) || hasAlreadyCheckedIn ? (
+                <div style={{
+                    position: 'fixed',
+                    top: '2rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 2000,
+                    width: '90%',
+                    maxWidth: '400px',
+                    padding: '1.25rem',
+                    borderRadius: '1rem',
+                    background: hasAlreadyCheckedIn ? 'rgba(251, 191, 36, 0.95)' : 'rgba(239, 68, 68, 0.95)',
+                    color: 'white',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(10px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    fontWeight: 700,
+                    animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                    {hasAlreadyCheckedIn ? <Clock size={24} /> : <XCircle size={24} />}
+                    <div style={{ flex: 1 }}>
+                        {hasAlreadyCheckedIn ? "Double check-in detected! You've already marked attendance." : msg}
+                    </div>
+                    <button
+                        onClick={() => { setMsg(''); setHasAlreadyCheckedIn(false); }}
+                        style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.7 }}
+                    >
+                        ✕
+                    </button>
+                </div>
+            ) : null}
+
             <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '2.5rem', animation: 'fadeIn 0.8s ease-out' }}>
                 <div style={{ animation: 'rotateLogo 30s linear infinite', display: 'inline-block', marginBottom: '1.5rem' }}>
                     <Logo size={80} showText={false} />
@@ -649,7 +685,7 @@ const CheckIn = () => {
                                 style={{ width: '100%', height: '60px', borderRadius: '1rem', fontSize: '1rem', fontWeight: 900 }}
                                 onClick={() => window.location.href = '/portal'}
                             >
-                                GO TO STUDENT PORTAL
+                                GO TO DOULOS PORTAL
                             </button>
                             <button
                                 className="btn"

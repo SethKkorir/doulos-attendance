@@ -60,6 +60,30 @@ const AdminDashboard = () => {
     const [loadingInsights, setLoadingInsights] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [meetingSemesterFilter, setMeetingSemesterFilter] = useState('Current');
+    const [admins, setAdmins] = useState([]);
+    const [loadingAdmins, setLoadingAdmins] = useState(false);
+    const [editingAdmin, setEditingAdmin] = useState(null);
+    const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
+    const [whatsappLink, setWhatsappLink] = useState('');
+
+    useEffect(() => {
+        if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
+            fetchAdmins();
+        }
+    }, [userRole]);
+
+    const fetchAdmins = async () => {
+        setLoadingAdmins(true);
+        try {
+            const { data } = await api.get('/auth/users');
+            setAdmins(data);
+        } catch (err) {
+            console.error('Failed to fetch admins:', err);
+        } finally {
+            setLoadingAdmins(false);
+        }
+    };
 
     useEffect(() => {
         if (!isDarkMode) {
@@ -346,6 +370,12 @@ const AdminDashboard = () => {
     const handleCreate = async (e) => {
         e.preventDefault();
         setMsg(null);
+
+        if (!formData.location.latitude || !formData.location.longitude) {
+            setMsg({ type: 'error', text: 'You MUST set the meeting location. Click "Use My Current Location" or capture coordinates.' });
+            return;
+        }
+
         try {
             await api.post('/meetings', formData);
             setMsg({ type: 'success', text: 'Meeting Created!' });
@@ -1012,6 +1042,70 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleSaveAdmin = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingAdmin._id === 'NEW') {
+                await api.post('/auth/register', editingAdmin);
+                setMsg({ type: 'success', text: 'New admin registered successfully!' });
+            } else {
+                await api.patch(`/auth/users/${editingAdmin._id}`, editingAdmin);
+                setMsg({ type: 'success', text: 'Admin profile updated!' });
+            }
+            setEditingAdmin(null);
+            fetchAdmins();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save admin' });
+        }
+    };
+
+    const handleDeleteAdmin = async (id, name) => {
+        if (!window.confirm(`Are you sure you want to delete admin "${name}"? This cannot be undone.`)) return;
+        try {
+            await api.delete(`/auth/users/${id}`);
+            setMsg({ type: 'success', text: 'Admin deleted successfully.' });
+            fetchAdmins();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to delete admin' });
+        }
+    };
+
+    const handleBulkGraduate = async () => {
+        if (selectedMemberIds.length === 0) return;
+        if (!window.confirm(`Graduate ${selectedMemberIds.length} selected recruits? This will send them the WhatsApp link invite when they next login.`)) return;
+        try {
+            await api.post('/members/bulk-graduate', { memberIds: selectedMemberIds });
+            setMsg({ type: 'success', text: `Successfully graduated ${selectedMemberIds.length} members!` });
+            setSelectedMemberIds([]);
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to graduate members' });
+        }
+    };
+
+    const fetchSettings = async () => {
+        try {
+            const res = await api.get('/settings/whatsapp_link');
+            setWhatsappLink(res.data.value || '');
+        } catch (err) {
+            console.error('Failed to fetch settings');
+        }
+    };
+
+    const handleSaveSetting = async (key, value) => {
+        try {
+            await api.patch(`/settings/${key}`, { value });
+            setMsg({ type: 'success', text: 'Setting updated successfully.' });
+            fetchSettings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to update setting' });
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
     const totalAttendanceCount = meetings.reduce((acc, current) => acc + (current.attendanceCount || 0), 0);
     const activeMeetingsCount = meetings.filter(m => m.isActive).length;
 
@@ -1194,6 +1288,20 @@ const AdminDashboard = () => {
                             >
                                 Reports
                             </button>
+                            {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
+                                <button
+                                    onClick={() => setActiveTab('admins')}
+                                    style={{
+                                        padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                        background: activeTab === 'admins' ? 'hsl(var(--color-primary))' : 'transparent',
+                                        color: activeTab === 'admins' ? 'white' : 'var(--color-text-dim)',
+                                        fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    Admins
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1661,10 +1769,18 @@ const AdminDashboard = () => {
                                         <RotateCcw size={14} style={{ marginRight: '0.4rem' }} /> Sync
                                     </button>
                                     {memberTypeFilter === 'Recruit' && (
-                                        <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                            onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
-                                            <GraduationCap size={16} /> Graduate All
-                                        </button>
+                                        <>
+                                            <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
+                                                <GraduationCap size={16} /> Graduate All
+                                            </button>
+                                            {selectedMemberIds.length > 0 && (
+                                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                    onClick={handleBulkGraduate}>
+                                                    <GraduationCap size={16} /> Graduate Selected ({selectedMemberIds.length})
+                                                </button>
+                                            )}
+                                        </>
                                     )}
                                     {['developer', 'superadmin'].includes(userRole) && (
                                         <>
@@ -1687,6 +1803,34 @@ const AdminDashboard = () => {
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
                                     <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                        <th style={{ padding: '1rem', width: '40px' }}>
+                                            <input
+                                                type="checkbox"
+                                                onChange={(e) => {
+                                                    const filtered = members.filter(m => {
+                                                        const matchesSearch =
+                                                            m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                                            m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
+                                                        const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
+                                                        const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
+                                                        return matchesSearch && matchesCampus && matchesType;
+                                                    });
+                                                    if (e.target.checked) {
+                                                        setSelectedMemberIds(filtered.map(m => m._id));
+                                                    } else {
+                                                        setSelectedMemberIds([]);
+                                                    }
+                                                }}
+                                                checked={selectedMemberIds.length > 0 && selectedMemberIds.length === members.filter(m => {
+                                                    const matchesSearch =
+                                                        m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                                        m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
+                                                    const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
+                                                    const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
+                                                    return matchesSearch && matchesCampus && matchesType;
+                                                }).length}
+                                            />
+                                        </th>
                                         <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Member Details</th>
                                         <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Points</th>
                                         <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Campus</th>
@@ -1704,13 +1848,14 @@ const AdminDashboard = () => {
                                                     m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
                                                     m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
                                                 const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
-                                                return matchesSearch && matchesCampus;
+                                                const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
+                                                return matchesSearch && matchesCampus && matchesType;
                                             });
 
                                             if (filtered.length === 0) {
                                                 return (
                                                     <tr>
-                                                        <td colSpan="5" style={{ padding: '4rem', textAlign: 'center' }}>
+                                                        <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
                                                             <div style={{ color: 'var(--color-text-dim)', marginBottom: '1.5rem' }}>
                                                                 <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
                                                                 <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
@@ -1727,6 +1872,19 @@ const AdminDashboard = () => {
 
                                             return filtered.map((m, i) => (
                                                 <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
+                                                    <td style={{ padding: '1rem', width: '40px' }} onClick={(e) => e.stopPropagation()}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedMemberIds.includes(m._id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedMemberIds([...selectedMemberIds, m._id]);
+                                                                } else {
+                                                                    setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ fontWeight: 600 }}>{m.name}</div>
                                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{m.studentRegNo}</div>
@@ -1777,6 +1935,16 @@ const AdminDashboard = () => {
                             </table>
                         </div>
                     </div>
+                ) : activeTab === 'admins' ? (
+                    <AdminsView
+                        admins={admins}
+                        loading={loadingAdmins}
+                        onEdit={setEditingAdmin}
+                        onDelete={handleDeleteAdmin}
+                        onRegister={() => setEditingAdmin({ _id: 'NEW', username: '', role: 'admin', campus: 'Athi River' })}
+                        whatsappLink={whatsappLink}
+                        onUpdateSetting={handleSaveSetting}
+                    />
                 ) : (
                     <ReportsView
                         meetings={meetings}
@@ -1786,8 +1954,7 @@ const AdminDashboard = () => {
                         onDownloadCSV={downloadCSV}
                         onDownloadCumulativeCSV={downloadCumulativeCSV}
                     />
-                )
-                }
+                )}
 
                 {/* Member Insights & Profile Modal */}
                 {
@@ -1809,10 +1976,25 @@ const AdminDashboard = () => {
                                             )}
                                         </div>
                                     </div>
-                                    <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); }} style={{ padding: '0.5rem 1rem' }}>Close</button>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        {['developer', 'superadmin', 'admin', 'Admin'].includes(userRole) && editingMember._id !== 'NEW' && (
+                                            <button
+                                                className="btn"
+                                                onClick={() => setIsEditingMemberProfile(!isEditingMemberProfile)}
+                                                style={{
+                                                    padding: '0.5rem 1rem',
+                                                    background: isEditingMemberProfile ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.05)',
+                                                    color: isEditingMemberProfile ? 'white' : 'var(--color-text-dim)'
+                                                }}
+                                            >
+                                                {isEditingMemberProfile ? 'View Insights' : 'Edit Profile'}
+                                            </button>
+                                        )}
+                                        <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }} style={{ padding: '0.5rem 1rem' }}>Close</button>
+                                    </div>
                                 </div>
 
-                                {editingMember._id === 'NEW' ? (
+                                {editingMember._id === 'NEW' || isEditingMemberProfile ? (
                                     <form onSubmit={saveMember} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                                             <div>
@@ -1854,7 +2036,21 @@ const AdminDashboard = () => {
                                                 </select>
                                             </div>
                                         </div>
-                                        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem' }}>Save Member</button>
+                                        {['developer', 'superadmin', 'Admin', 'superadmin'].includes(userRole) && (
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Total Points</label>
+                                                <input
+                                                    type="number"
+                                                    className="input-field"
+                                                    value={editingMember.totalPoints || 0}
+                                                    onChange={e => setEditingMember({ ...editingMember, totalPoints: parseInt(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        )}
+                                        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem' }}>Save Changes</button>
+                                        {isEditingMemberProfile && (
+                                            <button type="button" className="btn" onClick={() => setIsEditingMemberProfile(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }}>Cancel</button>
+                                        )}
                                     </form>
                                 ) : (
                                     <div>
@@ -2138,7 +2334,67 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     )}
-
+                {/* Edit Admin Modal */}
+                {editingAdmin && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 120
+                    }}>
+                        <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem' }}>
+                            <h3 style={{ marginBottom: '1.5rem' }}>{editingAdmin._id === 'NEW' ? 'Register New Admin' : `Edit Admin: ${editingAdmin.username}`}</h3>
+                            <form onSubmit={handleSaveAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                <div>
+                                    <label>Username</label>
+                                    <input
+                                        className="input-field"
+                                        value={editingAdmin.username}
+                                        onChange={e => setEditingAdmin({ ...editingAdmin, username: e.target.value })}
+                                        required
+                                        placeholder="e.g. john_doe"
+                                    />
+                                </div>
+                                <div>
+                                    <label>{editingAdmin._id === 'NEW' ? 'Password' : 'New Password (leave blank to keep current)'}</label>
+                                    <input
+                                        type="password"
+                                        className="input-field"
+                                        value={editingAdmin.password || ''}
+                                        onChange={e => setEditingAdmin({ ...editingAdmin, password: e.target.value })}
+                                        required={editingAdmin._id === 'NEW'}
+                                        placeholder="••••••••"
+                                    />
+                                </div>
+                                <div>
+                                    <label>Role</label>
+                                    <select
+                                        className="input-field"
+                                        value={editingAdmin.role}
+                                        onChange={e => setEditingAdmin({ ...editingAdmin, role: e.target.value })}
+                                    >
+                                        <option value="admin">Admin (Standard)</option>
+                                        <option value="superadmin">Super Admin (Can manage others)</option>
+                                        <option value="developer">Developer (Full Control)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Primary Campus</label>
+                                    <select
+                                        className="input-field"
+                                        value={editingAdmin.campus}
+                                        onChange={e => setEditingAdmin({ ...editingAdmin, campus: e.target.value })}
+                                    >
+                                        <option value="Athi River">Athi River</option>
+                                        <option value="Valley Road">Valley Road</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingAdmin._id === 'NEW' ? 'Create Admin' : 'Save Changes'}</button>
+                                    <button type="button" className="btn" onClick={() => setEditingAdmin(null)} style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
                 {/* Edit Meeting Modal */}
                 {
@@ -2827,6 +3083,111 @@ const AttendanceTable = ({ meeting, setMsg }) => {
                     </table>
                 </div>
             )}
+        </div>
+    );
+};
+
+const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, whatsappLink, onUpdateSetting }) => {
+    const [localLink, setLocalLink] = useState(whatsappLink);
+    const userRole = localStorage.getItem('role')?.toLowerCase();
+    const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
+
+    useEffect(() => {
+        setLocalLink(whatsappLink);
+    }, [whatsappLink]);
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
+            {canManageAdmins && (
+                <div className="glass-panel" style={{ padding: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>System Administrators</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>Manage access levels for the dashboard.</p>
+                        </div>
+                        <button className="btn btn-primary" onClick={onRegister} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Plus size={18} /> Register Admin
+                        </button>
+                    </div>
+
+                    <div className="table-responsive">
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
+                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Username</th>
+                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Role</th>
+                                    <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan="3" style={{ padding: '2rem', textAlign: 'center', opacity: 0.5 }}>Loading staff registry...</td></tr>
+                                ) : (
+                                    admins.map(a => (
+                                        <tr key={a._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                            <td style={{ padding: '1rem', fontWeight: 600 }}>{a.username}</td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <span style={{
+                                                    padding: '0.25rem 0.6rem',
+                                                    borderRadius: '1rem',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 700,
+                                                    background: a.role === 'developer' ? 'rgba(124, 58, 237, 0.1)' : 'rgba(37, 170, 225, 0.1)',
+                                                    color: a.role === 'developer' ? '#8b5cf6' : '#25AAE1',
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    {a.role}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                    <button className="btn-icon" onClick={() => onEdit(a)}><Pencil size={18} /></button>
+                                                    <button className="btn-icon" style={{ color: '#ef4444' }} onClick={() => onDelete(a._id)}><Trash2 size={18} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '0.75rem' }}>
+                        <LinkIcon size={24} />
+                    </div>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Graduation Gateway Settings</h3>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>The link graduates will be forced to join before accessing their portal.</p>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-dim)' }}>Doulos Family WhatsApp Group Link</label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <input
+                            className="input-field"
+                            style={{ flex: 1 }}
+                            value={localLink}
+                            onChange={(e) => setLocalLink(e.target.value)}
+                            placeholder="https://chat.whatsapp.com/..."
+                        />
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => onUpdateSetting('whatsapp_link', localLink)}
+                            disabled={localLink === whatsappLink}
+                        >
+                            Save Link
+                        </button>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', fontStyle: 'italic', margin: '0.5rem 0 0', opacity: 0.6 }}>
+                        * This link will be presented in a mandatory full-screen modal to every newly graduated Douloid on their first login.
+                    </p>
+                </div>
+            </div>
         </div>
     );
 };

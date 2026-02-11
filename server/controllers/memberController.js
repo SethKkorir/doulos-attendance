@@ -173,7 +173,6 @@ export const graduateAllRecruits = async (req, res) => {
             { memberType: 'Recruit' },
             {
                 $set: {
-                    memberType: 'Douloid',
                     needsGraduationCongrats: true
                 }
             }
@@ -192,7 +191,7 @@ export const graduateMember = async (req, res) => {
     try {
         const member = await Member.findByIdAndUpdate(
             req.params.id,
-            { $set: { memberType: 'Douloid', needsGraduationCongrats: true } },
+            { $set: { needsGraduationCongrats: true } },
             { new: true }
         );
         res.json({ message: `Successfully graduated ${member ? member.name : 'member'} to Douloid!`, member });
@@ -286,6 +285,32 @@ export const resetDeviceLock = async (req, res) => {
     try {
         await Member.findByIdAndUpdate(req.params.id, { linkedDeviceId: null });
         res.json({ message: 'Device link reset successfully. The student can now use a new phone.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const bulkGraduateMembers = async (req, res) => {
+    const { memberIds } = req.body; // Array of IDs
+    try {
+        const result = await Member.updateMany(
+            { _id: { $in: memberIds }, memberType: 'Recruit' },
+            { $set: { needsGraduationCongrats: true } }
+        );
+        res.json({ message: `Successfully graduated ${result.modifiedCount} members!`, count: result.modifiedCount });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const clearGraduationCongrats = async (req, res) => {
+    const { studentRegNo } = req.params;
+    try {
+        await Member.findOneAndUpdate(
+            { studentRegNo },
+            { needsGraduationCongrats: false, memberType: 'Douloid' }
+        );
+        res.json({ message: 'Success! Member promoted to Douloid and graduation flag cleared.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
