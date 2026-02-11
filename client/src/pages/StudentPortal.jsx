@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import Logo from '../components/Logo';
@@ -14,6 +14,14 @@ const StudentPortal = () => {
     const [whatsappLink, setWhatsappLink] = useState('');
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'history', 'community'
     const [comingSoon, setComingSoon] = useState(null); // Title of feature
+
+    // Chat Widget State
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMessages, setChatMessages] = useState([
+        { sender: 'bot', text: 'Welcome to Doulos AI Bot! How can I help you today?' }
+    ]);
+    const [chatInput, setChatInput] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -77,6 +85,21 @@ const StudentPortal = () => {
             console.error('Failed to clear congrats status');
             window.open(whatsappLink, '_blank');
         }
+    };
+
+    const handleSendChat = (e) => {
+        e.preventDefault();
+        if (!chatInput.trim()) return;
+
+        const userMsg = { sender: 'user', text: chatInput };
+        setChatMessages(prev => [...prev, userMsg]);
+        setChatInput('');
+        setIsTyping(true);
+
+        setTimeout(() => {
+            setIsTyping(false);
+            setChatMessages(prev => [...prev, { sender: 'bot', text: 'Coming Soon 🚀' }]);
+        }, 1500);
     };
 
     useEffect(() => {
@@ -481,7 +504,7 @@ const StudentPortal = () => {
                                             <Star size={20} />
                                         </div>
                                         <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Monthly Contribution</h3>
-                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Support church projects and events.</p>
+                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Support Doulos projects and events.</p>
                                     </div>
                                     <div className="glass-panel action-card" onClick={() => setComingSoon('20 Bob Challenge')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
                                         <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
@@ -489,13 +512,6 @@ const StudentPortal = () => {
                                         </div>
                                         <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>20 Bob Challenge</h3>
                                         <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Small change, big impact. Join today!</p>
-                                    </div>
-                                    <div className="glass-panel action-card" onClick={() => setComingSoon('Doulos ChatBot')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(167, 139, 250, 0.1)' }}>
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                                            <MessageCircle size={20} />
-                                        </div>
-                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Doulos AI Chat</h3>
-                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Ask questions about Doulos or the faith.</p>
                                     </div>
                                 </div>
 
@@ -603,6 +619,83 @@ const StudentPortal = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Floating Chat Widget */}
+            <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+                {isChatOpen && (
+                    <div className="glass-panel" style={{
+                        width: '350px',
+                        height: '500px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        background: 'rgba(15, 23, 42, 0.95)'
+                    }}>
+                        {/* Chat Header */}
+                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.1)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: '10px', height: '10px', background: '#4ade80', borderRadius: '50%', boxShadow: '0 0 10px #4ade80' }}></div>
+                                <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Doulos AI</span>
+                            </div>
+                            <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><XCircle size={20} /></button>
+                        </div>
+
+                        {/* Chat Body */}
+                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {chatMessages.map((msg, i) => (
+                                <div key={i} style={{
+                                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                                    maxWidth: '80%',
+                                    padding: '0.75rem 1rem',
+                                    borderRadius: '1rem',
+                                    background: msg.sender === 'user' ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.05)',
+                                    color: 'white',
+                                    fontSize: '0.9rem',
+                                    borderBottomRightRadius: msg.sender === 'user' ? '2px' : '1rem',
+                                    borderBottomLeftRadius: msg.sender === 'bot' ? '2px' : '1rem',
+                                }}>
+                                    {msg.text}
+                                </div>
+                            ))}
+                            {isTyping && (
+                                <div style={{ alignSelf: 'flex-start', padding: '0.75rem 1rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', display: 'flex', gap: '0.3rem' }}>
+                                    <span style={{ animation: 'bounce 1s infinite 0s' }}>•</span>
+                                    <span style={{ animation: 'bounce 1s infinite 0.2s' }}>•</span>
+                                    <span style={{ animation: 'bounce 1s infinite 0.4s' }}>•</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Chat Input */}
+                        <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '0.5rem' }}>
+                            <input
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                placeholder="Type a message..."
+                                style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', fontSize: '0.9rem' }}
+                            />
+                            <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem', borderRadius: '0.5rem' }} disabled={!chatInput.trim()}>
+                                <Send size={18} />
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {/* Toggle Button */}
+                {!isChatOpen && (
+                    <button onClick={() => setIsChatOpen(true)} className="btn btn-primary" style={{
+                        width: '60px', height: '60px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 10px 30px rgba(37, 170, 225, 0.4)',
+                        animation: 'bounce 2s infinite'
+                    }}>
+                        <MessageCircle size={30} />
+                    </button>
+                )}
             </div>
 
             <style>{`
