@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send, Bot } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import Logo from '../components/Logo';
+import DoulosBotIcon from '../components/DoulosBotIcon';
 
 const StudentPortal = () => {
     const [regNo, setRegNo] = useState(localStorage.getItem('studentRegNo') || '');
@@ -109,7 +110,7 @@ const StudentPortal = () => {
             setIsTyping(false);
             setChatMessages(prev => [...prev, {
                 sender: 'bot',
-                text: `Good ${timeGreeting}, ${name}! 👋 I am the Doulos AI Assistant. I'm currently being built to help you with all things Doulos. This feature is coming very soon!`
+                text: `Good ${timeGreeting}, ${name}! 👋 I am the Doulos Bot. I'm currently being built to help you with all things Doulos. This feature is coming very soon!`
             }]);
         }, 1500);
     };
@@ -651,12 +652,12 @@ const StudentPortal = () => {
                         <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.1)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{
-                                    width: '32px', height: '32px', borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #25AAE1 0%, #3b82f6 100%)',
+                                    width: '38px', height: '38px', borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.05)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 4px 12px rgba(37, 170, 225, 0.3)'
+                                    border: '1px solid rgba(255,255,255,0.1)'
                                 }}>
-                                    <Bot size={20} color="white" />
+                                    <DoulosBotIcon size={28} />
                                 </div>
                                 <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.5px' }}>Doulos Bot</span>
                             </div>
@@ -706,14 +707,16 @@ const StudentPortal = () => {
 
                 {/* Toggle Button */}
                 {!isChatOpen && (
-                    <button onClick={() => setIsChatOpen(true)} className="btn btn-primary" style={{
-                        width: '60px', height: '60px', borderRadius: '50%',
+                    <button onClick={() => setIsChatOpen(true)} className="btn" style={{
+                        width: '65px', height: '65px', borderRadius: '50%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 10px 30px rgba(37, 170, 225, 0.4)',
                         animation: 'bounce 2s infinite',
-                        background: 'linear-gradient(135deg, #25AAE1 0%, #3b82f6 100%)'
+                        background: 'white',
+                        border: '4px solid rgba(37, 170, 225, 0.2)',
+                        cursor: 'pointer'
                     }}>
-                        <Bot size={32} />
+                        <DoulosBotIcon size={40} />
                     </button>
                 )}
             </div>
