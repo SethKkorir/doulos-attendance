@@ -7,13 +7,16 @@ import CheckIn from './pages/CheckIn';
 import StudentPortal from './pages/StudentPortal';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import LandingPage from './pages/LandingPage';
+import GuestEntry from './pages/GuestEntry';
+
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/admin" replace />} />
+        <Route path="/guest" element={<GuestEntry />} />
 
-        {/* Student Routes */}
         {/* Student Routes */}
         <Route path="/check-in/:meetingCode" element={<CheckIn />} />
         <Route path="/portal" element={<StudentPortal />} />
@@ -29,8 +32,8 @@ function App() {
           }
         />
         <Route path="/superadmin" element={<SuperAdmin />} />
-      </Routes>
-    </Router>
+      </Routes >
+    </Router >
   );
 }
 

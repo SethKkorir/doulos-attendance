@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../api';
 import QRCode from 'react-qr-code';
 import {
@@ -17,6 +18,15 @@ import {
 } from 'recharts';
 
 const AdminDashboard = () => {
+    const location = useLocation();
+    const isGuest = location.state?.isGuest || localStorage.getItem('isGuest') === 'true';
+
+    useEffect(() => {
+        if (location.state?.isGuest) {
+            localStorage.setItem('isGuest', 'true');
+        }
+    }, [location.state]);
+
     const [meetings, setMeetings] = useState([]);
     const [showCreate, setShowCreate] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState(null); // For QR Modal
@@ -75,6 +85,14 @@ const AdminDashboard = () => {
 
     const fetchAdmins = async () => {
         setLoadingAdmins(true);
+        if (isGuest) {
+            setAdmins([
+                { _id: '1', username: 'Guest Admin', role: 'admin', campus: 'Valley Road' },
+                { _id: '2', username: 'Guest SuperUser', role: 'superadmin', campus: 'Athi River' }
+            ]);
+            setLoadingAdmins(false);
+            return;
+        }
         try {
             const { data } = await api.get('/auth/users');
             setAdmins(data);
@@ -122,6 +140,15 @@ const AdminDashboard = () => {
     }, []);
 
     const fetchMeetings = async () => {
+        if (isGuest) {
+            setMeetings([
+                { _id: '1', name: 'Weekly Fellowship', date: new Date().toISOString(), isActive: true, campus: 'Valley Road', attendees: 45 },
+                { _id: '2', name: 'Leadership Summit', date: new Date(Date.now() - 86400000 * 7).toISOString(), isActive: false, campus: 'Valley Road', attendees: 120 },
+                { _id: '3', name: 'Prayer Night', date: new Date(Date.now() - 86400000 * 14).toISOString(), isActive: false, campus: 'Athi River', attendees: 30 }
+            ]);
+            return;
+        }
+
         try {
             const res = await api.get('/meetings');
             // Sort: Active first, then Date descending
@@ -171,6 +198,15 @@ const AdminDashboard = () => {
 
     const fetchMembers = async () => {
         setLoadingMembers(true);
+        if (isGuest) {
+            setMembers([
+                { _id: '1', name: 'Guest Member 1', studentRegNo: 'GM-001', memberType: 'Douloid', campus: 'Valley Road', totalPoints: 120, totalAttended: 15, lastSeen: new Date().toISOString() },
+                { _id: '2', name: 'Guest Member 2', studentRegNo: 'GM-002', memberType: 'Recruit', campus: 'Athi River', totalPoints: 50, totalAttended: 5, lastSeen: new Date().toISOString() },
+                { _id: '3', name: 'Guest Member 3', studentRegNo: 'GM-003', memberType: 'Visitor', campus: 'Valley Road', totalPoints: 10, totalAttended: 1, lastSeen: new Date().toISOString() },
+            ]);
+            setLoadingMembers(false);
+            return;
+        }
         try {
             const res = await api.get('/members', {
                 params: {
@@ -195,6 +231,7 @@ const AdminDashboard = () => {
     }, [activeTab, memberCampusFilter, memberTypeFilter]);
 
     const handleCSVUpload = async (e) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Import disabled in Guest Mode.' });
         const file = e.target.files[0];
         if (!file) return;
 
@@ -237,6 +274,7 @@ const AdminDashboard = () => {
     };
 
     const handleSyncRegistry = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('This will create registry profiles for everyone in your attendance history. Proceed?')) return;
         setImportLoading(true);
         try {
@@ -253,6 +291,7 @@ const AdminDashboard = () => {
 
 
     const handleDeleteMember = async (id, name) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Deletion disabled in Guest Mode.' });
         const password = window.prompt(`SECURITY CHECK: Please enter your admin password to CONFIRM DELETING ${name}:`);
         if (!password) return;
 
@@ -270,6 +309,7 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteMeeting = async (id, name) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         const password = window.prompt(`SECURITY CHECK: Enter admin password to PERMANENTLY DELETE "${name}" and all its attendance records:`);
         if (!password) return;
 
@@ -286,6 +326,7 @@ const AdminDashboard = () => {
     };
 
     const handleSetupTestAccount = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         const regNo = window.prompt('Enter student registration number to set as dedicated TESTER:', '00-0000');
         if (!regNo) return;
         setImportLoading(true);
@@ -302,6 +343,18 @@ const AdminDashboard = () => {
 
     const fetchMemberInsights = async (regNo) => {
         setLoadingInsights(true);
+        if (isGuest) {
+            setMemberInsights({
+                member: { name: 'Guest Member', studentRegNo: regNo, totalPoints: 100 },
+                stats: { totalMeetings: 10, attendedCount: 8, percentage: 80, physicalAttended: 8, exemptedCount: 0 },
+                history: [
+                    { date: new Date().toISOString(), name: 'Sample Meeting 1', attended: true },
+                    { date: new Date(Date.now() - 86400000).toISOString(), name: 'Sample Meeting 2', attended: true },
+                ]
+            });
+            setLoadingInsights(false);
+            return;
+        }
         try {
             const res = await api.get(`/attendance/student/${regNo}`);
             setMemberInsights(res.data);
@@ -313,6 +366,7 @@ const AdminDashboard = () => {
     };
 
     const handleQuickCheckIn = async (meetingId, regNoOverride = null) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         const reg = regNoOverride || quickRegNo;
         if (!reg) return;
 
@@ -369,6 +423,11 @@ const AdminDashboard = () => {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        if (isGuest) {
+            setMsg({ type: 'error', text: 'Creation is disabled in Guest Mode.' });
+            return;
+        }
+
         setMsg(null);
 
         if (!formData.location.latitude || !formData.location.longitude) {
@@ -931,6 +990,7 @@ const AdminDashboard = () => {
     };
 
     const toggleStatus = async (meeting) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(userRole);
 
         if (!meeting.isActive && !isSuperUser) {
@@ -956,6 +1016,8 @@ const AdminDashboard = () => {
 
     const saveMember = async (e) => {
         e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+
         try {
             if (editingMember._id === 'NEW') {
                 await api.post('/members', editingMember);
@@ -980,6 +1042,7 @@ const AdminDashboard = () => {
     };
 
     const handleResetAllPoints = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('Are you sure you want to reset ALL points for ALL members? This cannot be undone.')) return;
         try {
             await api.post('/members/reset-all-points');
@@ -991,6 +1054,7 @@ const AdminDashboard = () => {
     };
 
     const handleGraduateAll = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('Are you sure you want to graduate all Recruits to Douloids?')) return;
         const pwd = prompt('Enter admin password to confirm:');
         if (!pwd) return;
@@ -1004,6 +1068,7 @@ const AdminDashboard = () => {
     };
 
     const handleGraduateMember = async (memberId) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('Graduate this member to Douloid status?')) return;
         try {
             await api.post(`/members/${memberId}/graduate`);
@@ -1018,6 +1083,7 @@ const AdminDashboard = () => {
 
     // Reset points for INDIVIDUAL member (requested for testing in insights)
     const handleResetMemberPoints = async (memberId) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('Reset this member\'s points to 0?')) return;
         try {
             await api.post(`/members/${memberId}/reset-points`);
@@ -1031,6 +1097,7 @@ const AdminDashboard = () => {
     };
 
     const handleResetDevice = async (memberId) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('Are you sure you want to reset this student\'s device link? They will be able to check in with a new phone.')) return;
         try {
             await api.post(`/members/${memberId}/reset-device`);
@@ -1044,6 +1111,7 @@ const AdminDashboard = () => {
 
     const handleSaveAdmin = async (e) => {
         e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         try {
             if (editingAdmin._id === 'NEW') {
                 await api.post('/auth/register', editingAdmin);
@@ -1071,6 +1139,7 @@ const AdminDashboard = () => {
     };
 
     const handleBulkGraduate = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (selectedMemberIds.length === 0) return;
         if (!window.confirm(`Graduate ${selectedMemberIds.length} selected recruits? This will send them the WhatsApp link invite when they next login.`)) return;
         try {
@@ -1093,6 +1162,7 @@ const AdminDashboard = () => {
     };
 
     const handleSaveSetting = async (key, value) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         try {
             await api.patch(`/settings/${key}`, { value });
             setMsg({ type: 'success', text: 'Setting updated successfully.' });
@@ -1242,15 +1312,43 @@ const AdminDashboard = () => {
                         <div className="rotating-logo">
                             <Logo size={45} />
                         </div>
+                        {/* Guest Feedback Button */}
+                        {isGuest && (
+                            <button
+                                onClick={async () => {
+                                    const message = window.prompt("💡 Share your thoughts on the Admin Dashboard:");
+                                    if (message) {
+                                        try {
+                                            await api.post('/feedback', { message, category: 'admin_guest_feedback' });
+                                            alert("Thanks for your feedback!");
+                                        } catch (e) {
+                                            console.error(e);
+                                            alert("Failed to send feedback. Please try again.");
+                                        }
+                                    }
+                                }}
+                                style={{
+                                    position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 3000,
+                                    padding: '1rem 1.5rem', borderRadius: '2rem',
+                                    background: '#facc15', color: 'black', fontWeight: 'bold',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)', border: 'none', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                }}
+                            >
+                                <span style={{ fontSize: '1.2rem' }}>💡</span> Give Feedback
+                            </button>
+                        )}
+
                         <style>{`
-                            .rotating-logo {
-                                animation: rotateInfinite 20s linear infinite;
-                            }
-                            @keyframes rotateInfinite {
-                                from { transform: rotate(0deg); }
-                                to { transform: rotate(360deg); }
-                            }
-                        `}</style>
+                .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.1); }
+                .light-mode .glass-panel { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0, 0, 0, 0.1); }
+                .btn { cursor: pointer; border: none; transition: transform 0.2s; }
+                .btn:active { transform: scale(0.95); }
+                .btn-primary { background: hsl(var(--color-primary)); color: white; }
+                .btn-danger { background: #ef4444; color: white; }
+                .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; outline: none; }
+                .light-mode .input-field { background: white; border-color: #ddd; color: black; }
+            `}</style>
                         <div className="admin-nav" style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <button
                                 onClick={() => setActiveTab('meetings')}
@@ -1287,6 +1385,19 @@ const AdminDashboard = () => {
                                 }}
                             >
                                 Reports
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('feedback')}
+                                style={{
+                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                    background: activeTab === 'feedback' ? 'hsl(var(--color-primary))' : 'transparent',
+                                    color: activeTab === 'feedback' ? 'white' : 'var(--color-text-dim)',
+                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap',
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                }}
+                            >
+                                <span style={{ fontSize: '1rem' }}>💡</span> Feedback
                             </button>
                             {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
                                 <button
@@ -1675,6 +1786,8 @@ const AdminDashboard = () => {
                             );
                         })()}
                     </>
+                ) : activeTab === 'feedback' ? (
+                    <FeedbackView isGuest={isGuest} />
                 ) : activeTab === 'members' ? (
                     <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
                         {/* Registry Header & Toolbar */}
@@ -2142,7 +2255,7 @@ const AdminDashboard = () => {
                                                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
                                                                 <span>{h.name}</span>
                                                                 <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-                                                                    {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
+                                                                    {h.isExempted ? 'EXEMPTED' : 'PRESENT'}
                                                                 </span>
                                                             </div>
                                                         ))}
@@ -2252,7 +2365,7 @@ const AdminDashboard = () => {
                                     <button className="btn" style={{ padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance(null)}>Close</button>
                                 </div>
                                 <div style={{ overflow: 'auto', padding: '1rem', flex: 1 }}>
-                                    <AttendanceTable meeting={viewingAttendance} setMsg={setMsg} />
+                                    <AttendanceTable meeting={viewingAttendance} setMsg={setMsg} isGuest={isGuest} />
                                 </div>
                             </div>
                         </div>
@@ -2908,13 +3021,14 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
     );
 };
 
-const AttendanceTable = ({ meeting, setMsg }) => {
+const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const userRole = localStorage.getItem('role') || 'admin';
 
     const deleteRecord = async (id) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('Delete this attendance record?')) return;
         try {
             await api.delete(`/attendance/${id}`);
@@ -2926,6 +3040,7 @@ const AttendanceTable = ({ meeting, setMsg }) => {
     };
 
     const toggleExemption = async (id) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         try {
             const res = await api.patch(`/attendance/${id}/exemption`);
             setRecords(records.map(r => r._id === id ? { ...r, isExempted: res.data.isExempted } : r));
@@ -2938,6 +3053,14 @@ const AttendanceTable = ({ meeting, setMsg }) => {
 
     useEffect(() => {
         const fetchAttendance = async () => {
+            if (isGuest) {
+                setRecords([
+                    { _id: '1', timestamp: new Date().toISOString(), memberType: 'Douloid', studentRegNo: 'GM-001', responses: { name: 'Guest User 1' }, isExempted: false },
+                    { _id: '2', timestamp: new Date().toISOString(), memberType: 'Visitor', studentRegNo: 'GM-002', responses: { name: 'Guest User 2' }, isExempted: true },
+                ]);
+                setLoading(false);
+                return;
+            }
             try {
                 const res = await api.get(`/attendance/${meeting._id}`);
                 setRecords(res.data);
@@ -3187,6 +3310,143 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, whatsappLin
                         * This link will be presented in a mandatory full-screen modal to every newly graduated Douloid on their first login.
                     </p>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const FeedbackView = ({ isGuest }) => {
+    const [feedbacks, setFeedbacks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all'); // all, new, read, resolved
+
+    const fetchFeedbacks = async () => {
+        setLoading(true);
+        if (isGuest) {
+            setFeedbacks([
+                { _id: '1', name: 'Guest User', message: 'I love the new dashboard design!', category: 'general', status: 'new', createdAt: new Date().toISOString() },
+                { _id: '2', name: 'Anonymous', message: 'Can you add a dark mode toggle?', category: 'feature_request', status: 'read', createdAt: new Date(Date.now() - 86400000).toISOString() }
+            ]);
+            setLoading(false);
+            return;
+        }
+        try {
+            const res = await api.get('/feedback');
+            setFeedbacks(res.data);
+        } catch (err) {
+            console.error('Failed to fetch feedback', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchFeedbacks();
+    }, [isGuest]);
+
+    const handleStatusUpdate = async (id, newStatus) => {
+        if (isGuest) return alert('Action disabled in Guest Mode');
+        const originalFeedbacks = [...feedbacks];
+        // Optimistic update
+        setFeedbacks(prev => prev.map(f => f._id === id ? { ...f, status: newStatus } : f));
+
+        try {
+            await api.patch(`/feedback/${id}`, { status: newStatus });
+        } catch (err) {
+            alert('Failed to update status');
+            setFeedbacks(originalFeedbacks); // Revert
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (isGuest) return alert('Action disabled in Guest Mode');
+        if (!window.confirm('Delete this feedback?')) return;
+        try {
+            await api.delete(`/feedback/${id}`);
+            setFeedbacks(prev => prev.filter(f => f._id !== id));
+        } catch (err) {
+            alert('Failed to delete feedback');
+        }
+    };
+
+    const filteredFeedbacks = feedbacks.filter(f => filter === 'all' || f.status === filter);
+
+    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading feedback...</div>;
+
+    return (
+        <div style={{ animation: 'fadeIn 0.5s' }}>
+            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>User Feedback</h2>
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)' }}>Manage suggestions and issues reported by users.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem' }}>
+                        {['all', 'new', 'read', 'resolved'].map(s => (
+                            <button
+                                key={s}
+                                onClick={() => setFilter(s)}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    background: filter === s ? 'hsl(var(--color-primary))' : 'transparent',
+                                    color: filter === s ? 'white' : 'var(--color-text-dim)',
+                                    border: 'none', borderRadius: '0.4rem', cursor: 'pointer',
+                                    fontWeight: 600, textTransform: 'capitalize'
+                                }}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {filteredFeedbacks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>No feedback found.</div>
+                ) : (
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                        {filteredFeedbacks.map(f => (
+                            <div key={f._id} style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '1rem',
+                                padding: '1.5rem',
+                                borderLeft: `4px solid ${f.status === 'new' ? '#facc15' : f.status === 'resolved' ? '#4ade80' : '#94a3b8'}`,
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem'
+                            }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                                        <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{f.name || 'Anonymous'}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                        <span style={{
+                                            fontSize: '0.65rem', padding: '0.2rem 0.5rem', borderRadius: '1rem',
+                                            background: 'rgba(255,255,255,0.1)', color: 'var(--color-text-dim)', textTransform: 'uppercase'
+                                        }}>
+                                            {f.category}
+                                        </span>
+                                    </div>
+                                    <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.95rem' }}>{f.message}</p>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', minWidth: '120px' }}>
+                                    <select
+                                        value={f.status}
+                                        onChange={(e) => handleStatusUpdate(f._id, e.target.value)}
+                                        className="input-field"
+                                        style={{ width: '100%', padding: '0.3rem', fontSize: '0.8rem' }}
+                                    >
+                                        <option value="new">New</option>
+                                        <option value="read">Read</option>
+                                        <option value="resolved">Resolved</option>
+                                    </select>
+                                    <button
+                                        onClick={() => handleDelete(f._id)}
+                                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                    >
+                                        <Trash2 size={14} /> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

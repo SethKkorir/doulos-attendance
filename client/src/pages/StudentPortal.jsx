@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../api';
 import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
@@ -7,8 +8,33 @@ import Logo from '../components/Logo';
 import DoulosBotIcon from '../components/DoulosBotIcon';
 
 const StudentPortal = () => {
-    const [regNo, setRegNo] = useState(localStorage.getItem('studentRegNo') || '');
-    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('studentRegNo'));
+    const location = useLocation();
+    const isGuest = location.state?.isGuest || false;
+
+    const SESSION_DURATION = 20 * 60 * 1000; // 20 Minutes
+
+    const [regNo, setRegNo] = useState(() => {
+        const stored = localStorage.getItem('studentSession');
+        if (stored) {
+            try {
+                const { regNo, expiry } = JSON.parse(stored);
+                if (Date.now() <= expiry) return regNo;
+                localStorage.removeItem('studentSession');
+            } catch (e) {
+                localStorage.removeItem('studentSession');
+            }
+        }
+
+        // Migration fallback
+        const legacy = localStorage.getItem('studentRegNo');
+        if (legacy) {
+            localStorage.removeItem('studentRegNo');
+            return legacy;
+        }
+        return '';
+    });
+
+    const [isLoggedIn, setIsLoggedIn] = useState(!!regNo || isGuest);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -46,8 +72,26 @@ const StudentPortal = () => {
 
     const handleLogin = async (e) => {
         if (e) e.preventDefault();
-        if (!regNo) return;
 
+        if (isGuest) {
+            // Load Mock Data
+            setData({
+                studentRegNo: 'GUEST-001',
+                memberName: 'Guest Explorer',
+                memberType: 'Visitor',
+                campus: 'Valley Road',
+                stats: { totalAttended: 12, totalMeetings: 16, percentage: 75 },
+                history: [
+                    { _id: '1', date: new Date().toISOString(), name: 'Sunday Service', attended: true, campus: 'Valley Road' },
+                    { _id: '2', date: new Date(Date.now() - 86400000 * 7).toISOString(), name: 'Prayer Meeting', attended: false, campus: 'Valley Road' },
+                    { _id: '3', date: new Date(Date.now() - 86400000 * 14).toISOString(), name: 'Bible Study', attended: true, campus: 'Valley Road' }
+                ]
+            });
+            setIsLoggedIn(true);
+            return;
+        }
+
+        if (!regNo) return;
         setLoading(true);
         setError(null);
         try {
@@ -55,7 +99,11 @@ const StudentPortal = () => {
 
             setData(res.data);
             setIsLoggedIn(true);
-            localStorage.setItem('studentRegNo', regNo.toUpperCase());
+            const sessionData = {
+                regNo: regNo.toUpperCase(),
+                expiry: Date.now() + SESSION_DURATION
+            };
+            localStorage.setItem('studentSession', JSON.stringify(sessionData));
         } catch (err) {
             setError(err.response?.data?.message || "Something went wrong. Please try again.");
         } finally {
@@ -64,7 +112,7 @@ const StudentPortal = () => {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('studentRegNo');
+        localStorage.removeItem('studentSession');
         setIsLoggedIn(false);
         setData(null);
         setRegNo('');
@@ -119,7 +167,7 @@ const StudentPortal = () => {
         if (isLoggedIn && !data) {
             handleLogin();
         }
-    }, [isLoggedIn]);
+    }, [isLoggedIn, isGuest]);
 
     if (!isLoggedIn) {
         return (
@@ -256,6 +304,15 @@ const StudentPortal = () => {
                             <span>⚠️ {error}</span>
                         </div>
                     )}
+
+                    <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                        <a href="/guest" style={{
+                            color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 700,
+                            textDecoration: 'none', opacity: 0.8, cursor: 'pointer'
+                        }}>
+                            Guest Access →
+                        </a>
+                    </div>
                 </div>
 
                 <div style={{
@@ -541,6 +598,10 @@ const StudentPortal = () => {
                                     </div>
                                     <form onSubmit={(e) => {
                                         e.preventDefault();
+                                        if (isGuest) {
+                                            alert("Guest users cannot perform check-ins.");
+                                            return;
+                                        }
                                         const code = e.target.elements.code.value.trim();
                                         if (code) window.location.href = `/check-in/${code}`;
                                     }} style={{ display: 'flex', gap: '0.5rem' }}>
@@ -719,6 +780,35 @@ const StudentPortal = () => {
                         <DoulosBotIcon size={40} />
                     </button>
                 )}
+
+                {/* Guest Feedback Button */}
+                {isGuest && (
+                    <button
+                        onClick={async () => {
+                            const message = window.prompt("💡 Share your thoughts on the Student Portal:");
+                            if (message) {
+                                try {
+                                    await api.post('/feedback', { message, category: 'student_guest_feedback' });
+                                    alert("Thanks for your feedback!");
+                                } catch (e) {
+                                    console.error(e);
+                                    alert("Failed to send feedback. Please try again.");
+                                }
+                            }
+                        }}
+                        className="btn"
+                        style={{
+                            width: '65px', height: '65px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 10px 30px rgba(250, 204, 21, 0.4)',
+                            background: '#facc15', color: 'black',
+                            border: 'none', cursor: 'pointer',
+                            marginTop: '1rem', fontWeight: 'bold', fontSize: '1.5rem'
+                        }}
+                    >
+                        💡
+                    </button>
+                )}
             </div>
 
             <style>{`
@@ -746,7 +836,7 @@ const StudentPortal = () => {
                     50% { opacity: .5; }
                 }
             `}</style>
-        </div>
+        </div >
     );
 };
 

@@ -249,7 +249,22 @@ const AdminLogin = () => {
                     </button>
                 </form>
 
-                <div style={{ marginTop: '2.5rem', fontSize: '0.65rem', opacity: 0.3, fontWeight: 700, letterSpacing: '1.5px', color: 'var(--color-text-dim)' }}>
+                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                    <button
+                        onClick={() => navigate('/guest')}
+                        style={{
+                            background: 'none', border: 'none', color: 'var(--color-primary)',
+                            fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                            textDecoration: 'none', opacity: 0.8, transition: 'opacity 0.2s'
+                        }}
+                        onMouseOver={(e) => e.target.style.opacity = 1}
+                        onMouseOut={(e) => e.target.style.opacity = 0.8}
+                    >
+                        Guest Access →
+                    </button>
+                </div>
+
+                <div style={{ marginTop: '1.5rem', fontSize: '0.65rem', opacity: 0.3, fontWeight: 700, letterSpacing: '1.5px', color: 'var(--color-text-dim)' }}>
                     DOULOS ATTENDANCE SYSTEM
                 </div>
             </div>
