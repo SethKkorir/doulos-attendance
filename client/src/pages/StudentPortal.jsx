@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search, LogOut, GraduationCap, Sparkles, MessageCircle, Send, CreditCard, Wallet, History, FileText } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import Logo from '../components/Logo';
 import DoulosBotIcon from '../components/DoulosBotIcon';
+import FinanceView from '../components/FinanceView';
 
 const StudentPortal = () => {
     const location = useLocation();
@@ -39,8 +40,10 @@ const StudentPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [whatsappLink, setWhatsappLink] = useState('');
-    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'history', 'community'
+    const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'history', 'finance', 'community'
     const [comingSoon, setComingSoon] = useState(null); // Title of feature
+    const navigate = useNavigate();
 
     // Chat Widget State
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -49,12 +52,33 @@ const StudentPortal = () => {
     ]);
     const [chatInput, setChatInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [showChatPopup, setShowChatPopup] = useState(false);
+
+    useEffect(() => {
+        if (isLoggedIn && !isChatOpen) {
+            // Show popup after a delay
+            const timer = setTimeout(() => setShowChatPopup(true), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoggedIn, isChatOpen]);
+
+    useEffect(() => {
+        if (showChatPopup) {
+            // Auto hide after 8 seconds
+            const timer = setTimeout(() => setShowChatPopup(false), 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [showChatPopup]);
 
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await api.get('/settings/whatsapp_link');
-                setWhatsappLink(res.data.value || '');
+                const [waRes, guestRes] = await Promise.all([
+                    api.get('/settings/whatsapp_link'),
+                    api.get('/settings/guest_features')
+                ]);
+                setWhatsappLink(waRes.data?.value || '');
+                setGuestFeaturesEnabled(guestRes.data?.value !== 'false');
             } catch (err) {
                 console.error('Failed to fetch settings');
             }
@@ -175,106 +199,101 @@ const StudentPortal = () => {
                 <BackgroundGallery />
                 <ValentineRain />
 
-                <div style={{ position: 'relative', textAlign: 'center', zIndex: 1, animation: 'fadeIn 1s ease-out' }}>
-                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <div style={{
-                            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                            width: '220px', height: '220px', borderRadius: '50%',
-                            background: 'radial-gradient(circle, rgba(37, 170, 225, 0.15) 0%, transparent 70%)',
-                            animation: 'pulse 3s infinite'
-                        }}></div>
-                        <div style={{
-                            animation: 'rotateLogo 30s linear infinite',
-                            display: 'flex', justifyContent: 'center', alignItems: 'center'
-                        }}>
-                            <Logo size={80} showText={false} />
-                        </div>
-                    </div>
-                    <h1 style={{
-                        marginTop: '2rem',
-                        fontSize: '1.8rem',
-                        fontWeight: 900,
-                        letterSpacing: '-0.05em',
-                        color: 'white',
-                        textShadow: '0 0 40px rgba(255, 255, 255, 0.3)'
-                    }}>
-                        DOULOS <span style={{ color: 'hsl(var(--color-primary))' }}>PORTAL</span>
-                    </h1>
-                </div>
-
                 <div className="glass-panel" style={{
                     width: '100%',
                     maxWidth: '400px',
                     padding: '2.5rem 2rem',
                     textAlign: 'center',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: '#0f172a',
+                    position: 'relative',
+                    zIndex: 10,
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '1.5rem',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                    animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                    backdropFilter: 'blur(20px)'
+                    boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.4)',
                 }}>
-                    <div style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 900,
-                        letterSpacing: '3px',
-                        color: 'var(--color-text-dim)',
-                        textTransform: 'uppercase',
-                        marginBottom: '1.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.75rem'
-                    }}>
-                        <div style={{ height: '1px', width: '20px', background: 'rgba(255,255,255,0.1)' }}></div>
-                        Member Login
-                        <div style={{ height: '1px', width: '20px', background: 'rgba(255,255,255,0.1)' }}></div>
+                    <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ position: 'relative' }}>
+                            <div className="rotating-logo">
+                                <Logo size={80} showText={false} />
+                            </div>
+                            <div style={{
+                                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                width: '120px', height: '120px', borderRadius: '50%',
+                                background: 'radial-gradient(circle, hsla(198, 76%, 51%, 0.1) 0%, transparent 70%)',
+                                zIndex: -1,
+                                animation: 'pulse 4s infinite'
+                            }}></div>
+                        </div>
+                        <h1 style={{
+                            marginTop: '1.5rem',
+                            marginBottom: '0.5rem',
+                            fontSize: '1.8rem',
+                            fontWeight: 900,
+                            letterSpacing: '-0.05em',
+                            color: 'white',
+                            textShadow: '0 0 20px rgba(37, 170, 225, 0.3)'
+                        }}>
+                            DOULOS <span style={{ color: 'hsl(var(--color-primary))' }}>PORTAL</span>
+                        </h1>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            width: '100%',
+                            justifyContent: 'center',
+                            color: 'var(--color-text-dim)',
+                            opacity: 0.6
+                        }}>
+                            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to right, transparent, currentColor)' }}></div>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Member Access</span>
+                            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to left, transparent, currentColor)' }}></div>
+                        </div>
                     </div>
 
-                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ position: 'relative' }}>
-                            <Search size={20} style={{
-                                position: 'absolute',
-                                left: '1.25rem',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                color: 'var(--color-text-dim)',
-                                opacity: 0.5
-                            }} />
-                            <input
-                                placeholder="ADMISSION NO (e.g. 21-1234)"
-                                className="input-field"
-                                value={regNo}
-                                onChange={(e) => {
-                                    let val = e.target.value.replace(/\D/g, '');
-                                    if (val.length > 2) {
-                                        val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                    }
-                                    setRegNo(val);
-                                }}
-                                required
-                                style={{
-                                    paddingLeft: '3.5rem',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 700,
-                                    letterSpacing: '2px',
-                                    height: '45px',
-                                    background: 'rgba(0,0,0,0.3)',
-                                    borderRadius: '0.75rem'
-                                }}
-                            />
+
+
+                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div className="input-group">
+                            <label>Admission No</label>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    placeholder="21-1234"
+                                    className="input-field input-field-premium"
+                                    value={regNo}
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, '');
+                                        if (val.length > 2) {
+                                            val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                        }
+                                        setRegNo(val);
+                                    }}
+                                    required
+                                />
+                                <Search size={18} style={{
+                                    position: 'absolute',
+                                    right: '1rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--color-text-dim)',
+                                    opacity: 0.5,
+                                    pointerEvents: 'none'
+                                }} />
+                            </div>
                         </div>
                         <button
                             type="submit"
                             className="btn btn-primary"
                             disabled={loading}
                             style={{
+                                width: '100%',
                                 height: '50px',
                                 fontSize: '0.9rem',
+                                marginTop: '0.5rem',
+                                letterSpacing: '2px',
                                 fontWeight: 800,
-                                borderRadius: '0.75rem',
-                                letterSpacing: '1px',
                                 textTransform: 'uppercase',
-                                boxShadow: '0 10px 20px -5px hsl(var(--color-primary) / 0.3)'
+                                borderRadius: '0.75rem',
+                                boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)'
                             }}
                         >
                             {loading ? (
@@ -305,14 +324,22 @@ const StudentPortal = () => {
                         </div>
                     )}
 
-                    <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                        <a href="/guest" style={{
-                            color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 700,
-                            textDecoration: 'none', opacity: 0.8, cursor: 'pointer'
-                        }}>
+
+                    {guestFeaturesEnabled && (
+                        <button
+                            onClick={() => navigate('/guest')}
+                            style={{
+                                background: 'none', border: 'none',
+                                color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 700,
+                                textDecoration: 'none', opacity: 0.8, cursor: 'pointer',
+                                transition: 'opacity 0.2s'
+                            }}
+                            onMouseOver={(e) => e.target.style.opacity = 1}
+                            onMouseOut={(e) => e.target.style.opacity = 0.8}
+                        >
                             Guest Access →
-                        </a>
-                    </div>
+                        </button>
+                    )}
                 </div>
 
                 <div style={{
@@ -328,14 +355,18 @@ const StudentPortal = () => {
                 </div>
 
                 <style>{`
-                    @keyframes rotateLogo {
+                    .rotating-logo {
+                        animation: rotateInfinite 60s linear infinite;
+                        filter: drop-shadow(0 0 30px hsla(198, 76%, 51%, 0.3));
+                    }
+                    @keyframes rotateInfinite {
                         from { transform: rotate(0deg); }
                         to { transform: rotate(360deg); }
                     }
                     @keyframes pulse {
-                        0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.15; }
-                        50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.25; }
-                        100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.15; }
+                        0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.3; }
+                        50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.5; }
+                        100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.3; }
                     }
                     @keyframes shake {
                         10%, 90% { transform: translate3d(-1px, 0, 0); }
@@ -347,9 +378,39 @@ const StudentPortal = () => {
                         from { transform: translateY(30px); opacity: 0; }
                         to { transform: translateY(0); opacity: 1; }
                     }
+                    @keyframes slideDown {
+                        from { transform: translateY(-30px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
                     @keyframes bounce {
                         0%, 100% { transform: translateY(0); }
                         50% { transform: translateY(-10px); }
+                    }
+                     .input-group label {
+                        display: block;
+                        margin-bottom: 0.5rem;
+                        font-size: 0.6rem;
+                        color: var(--color-text-dim);
+                        font-weight: 800;
+                        letter-spacing: 1.5px;
+                        text-align: left;
+                        text-transform: uppercase;
+                        opacity: 0.8;
+                    }
+                    .input-field-premium {
+                        height: 45px;
+                        background: rgba(0,0,0,0.3) !important;
+                        border: 1px solid var(--glass-border) !important;
+                        border-radius: 0.75rem !important;
+                        font-size: 0.9rem !important;
+                        font-weight: 600 !important;
+                        letter-spacing: 0.5px !important;
+                        padding: 0 1rem !important;
+                        width: 100%;
+                    }
+                    .input-field-premium:focus {
+                        border-color: #25AAE1 !important;
+                        box-shadow: 0 0 15px rgba(37, 170, 225, 0.15) !important;
                     }
                     .loading-spinner-small {
                         width: 16px; height: 16px;
@@ -360,7 +421,7 @@ const StudentPortal = () => {
                     }
                     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 `}</style>
-            </div>
+            </div >
         );
     }
 
@@ -380,7 +441,7 @@ const StudentPortal = () => {
                 <BackgroundGallery />
                 <ValentineRain />
                 <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '2rem', maxWidth: '600px', width: '100%' }}>
-                    <div className="glass-panel" style={{ padding: '3rem 2rem', border: '2px solid hsl(var(--color-primary))', background: 'rgba(0,0,0,0.8)', boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)', animation: 'slideUp 0.8s' }}>
+                    <div className="glass-panel" style={{ padding: '3rem 2rem', border: '2px solid hsl(var(--color-primary))', background: '#000000', boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)', animation: 'slideUp 0.8s' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                             <Sparkles size={40} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
                             <GraduationCap size={48} color="hsl(var(--color-primary))" />
@@ -437,7 +498,7 @@ const StudentPortal = () => {
             {comingSoon && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+                    background: '#000000',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     zIndex: 2000, animation: 'fadeIn 0.3s'
                 }} onClick={() => setComingSoon(null)}>
@@ -470,8 +531,8 @@ const StudentPortal = () => {
                 <header style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     marginTop: '1rem', marginBottom: '2rem', padding: '1.25rem',
-                    background: 'rgba(255, 255, 255, 0.03)', borderRadius: '1.5rem',
-                    border: '1px solid rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(20px)',
+                    background: '#1e293b', borderRadius: '1.5rem',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
                     boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
@@ -509,8 +570,8 @@ const StudentPortal = () => {
                         {/* Welcome Banner */}
                         <div className="glass-panel" style={{
                             padding: '2.5rem', position: 'relative', overflow: 'hidden',
-                            background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, rgba(3, 37, 64, 0.4) 100%)',
-                            border: '1px solid rgba(37, 170, 225, 0.2)'
+                            background: 'linear-gradient(135deg, hsl(206, 80%, 20%) 0%, hsl(206, 80%, 15%) 100%)',
+                            border: '1px solid var(--glass-border)'
                         }}>
                             <div style={{ position: 'relative', zIndex: 2 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#B0B0B0', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '2px', marginBottom: '1rem', textTransform: 'uppercase' }}>
@@ -548,8 +609,8 @@ const StudentPortal = () => {
                         </div>
 
                         {/* Navigation Tabs */}
-                        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', width: 'fit-content' }}>
-                            {['overview', 'history'].map(tab => (
+                        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', width: 'fit-content', overflowX: 'auto' }}>
+                            {['overview', 'history', 'finance'].map(tab => (
                                 <button key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     style={{
@@ -557,6 +618,7 @@ const StudentPortal = () => {
                                         fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
                                         background: activeTab === tab ? 'hsl(var(--color-primary))' : 'transparent',
                                         color: activeTab === tab ? 'white' : 'var(--color-text-dim)',
+                                        whiteSpace: 'nowrap',
                                         transition: 'all 0.3s'
                                     }}
                                 >
@@ -622,6 +684,8 @@ const StudentPortal = () => {
                                     </div>
                                 </div>
                             </>
+                        ) : activeTab === 'finance' ? (
+                            <FinanceView regNo={data.studentRegNo} memberName={data.memberName} />
                         ) : (
                             /* History List - Refined */
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -767,19 +831,53 @@ const StudentPortal = () => {
                 )}
 
                 {/* Toggle Button */}
-                {!isChatOpen && (
-                    <button onClick={() => setIsChatOpen(true)} className="btn" style={{
-                        width: '65px', height: '65px', borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 10px 30px rgba(37, 170, 225, 0.4)',
-                        animation: 'bounce 2s infinite',
-                        background: 'white',
-                        border: '4px solid rgba(37, 170, 225, 0.2)',
-                        cursor: 'pointer'
-                    }}>
-                        <DoulosBotIcon size={40} />
-                    </button>
-                )}
+                {/* Toggle Button Container with Popup */}
+                <div style={{ position: 'relative' }}>
+                    {!isChatOpen && showChatPopup && (
+                        <div style={{
+                            position: 'absolute',
+                            bottom: '80px',
+                            right: '0',
+                            width: '200px',
+                            padding: '1rem',
+                            background: 'white',
+                            color: 'black',
+                            borderRadius: '1rem',
+                            borderBottomRightRadius: '2px',
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            animation: 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1), float 3s ease-in-out infinite'
+                        }}>
+                            <div style={{ position: 'relative', zIndex: 1 }}>
+                                👋 Hi {data.memberName?.split(' ')[0]}! I'm Doulos Bot. Need help?
+                            </div>
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '-6px',
+                                right: '20px',
+                                width: '12px',
+                                height: '12px',
+                                background: 'white',
+                                transform: 'rotate(45deg)'
+                            }}></div>
+                        </div>
+                    )}
+
+                    {!isChatOpen && (
+                        <button onClick={() => { setIsChatOpen(true); setShowChatPopup(false); }} className="btn" style={{
+                            width: '65px', height: '65px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 10px 30px rgba(37, 170, 225, 0.4)',
+                            animation: 'bounce 2s infinite',
+                            background: 'white',
+                            border: '4px solid rgba(37, 170, 225, 0.2)',
+                            cursor: 'pointer'
+                        }}>
+                            <DoulosBotIcon size={40} />
+                        </button>
+                    )}
+                </div>
 
                 {/* Guest Feedback Button */}
                 {isGuest && (
@@ -809,9 +907,8 @@ const StudentPortal = () => {
                         💡
                     </button>
                 )}
-            </div>
 
-            <style>{`
+                <style>{`
                 .container { width: 100%; max-width: 1200px; padding: 1.5rem; }
                 .action-card:hover { 
                     transform: translateY(-5px); 
@@ -836,7 +933,8 @@ const StudentPortal = () => {
                     50% { opacity: .5; }
                 }
             `}</style>
-        </div >
+            </div>
+        </div>
     );
 };
 

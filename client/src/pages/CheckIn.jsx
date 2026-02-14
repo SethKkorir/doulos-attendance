@@ -268,10 +268,9 @@ const CheckIn = () => {
                     maxWidth: '400px',
                     padding: '1.25rem',
                     borderRadius: '1rem',
-                    background: hasAlreadyCheckedIn ? 'rgba(251, 191, 36, 0.95)' : 'rgba(239, 68, 68, 0.95)',
+                    background: hasAlreadyCheckedIn ? '#d97706' : '#dc2626',
                     color: 'white',
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-                    backdropFilter: 'blur(10px)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '1rem',
@@ -329,11 +328,11 @@ const CheckIn = () => {
                 width: '100%',
                 maxWidth: '400px',
                 padding: '2.5rem 2rem',
+                background: '#0f172a',
                 border: '1px solid var(--glass-border)',
                 borderRadius: '1.5rem',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                backdropFilter: 'blur(20px)'
             }}>
                 {hasAlreadyCheckedIn ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>
@@ -754,55 +753,56 @@ const CheckIn = () => {
                 )}
             </div>
 
-            {showCongrats && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
-                    padding: '2rem', textAlign: 'center', backdropFilter: 'blur(15px)',
-                    overflow: 'hidden'
-                }}>
-                    <div className="fireworks-container" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', top: 0, left: 0 }}>
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} className={`firework fw-${i}`} style={{
-                                position: 'absolute',
-                                left: `${10 + Math.random() * 80}%`,
-                                top: `${10 + Math.random() * 80}%`,
-                            }} />
-                        ))}
-                    </div>
-
+            {
+                showCongrats && (
                     <div style={{
-                        position: 'relative', zIndex: 2,
-                        animation: 'congratsPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                        background: '#000000', display: 'flex', flexDirection: 'column',
+                        justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                        padding: '2rem', textAlign: 'center',
+                        overflow: 'hidden'
                     }}>
-                        <div style={{
-                            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                            width: '120px', height: '120px', borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 0 50px rgba(255, 215, 0, 0.4)', margin: '0 auto 2rem'
-                        }}>
-                            <Trophy size={60} color="white" />
+                        <div className="fireworks-container" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', top: 0, left: 0 }}>
+                            {[...Array(6)].map((_, i) => (
+                                <div key={i} className={`firework fw-${i}`} style={{
+                                    position: 'absolute',
+                                    left: `${10 + Math.random() * 80}%`,
+                                    top: `${10 + Math.random() * 80}%`,
+                                }} />
+                            ))}
                         </div>
-                        <h1 style={{ fontSize: '3rem', color: '#FFD700', marginBottom: '1rem', textShadow: '0 0 30px rgba(255, 215, 0, 0.5)', fontWeight: 900 }}>
-                            CONGRATULATIONS!
-                        </h1>
-                        <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem', color: 'white' }}>
-                            You have officially graduated to a DOULOID!
-                        </h2>
-                        <p style={{ maxWidth: '450px', lineHeight: 1.8, color: 'rgba(255,255,255,0.85)', marginBottom: '3rem' }}>
-                            A new chapter begins. Welcome to the elite family of Doulos!
-                        </p>
-                        <button
-                            className="btn"
-                            style={{ padding: '1.25rem 4rem', background: '#FFD700', color: '#000', fontWeight: 'bold', borderRadius: '3rem', fontSize: '1.2rem', cursor: 'pointer', border: 'none' }}
-                            onClick={() => setShowCongrats(false)}
-                        >
-                            THANK YOU! 🚀
-                        </button>
-                    </div>
 
-                    <style>{`
+                        <div style={{
+                            position: 'relative', zIndex: 2,
+                            animation: 'congratsPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                        }}>
+                            <div style={{
+                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                width: '120px', height: '120px', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 0 50px rgba(255, 215, 0, 0.4)', margin: '0 auto 2rem'
+                            }}>
+                                <Trophy size={60} color="white" />
+                            </div>
+                            <h1 style={{ fontSize: '3rem', color: '#FFD700', marginBottom: '1rem', textShadow: '0 0 30px rgba(255, 215, 0, 0.5)', fontWeight: 900 }}>
+                                CONGRATULATIONS!
+                            </h1>
+                            <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem', color: 'white' }}>
+                                You have officially graduated to a DOULOID!
+                            </h2>
+                            <p style={{ maxWidth: '450px', lineHeight: 1.8, color: 'rgba(255,255,255,0.85)', marginBottom: '3rem' }}>
+                                A new chapter begins. Welcome to the elite family of Doulos!
+                            </p>
+                            <button
+                                className="btn"
+                                style={{ padding: '1.25rem 4rem', background: '#FFD700', color: '#000', fontWeight: 'bold', borderRadius: '3rem', fontSize: '1.2rem', cursor: 'pointer', border: 'none' }}
+                                onClick={() => setShowCongrats(false)}
+                            >
+                                THANK YOU! 🚀
+                            </button>
+                        </div>
+
+                        <style>{`
                         @keyframes congratsPop {
                             0% { transform: scale(0); opacity: 0; }
                             100% { transform: scale(1); opacity: 1; }
@@ -829,8 +829,9 @@ const CheckIn = () => {
                             100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
                         }
                     `}</style>
-                </div>
-            )}
+                    </div>
+                )
+            }
 
             <p style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
                 Doulos Attendance System &bull; &copy; {new Date().getFullYear()}

@@ -10,7 +10,20 @@ const AdminLogin = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
+    const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/settings/guest_features');
+                setGuestFeaturesEnabled(res.data?.value !== 'false');
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     useEffect(() => {
         let timer;
@@ -90,12 +103,12 @@ const AdminLogin = () => {
                 maxWidth: '400px',
                 padding: '2.5rem 2rem',
                 textAlign: 'center',
+                background: isDarkMode ? '#0f172a' : '#ffffff',
                 position: 'relative',
                 zIndex: 10,
                 border: '1px solid var(--glass-border)',
                 borderRadius: '1.5rem',
                 boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.4)',
-                backdropFilter: 'blur(20px)'
             }}>
                 <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ position: 'relative' }}>
@@ -190,11 +203,10 @@ const AdminLogin = () => {
                         minWidth: '280px',
                         padding: '1rem 1.5rem',
                         borderRadius: '0.75rem',
-                        background: 'rgba(239, 68, 68, 0.15)',
-                        color: '#f87171',
-                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        background: '#dc2626',
+                        color: 'white',
+                        border: '1px solid rgba(255, 255, 255, 0.25)',
                         boxShadow: '0 15px 30px rgba(0, 0, 0, 0.4)',
-                        backdropFilter: 'blur(20px)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -250,18 +262,20 @@ const AdminLogin = () => {
                 </form>
 
                 <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                    <button
-                        onClick={() => navigate('/guest')}
-                        style={{
-                            background: 'none', border: 'none', color: 'var(--color-primary)',
-                            fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
-                            textDecoration: 'none', opacity: 0.8, transition: 'opacity 0.2s'
-                        }}
-                        onMouseOver={(e) => e.target.style.opacity = 1}
-                        onMouseOut={(e) => e.target.style.opacity = 0.8}
-                    >
-                        Guest Access →
-                    </button>
+                    {guestFeaturesEnabled && (
+                        <button
+                            onClick={() => navigate('/guest')}
+                            style={{
+                                background: 'none', border: 'none', color: 'var(--color-primary)',
+                                fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                                textDecoration: 'none', opacity: 0.8, transition: 'opacity 0.2s'
+                            }}
+                            onMouseOver={(e) => e.target.style.opacity = 1}
+                            onMouseOut={(e) => e.target.style.opacity = 0.8}
+                        >
+                            Guest Access →
+                        </button>
+                    )}
                 </div>
 
                 <div style={{ marginTop: '1.5rem', fontSize: '0.65rem', opacity: 0.3, fontWeight: 700, letterSpacing: '1.5px', color: 'var(--color-text-dim)' }}>

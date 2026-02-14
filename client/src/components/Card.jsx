@@ -3,8 +3,6 @@ import React from 'react';
 const Card = ({ children, className = '', style = {} }) => {
     const cardStyle = {
         background: 'var(--bg-card)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: 'var(--radius-lg)',
         padding: 'var(--spacing-lg)',

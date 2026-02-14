@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bot, LogIn, Send, Heart, User, MessageSquare } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
@@ -8,6 +8,19 @@ import api from '../api';
 const LandingPage = () => {
     const [feedback, setFeedback] = useState({ name: '', message: '' });
     const [status, setStatus] = useState('idle'); // idle, submitting, success, error
+    const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/settings/guest_features');
+                setGuestFeaturesEnabled(res.data?.value !== 'false');
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -80,65 +93,68 @@ const LandingPage = () => {
                     </Link>
                 </div>
 
+
                 {/* Public Insight / Feedback Section */}
-                <div className="glass-panel" style={{ width: '100%', maxWidth: '600px', padding: '3rem', borderTop: '4px solid #facc15' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                        <div style={{ display: 'inline-flex', padding: '1rem', background: 'rgba(250, 204, 21, 0.1)', borderRadius: '50%', color: '#facc15', marginBottom: '1rem' }}>
-                            <MessageSquare size={32} />
+                {guestFeaturesEnabled && (
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '600px', padding: '3rem', borderTop: '4px solid #facc15' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                            <div style={{ display: 'inline-flex', padding: '1rem', background: 'rgba(250, 204, 21, 0.1)', borderRadius: '50%', color: '#facc15', marginBottom: '1rem' }}>
+                                <MessageSquare size={32} />
+                            </div>
+                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Share Your Insights</h2>
+                            <p style={{ color: 'var(--color-text-dim)' }}>
+                                Have a suggestion, feedback, or a word of encouragement? We'd love to hear from you, even if you're just visiting!
+                            </p>
                         </div>
-                        <h2 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Share Your Insights</h2>
-                        <p style={{ color: 'var(--color-text-dim)' }}>
-                            Have a suggestion, feedback, or a word of encouragement? We'd love to hear from you, even if you're just visiting!
-                        </p>
+
+                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-dim)' }}>YOUR NAME (OPTIONAL)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Anonymous Guest"
+                                    value={feedback.name}
+                                    onChange={e => setFeedback({ ...feedback, name: e.target.value })}
+                                    style={{
+                                        width: '100%', padding: '1rem', background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem',
+                                        color: 'white', fontSize: '1rem'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-dim)' }}>YOUR MESSAGE</label>
+                                <textarea
+                                    required
+                                    placeholder="Type your thoughts here..."
+                                    value={feedback.message}
+                                    onChange={e => setFeedback({ ...feedback, message: e.target.value })}
+                                    rows={4}
+                                    style={{
+                                        width: '100%', padding: '1rem', background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem',
+                                        color: 'white', fontSize: '1rem', resize: 'vertical', fontFamily: 'inherit'
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={status === 'submitting' || status === 'success'}
+                                className="btn btn-primary"
+                                style={{
+                                    padding: '1rem', fontSize: '1rem', fontWeight: 800,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                                    background: status === 'success' ? '#4ade80' : 'hsl(var(--color-primary))'
+                                }}
+                            >
+                                {status === 'submitting' ? 'SENDING...' : status === 'success' ? 'SENT SUCCESSFULLY!' : status === 'error' ? 'FAILED - TRY AGAIN' : (
+                                    <>SEND INSIGHT <Send size={18} /></>
+                                )}
+                            </button>
+                        </form>
                     </div>
-
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-dim)' }}>YOUR NAME (OPTIONAL)</label>
-                            <input
-                                type="text"
-                                placeholder="Anonymous Guest"
-                                value={feedback.name}
-                                onChange={e => setFeedback({ ...feedback, name: e.target.value })}
-                                style={{
-                                    width: '100%', padding: '1rem', background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem',
-                                    color: 'white', fontSize: '1rem'
-                                }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-dim)' }}>YOUR MESSAGE</label>
-                            <textarea
-                                required
-                                placeholder="Type your thoughts here..."
-                                value={feedback.message}
-                                onChange={e => setFeedback({ ...feedback, message: e.target.value })}
-                                rows={4}
-                                style={{
-                                    width: '100%', padding: '1rem', background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem',
-                                    color: 'white', fontSize: '1rem', resize: 'vertical', fontFamily: 'inherit'
-                                }}
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={status === 'submitting' || status === 'success'}
-                            className="btn btn-primary"
-                            style={{
-                                padding: '1rem', fontSize: '1rem', fontWeight: 800,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
-                                background: status === 'success' ? '#4ade80' : 'hsl(var(--color-primary))'
-                            }}
-                        >
-                            {status === 'submitting' ? 'SENDING...' : status === 'success' ? 'SENT SUCCESSFULLY!' : status === 'error' ? 'FAILED - TRY AGAIN' : (
-                                <>SEND INSIGHT <Send size={18} /></>
-                            )}
-                        </button>
-                    </form>
-                </div>
+                )}
 
                 <footer style={{ marginTop: '4rem', color: 'var(--color-text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>
                     <p>&copy; {new Date().getFullYear()} Doulos Community. All rights reserved.</p>

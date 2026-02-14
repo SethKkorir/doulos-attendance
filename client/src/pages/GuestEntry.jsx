@@ -1,10 +1,26 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { User, Shield, ArrowRight } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import Logo from '../components/Logo';
+import api from '../api';
 
 const GuestEntry = () => {
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const checkSettings = async () => {
+            try {
+                const res = await api.get('/settings/guest_features');
+                if (res.data?.value === 'false') {
+                    navigate('/admin');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        checkSettings();
+    }, [navigate]);
 
     const handleGuestAccess = (type) => {
         // We will pass state to the routes to indicate guest mode

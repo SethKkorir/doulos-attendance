@@ -11,6 +11,7 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import memberRoutes from './routes/memberRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -76,6 +77,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

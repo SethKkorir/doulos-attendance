@@ -5,17 +5,237 @@ import QRCode from 'react-qr-code';
 import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, Users,
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
-    ShieldAlert as Ghost, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
-    FileSpreadsheet, ChevronDown, UploadCloud
+    ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
+    FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
+    FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
+import AdminFinanceView from '../components/AdminFinanceView';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
+
+const MeetingInsights = ({ meeting, onClose, api }) => {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchInsights = async () => {
+            setLoading(true);
+            try {
+                // Fetch attendance for this meeting
+                const attRes = await api.get(`/attendance/${meeting._id}`);
+                const attendance = attRes.data;
+
+                // Fetch all members for this campus
+                const memRes = await api.get(`/members?campus=${meeting.campus}`);
+                const allMembers = memRes.data;
+
+                // present reg nos (Normalized)
+                const presentRegNos = new Set(attendance.map(a => String(a.studentRegNo).trim().toUpperCase()));
+
+                // absent members (Normalized Check)
+                const absent = allMembers.filter(m => !presentRegNos.has(String(m.studentRegNo).trim().toUpperCase()));
+
+                // breakdown
+                const breakdown = attendance.reduce((acc, curr) => {
+                    acc[curr.memberType] = (acc[curr.memberType] || 0) + 1;
+                    return acc;
+                }, {});
+
+                // Recruits (First timers) in this meeting
+                const recruitsCount = attendance.filter(a => a.memberType === 'Recruit').length;
+
+                setStats({
+                    presentCount: attendance.length,
+                    absentCount: absent.length,
+                    absentList: absent,
+                    presentList: attendance,
+                    breakdown,
+                    recruitsCount,
+                    totalEligible: allMembers.length
+                });
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInsights();
+    }, [meeting._id, meeting.campus, api]);
+
+    if (loading) return (
+        <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '50px', height: '50px', borderTopColor: 'hsl(var(--color-primary))' }}></div>
+            <p style={{ fontWeight: 800, letterSpacing: '2px', color: 'hsl(var(--color-primary))', fontSize: '0.8rem' }}>DECODING ATTENDANCE PATTERNS...</p>
+        </div>
+    );
+
+    if (!stats) return null;
+
+    const rate = Math.round((stats.presentCount / stats.totalEligible) * 100) || 0;
+
+    return (
+        <div className="glass-panel" style={{
+            padding: '2.5rem',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            border: '1px solid rgba(124, 58, 237, 0.5)',
+            animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
+                        <div style={{ padding: '0.75rem', background: 'rgba(124, 58, 237, 0.15)', borderRadius: '1rem' }}>
+                            <BarChart3 size={32} color="hsl(var(--color-primary))" />
+                        </div>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 950, letterSpacing: '-1px', color: 'white' }}>Meeting Insights</h2>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>
+                                {meeting.name} • {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="btn"
+                    style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'white',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '1rem',
+                        cursor: 'pointer',
+                        fontWeight: 800,
+                        fontSize: '0.75rem',
+                        letterSpacing: '1px'
+                    }}
+                >
+                    EXIT ANALYSIS
+                </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>PRESENCE</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: '#25AAE1', lineHeight: 1 }}>{stats.presentCount}</div>
+                        <div style={{ fontSize: '1rem', opacity: 0.4, fontWeight: 700 }}>/ {stats.totalEligible}</div>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(37, 170, 225, 0.8)', marginTop: '0.75rem', fontWeight: 600 }}>{stats.recruitsCount} First Timers (Recruits)</div>
+                    <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05 }}>
+                        <Users size={80} />
+                    </div>
+                </div>
+
+                <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>REACH RATE</div>
+                    <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: '#4ade80', lineHeight: 1 }}>{rate}%</div>
+                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', marginTop: '1.25rem', overflow: 'hidden' }}>
+                        <div style={{ width: `${rate}%`, height: '100%', background: '#4ade80', borderRadius: '4px', transition: 'width 1s ease-out' }}></div>
+                    </div>
+                    <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05 }}>
+                        <Activity size={80} />
+                    </div>
+                </div>
+
+                <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>ATTRITION</div>
+                    <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: '#f87171', lineHeight: 1 }}>{stats.absentCount}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(248, 113, 113, 0.8)', marginTop: '0.75rem', fontWeight: 600 }}>Members did not attend</div>
+                    <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05 }}>
+                        <Ghost size={80} />
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '2rem', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Ghost size={20} color="#f87171" />
+                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>MISSED MEMBERS ({stats.absentCount})</h4>
+                        </div>
+                    </div>
+                    <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
+                        {stats.absentList.length === 0 ? (
+                            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
+                                <h3 style={{ margin: 0, color: '#4ade80' }}>100% Attendance!</h3>
+                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>Every registered member shows up. Outstanding!</p>
+                            </div>
+                        ) : stats.absentList.map(m => (
+                            <div key={m._id} style={{
+                                padding: '1.25rem',
+                                background: 'rgba(239, 68, 68, 0.04)',
+                                border: '1px solid rgba(239, 68, 68, 0.1)',
+                                borderRadius: '1.25rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div>
+                                    <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{m.name}</div>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.5, fontWeight: 700 }}>{m.studentRegNo}</div>
+                                </div>
+                                <div style={{
+                                    fontSize: '0.65rem',
+                                    padding: '0.4rem 0.75rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    borderRadius: '2rem',
+                                    fontWeight: 900,
+                                    color: '#f87171',
+                                    border: '1px solid rgba(248, 113, 113, 0.2)'
+                                }}>{m.memberType.toUpperCase()}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '2rem', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Users size={20} color="#4ade80" />
+                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>PARTICIPANTS ({stats.presentCount})</h4>
+                        </div>
+                    </div>
+                    <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
+                        {stats.presentList.map(a => (
+                            <div key={a._id} style={{
+                                padding: '1.25rem',
+                                background: 'rgba(74, 222, 128, 0.04)',
+                                border: '1px solid rgba(74, 222, 128, 0.1)',
+                                borderRadius: '1.25rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div>
+                                    <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{a.responses.studentName || 'Member'}</div>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.5, fontWeight: 700 }}>{a.studentRegNo}</div>
+                                </div>
+                                <div style={{
+                                    fontSize: '0.65rem',
+                                    padding: '0.4rem 0.75rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    borderRadius: '2rem',
+                                    fontWeight: 900,
+                                    color: '#4ade80',
+                                    border: '1px solid rgba(74, 222, 128, 0.2)'
+                                }}>{a.memberType.toUpperCase()}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const AdminDashboard = () => {
     const location = useLocation();
@@ -30,6 +250,7 @@ const AdminDashboard = () => {
     const [meetings, setMeetings] = useState([]);
     const [showCreate, setShowCreate] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState(null); // For QR Modal
+    const [insightMeeting, setInsightMeeting] = useState(null); // For detailed insights
     const [editingMeeting, setEditingMeeting] = useState(null); // For Edit Modal
     const [formData, setFormData] = useState({
         name: 'Weekly Doulos',
@@ -53,8 +274,10 @@ const AdminDashboard = () => {
         }
     });
     const [msg, setMsg] = useState(null);
+    const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
     const [viewingAttendance, setViewingAttendance] = useState(null); // Meeting object
-    const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'members', or 'reports'
+    const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'members', 'finance', or 'reports'
+    const [financeTab, setFinanceTab] = useState('pending'); // 'pending' or 'log-cash'
     const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'admin');
     const [members, setMembers] = useState([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
@@ -75,7 +298,6 @@ const AdminDashboard = () => {
     const [editingAdmin, setEditingAdmin] = useState(null);
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
-    const [whatsappLink, setWhatsappLink] = useState('');
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -1154,17 +1376,18 @@ const AdminDashboard = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await api.get('/settings/whatsapp_link');
-            setWhatsappLink(res.data.value || '');
+            const guestRes = await api.get('/settings/guest_features');
+            // Default to true if not set, or parse string 'true'/'false'
+            setGuestFeaturesEnabled(guestRes.data?.value !== 'false');
         } catch (err) {
-            console.error('Failed to fetch settings');
+            console.error('Failed to fetch settings', err);
         }
     };
 
     const handleSaveSetting = async (key, value) => {
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         try {
-            await api.patch(`/settings/${key}`, { value });
+            await api.patch(`/settings/${key}`, { value: String(value) });
             setMsg({ type: 'success', text: 'Setting updated successfully.' });
             fetchSettings();
         } catch (err) {
@@ -1180,7 +1403,18 @@ const AdminDashboard = () => {
     const activeMeetingsCount = meetings.filter(m => m.isActive).length;
 
     const renderMeetingCard = (m) => (
-        <div key={m._id} className="glass-panel" style={{ padding: '1.5rem', position: 'relative', transition: 'all 0.3s ease', border: m.isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--glass-border)' }}>
+        <div
+            key={m._id}
+            className="glass-panel meeting-card-hover"
+            style={{
+                padding: '1.5rem',
+                position: 'relative',
+                transition: 'all 0.3s ease',
+                border: m.isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--glass-border)',
+                cursor: 'pointer'
+            }}
+            onClick={() => setInsightMeeting(m)}
+        >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
@@ -1188,27 +1422,53 @@ const AdminDashboard = () => {
                         <MapPin size={14} /> {m.campus}
                     </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                    <div style={{ padding: '0.5rem', background: m.isActive ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: m.isActive ? '#4ade80' : 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
+                        {m.isActive ? '• LIVE NOW' : '• COMPLETED'}
+                    </div>
+                    {(m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMeeting(m);
+                            }}
+                            className="btn"
+                            style={{
+                                padding: '0.5rem 0.75rem',
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#3b82f6',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                border: '1px solid rgba(59, 130, 246, 0.2)',
+                            }}
+                            title="QR Code"
+                        >
+                            <QrIcon size={18} />
+                        </button>
+                    )}
                     <button
-                        onClick={() => toggleStatus(m)}
-                        disabled={!m.isActive}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setInsightMeeting(m);
+                        }}
+                        className="btn"
                         style={{
-                            padding: '0.25rem 0.6rem',
-                            borderRadius: '2rem',
-                            fontSize: '0.7rem',
-                            fontWeight: 'bold',
-                            background: m.isActive ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                            color: m.isActive ? '#4ade80' : '#f87171',
-                            border: m.isActive ? '1px solid #4ade80' : '1px solid #f87171',
-                            cursor: m.isActive ? 'pointer' : 'default',
-                            opacity: m.isActive ? 1 : 0.8
+                            padding: '0.5rem 0.75rem',
+                            background: 'rgba(124, 58, 237, 0.1)',
+                            color: 'hsl(var(--color-primary))',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(124, 58, 237, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem'
                         }}
                     >
-                        {m.isActive ? '• ACTIVE' : 'FINALIZED'}
+                        <BarChart3 size={14} /> Insights
                     </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-text-dim)', fontSize: '0.8rem' }}>
-                        <Users size={14} /> {m.attendanceCount || 0}
-                    </div>
+
                 </div>
             </div>
 
@@ -1221,31 +1481,33 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {(m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
-                <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
-                    <input
-                        className="input-field"
-                        placeholder="e.g. 22-0000"
-                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-                        value={quickRegNo}
-                        onChange={e => {
-                            let val = e.target.value.replace(/\D/g, '');
-                            if (val.length > 2) {
-                                val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                            }
-                            setQuickRegNo(val);
-                        }}
-                    />
-                    <button
-                        className="btn btn-primary"
-                        style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
-                        onClick={() => handleQuickCheckIn(m._id)}
-                        disabled={quickCheckInLoading}
-                    >
-                        {quickCheckInLoading ? '...' : <Plus size={16} />}
-                    </button>
-                </div>
-            )}
+            {
+                (m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                    <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+                        <input
+                            className="input-field"
+                            placeholder="e.g. 22-0000"
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+                            value={quickRegNo}
+                            onChange={e => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                if (val.length > 2) {
+                                    val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                }
+                                setQuickRegNo(val);
+                            }}
+                        />
+                        <button
+                            className="btn btn-primary"
+                            style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
+                            onClick={() => handleQuickCheckIn(m._id)}
+                            disabled={quickCheckInLoading}
+                        >
+                            {quickCheckInLoading ? '...' : <Plus size={16} />}
+                        </button>
+                    </div>
+                )
+            }
 
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {m.isActive && (
@@ -1299,7 +1561,7 @@ const AdminDashboard = () => {
                     </button>
                 )}
             </div>
-        </div>
+        </div >
     );
 
     return (
@@ -1387,18 +1649,32 @@ const AdminDashboard = () => {
                                 Reports
                             </button>
                             <button
-                                onClick={() => setActiveTab('feedback')}
+                                onClick={() => setActiveTab('finance')}
                                 style={{
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                    background: activeTab === 'feedback' ? 'hsl(var(--color-primary))' : 'transparent',
-                                    color: activeTab === 'feedback' ? 'white' : 'var(--color-text-dim)',
+                                    background: activeTab === 'finance' ? 'hsl(var(--color-primary))' : 'transparent',
+                                    color: activeTab === 'finance' ? 'white' : 'var(--color-text-dim)',
                                     fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap',
-                                    display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
-                                <span style={{ fontSize: '1rem' }}>💡</span> Feedback
+                                Finance
                             </button>
+                            {guestFeaturesEnabled && (
+                                <button
+                                    onClick={() => setActiveTab('feedback')} // Feedback tab is hidden if features disabled
+                                    style={{
+                                        padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                        background: activeTab === 'feedback' ? 'hsl(var(--color-primary))' : 'transparent',
+                                        color: activeTab === 'feedback' ? 'white' : 'var(--color-text-dim)',
+                                        fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap',
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1rem' }}>💡</span> Feedback
+                                </button>
+                            )}
                             {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
                                 <button
                                     onClick={() => setActiveTab('admins')}
@@ -1431,9 +1707,9 @@ const AdminDashboard = () => {
                         <button
                             className="btn"
                             style={{
-                                background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                                background: isDarkMode ? '#1e293b' : '#f1f5f9',
                                 color: 'hsl(var(--color-text))',
-                                border: '1px solid rgba(255,255,255,0.1)'
+                                border: '1px solid var(--glass-border)'
                             }}
                             onClick={logout}
                         >
@@ -1452,10 +1728,9 @@ const AdminDashboard = () => {
                         minWidth: '300px',
                         padding: '1rem 1.5rem',
                         borderRadius: '0.75rem',
-                        background: msg.type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)',
+                        background: msg.type === 'error' ? '#dc2626' : '#059669',
                         color: 'white',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1474,36 +1749,34 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Analytics Bar */}
-                <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.2)', borderRadius: '0.75rem', color: '#25AAE1' }}>
-                            <Users size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>Total Check-ins</p>
-                            <h3 style={{ margin: 0, fontSize: '1.5rem' }}>{totalAttendanceCount}</h3>
-                        </div>
+                {/* New Meeting Insights Area */}
+                {insightMeeting && activeTab === 'meetings' ? (
+                    <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.5s' }}>
+                        <MeetingInsights
+                            meeting={insightMeeting}
+                            onClose={() => setInsightMeeting(null)}
+                            api={api}
+                        />
                     </div>
-                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(255, 215, 0, 0.2)', borderRadius: '0.75rem', color: '#FFD700' }}>
-                            <Activity size={24} />
+                ) : activeTab === 'meetings' && (
+                    <div
+                        className="glass-panel"
+                        style={{
+                            padding: '3rem',
+                            marginBottom: '3rem',
+                            textAlign: 'center',
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '2px dashed rgba(255,255,255,0.1)',
+                            borderRadius: '2rem'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', opacity: 0.3 }}>
+                            <BarChart3 size={48} />
                         </div>
-                        <div>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>Active Meetings</p>
-                            <h3 style={{ margin: 0, fontSize: '1.5rem' }}>{activeMeetingsCount}</h3>
-                        </div>
+                        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--color-primary))' }}>Meeting Attendance Intelligence</h3>
+                        <p style={{ marginTop: '0.75rem', opacity: 0.6, fontSize: '1rem', fontWeight: 500 }}>Select any meeting card below to decode detailed participation insights, absent lists, and growth metrics.</p>
                     </div>
-                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(221, 93, 108, 0.2)', borderRadius: '0.75rem', color: '#dd5d6c' }}>
-                            <BarChart3 size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>Total Events</p>
-                            <h3 style={{ margin: 0, fontSize: '1.5rem' }}>{meetings.length}</h3>
-                        </div>
-                    </div>
-                </div>
+                )}
 
                 {activeTab === 'meetings' ? (
                     <>
@@ -1788,6 +2061,8 @@ const AdminDashboard = () => {
                     </>
                 ) : activeTab === 'feedback' ? (
                     <FeedbackView isGuest={isGuest} />
+                ) : activeTab === 'finance' ? (
+                    <AdminFinanceView isGuest={isGuest} />
                 ) : activeTab === 'members' ? (
                     <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
                         {/* Registry Header & Toolbar */}
@@ -2055,8 +2330,8 @@ const AdminDashboard = () => {
                         onEdit={setEditingAdmin}
                         onDelete={handleDeleteAdmin}
                         onRegister={() => setEditingAdmin({ _id: 'NEW', username: '', role: 'admin', campus: 'Athi River' })}
-                        whatsappLink={whatsappLink}
-                        onUpdateSetting={handleSaveSetting}
+                        guestFeaturesEnabled={guestFeaturesEnabled}
+                        onUpdateSetting={handleSaveSetting} // Correct handler name
                     />
                 ) : (
                     <ReportsView
@@ -2818,43 +3093,38 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                    <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#25AAE1', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>
-                            <Activity size={14} /> Gross Attendance
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '4rem' }}>
+                    <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, rgba(37, 170, 225, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#25AAE1', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
+                            <Activity size={18} /> Accumulative Reach
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-text))' }}>{totalAttendance}</div>
-                    </div>
-                    <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '1rem', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#a78bfa', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>
-                            <Calendar size={14} /> Total Meetings
+                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{totalAttendance}</div>
+                        <p style={{ margin: '1rem 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Aggregate check-ins recorded</p>
+                        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
+                            <Activity size={120} />
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-text))' }}>{filteredMeetings.length}</div>
                     </div>
-                    <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '1rem', border: '1px solid rgba(250, 204, 21, 0.2)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#facc15', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>
-                            <Users size={14} /> Avg Engagement
+
+                    <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(167, 139, 250, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(167, 139, 250, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#a78bfa', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
+                            <Calendar size={18} /> Total Events
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-text))' }}>{averageAttendance}</div>
+                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{filteredMeetings.length}</div>
+                        <p style={{ margin: '1rem 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Sessions captured in repository</p>
+                        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
+                            <Calendar size={120} />
+                        </div>
                     </div>
-                    <div
-                        onClick={() => onDownloadCumulativeCSV(members.filter(m => filterCampus === 'All' || m.campus === filterCampus), filterSemester === 'Current' ? currentSemester : filterSemester)}
-                        style={{
-                            padding: '1.5rem',
-                            background: 'rgba(255,255,255,0.02)',
-                            borderRadius: '1rem',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
-                        }}
-                        className="hover-bright"
-                    >
-                        <Download size={24} style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }} />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Export Core Matrix</span>
+
+                    <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(250, 204, 21, 0.1) 0%, rgba(250, 204, 21, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(250, 204, 21, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#facc15', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
+                            <Users size={18} /> Mean Attendance
+                        </div>
+                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{averageAttendance}</div>
+                        <p style={{ margin: '1rem 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Average members per session</p>
+                        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
+                            <Users size={120} />
+                        </div>
                     </div>
                 </div>
 
@@ -2868,7 +3138,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                                 <XAxis dataKey="name" stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
                                 <YAxis stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
                                 <Tooltip
-                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}
                                     itemStyle={{ color: 'hsl(var(--color-text))', fontWeight: 700 }}
                                 />
                                 <Line type="monotone" dataKey="count" stroke="#25AAE1" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 6, fill: '#25AAE1', stroke: 'hsl(var(--color-bg))', strokeWidth: 2 }} />
@@ -2897,7 +3167,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                                     <Cell fill="#25AAE1" />
                                 </Pie>
                                 <Tooltip
-                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}
                                 />
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
                             </PieChart>
@@ -3210,14 +3480,9 @@ const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
     );
 };
 
-const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, whatsappLink, onUpdateSetting }) => {
-    const [localLink, setLocalLink] = useState(whatsappLink);
+const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeaturesEnabled, onUpdateSetting }) => {
     const userRole = localStorage.getItem('role')?.toLowerCase();
     const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
-
-    useEffect(() => {
-        setLocalLink(whatsappLink);
-    }, [whatsappLink]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
@@ -3277,40 +3542,48 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, whatsappLin
                 </div>
             )}
 
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '0.75rem' }}>
-                        <LinkIcon size={24} />
-                    </div>
-                    <div>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Graduation Gateway Settings</h3>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>The link graduates will be forced to join before accessing their portal.</p>
-                    </div>
-                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-dim)' }}>Doulos Family WhatsApp Group Link</label>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <input
-                            className="input-field"
-                            style={{ flex: 1 }}
-                            value={localLink}
-                            onChange={(e) => setLocalLink(e.target.value)}
-                            placeholder="https://chat.whatsapp.com/..."
-                        />
+
+            {canManageAdmins && (
+                <div className="glass-panel" style={{ padding: '2rem', borderLeft: '4px solid #facc15' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ padding: '0.75rem', background: 'rgba(250, 204, 21, 0.1)', color: '#facc15', borderRadius: '0.75rem' }}>
+                                <ShieldAlert size={24} />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Guest & Feedback Access</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
+                                    Control visibility of public guest links and the feedback system.
+                                </p>
+                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: guestFeaturesEnabled ? '#4ade80' : '#ef4444', fontWeight: 700 }}>
+                                    CURRENT STATUS: {guestFeaturesEnabled ? 'ACTIVE • Visible to public' : 'DISABLED • Hidden from interface'}
+                                </p>
+                            </div>
+                        </div>
                         <button
-                            className="btn btn-primary"
-                            onClick={() => onUpdateSetting('whatsapp_link', localLink)}
-                            disabled={localLink === whatsappLink}
+                            className="btn"
+                            onClick={() => onUpdateSetting('guest_features', !guestFeaturesEnabled)}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                background: guestFeaturesEnabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(74, 222, 128, 0.1)',
+                                color: guestFeaturesEnabled ? '#ef4444' : '#4ade80',
+                                border: `1px solid ${guestFeaturesEnabled ? 'rgba(239, 68, 68, 0.2)' : 'rgba(74, 222, 128, 0.2)'}`,
+                                fontWeight: 800,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                            }}
                         >
-                            Save Link
+                            {guestFeaturesEnabled ? (
+                                <>Turn OFF Features <X size={18} /></>
+                            ) : (
+                                <>Turn ON Features <Check size={18} /></>
+                            )}
                         </button>
                     </div>
-                    <p style={{ fontSize: '0.75rem', fontStyle: 'italic', margin: '0.5rem 0 0', opacity: 0.6 }}>
-                        * This link will be presented in a mandatory full-screen modal to every newly graduated Douloid on their first login.
-                    </p>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
