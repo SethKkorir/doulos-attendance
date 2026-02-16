@@ -1459,7 +1459,7 @@ const AdminDashboard = () => {
     const handleBulkGraduate = async () => {
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (selectedMemberIds.length === 0) return;
-        if (!window.confirm(`Graduate ${selectedMemberIds.length} selected recruits? This will send them the WhatsApp link invite when they next login.`)) return;
+        if (!window.confirm(`Graduate ${selectedMemberIds.length} selected recruits to Douloid status? They will see the celebratory graduation screen when they next login.`)) return;
         try {
             await api.post('/members/bulk-graduate', { memberIds: selectedMemberIds });
             setMsg({ type: 'success', text: `Successfully graduated ${selectedMemberIds.length} members!` });
