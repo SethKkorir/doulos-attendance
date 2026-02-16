@@ -1091,23 +1091,12 @@ const AdminDashboard = () => {
                             margin-bottom: 0.5rem;
                         }
 
-                        .brand {
-                            font-size: 1.2rem;
-                            font-weight: 900;
-                            letter-spacing: 4px;
-                            text-transform: uppercase;
-                            color: #666;
-                            border-bottom: 2px solid #3b82f6;
-                            padding-bottom: 10px;
-                            margin-bottom: 10px;
-                        }
-
                         .meeting-title {
-                            font-size: 4rem;
-                            font-weight: 950;
+                            font-size: 2.2rem;
+                            font-weight: 900;
                             line-height: 1.1;
                             color: #0c1a29;
-                            margin: 0;
+                            margin: 10px 0;
                             max-width: 90%;
                         }
 
@@ -1244,7 +1233,6 @@ const AdminDashboard = () => {
                         <div class="content">
                             <div class="header">
                                 <img src="/logo.png" class="logo-img" alt="Logo" />
-                                <span class="brand">LEADERS IN SERVICE</span>
                                 <h1 class="meeting-title">${meeting.name}</h1>
                                 <div class="meeting-meta">
                                     <span>${meeting.campus.toUpperCase()} CAMPUS</span>
