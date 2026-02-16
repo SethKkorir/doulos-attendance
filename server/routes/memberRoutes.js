@@ -4,7 +4,7 @@ import {
     syncMembersFromAttendance, graduateAllRecruits, setupTestAccount,
     resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock,
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
-    enrollMember, archiveMember, updateWateringDays
+    enrollMember, archiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos
 } from '../controllers/memberController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -26,6 +26,8 @@ router.post('/:id/graduate', verifyAdmin, graduateMember);
 router.post('/:id/archive', verifyAdmin, archiveMember);
 router.post('/:id/watering', verifyAdmin, updateWateringDays);
 router.post('/bulk-graduate', verifyAdmin, bulkGraduateMembers);
+router.post('/graduate-by-regnos', verifyAdmin, graduateByRegNos);
+router.post('/archive-by-regnos', verifyAdmin, archiveByRegNos);
 router.post('/:id/reset-points', verifyAdmin, resetMemberPoints);
 router.post('/clear-congrats/:studentRegNo', clearGraduationCongrats);
 

@@ -7,7 +7,7 @@ import {
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
     FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText
+    FileText, ListChecks
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
@@ -304,6 +304,9 @@ const AdminDashboard = () => {
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
     const [locationSource, setLocationSource] = useState(null); // 'gps' or 'default'
     const [currentSemester, setCurrentSemester] = useState('JAN-APR 2026');
+    const [showBulkListTool, setShowBulkListTool] = useState(false);
+    const [bulkListType, setBulkListType] = useState('graduate'); // 'graduate' or 'archive'
+    const [bulkListInput, setBulkListInput] = useState('');
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -1081,76 +1084,93 @@ const AdminDashboard = () => {
                             gap: 15px;
                         }
                         
+                        .logo-img {
+                            width: 120px;
+                            height: 120px;
+                            object-fit: contain;
+                            margin-bottom: 0.5rem;
+                        }
+
                         .brand {
                             font-size: 1.2rem;
                             font-weight: 900;
                             letter-spacing: 4px;
                             text-transform: uppercase;
-                            color: rgba(255,255,255,0.5);
-                            border-bottom: 1px solid rgba(255,255,255,0.2);
+                            color: #666;
+                            border-bottom: 2px solid #3b82f6;
                             padding-bottom: 10px;
                             margin-bottom: 10px;
                         }
 
-                        .meeting-name { 
-                            font-size: 4rem; 
-                            font-weight: 900; 
-                            line-height: 1.1; 
                         .meeting-title {
                             font-size: 4rem;
-                            font-weight: 900;
+                            font-weight: 950;
                             line-height: 1.1;
-                            color: #032540; /* Changed for print */
+                            color: #0c1a29;
                             margin: 0;
                             max-width: 90%;
                         }
 
                         .meeting-meta {
                             font-size: 1.8rem;
-                            color: #555; /* Changed for print */
+                            color: #4b5563;
                             margin-top: 10px;
-                            font-weight: 500;
+                            font-weight: 700;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
                         }
 
                         .qr-outer-container {
                             position: relative;
-                            padding: 10px;
+                            padding: 15px;
                             background: white;
-                            border-radius: 30px;
-                            border: 2px solid #eee;
+                            border-radius: 40px;
+                            border: 4px solid #0c1a29;
                         }
 
                         .qr-inner-wrapper {
-                            padding: 25px;
+                            padding: 30px;
                             background: white;
-                            border-radius: 20px;
+                            border-radius: 30px;
                         }
 
                         /* "Scan Me" Badge */
                         .scan-badge {
                             position: absolute;
-                            top: -20px;
-                            right: -20px;
+                            top: -25px;
+                            right: -25px;
                             background: #ef4444;
                             color: white;
                             font-weight: 900;
-                            padding: 10px 20px;
+                            padding: 12px 25px;
                             border-radius: 50px;
-                            transform: rotate(15deg);
-                            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-                            font-size: 1.2rem;
+                            transform: rotate(12deg);
+                            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+                            font-size: 1.4rem;
+                            border: 3px solid white;
                         }
 
-                        .qr-code {
-                            width: 400px;
-                            height: 400px;
-                            object-fit: contain;
+                        .semester-badge {
+                            position: absolute;
+                            bottom: -20px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            background: #3b82f6;
+                            color: white;
+                            font-weight: 900;
+                            padding: 8px 30px;
+                            border-radius: 50px;
+                            font-size: 1.1rem;
+                            text-transform: uppercase;
+                            letter-spacing: 2px;
+                            border: 3px solid white;
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
                         }
 
                         .footer {
                             width: 100%;
-                            border-top: 1px solid #eee; /* Changed for print */
-                            padding-top: 20px;
+                            border-top: 2px solid #f3f4f6;
+                            padding-top: 25px;
                             display: flex;
                             justify-content: space-between;
                             align-items: flex-end;
@@ -1160,22 +1180,57 @@ const AdminDashboard = () => {
                             text-align: left;
                         }
                         .instruction h3 {
-                            font-size: 1.5rem;
+                            font-size: 1.6rem;
                             color: #3b82f6;
                             margin: 0 0 5px 0;
                             text-transform: uppercase;
+                            font-weight: 900;
                         }
                         .instruction p {
-                            font-size: 1rem;
-                            color: #555; /* Changed for print */
+                            font-size: 1.1rem;
+                            color: #6b7280;
                             margin: 0;
-                            max-width: 300px;
+                            max-width: 400px;
+                        }
+
+                        .theme-section {
+                            margin: 20px 0;
+                            padding: 20px;
+                            border: 1px dashed #3b82f6;
+                            border-radius: 15px;
+                            max-width: 85%;
+                        }
+
+                        .theme-title {
+                            font-size: 1.5rem;
+                            font-weight: 900;
+                            color: #032540;
+                            margin-bottom: 5px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+
+                        .theme-text {
+                            font-size: 1.8rem;
+                            font-weight: 800;
+                            color: #3b82f6;
+                            font-style: italic;
+                            margin: 10px 0;
+                        }
+
+                        .theme-verse {
+                            font-size: 1rem;
+                            color: #4b5563;
+                            font-weight: 600;
+                            line-height: 1.4;
+                            margin-top: 10px;
                         }
 
                         .meta {
                             text-align: right;
-                            font-size: 1rem;
-                            color: #888; /* Changed for print */
+                            font-size: 1.1rem;
+                            color: #9ca3af;
+                            font-weight: 600;
                         }
 
                         @media print {
@@ -1188,19 +1243,30 @@ const AdminDashboard = () => {
                     <div class="page">
                         <div class="content">
                             <div class="header">
-                                <span class="brand">DOULOS SOLIDARITY</span>
+                                <img src="/logo.png" class="logo-img" alt="Logo" />
+                                <span class="brand">LEADERS IN SERVICE</span>
                                 <h1 class="meeting-title">${meeting.name}</h1>
                                 <div class="meeting-meta">
-                                    <span>ATHI RIVER CAMPUS</span>
+                                    <span>${meeting.campus.toUpperCase()} CAMPUS</span>
                                     <span>•</span>
-                                    <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                    <span>${meeting.isRecurring ? `OFFICIAL SEMESTER PASS` : new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                                 </div>
                             </div>
 
                             <div class="qr-outer-container">
                                 <div class="scan-badge">SCAN ME!</div>
+                                ${meeting.isRecurring ? `<div class="semester-badge">${meeting.semester || 'Academic Year'}</div>` : ''}
                                 <div class="qr-inner-wrapper">
                                     ${new XMLSerializer().serializeToString(qrSvg)}
+                                </div>
+                            </div>
+
+                            <div class="theme-section">
+                                <div class="theme-title">Semester Theme</div>
+                                <div class="theme-text">"Trust the designer He knows the journey"</div>
+                                <div class="theme-verse">
+                                    <strong>Proverbs 3:5-6</strong><br/>
+                                    "Trust the Lord with all your heart and lean not on your own understanding; in all your ways submit to Him and He will make your paths straight"
                                 </div>
                             </div>
 
@@ -1210,8 +1276,8 @@ const AdminDashboard = () => {
                                     <p>Open your camera or QR scanner to mark your attendance instantly.</p>
                                 </div>
                                 <div class="meta">
-                                    ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
-                                    Doulos Solidarity
+                                    ${meeting.isRecurring ? 'Semester Attendance QR' : new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
+                                    Doulos Solidarity System
                                 </div>
                             </div>
                         </div>
@@ -1401,6 +1467,26 @@ const AdminDashboard = () => {
             fetchMembers();
         } catch (err) {
             setMsg({ type: 'error', text: 'Failed to graduate members' });
+        }
+    };
+
+    const handleBulkListAction = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        const regNos = bulkListInput.split('\n').map(r => r.trim()).filter(r => r);
+        if (regNos.length === 0) return;
+
+        try {
+            setImportLoading(true);
+            const endpoint = bulkListType === 'graduate' ? '/members/graduate-by-regnos' : '/members/archive-by-regnos';
+            const res = await api.post(endpoint, { regNos });
+            setMsg({ type: 'success', text: res.data.message });
+            setShowBulkListTool(false);
+            setBulkListInput('');
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Action failed: ' + (err.response?.data?.message || 'Server error') });
+        } finally {
+            setImportLoading(false);
         }
     };
 
@@ -2428,6 +2514,10 @@ const AdminDashboard = () => {
                                     )}
                                     {['developer', 'superadmin'].includes(userRole) && (
                                         <>
+                                            <button className="btn" style={{ background: 'hsl(var(--color-primary) / 0.1)', color: 'hsl(var(--color-primary))', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                onClick={() => setShowBulkListTool(true)} title="Graduate or Archive members by pasting a list of registration numbers">
+                                                <ListChecks size={16} /> Bulk List Actions
+                                            </button>
                                             <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
                                                 onClick={handleSetupTestAccount} title="Designate a student as a permanent tester">
                                                 Setup Tester
@@ -2951,6 +3041,82 @@ const AdminDashboard = () => {
                         </div>
                     )
                 }
+
+                {/* Bulk List Tool Modal */}
+                {showBulkListTool && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110,
+                        backdropFilter: 'blur(10px)'
+                    }}>
+                        <div className="glass-panel" style={{
+                            width: '90%', maxWidth: '500px', padding: '2rem',
+                            background: 'var(--color-bg-alt)', borderRadius: '1.5rem',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            animation: 'slideUp 0.3s ease-out'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                    <ListChecks size={24} color="hsl(var(--color-primary))" />
+                                    <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Master Bulk Tool</h3>
+                                </div>
+                                <button onClick={() => setShowBulkListTool(false)} className="btn" style={{ padding: '0.4rem', background: 'transparent' }}><X size={20} /></button>
+                            </div>
+
+                            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-dim)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                                Paste a list of Student Registration Numbers (one per line) from your master list to process them in bulk.
+                            </p>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.6 }}>SELECT TARGET ACTION</label>
+                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                                    <button
+                                        onClick={() => setBulkListType('graduate')}
+                                        style={{
+                                            flex: 1, padding: '0.75rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                            background: bulkListType === 'graduate' ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
+                                            color: bulkListType === 'graduate' ? '#a78bfa' : 'var(--color-text-dim)',
+                                            fontWeight: 800, fontSize: '0.8rem'
+                                        }}
+                                    >GRADUATE PASS</button>
+                                    <button
+                                        onClick={() => setBulkListType('archive')}
+                                        style={{
+                                            flex: 1, padding: '0.75rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                            background: bulkListType === 'archive' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                                            color: bulkListType === 'archive' ? '#f87171' : 'var(--color-text-dim)',
+                                            fontWeight: 800, fontSize: '0.8rem'
+                                        }}
+                                    >ARCHIVE / FAIL</button>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '2rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.6 }}>PASTE REGISTRATION NUMBERS</label>
+                                <textarea
+                                    className="input"
+                                    rows="8"
+                                    placeholder="PASTE LIST HERE...&#10;CIT-1-1234/2022&#10;CIT-1-5678/2022"
+                                    style={{ width: '100%', padding: '1rem', background: 'rgba(0,0,0,0.3)', fontSize: '0.9rem', fontFamily: 'monospace', borderRadius: '0.75rem', color: 'white' }}
+                                    value={bulkListInput}
+                                    onChange={(e) => setBulkListInput(e.target.value)}
+                                />
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', marginTop: '0.5rem', fontWeight: 600 }}>
+                                    Detected {bulkListInput.split('\n').filter(r => r.trim()).length} unique numbers.
+                                </div>
+                            </div>
+
+                            <button
+                                className="btn btn-primary"
+                                style={{ width: '100%', padding: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', fontSize: '0.9rem' }}
+                                onClick={handleBulkListAction}
+                                disabled={importLoading || !bulkListInput.trim()}
+                            >
+                                {importLoading ? 'PROCESSING LIST...' : `CONFIRM BULK ${bulkListType.toUpperCase()}`}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Attendance View Modal */}
                 {

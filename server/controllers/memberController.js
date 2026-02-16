@@ -176,7 +176,8 @@ export const graduateAllRecruits = async (req, res) => {
             { memberType: 'Recruit' },
             {
                 $set: {
-                    needsGraduationCongrats: true
+                    needsGraduationCongrats: true,
+                    memberType: 'Douloid'
                 }
             }
         );
@@ -194,7 +195,7 @@ export const graduateMember = async (req, res) => {
     try {
         const member = await Member.findByIdAndUpdate(
             req.params.id,
-            { $set: { needsGraduationCongrats: true } },
+            { $set: { needsGraduationCongrats: true, memberType: 'Douloid' } },
             { new: true }
         );
         res.json({ message: `Successfully graduated ${member ? member.name : 'member'} to Douloid!`, member });
@@ -304,9 +305,37 @@ export const bulkGraduateMembers = async (req, res) => {
     try {
         const result = await Member.updateMany(
             { _id: { $in: memberIds }, memberType: 'Recruit' },
-            { $set: { needsGraduationCongrats: true } }
+            { $set: { needsGraduationCongrats: true, memberType: 'Douloid' } }
         );
         res.json({ message: `Successfully graduated ${result.modifiedCount} members!`, count: result.modifiedCount });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const graduateByRegNos = async (req, res) => {
+    const { regNos } = req.body;
+    try {
+        const formattedRegNos = regNos.map(r => String(r).trim().toUpperCase());
+        const result = await Member.updateMany(
+            { studentRegNo: { $in: formattedRegNos }, memberType: 'Recruit' },
+            { $set: { needsGraduationCongrats: true, memberType: 'Douloid' } }
+        );
+        res.json({ message: `Successfully graduated ${result.modifiedCount} recruits!`, count: result.modifiedCount });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const archiveByRegNos = async (req, res) => {
+    const { regNos } = req.body;
+    try {
+        const formattedRegNos = regNos.map(r => String(r).trim().toUpperCase());
+        const result = await Member.updateMany(
+            { studentRegNo: { $in: formattedRegNos } },
+            { $set: { status: 'Archived' } }
+        );
+        res.json({ message: `Successfully archived ${result.modifiedCount} members.`, count: result.modifiedCount });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -317,9 +346,9 @@ export const clearGraduationCongrats = async (req, res) => {
     try {
         await Member.findOneAndUpdate(
             { studentRegNo },
-            { needsGraduationCongrats: false, memberType: 'Douloid' }
+            { needsGraduationCongrats: false }
         );
-        res.json({ message: 'Success! Member promoted to Douloid and graduation flag cleared.' });
+        res.json({ message: 'Success! Graduation flag cleared.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

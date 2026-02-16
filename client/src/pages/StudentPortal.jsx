@@ -142,19 +142,13 @@ const StudentPortal = () => {
         setRegNo('');
     };
 
-    const handleJoinGroup = async () => {
-        if (!whatsappLink) {
-            alert("WhatsApp group link not yet set. Please contact G9 leaders.");
-            return;
-        }
-
+    const handleClearCongrats = async () => {
         try {
             await api.post(`/members/clear-congrats/${data.studentRegNo}`);
-            window.open(whatsappLink, '_blank');
-            setData({ ...data, needsGraduationCongrats: false, memberType: 'Douloid' });
+            setData({ ...data, needsGraduationCongrats: false });
         } catch (err) {
             console.error('Failed to clear congrats status');
-            window.open(whatsappLink, '_blank');
+            setData({ ...data, needsGraduationCongrats: false });
         }
     };
 
@@ -407,6 +401,20 @@ const StudentPortal = () => {
                         50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.5; }
                         100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.3; }
                     }
+                    @keyframes firework-burst {
+                        0% { transform: scale(0); opacity: 1; }
+                        100% { transform: scale(1.2); opacity: 0; }
+                    }
+                    .firework {
+                        position: absolute;
+                        width: 5px;
+                        height: 5px;
+                        border-radius: 50%;
+                        box-shadow: 0 0 20px 10px white, 0 0 40px 20px hsla(198, 76%, 51%, 0.5);
+                        animation: firework-burst 2s infinite ease-out;
+                        pointer-events: none;
+                        z-index: 5;
+                    }
                     @keyframes shake {
                         10%, 90% { transform: translate3d(-1px, 0, 0); }
                         20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -479,8 +487,15 @@ const StudentPortal = () => {
             <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 <BackgroundGallery />
                 <ValentineRain />
+                {/* Fireworks particles */}
+                <div class="firework" style={{ top: '20%', left: '15%', animationDelay: '0s' }}></div>
+                <div class="firework" style={{ top: '15%', left: '80%', animationDelay: '0.5s', boxShadow: '0 0 20px 10px white, 0 0 40px 20px #FFD700' }}></div>
+                <div class="firework" style={{ top: '70%', left: '10%', animationDelay: '1.2s', boxShadow: '0 0 20px 10px white, 0 0 40px 20px #f87171' }}></div>
+                <div class="firework" style={{ top: '80%', left: '85%', animationDelay: '1.8s', boxShadow: '0 0 20px 10px white, 0 0 40px 20px #4ade80' }}></div>
+                <div class="firework" style={{ top: '50%', left: '50%', animationDelay: '0.8s' }}></div>
+
                 <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '2rem', maxWidth: '600px', width: '100%' }}>
-                    <div className="glass-panel" style={{ padding: '3rem 2rem', border: '2px solid hsl(var(--color-primary))', background: '#000000', boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)', animation: 'slideUp 0.8s' }}>
+                    <div className="glass-panel" style={{ padding: '3rem 2rem', border: '2px solid hsl(var(--color-primary))', background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(10px)', boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)', animation: 'slideUp 0.8s' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                             <Sparkles size={40} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
                             <GraduationCap size={48} color="hsl(var(--color-primary))" />
@@ -488,21 +503,21 @@ const StudentPortal = () => {
                         </div>
 
                         <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '-1px' }}>
-                            Welcome to the <span style={{ color: 'hsl(var(--color-primary))' }}>Family!</span>
+                            OFFICIALLY A <span style={{ color: 'hsl(var(--color-primary))' }}>DOULOID!</span>
                         </h1>
                         <p style={{ fontSize: '1.25rem', color: '#4ade80', fontWeight: 700, marginBottom: '2rem' }}>
-                            You are now officially a Douloid!
+                            Congratulations on completing your recruitment!
                         </p>
 
                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '1rem', marginBottom: '2.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'rgba(255,255,255,0.8)', margin: 0 }}>
-                                Your journey doesn't end here. To access your portal and stay updated with our community, please join our official Doulos Family WhatsApp group.
+                                Your journey of growth and impact continues. You now have full access to all Douloid features and resources within this portal.
                             </p>
                         </div>
 
                         <button
                             className="btn btn-primary"
-                            onClick={handleJoinGroup}
+                            onClick={handleClearCongrats}
                             style={{
                                 width: '100%',
                                 padding: '1.25rem',
@@ -516,12 +531,8 @@ const StudentPortal = () => {
                                 boxShadow: '0 15px 30px -5px hsl(var(--color-primary) / 0.4)'
                             }}
                         >
-                            <MessageCircle size={24} /> JOIN DOULOS FAMILY WHATSAPP
+                            PROCEED TO MY PORTAL 🚀
                         </button>
-
-                        <p style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: 'var(--color-text-dim)', opacity: 0.6 }}>
-                            * Clicking join will unlock your Doulos portal dashboard.
-                        </p>
                     </div>
                 </div>
             </div>
