@@ -2,6 +2,7 @@ import Attendance from '../models/Attendance.js';
 import Meeting from '../models/Meeting.js';
 import Member from '../models/Member.js';
 import ActivityLog from '../models/ActivityLog.js';
+import Settings from '../models/Settings.js';
 import mongoose from 'mongoose';
 import { checkCampusTime } from '../utils/timeCheck.js';
 
@@ -32,14 +33,63 @@ export const submitAttendance = async (req, res) => {
         }
 
         if (!meeting.isTestMeeting && !isSuperUser) {
-            const timeReview = checkCampusTime(meeting);
-            if (!timeReview.allowed) {
-                return res.status(403).json({ message: timeReview.message });
+            // RECURRING MEETING WINDOW CHECK
+            if (meeting.isRecurring) {
+                const now = new Date();
+                const eatFormat = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Africa/Nairobi',
+                    weekday: 'long',
+                    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+                });
+                const parts = eatFormat.formatToParts(now);
+                const currentDay = parts.find(p => p.type === 'weekday').value;
+                const hh = parts.find(p => p.type === 'hour').value;
+                const mm = parts.find(p => p.type === 'minute').value;
+                const currentTimeVal = parseInt(hh) + parseInt(mm) / 60;
+
+                const [startH, startM] = meeting.startTime.split(':').map(Number);
+                const [endH, endM] = meeting.endTime.split(':').map(Number);
+                const startVal = startH + startM / 60;
+                let endVal = endH + endM / 60;
+                if (endVal < startVal) endVal += 24;
+
+                if (currentDay !== meeting.dayOfWeek) {
+                    return res.status(403).json({ message: `This QR code is only active on ${meeting.dayOfWeek}s.` });
+                }
+
+                if (currentTimeVal < startVal || currentTimeVal > endVal) {
+                    return res.status(403).json({ message: `Check-in for this session is only allowed between ${meeting.startTime} and ${meeting.endTime}.` });
+                }
+            } else {
+                const timeReview = checkCampusTime(meeting);
+                if (!timeReview.allowed) {
+                    return res.status(403).json({ message: timeReview.message });
+                }
             }
 
             // GEO-FENCE CHECK
-            // If the meeting has a set location (lat/long exist), we must validate the student's location
-            if (meeting.location && meeting.location.latitude && meeting.location.longitude) {
+            // If the meeting has a set location OR a campus preset, we must validate student's location
+            let geoLat = meeting.location?.latitude;
+            let geoLong = meeting.location?.longitude;
+            let geoRadius = meeting.location?.radius || 200;
+
+            // If it's a recurring meeting OR no custom coords provided, pull from SuperAdmin campus presets
+            if (meeting.isRecurring || (!geoLat && meeting.campus)) {
+                const settingKey = `geo_${meeting.campus.toLowerCase().replace(/ /g, '_')}`;
+                const geoSetting = await Settings.findOne({ key: settingKey });
+                if (geoSetting) {
+                    try {
+                        const coords = JSON.parse(geoSetting.value);
+                        geoLat = coords.lat;
+                        geoLong = coords.lng;
+                        geoRadius = coords.radius || geoRadius;
+                    } catch (e) {
+                        console.error("Failed to parse geo setting", e);
+                    }
+                }
+            }
+
+            if (geoLat && geoLong) {
                 const { userLat, userLong } = req.body; // Expecting coordinates from frontend
 
                 if (!userLat || !userLong) {
@@ -48,10 +98,10 @@ export const submitAttendance = async (req, res) => {
 
                 // Haversine Formula for distance in meters
                 const R = 6371e3; // Earth radius in meters
-                const φ1 = meeting.location.latitude * Math.PI / 180;
+                const φ1 = geoLat * Math.PI / 180;
                 const φ2 = userLat * Math.PI / 180;
-                const Δφ = (userLat - meeting.location.latitude) * Math.PI / 180;
-                const Δλ = (userLong - meeting.location.longitude) * Math.PI / 180;
+                const Δφ = (userLat - geoLat) * Math.PI / 180;
+                const Δλ = (userLong - geoLong) * Math.PI / 180;
 
                 const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
                     Math.cos(φ1) * Math.cos(φ2) *
@@ -60,11 +110,11 @@ export const submitAttendance = async (req, res) => {
 
                 const distance = R * c; // Distance in meters
 
-                console.log(`[GeoFence] User Distance: ${distance.toFixed(1)}m | Allowed Radius: ${meeting.location.radius}m`);
+                console.log(`[GeoFence] User Distance: ${distance.toFixed(1)}m | Allowed Radius: ${geoRadius}m`);
 
-                if (distance > meeting.location.radius) {
+                if (distance > geoRadius) {
                     return res.status(403).json({
-                        message: `You are too far from the venue (${distance.toFixed(0)}m away). You must be strictly within ${meeting.location.radius}m to check in.`
+                        message: `You are too far from the venue (${distance.toFixed(0)}m away). You must be strictly within ${geoRadius}m to check in.`
                     });
                 }
             }
@@ -101,22 +151,30 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 7. Anti-Proxy Check (One check-in per device per meeting)
+        // 7. Anti-Proxy Check (One check-in per device per meeting/session)
         if (deviceId && !isSuperUser) {
-            const deviceUsed = await Attendance.findOne({ meeting: meeting._id, deviceId });
+            let proxyQuery = { meeting: meeting._id, deviceId };
+            if (meeting.isRecurring) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                proxyQuery.timestamp = { $gte: today, $lt: tomorrow };
+            }
+            const deviceUsed = await Attendance.findOne(proxyQuery);
             if (deviceUsed) {
-                return res.status(403).json({ message: 'This device has already been used for a check-in for this meeting.' });
+                return res.status(403).json({ message: 'This device has already been used for a check-in for this session.' });
             }
         }
 
         // 8. One Meeting Per Week Check
         // Calculate the week range for the current meeting
-        const meetingDate = new Date(meeting.date);
-        const dayOfWeek = meetingDate.getDay(); // 0 (Sun) - 6 (Sat)
+        const refDate = meeting.isRecurring ? new Date() : new Date(meeting.date);
+        const dayOfWeekIdx = refDate.getDay(); // 0 (Sun) - 6 (Sat)
 
         // Assume week starts on Sunday
-        const startOfWeek = new Date(meetingDate);
-        startOfWeek.setDate(meetingDate.getDate() - dayOfWeek);
+        const startOfWeek = new Date(refDate);
+        startOfWeek.setDate(refDate.getDate() - dayOfWeekIdx);
         startOfWeek.setHours(0, 0, 0, 0);
 
         const endOfWeek = new Date(startOfWeek);
@@ -124,8 +182,6 @@ export const submitAttendance = async (req, res) => {
         endOfWeek.setHours(23, 59, 59, 999);
 
         // Find any OTHER attendance by this student in this week range
-        // We use the 'timestamp' of the attendance record as the proxy for the meeting date, 
-        // which is accurate enough for preventing double check-ins in the same week.
         const weeklyAttendance = await Attendance.findOne({
             studentRegNo,
             timestamp: { $gte: startOfWeek, $lte: endOfWeek },
@@ -138,10 +194,18 @@ export const submitAttendance = async (req, res) => {
             });
         }
 
-        // 9. Duplicate check (This meeting)
-        const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
+        // 9. Duplicate check (This meeting/session)
+        let duplicateQuery = { meeting: meeting._id, studentRegNo };
+        if (meeting.isRecurring) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            duplicateQuery.timestamp = { $gte: today, $lt: tomorrow };
+        }
+        const existing = await Attendance.findOne(duplicateQuery);
         if (existing) {
-            return res.status(409).json({ message: 'You have already signed in for this meeting.' });
+            return res.status(409).json({ message: meeting.isRecurring ? "You have already signed in for today's session." : 'You have already signed in for this meeting.' });
         }
 
         // 8. Member Registry Lookup
@@ -364,6 +428,7 @@ export const getStudentPortalData = async (req, res) => {
             memberType: member.memberType || 'Visitor',
             status: member.status,
             wateringDays: member.wateringDays,
+            totalPoints: member.totalPoints || 0,
             lastActiveSemester: member.lastActiveSemester,
             currentSemester,
             needsGraduationCongrats: member.needsGraduationCongrats || false,

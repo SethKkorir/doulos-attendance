@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     CreditCard, Wallet, Check, X, Search, FileSpreadsheet, Clock, Filter,
     User, Calendar, DollarSign, BarChart3, PieChart as PieIcon, TrendingUp,
-    Users, AlertCircle, FileText, Download, UserMinus, ShieldCheck
+    Users, AlertCircle, FileText, Download, UserMinus, ShieldCheck, Trash2
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -345,7 +345,28 @@ const AdminFinanceView = ({ isGuest }) => {
                                                     {p.status}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.75rem', opacity: 0.6 }}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                                            <td style={{ padding: '1rem', fontSize: '0.75rem', opacity: 0.6 }}>
+                                                {new Date(p.createdAt).toLocaleDateString()}
+                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('Delete this transaction record?')) {
+                                                                api.delete(`/payments/${p._id}`)
+                                                                    .then(() => {
+                                                                        setMsg({ type: 'success', text: 'Transaction deleted' });
+                                                                        fetchAllTransactions();
+                                                                        fetchData();
+                                                                    })
+                                                                    .catch(() => setMsg({ type: 'error', text: 'Failed to delete' }));
+                                                            }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}
+                                                        title="Delete Record"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

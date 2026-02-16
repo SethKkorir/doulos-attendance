@@ -214,3 +214,17 @@ export const getDefaulters = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+// Admin: Delete a payment record
+export const deletePayment = async (req, res) => {
+    if (!['developer', 'superadmin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    try {
+        const payment = await Payment.findByIdAndDelete(req.params.id);
+        if (!payment) return res.status(404).json({ message: 'Payment record not found' });
+        res.json({ message: 'Payment record deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -265,6 +265,8 @@ const AdminDashboard = () => {
         ],
         questionOfDay: '',
         isTestMeeting: false,
+        isRecurring: false,
+        dayOfWeek: 'Monday',
         secretRoomCode: '',
         location: {
             latitude: null,
@@ -296,8 +298,11 @@ const AdminDashboard = () => {
     const [admins, setAdmins] = useState([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState(null);
+    const [campusGeoSettings, setCampusGeoSettings] = useState({});
+    const [updatingRecurringMeeting, setUpdatingRecurringMeeting] = useState(null); // For quick question update
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
+    const [locationSource, setLocationSource] = useState(null); // 'gps' or 'default'
     const [currentSemester, setCurrentSemester] = useState('JAN-APR 2026');
 
     useEffect(() => {
@@ -653,13 +658,34 @@ const AdminDashboard = () => {
 
         setMsg(null);
 
-        if (!formData.location.latitude || !formData.location.longitude) {
-            setMsg({ type: 'error', text: 'You MUST set the meeting location. Click "Use My Current Location" or capture coordinates.' });
+        let dataToSubmit = { ...formData };
+
+        // Strictly enforce campus defaults for recurring meetings
+        if (formData.isRecurring) {
+            const duplicate = meetings.find(m => m.isRecurring && m.campus === formData.campus && m.semester === formData.semester);
+            if (duplicate) {
+                setMsg({ type: 'error', text: `A recurring meeting for ${formData.campus} already exists.` });
+                return;
+            }
+            const defaults = campusGeoSettings[formData.campus];
+            if (defaults) {
+                dataToSubmit.location = {
+                    latitude: defaults.lat,
+                    longitude: defaults.lng,
+                    radius: defaults.radius,
+                    name: defaults.name || `${formData.campus} Campus`
+                };
+            } else {
+                setMsg({ type: 'error', text: `Campus geo-defaults for ${formData.campus} are not configured. Please contact SuperAdmin.` });
+                return;
+            }
+        } else if (!formData.location.latitude || !formData.location.longitude) {
+            setMsg({ type: 'error', text: 'You MUST set the meeting location. Click "Refresh GPS" to capture coordinates.' });
             return;
         }
 
         try {
-            await api.post('/meetings', formData);
+            await api.post('/meetings', dataToSubmit);
             setMsg({ type: 'success', text: 'Meeting Created!' });
             setShowCreate(false);
             fetchMeetings();
@@ -1387,6 +1413,20 @@ const AdminDashboard = () => {
             if (semRes.data?.value) {
                 setCurrentSemester(semRes.data.value);
             }
+
+            // Fetch Campus Geo Defaults
+            const geoSettings = {};
+            try {
+                const athiRes = await api.get('/settings/geo_athi_river');
+                if (athiRes.data?.value) geoSettings['Athi River'] = JSON.parse(athiRes.data.value);
+
+                const valleyRes = await api.get('/settings/geo_valley_road');
+                if (valleyRes.data?.value) geoSettings['Valley Road'] = JSON.parse(valleyRes.data.value);
+
+                setCampusGeoSettings(geoSettings);
+            } catch (err) {
+                console.warn("Failed to fetch geo settings", err);
+            }
         } catch (err) {
             console.error('Failed to fetch settings', err);
         }
@@ -1403,9 +1443,103 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleUpdateQuestion = async (e) => {
+        e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        try {
+            await api.patch(`/meetings/${updatingRecurringMeeting._id}`, {
+                questionOfDay: updatingRecurringMeeting.questionOfDay
+            });
+            setMsg({ type: 'success', text: 'Weekly question updated successfully!' });
+            setUpdatingRecurringMeeting(null);
+            fetchMeetings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to update question' });
+        }
+    };
+
     useEffect(() => {
         fetchSettings();
     }, []);
+
+    const daystarQuestions = [
+        "What is your favorite Bible verse this week?",
+        "Which chapel service has impacted you most recently?",
+        "How can the Doulos family pray for you today?",
+        "What is one thing you are grateful to God for today?",
+        "Which worship song is currently on repeat in your playlist?",
+        "What's the highlight of your walk with Christ this month?",
+        "Share a small victory and a big grace you've experienced this week.",
+        "What are you trusting God for in this current semester?",
+        "How have you seen God's faithfulness in your studies today?",
+        "What does 'Christian Excellence' look like in your department?",
+        "Who has been a sister/brother in Christ to you on campus this week?",
+        "What character trait of Jesus are you focused on emulating right now?",
+        "What is your biggest takeaway from your personal devotions today?",
+        "How has your campus experience shaped your faith journey so far?"
+    ];
+
+    const pickRandomQuestion = () => daystarQuestions[Math.floor(Math.random() * daystarQuestions.length)];
+
+    // Automatic Defaults & Location Setup
+    useEffect(() => {
+        if (!showCreate) return;
+
+        // Set Date to Today & Day of Week
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+        setFormData(prev => ({
+            ...prev,
+            date: dateStr,
+            dayOfWeek: dayName,
+            questionOfDay: prev.questionOfDay || pickRandomQuestion()
+        }));
+
+        const applyCampusDefaults = (campus) => {
+            const defaults = campusGeoSettings[campus];
+            if (defaults) {
+                setFormData(prev => ({
+                    ...prev,
+                    location: {
+                        latitude: defaults.lat,
+                        longitude: defaults.lng,
+                        radius: defaults.radius,
+                        name: defaults.name || `${campus} Campus`
+                    }
+                }));
+                setLocationSource('default');
+                return true;
+            }
+            return false;
+        };
+
+        // Prioritize Campus Defaults for a seamless experience
+        const defaultApplied = applyCampusDefaults(formData.campus);
+        if (defaultApplied) return;
+
+        // Fallback to GPS only if no campus default exists
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setFormData(prev => ({
+                        ...prev,
+                        location: {
+                            ...prev.location,
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            name: prev.location.name || 'Current Venue'
+                        }
+                    }));
+                    setLocationSource('gps');
+                },
+                () => {
+                    setLocationSource('none');
+                }
+            );
+        }
+    }, [showCreate, formData.campus, campusGeoSettings]);
 
     const totalAttendanceCount = meetings.reduce((acc, current) => acc + (current.attendanceCount || 0), 0);
     const activeMeetingsCount = meetings.filter(m => m.isActive).length;
@@ -1476,6 +1610,29 @@ const AdminDashboard = () => {
                     >
                         <BarChart3 size={14} /> Insights
                     </button>
+                    {m.isRecurring && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setUpdatingRecurringMeeting({ ...m });
+                            }}
+                            className="btn"
+                            style={{
+                                padding: '0.5rem 0.75rem',
+                                background: 'rgba(250, 204, 21, 0.1)',
+                                color: '#facc15',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                border: '1px solid rgba(250, 204, 21, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                            }}
+                        >
+                            <FileText size={14} /> Update Question
+                        </button>
+                    )}
 
                 </div>
             </div>
@@ -1697,6 +1854,20 @@ const AdminDashboard = () => {
                                     Admins
                                 </button>
                             )}
+                            {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
+                                <button
+                                    onClick={() => setActiveTab('system')}
+                                    style={{
+                                        padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                        background: activeTab === 'system' ? 'hsl(var(--color-primary))' : 'transparent',
+                                        color: activeTab === 'system' ? 'white' : 'var(--color-text-dim)',
+                                        fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    System
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1807,7 +1978,10 @@ const AdminDashboard = () => {
                                         <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
                                     </button>
                                 </div>
-                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '1px' }}>Meeting Configuration</span>
+                                    </div>
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <label>Meeting Name</label>
                                         <input className="input-field" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
@@ -1839,8 +2013,55 @@ const AdminDashboard = () => {
                                             <option value="SEP-DEC 2026">SEP-DEC 2026</option>
                                         </select>
                                     </div>
+
+                                    {/* Recurring Option - SuperAdmin Only */}
+                                    {['superadmin', 'developer'].includes(userRole) && (
+                                        <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(250,204,21,0.05)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid rgba(250,204,21,0.1)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    id="isRecurring"
+                                                    checked={formData.isRecurring}
+                                                    onChange={e => setFormData({ ...formData, isRecurring: e.target.checked })}
+                                                    style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                                                />
+                                                <label htmlFor="isRecurring" style={{ cursor: 'pointer', margin: 0, fontWeight: 700, color: '#facc15' }}>
+                                                    Make this a Recurring Semester Meeting (One QR for the whole semester)
+                                                </label>
+                                            </div>
+                                            {formData.isRecurring && (
+                                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', animation: 'fadeIn 0.3s' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Repeat every:</label>
+                                                        <select className="input-field" value={formData.dayOfWeek} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
+                                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                                                <option key={day} value={day}>{day}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ flex: 2 }}>
+                                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                                            * Students will only be able to scan between <strong>{formData.startTime}</strong> and <strong>{formData.endTime}</strong> every <strong>{formData.dayOfWeek}</strong>.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#facc15', textTransform: 'uppercase', letterSpacing: '1px' }}>Weekly Dynamic Content</span>
+                                    </div>
                                     <div style={{ gridColumn: '1 / -1' }}>
-                                        <label>Question of the Day (Optional)</label>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <label>Question of the Day (Auto-generated)</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, questionOfDay: pickRandomQuestion() })}
+                                                style={{ background: 'transparent', border: 'none', color: '#facc15', fontSize: '0.7rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                            >
+                                                <RotateCcw size={12} /> Regenerate Idea
+                                            </button>
+                                        </div>
                                         <input
                                             placeholder="e.g. What are you grateful for today?"
                                             className="input-field"
@@ -1905,66 +2126,93 @@ const AdminDashboard = () => {
                                         </p>
                                     </div>
 
-                                    {/* Location Settings */}
+                                    {/* Location Settings - Prioritize Clean System View */}
                                     <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                            <label style={{ fontWeight: 'bold' }}>Geo-Location Security (Optional)</label>
-                                            <button
-                                                type="button"
-                                                className="btn"
-                                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1' }}
-                                                onClick={() => {
-                                                    if (!navigator.geolocation) {
-                                                        setMsg({ type: 'error', text: 'Geolocation not supported' });
-                                                        return;
-                                                    }
-                                                    navigator.geolocation.getCurrentPosition(
-                                                        (pos) => {
-                                                            setFormData({
-                                                                ...formData,
-                                                                location: {
-                                                                    ...formData.location,
-                                                                    latitude: pos.coords.latitude,
-                                                                    longitude: pos.coords.longitude,
-                                                                    name: formData.location.name || 'Current Venue'
-                                                                }
-                                                            });
-                                                            setMsg({ type: 'success', text: 'Current coordinates captured!' });
-                                                        },
-                                                        (err) => setMsg({ type: 'error', text: 'Location access denied' })
-                                                    );
-                                                }}
-                                            >
-                                                <MapPin size={14} style={{ marginRight: '0.2rem' }} /> Use My Current Location
-                                            </button>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem' }}>Location Name (e.g. SRC Room)</label>
-                                                <input
-                                                    className="input-field"
-                                                    value={formData.location.name}
-                                                    onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })}
-                                                    placeholder="e.g. Athi River Chapel"
-                                                />
+                                        {locationSource === 'default' && !formData.showManualLocation ? (
+                                            <div style={{ background: 'rgba(74, 222, 128, 0.05)', padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(74, 222, 128, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{ padding: '0.75rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', borderRadius: '50%' }}>
+                                                        <MapPin size={24} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '1px' }}>Official Campus Venue Active</div>
+                                                        <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{formData.location.name}</div>
+                                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>Locked to SuperAdmin coordinates for {formData.campus}</div>
+                                                    </div>
+                                                </div>
+                                                {!formData.isRecurring && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn"
+                                                        style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem', opacity: 0.7 }}
+                                                        onClick={() => setFormData({ ...formData, showManualLocation: true })}
+                                                    >
+                                                        Manual Override
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.75rem' }}>Radius (meters)</label>
-                                                <input
-                                                    type="number"
-                                                    className="input-field"
-                                                    value={formData.location.radius}
-                                                    onChange={e => {
-                                                        const val = e.target.value;
-                                                        setFormData({ ...formData, location: { ...formData.location, radius: val === '' ? '' : parseInt(val) } });
-                                                    }}
-                                                />
+                                        ) : (
+                                            <div style={{ animation: 'fadeIn 0.4s' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <label style={{ fontWeight: 'bold' }}>Geo-Location Security {formData.isRecurring ? '(Locked)' : '(Manual Capture)'}</label>
+                                                        {locationSource === 'gps' && <span style={{ color: '#4ade80', fontSize: '0.7rem', fontWeight: 600 }}>📍 LIVE GPS CAPTURE ACTIVE</span>}
+                                                        {locationSource === 'default' && <span style={{ color: '#facc15', fontSize: '0.7rem', fontWeight: 600 }}>📍 USING CAMPUS BASE SETTINGS</span>}
+                                                    </div>
+                                                    {!formData.isRecurring && (
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="btn"
+                                                                style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1' }}
+                                                                onClick={() => {
+                                                                    navigator.geolocation.getCurrentPosition((pos) => {
+                                                                        setFormData({
+                                                                            ...formData,
+                                                                            location: { ...formData.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+                                                                        });
+                                                                        setLocationSource('gps');
+                                                                    });
+                                                                }}
+                                                            >
+                                                                Refresh GPS
+                                                            </button>
+                                                            {locationSource === 'default' && (
+                                                                <button type="button" className="btn" style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }} onClick={() => setFormData({ ...formData, showManualLocation: false })}>
+                                                                    Cancel
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem' }}>Location Name (e.g. SRC Room)</label>
+                                                        <input
+                                                            className="input-field"
+                                                            value={formData.location.name}
+                                                            onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })}
+                                                            placeholder="e.g. Athi River Chapel"
+                                                            disabled={formData.isRecurring}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.75rem' }}>Radius (meters)</label>
+                                                        <input
+                                                            type="number"
+                                                            className="input-field"
+                                                            value={formData.location.radius}
+                                                            onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })}
+                                                            disabled={formData.isRecurring}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {formData.isRecurring && (
+                                                    <p style={{ fontSize: '0.75rem', color: '#4ade80', marginTop: '0.75rem', fontWeight: 600 }}>
+                                                        <Check size={14} /> Recurring meetings are locked to campus defaults for semester-long QR validity.
+                                                    </p>
+                                                )}
                                             </div>
-                                        </div>
-                                        {formData.location.latitude && (
-                                            <p style={{ fontSize: '0.75rem', color: '#4ade80', marginTop: '0.5rem' }}>
-                                                📍 Coordinates set: {formData.location.latitude.toFixed(4)}, {formData.location.longitude.toFixed(4)}
-                                            </p>
                                         )}
                                     </div>
 
@@ -2321,6 +2569,15 @@ const AdminDashboard = () => {
                                                             >
                                                                 Insights
                                                             </button>
+                                                            {['developer', 'superadmin'].includes(userRole) && (
+                                                                <button
+                                                                    className="btn"
+                                                                    style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}
+                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteMember(m._id, m.name); }}
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -2342,6 +2599,8 @@ const AdminDashboard = () => {
                         currentSemester={currentSemester}
                         onUpdateSetting={handleSaveSetting}
                     />
+                ) : activeTab === 'system' ? (
+                    <SystemView onUpdateSetting={handleSaveSetting} isGuest={isGuest} />
                 ) : (
                     <ReportsView
                         meetings={meetings}
@@ -2788,6 +3047,42 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     )}
+
+                {/* Quick Question Update Modal for Recurring Meetings */}
+                {updatingRecurringMeeting && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
+                    }} onClick={() => setUpdatingRecurringMeeting(null)}>
+                        <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>Update Weekly Question</h3>
+                                <button className="btn" onClick={() => setUpdatingRecurringMeeting(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Change the question students see when checking in to <strong>{updatingRecurringMeeting.name}</strong> this week.</p>
+                            <form onSubmit={handleUpdateQuestion}>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Question of the Day</label>
+                                    <textarea
+                                        className="input-field"
+                                        style={{ width: '100%', minHeight: '100px', resize: 'vertical' }}
+                                        value={updatingRecurringMeeting.questionOfDay}
+                                        onChange={e => setUpdatingRecurringMeeting({ ...updatingRecurringMeeting, questionOfDay: e.target.value })}
+                                        placeholder="e.g. What is your highlight of the week?"
+                                        required
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Update Question</button>
+                                    <button type="button" className="btn" style={{ flex: 1 }} onClick={() => setUpdatingRecurringMeeting(null)}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {/* Edit Admin Modal */}
                 {editingAdmin && (
                     <div style={{
@@ -3816,6 +4111,132 @@ const FeedbackView = ({ isGuest }) => {
                         ))}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+const SystemView = ({ onUpdateSetting, isGuest }) => {
+    const [athiRiver, setAthiRiver] = useState({ lat: -1.4481, lng: 37.0097, radius: 200, name: 'Main Campus' });
+    const [valleyRoad, setValleyRoad] = useState({ lat: -1.2917, lng: 36.8066, radius: 200, name: 'Nairobi Campus' });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchGeo = async () => {
+            setLoading(true);
+            try {
+                const athiRes = await api.get('/settings/geo_athi_river');
+                if (athiRes.data?.value) setAthiRiver(JSON.parse(athiRes.data.value));
+
+                const valleyRes = await api.get('/settings/geo_valley_road');
+                if (valleyRes.data?.value) setValleyRoad(JSON.parse(valleyRes.data.value));
+            } catch (err) {
+                console.error("Failed to fetch geo settings", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchGeo();
+    }, []);
+
+    const saveGeo = async (campus, data) => {
+        const key = `geo_${campus.toLowerCase().replace(/ /g, '_')}`;
+        await onUpdateSetting(key, JSON.stringify(data));
+    };
+
+    const handleCaptureLocation = (campus) => {
+        if (!navigator.geolocation) return alert("Geolocation is not supported by your browser");
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            if (campus === 'Athi River') {
+                setAthiRiver(prev => ({ ...prev, ...coords }));
+            } else {
+                setValleyRoad(prev => ({ ...prev, ...coords }));
+            }
+        }, (err) => {
+            alert("Failed to capture location: " + err.message);
+        });
+    };
+
+    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading System Configurations...</div>;
+
+    return (
+        <div style={{ animation: 'fadeIn 0.5s' }}>
+            <div className="glass-panel" style={{ padding: '2.5rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                    <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '1rem' }}>
+                        <ShieldAlert size={32} />
+                    </div>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Campus Geo-Fencing (SuperAdmin Only)</h2>
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)' }}>Configure base coordinates for campus locations. These are used by default for recurring semester meetings.</p>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                    {/* Athi River */}
+                    <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Athi River Campus</h3>
+                            <button className="btn" onClick={() => handleCaptureLocation('Athi River')} style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}>
+                                <MapPin size={14} style={{ marginRight: '0.3rem' }} /> Set to Current Location
+                            </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Location Name (e.g. Amphitheatre)</label>
+                                <input className="input-field" placeholder="e.g. PAC Amphitheatre" value={athiRiver.name} onChange={e => setAthiRiver({ ...athiRiver, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Latitude</label>
+                                <input className="input-field" type="number" step="any" value={athiRiver.lat} onChange={e => setAthiRiver({ ...athiRiver, lat: parseFloat(e.target.value) })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Longitude</label>
+                                <input className="input-field" type="number" step="any" value={athiRiver.lng} onChange={e => setAthiRiver({ ...athiRiver, lng: parseFloat(e.target.value) })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Default Radius (m)</label>
+                                <input className="input-field" type="number" value={athiRiver.radius} onChange={e => setAthiRiver({ ...athiRiver, radius: parseInt(e.target.value) })} />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => saveGeo('Athi River', athiRiver)}>Update Athi River</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Valley Road */}
+                    <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Valley Road (Nairobi)</h3>
+                            <button className="btn" onClick={() => handleCaptureLocation('Valley Road')} style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}>
+                                <MapPin size={14} style={{ marginRight: '0.3rem' }} /> Set to Current Location
+                            </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Location Name (e.g. DAC Hall)</label>
+                                <input className="input-field" placeholder="e.g. DAC 201" value={valleyRoad.name} onChange={e => setValleyRoad({ ...valleyRoad, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Latitude</label>
+                                <input className="input-field" type="number" step="any" value={valleyRoad.lat} onChange={e => setValleyRoad({ ...valleyRoad, lat: parseFloat(e.target.value) })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Longitude</label>
+                                <input className="input-field" type="number" step="any" value={valleyRoad.lng} onChange={e => setValleyRoad({ ...valleyRoad, lng: parseFloat(e.target.value) })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Default Radius (m)</label>
+                                <input className="input-field" type="number" value={valleyRoad.radius} onChange={e => setValleyRoad({ ...valleyRoad, radius: parseInt(e.target.value) })} />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => saveGeo('Valley Road', valleyRoad)}>Update Valley Road</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

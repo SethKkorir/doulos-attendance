@@ -7,7 +7,8 @@ import {
     logCashPayment,
     getAllPayments,
     getFinanceStats,
-    getDefaulters
+    getDefaulters,
+    deletePayment
 } from '../controllers/paymentController.js';
 import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 
@@ -24,5 +25,6 @@ router.post('/log-cash', verifyAdmin, logCashPayment);
 router.get('/all', verifyAdmin, getAllPayments);
 router.get('/stats', verifyAdmin, getFinanceStats);
 router.get('/defaulters', verifyAdmin, getDefaulters);
+router.delete('/:id', verifyAdmin, deletePayment);
 
 export default router;

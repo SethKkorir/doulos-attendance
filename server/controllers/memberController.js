@@ -275,10 +275,16 @@ export const deleteMemberWithPassword = async (req, res) => {
         // Delete all attendance records for this student to prevent them coming back on sync
         await Attendance.deleteMany({ studentRegNo: member.studentRegNo });
 
+        // Delete all payment records
+        await import('../models/Payment.js').then(module => {
+            const Payment = module.default;
+            return Payment.deleteMany({ studentRegNo: member.studentRegNo });
+        });
+
         // Delete the member record
         await Member.findByIdAndDelete(id);
 
-        res.json({ message: `Member ${member.name} and all their attendance records deleted successfully.` });
+        res.json({ message: `Member ${member.name}, their attendance, and financial records deleted successfully.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

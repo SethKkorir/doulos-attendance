@@ -12,6 +12,12 @@ const meetingSchema = new mongoose.Schema({
     endTime: { type: String, required: true },   // e.g., "23:00"
     semester: { type: String, default: '' },      // e.g., "JAN-APR 2026"
     isActive: { type: Boolean, default: true },
+    isRecurring: { type: Boolean, default: false },
+    dayOfWeek: {
+        type: String,
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', ''],
+        default: ''
+    },
     code: { type: String, unique: true }, // Unique meeting ID/Token for QR
     requiredFields: [
         {

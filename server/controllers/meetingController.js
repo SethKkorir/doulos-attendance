@@ -32,16 +32,16 @@ const validateMeetingTime = (dateStr, startTime, endTime, campus) => {
 };
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, semester, requiredFields, questionOfDay, location, isTestMeeting } = req.body;
+    const { name, date, campus, startTime, endTime, semester, requiredFields, questionOfDay, location, isTestMeeting, isRecurring, dayOfWeek } = req.body;
 
     // 1. Restriction: One meeting per week per campus for regular admins
-    if (!['developer', 'superadmin'].includes(req.user.role)) {
+    if (!['developer', 'superadmin'].includes(req.user.role) && !isRecurring) {
         const meetingDate = new Date(date);
-        const dayOfWeek = meetingDate.getDay(); // 0 (Sun) - 6 (Sat)
+        const dayOfWeekIdx = meetingDate.getDay(); // 0 (Sun) - 6 (Sat)
 
         // Calculate start of week (Sunday 00:00) and end of week (Saturday 23:59)
         const startOfWeek = new Date(meetingDate);
-        startOfWeek.setDate(meetingDate.getDate() - dayOfWeek);
+        startOfWeek.setDate(meetingDate.getDate() - dayOfWeekIdx);
         startOfWeek.setHours(0, 0, 0, 0);
 
         const endOfWeek = new Date(startOfWeek);
@@ -50,7 +50,8 @@ export const createMeeting = async (req, res) => {
 
         const existingMeeting = await Meeting.findOne({
             campus,
-            date: { $gte: startOfWeek, $lte: endOfWeek }
+            date: { $gte: startOfWeek, $lte: endOfWeek },
+            isRecurring: false
         });
 
         if (existingMeeting) {
@@ -67,7 +68,7 @@ export const createMeeting = async (req, res) => {
     try {
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, semester, code, requiredFields, questionOfDay, location, isTestMeeting
+            name, date, campus, startTime, endTime, semester, code, requiredFields, questionOfDay, location, isTestMeeting, isRecurring, dayOfWeek
         });
         await meeting.save();
         res.status(201).json(meeting);
@@ -80,6 +81,92 @@ export const createMeeting = async (req, res) => {
 
 export const getMeetings = async (req, res) => {
     try {
+        // 0. Intelligent Auto-Creation for Standard Weekly Meetings
+        const now = new Date();
+        const eatFormat = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Africa/Nairobi',
+            hourCycle: 'h23',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        const [todayDate, todayTime] = eatFormat.format(now).split(', ');
+        const [eatH, eatM] = todayTime.split(':').map(Number);
+        const timeDecimal = eatH + (eatM / 60);
+
+        // Determine if we should trigger an auto-creation
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayOfWeekLabel = dayNames[now.getUTCDay()];
+
+        // Get EAT Day (more accurate)
+        const eatDateObj = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+        const eatDayOfWeek = eatDateObj.getDay(); // 0-6
+
+        let autoCampus = null;
+        let autoConfig = null;
+
+        if (eatDayOfWeek === 1 && timeDecimal >= 20.5) { // Monday 8:30 PM
+            autoCampus = 'Athi River';
+            autoConfig = { name: 'Weekly Doulos - Athi River', startTime: '20:30', endTime: '23:00' };
+        } else if (eatDayOfWeek === 3 && timeDecimal >= 14.0) { // Wednesday 2:00 PM
+            autoCampus = 'Valley Road';
+            autoConfig = { name: 'Weekly Doulos - Valley Road', startTime: '14:00', endTime: '16:00' };
+        }
+
+        if (autoCampus) {
+            // Check if meeting already exists for today/campus
+            const startOfToday = new Date(eatDateObj);
+            startOfToday.setHours(0, 0, 0, 0);
+            const endOfToday = new Date(eatDateObj);
+            endOfToday.setHours(23, 59, 59, 999);
+
+            const exists = await Meeting.findOne({
+                campus: autoCampus,
+                date: { $gte: startOfToday, $lte: endOfToday },
+                isRecurring: false
+            });
+
+            if (!exists) {
+                console.log(`[Auto-Create] Creating scheduled meeting for ${autoCampus}...`);
+                const daystarQuestions = [
+                    "What is your favorite Bible verse this week?",
+                    "Which chapel service has impacted you most recently?",
+                    "How can the Doulos family pray for you today?",
+                    "What is one thing you are grateful to God for today?",
+                    "Which worship song is currently on repeat in your playlist?",
+                    "What's the highlight of your walk with Christ this month?",
+                    "Share a small victory and a big grace you've experienced this week.",
+                    "What are you trusting God for in this current semester?",
+                    "How have you seen God's faithfulness in your studies today?",
+                    "What does 'Christian Excellence' look like in your department?",
+                    "Who has been a sister/brother in Christ to you on campus this week?",
+                    "What character trait of Jesus are you focused on emulating right now?",
+                    "What is your biggest takeaway from your personal devotions today?",
+                    "How has your campus experience shaped your faith journey so far?"
+                ];
+                const randomQuestion = daystarQuestions[Math.floor(Math.random() * daystarQuestions.length)];
+
+                const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+
+                // Fetch current semester from settings if possible, otherwise use a placeholder
+                // For simplicity here, we'll use a placeholder or common pattern
+                const semester = 'JAN-APR 2026';
+
+                const newMeeting = new Meeting({
+                    ...autoConfig,
+                    date: eatDateObj,
+                    campus: autoCampus,
+                    semester,
+                    code,
+                    questionOfDay: randomQuestion,
+                    isActive: true,
+                    isRecurring: false
+                });
+                await newMeeting.save();
+                console.log(`[Auto-Create] Successfully created "${newMeeting.name}"`);
+            }
+        }
+
         // 1. Fetch meetings with attendance count
         const pipeline = [];
 
@@ -117,17 +204,7 @@ export const getMeetings = async (req, res) => {
         let meetings = await Meeting.aggregate(pipeline);
 
         // 2. Auto-Activate and Auto-Finalize based on strict time windows
-        const now = new Date();
-        const eatFormat = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Africa/Nairobi',
-            hourCycle: 'h23',
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        const [todayDate, todayTime] = eatFormat.format(now).split(', ');
-        const [eatH, eatM] = todayTime.split(':').map(Number);
-        const timeDecimal = eatH + (eatM / 60); // Current time in decimal hours (EAT)
+        // Variables (now, eatFormat, todayDate, todayTime, eatH, eatM, timeDecimal) already declared above
 
         const updates = [];
 
