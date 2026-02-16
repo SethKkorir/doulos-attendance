@@ -1243,7 +1243,6 @@ const AdminDashboard = () => {
 
                             <div class="qr-outer-container">
                                 <div class="scan-badge">SCAN ME!</div>
-                                ${meeting.isRecurring ? `<div class="semester-badge">${meeting.semester || 'Academic Year'}</div>` : ''}
                                 <div class="qr-inner-wrapper">
                                     ${new XMLSerializer().serializeToString(qrSvg)}
                                 </div>
