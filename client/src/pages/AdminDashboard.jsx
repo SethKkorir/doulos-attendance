@@ -298,6 +298,7 @@ const AdminDashboard = () => {
     const [editingAdmin, setEditingAdmin] = useState(null);
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
+    const [currentSemester, setCurrentSemester] = useState('JAN-APR 2026');
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -1250,7 +1251,10 @@ const AdminDashboard = () => {
                     ...prev,
                     name: '',
                     studentRegNo: '',
-                    memberType: 'Visitor'
+                    memberType: 'Visitor',
+                    status: 'Active',
+                    lastActiveSemester: '',
+                    wateringDays: []
                 }));
             } else {
                 await api.patch(`/members/${editingMember._id}`, editingMember);
@@ -1377,8 +1381,12 @@ const AdminDashboard = () => {
     const fetchSettings = async () => {
         try {
             const guestRes = await api.get('/settings/guest_features');
-            // Default to true if not set, or parse string 'true'/'false'
             setGuestFeaturesEnabled(guestRes.data?.value !== 'false');
+
+            const semRes = await api.get('/settings/current_semester');
+            if (semRes.data?.value) {
+                setCurrentSemester(semRes.data.value);
+            }
         } catch (err) {
             console.error('Failed to fetch settings', err);
         }
@@ -2331,7 +2339,8 @@ const AdminDashboard = () => {
                         onDelete={handleDeleteAdmin}
                         onRegister={() => setEditingAdmin({ _id: 'NEW', username: '', role: 'admin', campus: 'Athi River' })}
                         guestFeaturesEnabled={guestFeaturesEnabled}
-                        onUpdateSetting={handleSaveSetting} // Correct handler name
+                        currentSemester={currentSemester}
+                        onUpdateSetting={handleSaveSetting}
                     />
                 ) : (
                     <ReportsView
@@ -2424,6 +2433,63 @@ const AdminDashboard = () => {
                                                 </select>
                                             </div>
                                         </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Membership Status</label>
+                                                <select className="input-field" value={editingMember.status || 'Active'} onChange={e => setEditingMember({ ...editingMember, status: e.target.value })}>
+                                                    <option value="Active">Active</option>
+                                                    <option value="Archived">Archived (Paused Access)</option>
+                                                    <option value="Graduated">Graduated</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Last Active Semester</label>
+                                                <input
+                                                    className="input-field"
+                                                    value={editingMember.lastActiveSemester || ''}
+                                                    onChange={e => setEditingMember({ ...editingMember, lastActiveSemester: e.target.value })}
+                                                    placeholder="e.g. JAN-APR 2026"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="glass-panel" style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', display: 'block', marginBottom: '0.75rem' }}>Tree Watering Commitments (Weekly)</label>
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                                                    const isActive = (editingMember.wateringDays || []).includes(day);
+                                                    return (
+                                                        <button
+                                                            key={day}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const current = editingMember.wateringDays || [];
+                                                                const updated = isActive
+                                                                    ? current.filter(d => d !== day)
+                                                                    : [...current, day];
+                                                                setEditingMember({ ...editingMember, wateringDays: updated });
+                                                            }}
+                                                            style={{
+                                                                padding: '0.5rem 0.8rem',
+                                                                borderRadius: '0.5rem',
+                                                                border: '1px solid',
+                                                                borderColor: isActive ? '#4ade80' : 'rgba(255,255,255,0.1)',
+                                                                background: isActive ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)',
+                                                                color: isActive ? '#4ade80' : 'var(--color-text-dim)',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 700,
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                        >
+                                                            {day.slice(0, 3).toUpperCase()}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
                                         {['developer', 'superadmin', 'Admin', 'superadmin'].includes(userRole) && (
                                             <div>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Total Points</label>
@@ -3480,7 +3546,7 @@ const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
     );
 };
 
-const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeaturesEnabled, onUpdateSetting }) => {
+const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeaturesEnabled, currentSemester, onUpdateSetting }) => {
     const userRole = localStorage.getItem('role')?.toLowerCase();
     const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
 
@@ -3581,6 +3647,36 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
                                 <>Turn ON Features <Check size={18} /></>
                             )}
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {canManageAdmins && (
+                <div className="glass-panel" style={{ padding: '2rem', borderLeft: '4px solid #25AAE1', marginTop: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '0.75rem' }}>
+                                <Calendar size={24} />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Active Semester</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
+                                    Define the current academic period for enrollment and activity tracking.
+                                </p>
+                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#25AAE1', fontWeight: 700 }}>
+                                    CURRENT: {currentSemester}
+                                </p>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input
+                                className="input-field"
+                                style={{ width: '200px', fontSize: '0.9rem' }}
+                                value={currentSemester}
+                                onChange={(e) => onUpdateSetting('current_semester', e.target.value)}
+                                placeholder="e.g. JAN-APR 2026"
+                            />
+                        </div>
                     </div>
                 </div>
             )}

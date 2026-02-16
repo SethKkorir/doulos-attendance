@@ -86,7 +86,7 @@ export const updateMember = async (req, res) => {
 
 export const createMember = async (req, res) => {
     try {
-        const { studentRegNo, name, campus, memberType } = req.body;
+        const { studentRegNo, name, campus, memberType, status, lastActiveSemester, wateringDays } = req.body;
         const exists = await Member.findOne({ studentRegNo: studentRegNo.trim().toUpperCase() });
         if (exists) return res.status(400).json({ message: 'Member with this admission number already exists' });
 
@@ -94,7 +94,10 @@ export const createMember = async (req, res) => {
             studentRegNo: studentRegNo.trim().toUpperCase(),
             name,
             campus: campus || 'Athi River',
-            memberType: memberType || 'Visitor'
+            memberType: memberType || 'Visitor',
+            status: status || 'Active',
+            lastActiveSemester,
+            wateringDays: wateringDays || []
         });
         await member.save();
         res.status(201).json(member);
@@ -311,6 +314,48 @@ export const clearGraduationCongrats = async (req, res) => {
             { needsGraduationCongrats: false, memberType: 'Douloid' }
         );
         res.json({ message: 'Success! Member promoted to Douloid and graduation flag cleared.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const enrollMember = async (req, res) => {
+    const { studentRegNo, semester } = req.body;
+    try {
+        const regNo = studentRegNo.trim().toUpperCase();
+        const member = await Member.findOneAndUpdate(
+            { studentRegNo: regNo },
+            { $set: { lastActiveSemester: semester, status: 'Active' } },
+            { new: true }
+        );
+        res.json({ message: `Successfully enrolled in ${semester}`, member });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const archiveMember = async (req, res) => {
+    try {
+        const member = await Member.findByIdAndUpdate(
+            req.params.id,
+            { $set: { status: 'Archived' } },
+            { new: true }
+        );
+        res.json({ message: 'Member archived successfully', member });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateWateringDays = async (req, res) => {
+    const { wateringDays } = req.body;
+    try {
+        const member = await Member.findByIdAndUpdate(
+            req.params.id,
+            { $set: { wateringDays } },
+            { new: true }
+        );
+        res.json({ message: 'Watering schedule updated', member });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

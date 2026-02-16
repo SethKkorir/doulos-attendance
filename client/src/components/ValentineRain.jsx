@@ -9,8 +9,8 @@ const ValentineRain = () => {
         const month = now.getMonth(); // 0-indexed (1 is Feb)
         const day = now.getDate();
 
-        // Check if date is between Feb 1st and Feb 15th
-        if (month === 1 && day >= 1 && day <= 15) {
+        // Check if date is between Feb 1st and Feb 14th (Ends on 15th)
+        if (month === 1 && day >= 1 && day < 15) {
             setIsVisible(true);
             const icons = ['🌸', '🌹', '🌺', '💗', '💞', '🌷', '💐'];
             const count = 20;

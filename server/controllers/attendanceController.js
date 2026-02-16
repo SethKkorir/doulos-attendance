@@ -1,6 +1,8 @@
 import Attendance from '../models/Attendance.js';
 import Meeting from '../models/Meeting.js';
 import Member from '../models/Member.js';
+import ActivityLog from '../models/ActivityLog.js';
+import mongoose from 'mongoose';
 import { checkCampusTime } from '../utils/timeCheck.js';
 
 export const submitAttendance = async (req, res) => {
@@ -210,6 +212,14 @@ export const getStudentPortalData = async (req, res) => {
             return res.status(404).json({ message: "Access Denied: You must be a registered member to access the Doulos Portal. Please see an admin." });
         }
 
+        // 1.1 Status Block
+        if (member.status === 'Archived') {
+            return res.status(403).json({
+                message: "Access Paused: Your account is currently archived. Please contact your G9 leader for re-activation if you are joining this semester's class.",
+                isArchived: true
+            });
+        }
+
         // 2. Get student's full attendance history
         const attendanceRecords = await Attendance.find({ studentRegNo }).sort({ timestamp: -1 });
 
@@ -284,10 +294,78 @@ export const getStudentPortalData = async (req, res) => {
         const exemptedCount = attendanceRecords.filter(a => a.isExempted).length;
         const totalValid = physicalAttended + exemptedCount;
 
+        // 6. Doulos Hours & Activity Check
+        const activityLogs = await ActivityLog.find({ studentRegNo }).sort({ timestamp: -1 }).limit(10);
+
+        // 7. Finance Check (Mock logic for now - check if paid for current month)
+        // In a real app, you'd check a Payments collection
+        const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
+        const hasPaidThisMonth = await mongoose.model('Payment').findOne({
+            studentRegNo,
+            month: currentMonthName,
+            status: 'approved'
+        });
+
+        // 8. Reminder Logic
+        const alerts = [];
+
+        // Semester Alert
+        const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
+        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'JAN-APR 2026';
+
+        if (member.lastActiveSemester !== currentSemester) {
+            alerts.push({
+                type: 'semester',
+                priority: 'high',
+                title: `Welcome to ${currentSemester}!`,
+                message: "Please click here to enroll in the new semester and activate your tracking.",
+                action: 'ENROLL'
+            });
+        }
+
+        // Watering Alert
+        const todayDay = new Date().toLocaleString('default', { weekday: 'long' });
+        if (member.wateringDays.includes(todayDay)) {
+            const wateredToday = activityLogs.find(log =>
+                log.type === 'Tree Watering' &&
+                new Date(log.timestamp).toDateString() === new Date().toDateString()
+            );
+
+            if (!wateredToday) {
+                alerts.push({
+                    type: 'watering',
+                    priority: 'medium',
+                    title: "Tree Watering Day",
+                    message: `Reminder: Today is your day to water at Freedom Base. Don't forget to scan the QR!`,
+                    action: 'SCAN_QR'
+                });
+            }
+        }
+
+        // Missed Watering Check (Last Week)
+        const lastWeekWateringDay = new Date();
+        lastWeekWateringDay.setDate(lastWeekWateringDay.getDate() - 7);
+        // ... more complex logic could go here, but keeping it simple for now
+
+        // Finance Alert
+        if (!hasPaidThisMonth && member.memberType !== 'Visitor') {
+            alerts.push({
+                type: 'finance',
+                priority: 'medium',
+                title: "Monthly Contribution",
+                message: `Your contribution for ${currentMonthName} is currently pending.`,
+                action: 'PAY'
+            });
+        }
+
         res.json({
             studentRegNo,
             memberName: member.name || 'Visitor',
             memberType: member.memberType || 'Visitor',
+            status: member.status,
+            wateringDays: member.wateringDays,
+            lastActiveSemester: member.lastActiveSemester,
+            currentSemester,
             needsGraduationCongrats: member.needsGraduationCongrats || false,
             stats: {
                 totalMeetings,
@@ -297,7 +375,9 @@ export const getStudentPortalData = async (req, res) => {
                 percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },
             isMember: !!member,
-            history
+            history,
+            activityLogs,
+            alerts
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

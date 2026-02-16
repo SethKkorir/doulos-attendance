@@ -151,12 +151,51 @@ const StudentPortal = () => {
         try {
             await api.post(`/members/clear-congrats/${data.studentRegNo}`);
             window.open(whatsappLink, '_blank');
-            // Refresh logic - the reload should be triggered by the state update if needed
-            // but for now let's just update local data to be safe
             setData({ ...data, needsGraduationCongrats: false, memberType: 'Douloid' });
         } catch (err) {
             console.error('Failed to clear congrats status');
             window.open(whatsappLink, '_blank');
+        }
+    };
+
+    const handleEnroll = async () => {
+        setLoading(true);
+        try {
+            const res = await api.post('/members/enroll', {
+                studentRegNo: data.studentRegNo,
+                semester: data.currentSemester
+            });
+            setData(prev => ({
+                ...prev,
+                lastActiveSemester: data.currentSemester,
+                alerts: prev.alerts.filter(a => a.type !== 'semester')
+            }));
+            alert(`Great! You are now active for ${data.currentSemester}.`);
+        } catch (err) {
+            alert("Enrollment failed. Please try again or see an admin.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogActivity = async (type) => {
+        const code = prompt(`Please enter the ${type} verification code from the physical banner:`);
+        if (!code) return;
+
+        setLoading(true);
+        try {
+            await api.post('/activities/log', {
+                studentRegNo: data.studentRegNo,
+                type,
+                notes: `Verification Code: ${code}`
+            });
+            // Refresh portal data to see new points/logs
+            handleLogin();
+            alert(`${type} recorded successfully! 🌿`);
+        } catch (err) {
+            alert(err.response?.data?.message || "Failed to log activity. Check the code and try again.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -581,7 +620,7 @@ const StudentPortal = () => {
                                     Hi, <span style={{ color: 'hsl(var(--color-primary))' }}>{data.memberName?.split(' ')[0] || 'Member'}!</span>
                                 </h1>
                                 <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1rem', lineHeight: 1.6, maxWidth: '400px' }}>
-                                    Your consistency is your superpower. You've attended {data.stats.totalAttended} sessions so far!
+                                    Your consistency is your superpower. Your total Doulos points: <strong style={{ color: '#facc15' }}>{data.totalPoints || 0}</strong>
                                 </p>
                             </div>
 
@@ -608,9 +647,50 @@ const StudentPortal = () => {
                             </div>
                         </div>
 
+                        {/* Action Center - Alerts */}
+                        {data.alerts && data.alerts.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {data.alerts.map((alert, i) => (
+                                    <div key={i} className="glass-panel" style={{
+                                        padding: '1.25rem',
+                                        background: alert.priority === 'high' ? 'rgba(37, 170, 225, 0.1)' : 'rgba(255,255,255,0.03)',
+                                        border: alert.priority === 'high' ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.05)',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        animation: 'slideRight 0.5s ease-out'
+                                    }}>
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                            <div style={{
+                                                width: '45px', height: '45px', borderRadius: '12px',
+                                                background: alert.type === 'finance' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.1)',
+                                                color: alert.type === 'finance' ? '#f87171' : '#25AAE1',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                {alert.type === 'finance' ? <Wallet size={20} /> : alert.type === 'watering' ? <Sparkles size={20} /> : <Calendar size={20} />}
+                                            </div>
+                                            <div>
+                                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>{alert.title}</h4>
+                                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>{alert.message}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                if (alert.action === 'ENROLL') handleEnroll();
+                                                if (alert.action === 'SCAN_QR') handleLogActivity('Tree Watering');
+                                                if (alert.action === 'PAY') setActiveTab('finance');
+                                            }}
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 800 }}
+                                        >
+                                            {alert.action === 'SCAN_QR' ? 'I DID THIS' : alert.action}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Navigation Tabs */}
                         <div style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', width: 'fit-content', overflowX: 'auto' }}>
-                            {['overview', 'history', 'finance'].map(tab => (
+                            {['overview', 'history', 'activities', 'finance'].map(tab => (
                                 <button key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     style={{
@@ -684,6 +764,37 @@ const StudentPortal = () => {
                                     </div>
                                 </div>
                             </>
+                        ) : activeTab === 'activities' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                                    <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 900 }}>Doulos Hours: Activity Log</h3>
+                                    <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                                        History of your contributions to Freedom Base (Tree watering, setup, etc.)
+                                    </p>
+
+                                    {!data.activityLogs?.length ? (
+                                        <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem' }}>
+                                            <History size={32} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>No activities logged yet for this semester.</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {data.activityLogs.map((log, i) => (
+                                                <div key={i} style={{
+                                                    padding: '1rem', background: 'rgba(255,255,255,0.03)',
+                                                    borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                                }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{log.type}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <div style={{ color: '#4ade80', fontWeight: 900, fontSize: '0.9rem' }}>+{log.pointsEarned} Pts</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         ) : activeTab === 'finance' ? (
                             <FinanceView regNo={data.studentRegNo} memberName={data.memberName} />
                         ) : (
@@ -718,44 +829,7 @@ const StudentPortal = () => {
                     </div>
 
                     {/* Sidebar / Secondary Info */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {/* Quote Card */}
-                        <div className="glass-panel" style={{
-                            padding: '2rem', background: 'rgba(255,215,0,0.02)', border: '1px solid rgba(255,215,0,0.1)'
-                        }}>
-                            <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', fontWeight: 800, color: '#facc15', letterSpacing: '2px' }}>TODAY'S MOTIVATION</h3>
-                            <p style={{ display: 'flex', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 600, fontStyle: 'italic', lineHeight: 1.5, color: '#fde68a' }}>
-                                <span style={{ fontSize: '2rem', color: '#facc15', opacity: 0.3, lineHeight: 1 }}>"</span>
-                                Consistency is what transforms average into excellence.
-                                <span style={{ fontSize: '2rem', color: '#facc15', opacity: 0.3, lineHeight: 1, alignSelf: 'flex-end' }}>"</span>
-                            </p>
-                        </div>
 
-                        {/* Rewards / Badges */}
-                        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                            <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '2px', color: 'var(--color-text-dim)' }}>ACHIEVEMENTS</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Trophy size={18} color="#25AAE1" />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Early Bird</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>Check in before 7:00 PM</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', opacity: 0.4 }}>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Star size={18} color="#aaa" />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Perfect Month</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>Attend all 4 Sundays</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 

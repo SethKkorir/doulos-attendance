@@ -12,6 +12,7 @@ import memberRoutes from './routes/memberRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import activityRoutes from './routes/activityRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -78,6 +79,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/activities', activityRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

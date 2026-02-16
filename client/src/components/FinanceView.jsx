@@ -14,6 +14,7 @@ const FinanceView = ({ regNo, memberName }) => {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [selectedReceipt, setSelectedReceipt] = useState(null);
+    const [randomNotification, setRandomNotification] = useState(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -98,73 +99,161 @@ const FinanceView = ({ regNo, memberName }) => {
         return { status: p.status, data: p };
     };
 
+    // Logic to determine random notification for unpaid months
+    useEffect(() => {
+        if (!loading) {
+            const currentMonthIdx = new Date().getMonth();
+            const pastMonths = months.slice(0, currentMonthIdx);
+
+            const unpaid = pastMonths.filter(m => {
+                const s = getMonthStatus(m);
+                return s.status === 'unpaid' || s.status === 'rejected';
+            });
+
+            if (unpaid.length > 0) {
+                // Select random unpaid month
+                const randomM = unpaid[Math.floor(Math.random() * unpaid.length)];
+                setRandomNotification({
+                    month: randomM,
+                    message: `Hey! We noticed contributions for ${randomM} are still pending. A small act of faithfulness goes a long way! 🌿`
+                });
+            }
+        }
+    }, [loading, payments]); // Dependency on payments ensures we re-check after fetch
+
+    const currentMonthName = months[new Date().getMonth()];
+    const currentMonthStatus = getMonthStatus(currentMonthName);
+
+    // Derived lists
+    const pastUnpaidMonths = months.slice(0, new Date().getMonth()).filter(m => {
+        const s = getMonthStatus(m).status;
+        return s === 'unpaid' || s === 'rejected';
+    });
+
+    const paidHistory = months.filter(m => getMonthStatus(m).status === 'approved');
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s ease-out' }}>
 
-            {/* Monthly Progress Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
-                {months.map((month) => {
-                    const { status, data } = getMonthStatus(month);
-                    const isCurrent = month === months[new Date().getMonth()];
+            {/* Random Notification Banner */}
+            {randomNotification && (
+                <div style={{
+                    padding: '1rem 1.5rem',
+                    borderRadius: '1rem',
+                    background: 'linear-gradient(to right, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.05))',
+                    border: '1px solid rgba(234, 179, 8, 0.2)',
+                    display: 'flex', alignItems: 'center', gap: '1rem',
+                    animation: 'slideDown 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                }}>
+                    <div style={{ padding: '0.5rem', background: 'rgba(234, 179, 8, 0.2)', borderRadius: '50%', color: '#fbbf24' }}>
+                        <Sparkles size={18} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fbbf24', letterSpacing: '1px', marginBottom: '0.2rem' }}>REMINDER</div>
+                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{randomNotification.message}</div>
+                    </div>
+                </div>
+            )}
 
-                    return (
-                        <div
-                            key={month}
-                            onClick={() => status === 'approved' && setSelectedReceipt(data)}
-                            className="glass-panel"
+            {/* Current Month Hero Status */}
+            <div className="glass-panel" style={{
+                padding: '2rem',
+                borderLeft: currentMonthStatus.status === 'approved' ? '4px solid #4ade80' : '4px solid #25AAE1',
+                position: 'relative', overflow: 'hidden'
+            }}>
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-dim)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                                CURRENT PERIOD
+                            </div>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>
+                                {currentMonthName}
+                            </h2>
+                            <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.7)' }}>
+                                {currentMonthStatus.status === 'approved'
+                                    ? "Thank you! Your contribution for this month is verified."
+                                    : currentMonthStatus.status === 'pending'
+                                        ? "Your payment is currently awaiting approval."
+                                        : "You haven't made a contribution for this month yet."}
+                            </p>
+                        </div>
+                        <div style={{
+                            padding: '1rem', borderRadius: '1rem',
+                            background: currentMonthStatus.status === 'approved' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(37, 170, 225, 0.1)',
+                            color: currentMonthStatus.status === 'approved' ? '#4ade80' : '#25AAE1'
+                        }}>
+                            {currentMonthStatus.status === 'approved' ? <CheckCircle size={32} /> : <Wallet size={32} />}
+                        </div>
+                    </div>
+
+                    {currentMonthStatus.status === 'approved' && (
+                        <button
+                            onClick={() => setSelectedReceipt(currentMonthStatus.data)}
                             style={{
-                                padding: '1.25rem',
-                                textAlign: 'center',
-                                border: isCurrent ? '1px solid hsl(var(--color-primary) / 0.5)' : '1px solid rgba(255,255,255,0.05)',
-                                background: status === 'approved' ? '#064e3b' :
-                                    status === 'pending' ? '#78350f' :
-                                        '#1e293b',
-                                cursor: status === 'approved' ? 'pointer' : 'default',
-                                position: 'relative',
-                                transition: 'transform 0.2s',
-                                transform: status === 'approved' ? 'scale(1)' : 'scale(0.98)',
-                                opacity: status === 'unpaid' ? 0.6 : 1
+                                marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.2)',
+                                color: '#4ade80', padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                                fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer'
                             }}
                         >
-                            {isCurrent && (
-                                <div style={{
-                                    position: 'absolute', top: '-8px', right: '10px',
-                                    background: 'hsl(var(--color-primary))', fontSize: '0.6rem',
-                                    fontWeight: 900, padding: '2px 8px', borderRadius: '10px'
-                                }}>CURRENT</div>
-                            )}
-
-                            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 800 }}>{month}</h4>
-
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
-                                {status === 'approved' ? (
-                                    <div style={{ color: '#4ade80' }}><CheckCircle size={28} /></div>
-                                ) : status === 'pending' ? (
-                                    <div style={{ color: '#fbbf24' }}><Clock size={28} className="animate-pulse" /></div>
-                                ) : status === 'rejected' ? (
-                                    <div style={{ color: '#f87171' }}><XCircle size={28} /></div>
-                                ) : (
-                                    <div style={{ color: 'rgba(255,255,255,0.1)' }}><History size={28} /></div>
-                                )}
-                            </div>
-
-                            <div style={{
-                                fontSize: '0.65rem', fontWeight: 900,
-                                color: status === 'approved' ? '#4ade80' :
-                                    status === 'pending' ? '#fbbf24' :
-                                        status === 'rejected' ? '#f87171' : 'var(--color-text-dim)',
-                                textTransform: 'uppercase'
-                            }}>
-                                {status === 'approved' ? 'PAID' : status === 'pending' ? 'PENDING' : status === 'rejected' ? 'REJECTED' : 'UNPAID'}
-                            </div>
-
-                            {status === 'approved' && (
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Click for Receipt</div>
-                            )}
-                        </div>
-                    );
-                })}
+                            <FileText size={16} /> VIEW RECEIPT
+                        </button>
+                    )}
+                </div>
             </div>
+
+            {/* Unpaid Past Months (Defaulter Check) */}
+            {pastUnpaidMonths.length > 0 && (
+                <div>
+                    <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f87171', letterSpacing: '1px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <XCircle size={16} /> OUTSTANDING CONTRIBUTIONS
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
+                        {pastUnpaidMonths.map(month => (
+                            <div key={month} className="glass-panel" style={{
+                                padding: '1rem', border: '1px solid rgba(248, 113, 113, 0.2)',
+                                background: 'rgba(248, 113, 113, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                            }}>
+                                <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{month}</span>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#f87171', padding: '0.2rem 0.5rem', background: 'rgba(248, 113, 113, 0.1)', borderRadius: '4px' }}>UNPAID</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Payment History (Scrollable Row) */}
+            {paidHistory.length > 0 && (
+                <div>
+                    <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text-dim)', letterSpacing: '1px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <History size={16} /> PAYMENT HISTORY ({new Date().getFullYear()})
+                    </h3>
+                    <div className="table-container" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                        {paidHistory.map(month => {
+                            const { data } = getMonthStatus(month);
+                            return (
+                                <div key={month}
+                                    onClick={() => setSelectedReceipt(data)}
+                                    className="glass-panel"
+                                    style={{
+                                        minWidth: '140px', padding: '1rem', cursor: 'pointer',
+                                        border: '1px solid rgba(74, 222, 128, 0.1)',
+                                        background: 'rgba(74, 222, 128, 0.05)',
+                                        textAlign: 'center', transition: 'transform 0.2s',
+                                        transform: 'scale(1)'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                    onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                >
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.25rem' }}>{month}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#4ade80', fontWeight: 700 }}>VERIFIED</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Submission Form */}
             <div className="glass-panel" style={{ padding: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
