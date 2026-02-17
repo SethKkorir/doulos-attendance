@@ -178,6 +178,13 @@ h2 {
   font-weight: 600;
 }
 
+.welcome-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
 /* Background Gallery */
 .bg-gallery-container {
   position: fixed;
@@ -314,12 +321,27 @@ select.input-field {
   }
 
   /* Student Portal Fixes */
+  .portal-wrapper {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(10px);
+    min-height: 100vh;
+  }
+
+  .portal-header {
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .portal-header h2 {
+    font-size: 0.75rem !important;
+  }
+
   .header-stats {
     position: relative !important;
     right: auto !important;
     top: auto !important;
     transform: none !important;
-    margin-top: 1.5rem;
+    margin-top: 1rem !important;
     width: 100%;
     align-items: center;
   }
@@ -329,9 +351,14 @@ select.input-field {
   }
 
   .welcome-banner {
-    padding: 1.5rem !important;
+    padding: 1.25rem !important;
     flex-direction: column;
     text-align: center;
+  }
+
+  .welcome-content {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
   }
 
   .welcome-banner h1 {
@@ -340,11 +367,27 @@ select.input-field {
 
   .welcome-banner p {
     margin: 0.5rem auto 0 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .ratio-circle-container {
+    width: 100px !important;
+    height: 100px !important;
+  }
+
+  .ratio-circle-container svg {
+    width: 100px !important;
+    height: 100px !important;
+  }
+
+  .ratio-circle-container div {
+    font-size: 1.25rem !important;
   }
 
   .check-in-box {
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
     align-items: stretch !important;
     text-align: center;
   }
@@ -357,6 +400,7 @@ select.input-field {
     flex-direction: column;
     align-items: flex-start !important;
     gap: 1rem;
+    padding: 1rem !important;
   }
 
   .alert-card button {
@@ -365,6 +409,34 @@ select.input-field {
 
   .stats-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  /* Chat popup fix */
+  .chat-popup {
+    bottom: 80px !important;
+    right: 1.5rem !important;
+    max-width: 250px !important;
+  }
+
+  .chat-popup-container {
+    bottom: 5.5rem !important;
+    left: 1rem !important;
+    right: auto !important;
+  }
+
+  .chat-full-widget {
+    width: 90vw !important;
+    height: 70vh !important;
+    position: fixed !important;
+    bottom: 5rem !important;
+    left: 5vw !important;
+    right: auto !important;
+  }
+
+  .ratio-label {
+    color: #ff4444 !important;
+    /* Temporary RED for change verification */
+    font-weight: 900 !important;
   }
 }
 

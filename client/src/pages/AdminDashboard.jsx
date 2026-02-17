@@ -7,7 +7,7 @@ import {
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
     FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText, ListChecks, Settings as SettingsIcon
+    FileText, ListChecks, Settings as SettingsIcon, CheckCircle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
@@ -67,7 +67,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
             }
         };
         fetchInsights();
-    }, [meeting._id, meeting.campus, api]);
+    }, [meeting, api]);
 
     if (loading) return (
         <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -80,15 +80,19 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
 
     const rate = Math.round((stats.presentCount / stats.totalEligible) * 100) || 0;
 
-    const filteredAbsent = stats.absentList.filter(m =>
-        m.name.toLowerCase().includes(insightSearch.toLowerCase()) ||
-        m.studentRegNo.toLowerCase().includes(insightSearch.toLowerCase())
-    );
+    const filteredAbsent = stats.absentList.filter(m => {
+        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
+    });
 
-    const filteredPresent = stats.presentList.filter(a =>
-        (a.responses?.studentName || 'Member').toLowerCase().includes(insightSearch.toLowerCase()) ||
-        a.studentRegNo.toLowerCase().includes(insightSearch.toLowerCase())
-    );
+    const filteredPresent = stats.presentList.filter(a => {
+        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = (a.responses?.studentName || 'Member').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = a.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
+    });
 
     return (
         <div className="glass-panel" style={{
@@ -727,7 +731,8 @@ const AdminDashboard = () => {
 
         // 2. New Student Onboarding
         if (!member) {
-            studentName = window.prompt(`Registration Required!\n\nAdmission number ${reg} is not in the registry.\nPlease enter the student's full name to add them:`);
+            alert(`⚠️ MEMBER NOT FOUND ⚠️\n\nThe Admission Number "${reg}" is NOT in the Doulos Registry. \n\nYou will need to enter their name to add them as a new member.`);
+            studentName = window.prompt(`Registrating New Member\n\nPlease enter the student's FULL NAME for ${reg}:`);
             if (!studentName) return; // Cancel if no name provided
         }
 
@@ -2455,13 +2460,18 @@ const AdminDashboard = () => {
                                 </thead>
                                 <tbody>
                                     {loadingMembers ? (
-                                        <tr><td colSpan="5" style={{ padding: '3rem', textAlign: 'center' }}>Loading directory...</td></tr>
+                                        <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center' }}>Loading directory...</td></tr>
                                     ) : (
                                         (() => {
                                             const filtered = members.filter(m => {
-                                                const matchesSearch =
-                                                    m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                                                    m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
+                                                const cleanSearch = memberSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                                const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                                const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                                                const matchesSearch = !memberSearch ||
+                                                    cleanName.includes(cleanSearch) ||
+                                                    cleanReg.includes(cleanSearch);
+
                                                 const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
                                                 const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
                                                 return matchesSearch && matchesCampus && matchesType;
@@ -3719,12 +3729,15 @@ const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
 
     // Filtering logic
     const filteredRecords = records.filter(r => {
+        const cleanSearch = searchTerm.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const responses = Object.values(r.responses || {}).join(' ').toLowerCase();
         const searchPool = [
-            ...(Object.values(r.responses || {})),
-            r.memberType,
-            r.studentRegNo
-        ].join(' ').toLowerCase();
-        return searchPool.includes(searchTerm.toLowerCase());
+            responses,
+            r.memberType.toLowerCase(),
+            r.studentRegNo.toLowerCase()
+        ].join(' ').replace(/[^a-z0-9]/g, '');
+
+        return searchPool.includes(cleanSearch);
     });
 
     return (

@@ -26,7 +26,6 @@ const StudentPortal = () => {
             }
         }
 
-        // Migration fallback
         const legacy = localStorage.getItem('studentRegNo');
         if (legacy) {
             localStorage.removeItem('studentRegNo');
@@ -41,8 +40,8 @@ const StudentPortal = () => {
     const [error, setError] = useState(null);
     const [whatsappLink, setWhatsappLink] = useState('');
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
-    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'history', 'finance', 'community'
-    const [comingSoon, setComingSoon] = useState(null); // Title of feature
+    const [activeTab, setActiveTab] = useState('overview');
+    const [comingSoon, setComingSoon] = useState(null);
     const navigate = useNavigate();
 
     // Chat Widget State
@@ -56,7 +55,6 @@ const StudentPortal = () => {
 
     useEffect(() => {
         if (isLoggedIn && !isChatOpen) {
-            // Show popup after a delay
             const timer = setTimeout(() => setShowChatPopup(true), 2000);
             return () => clearTimeout(timer);
         }
@@ -64,7 +62,6 @@ const StudentPortal = () => {
 
     useEffect(() => {
         if (showChatPopup) {
-            // Auto hide after 8 seconds
             const timer = setTimeout(() => setShowChatPopup(false), 8000);
             return () => clearTimeout(timer);
         }
@@ -98,7 +95,6 @@ const StudentPortal = () => {
         if (e) e.preventDefault();
 
         if (isGuest) {
-            // Load Mock Data
             setData({
                 studentRegNo: 'GUEST-001',
                 memberName: 'Guest Explorer',
@@ -183,7 +179,6 @@ const StudentPortal = () => {
                 type,
                 notes: `Verification Code: ${code}`
             });
-            // Refresh portal data to see new points/logs
             handleLogin();
             alert(`${type} recorded successfully! 🌿`);
         } catch (err) {
@@ -202,7 +197,6 @@ const StudentPortal = () => {
         setChatInput('');
         setIsTyping(true);
 
-        // Determine greeting based on time
         const hour = new Date().getHours();
         let timeGreeting = 'Day';
         if (hour < 12) timeGreeting = 'Morning';
@@ -228,14 +222,26 @@ const StudentPortal = () => {
 
     if (!isLoggedIn) {
         return (
-            <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', gap: '2.5rem', padding: '1.5rem', position: 'relative' }}>
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: '2.5rem',
+                padding: '1rem',
+                position: 'relative',
+                width: '100%',
+                overflowX: 'hidden',
+                boxSizing: 'border-box'
+            }}>
                 <BackgroundGallery />
                 <ValentineRain />
 
                 <div className="glass-panel" style={{
                     width: '100%',
                     maxWidth: '400px',
-                    padding: '2.5rem 2rem',
+                    padding: '2rem 1.5rem',
                     textAlign: 'center',
                     background: '#0f172a',
                     position: 'relative',
@@ -243,19 +249,13 @@ const StudentPortal = () => {
                     border: '1px solid var(--glass-border)',
                     borderRadius: '1.5rem',
                     boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.4)',
+                    boxSizing: 'border-box'
                 }}>
                     <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div style={{ position: 'relative' }}>
                             <div className="rotating-logo">
-                                <Logo size={80} showText={false} />
+                                <Logo size={70} showText={false} />
                             </div>
-                            <div style={{
-                                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                width: '120px', height: '120px', borderRadius: '50%',
-                                background: 'radial-gradient(circle, hsla(198, 76%, 51%, 0.1) 0%, transparent 70%)',
-                                zIndex: -1,
-                                animation: 'pulse 4s infinite'
-                            }}></div>
                         </div>
                         <h1 style={{
                             marginTop: '1.5rem',
@@ -264,34 +264,31 @@ const StudentPortal = () => {
                             fontWeight: 900,
                             letterSpacing: '-0.05em',
                             color: 'white',
-                            textShadow: '0 0 20px rgba(37, 170, 225, 0.3)'
                         }}>
                             DOULOS <span style={{ color: 'hsl(var(--color-primary))' }}>PORTAL</span>
                         </h1>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            width: '100%',
-                            justifyContent: 'center',
-                            color: 'var(--color-text-dim)',
-                            opacity: 0.6
-                        }}>
-                            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to right, transparent, currentColor)' }}></div>
-                            <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Member Access</span>
-                            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to left, transparent, currentColor)' }}></div>
-                        </div>
                     </div>
 
-
-
-                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div className="input-group">
-                            <label>Admission No</label>
-                            <div style={{ position: 'relative' }}>
+                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+                        <div className="input-group" style={{ width: '100%' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1.5px', textAlign: 'left', textTransform: 'uppercase' }}>
+                                Admission No
+                            </label>
+                            <div style={{ position: 'relative', width: '100%' }}>
                                 <input
                                     placeholder="21-1234"
-                                    className="input-field input-field-premium"
+                                    style={{
+                                        height: '45px',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '0.75rem',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 600,
+                                        padding: '0 2.5rem 0 1rem',
+                                        width: '100%',
+                                        color: 'white',
+                                        boxSizing: 'border-box'
+                                    }}
                                     value={regNo}
                                     onChange={(e) => {
                                         let val = e.target.value.replace(/\D/g, '');
@@ -326,7 +323,11 @@ const StudentPortal = () => {
                                 fontWeight: 800,
                                 textTransform: 'uppercase',
                                 borderRadius: '0.75rem',
-                                boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)'
+                                boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)',
+                                background: '#25AAE1',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer'
                             }}
                         >
                             {loading ? (
@@ -351,24 +352,28 @@ const StudentPortal = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.75rem',
-                            animation: 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both'
+                            width: '100%',
+                            boxSizing: 'border-box'
                         }}>
                             <span>⚠️ {error}</span>
                         </div>
                     )}
 
-
                     {guestFeaturesEnabled && (
                         <button
                             onClick={() => navigate('/guest')}
                             style={{
-                                background: 'none', border: 'none',
-                                color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 700,
-                                textDecoration: 'none', opacity: 0.8, cursor: 'pointer',
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--color-primary)',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                opacity: 0.8,
+                                cursor: 'pointer',
+                                marginTop: '1rem',
                                 transition: 'opacity 0.2s'
                             }}
-                            onMouseOver={(e) => e.target.style.opacity = 1}
-                            onMouseOut={(e) => e.target.style.opacity = 0.8}
                         >
                             Guest Access →
                         </button>
@@ -382,7 +387,8 @@ const StudentPortal = () => {
                     fontWeight: 600,
                     letterSpacing: '1px',
                     color: 'var(--color-text-dim)',
-                    textTransform: 'uppercase'
+                    textTransform: 'uppercase',
+                    padding: '0 1rem'
                 }}>
                     Doulos Attendance System &bull; Enrollment Phase
                 </div>
@@ -396,69 +402,6 @@ const StudentPortal = () => {
                         from { transform: rotate(0deg); }
                         to { transform: rotate(360deg); }
                     }
-                    @keyframes pulse {
-                        0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.3; }
-                        50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.5; }
-                        100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.3; }
-                    }
-                    @keyframes firework-burst {
-                        0% { transform: scale(0); opacity: 1; }
-                        100% { transform: scale(1.2); opacity: 0; }
-                    }
-                    .firework {
-                        position: absolute;
-                        width: 5px;
-                        height: 5px;
-                        border-radius: 50%;
-                        box-shadow: 0 0 20px 10px white, 0 0 40px 20px hsla(198, 76%, 51%, 0.5);
-                        animation: firework-burst 2s infinite ease-out;
-                        pointer-events: none;
-                        z-index: 5;
-                    }
-                    @keyframes shake {
-                        10%, 90% { transform: translate3d(-1px, 0, 0); }
-                        20%, 80% { transform: translate3d(2px, 0, 0); }
-                        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-                        40%, 60% { transform: translate3d(4px, 0, 0); }
-                    }
-                    @keyframes slideUp {
-                        from { transform: translateY(30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
-                    }
-                    @keyframes slideDown {
-                        from { transform: translateY(-30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
-                    }
-                    @keyframes bounce {
-                        0%, 100% { transform: translateY(0); }
-                        50% { transform: translateY(-10px); }
-                    }
-                     .input-group label {
-                        display: block;
-                        margin-bottom: 0.5rem;
-                        font-size: 0.6rem;
-                        color: var(--color-text-dim);
-                        font-weight: 800;
-                        letter-spacing: 1.5px;
-                        text-align: left;
-                        text-transform: uppercase;
-                        opacity: 0.8;
-                    }
-                    .input-field-premium {
-                        height: 45px;
-                        background: rgba(0,0,0,0.3) !important;
-                        border: 1px solid var(--glass-border) !important;
-                        border-radius: 0.75rem !important;
-                        font-size: 0.9rem !important;
-                        font-weight: 600 !important;
-                        letter-spacing: 0.5px !important;
-                        padding: 0 1rem !important;
-                        width: 100%;
-                    }
-                    .input-field-premium:focus {
-                        border-color: #25AAE1 !important;
-                        box-shadow: 0 0 15px rgba(37, 170, 225, 0.15) !important;
-                    }
                     .loading-spinner-small {
                         width: 16px; height: 16px;
                         border: 2px solid rgba(255,255,255,0.3);
@@ -468,48 +411,87 @@ const StudentPortal = () => {
                     }
                     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 `}</style>
-            </div >
+            </div>
         );
     }
 
     if (!data) {
         return (
-            <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                position: 'relative',
+                width: '100%',
+                overflowX: 'hidden',
+                boxSizing: 'border-box'
+            }}>
                 <BackgroundGallery />
                 <div className="loading-spinner-small" style={{ width: '50px', height: '50px', borderTopColor: '#25AAE1' }}></div>
-                <p style={{ color: 'var(--color-primary)', fontWeight: 700, letterSpacing: '2px' }}>LOADING DOULOS PORTAL...</p>
+                <p style={{ color: 'var(--color-primary)', fontWeight: 700, letterSpacing: '2px', textAlign: 'center', padding: '0 1rem' }}>LOADING DOULOS PORTAL...</p>
             </div>
         );
     }
 
     if (isLoggedIn && data?.needsGraduationCongrats) {
         return (
-            <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{
+                position: 'relative',
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                width: '100%',
+                padding: '1rem',
+                boxSizing: 'border-box'
+            }}>
                 <BackgroundGallery />
                 <ValentineRain />
-                {/* Fireworks particles */}
-                <div class="firework" style={{ top: '20%', left: '15%', animationDelay: '0s' }}></div>
-                <div class="firework" style={{ top: '15%', left: '80%', animationDelay: '0.5s', boxShadow: '0 0 20px 10px white, 0 0 40px 20px #FFD700' }}></div>
-                <div class="firework" style={{ top: '70%', left: '10%', animationDelay: '1.2s', boxShadow: '0 0 20px 10px white, 0 0 40px 20px #f87171' }}></div>
-                <div class="firework" style={{ top: '80%', left: '85%', animationDelay: '1.8s', boxShadow: '0 0 20px 10px white, 0 0 40px 20px #4ade80' }}></div>
-                <div class="firework" style={{ top: '50%', left: '50%', animationDelay: '0.8s' }}></div>
 
-                <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '2rem', maxWidth: '600px', width: '100%' }}>
-                    <div className="glass-panel" style={{ padding: '3rem 2rem', border: '2px solid hsl(var(--color-primary))', background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(10px)', boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)', animation: 'slideUp 0.8s' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <Sparkles size={40} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
-                            <GraduationCap size={48} color="hsl(var(--color-primary))" />
-                            <Sparkles size={40} color="#FFD700" style={{ animation: 'bounce 2s infinite 1s' }} />
+                <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', maxWidth: '600px', width: '100%' }}>
+                    <div className="glass-panel" style={{
+                        padding: '2rem 1.5rem',
+                        border: '2px solid hsl(var(--color-primary))',
+                        background: 'rgba(0,0,0,0.95)',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 0 50px rgba(37, 170, 225, 0.3)',
+                        animation: 'slideUp 0.8s',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                            <Sparkles size={32} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
+                            <GraduationCap size={40} color="hsl(var(--color-primary))" />
+                            <Sparkles size={32} color="#FFD700" style={{ animation: 'bounce 2s infinite 1s' }} />
                         </div>
 
-                        <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '-1px' }}>
+                        <h1 style={{
+                            fontSize: 'clamp(1.5rem, 8vw, 2.5rem)',
+                            fontWeight: 900,
+                            color: 'white',
+                            marginBottom: '0.5rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '-1px'
+                        }}>
                             OFFICIALLY A <span style={{ color: 'hsl(var(--color-primary))' }}>DOULOID!</span>
                         </h1>
-                        <p style={{ fontSize: '1.25rem', color: '#4ade80', fontWeight: 700, marginBottom: '2rem' }}>
+                        <p style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', color: '#4ade80', fontWeight: 700, marginBottom: '2rem' }}>
                             Congratulations on completing your recruitment!
                         </p>
 
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '1rem', marginBottom: '2.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            padding: '1.5rem',
+                            borderRadius: '1rem',
+                            marginBottom: '2.5rem',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            width: '100%',
+                            boxSizing: 'border-box'
+                        }}>
                             <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'rgba(255,255,255,0.8)', margin: 0 }}>
                                 Your journey of growth and impact continues. You now have full access to all Douloid features and resources within this portal.
                             </p>
@@ -528,160 +510,311 @@ const StudentPortal = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '0.75rem',
-                                boxShadow: '0 15px 30px -5px hsl(var(--color-primary) / 0.4)'
+                                boxShadow: '0 15px 30px -5px hsl(var(--color-primary) / 0.4)',
+                                background: '#25AAE1',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer'
                             }}
                         >
                             PROCEED TO MY PORTAL 🚀
                         </button>
                     </div>
                 </div>
+
+                <style>{`
+                    @keyframes slideUp {
+                        from { transform: translateY(30px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                    @keyframes bounce {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-10px); }
+                    }
+                `}</style>
             </div>
         );
     }
 
     return (
-        <div style={{ position: 'relative', minHeight: '100vh', background: 'var(--color-bg)', color: 'white', overflowX: 'hidden' }}>
+        <div style={{
+            position: 'relative',
+            minHeight: '100vh',
+            background: 'var(--color-bg)',
+            color: 'white',
+            overflowX: 'hidden',
+            width: '100%',
+            boxSizing: 'border-box'
+        }}>
             <BackgroundGallery />
             <ValentineRain />
 
-            {/* Coming Soon Backdrop */}
             {comingSoon && (
                 <div style={{
-                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
                     background: '#000000',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 2000, animation: 'fadeIn 0.3s'
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2000,
+                    animation: 'fadeIn 0.3s',
+                    padding: '1rem',
+                    boxSizing: 'border-box'
                 }} onClick={() => setComingSoon(null)}>
                     <div className="glass-panel" style={{
-                        padding: '3rem', textAlign: 'center', maxWidth: '400px',
+                        padding: '2rem 1.5rem',
+                        textAlign: 'center',
+                        maxWidth: '400px',
+                        width: '100%',
                         border: '1px solid hsl(var(--color-primary))',
-                        animation: 'congratsPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                        animation: 'congratsPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        background: '#0f172a',
+                        boxSizing: 'border-box'
                     }} onClick={e => e.stopPropagation()}>
                         <div style={{
-                            width: '80px', height: '80px', borderRadius: '50%',
-                            background: 'rgba(37, 170, 225, 0.1)', display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem',
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(37, 170, 225, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem',
                             color: '#25AAE1'
                         }}>
-                            <Sparkles size={40} className="animate-pulse" />
+                            <Sparkles size={35} className="animate-pulse" />
                         </div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>{comingSoon}</h2>
+                        <h2 style={{ fontSize: 'clamp(1.2rem, 5vw, 1.5rem)', fontWeight: 900, marginBottom: '0.5rem' }}>{comingSoon}</h2>
                         <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem', fontSize: '0.9rem' }}>
                             We are currently building this feature to make your Doulos experience even better. Stay tuned!
                         </p>
-                        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setComingSoon(null)}>
+                        <button
+                            className="btn btn-primary"
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: '#25AAE1',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => setComingSoon(null)}
+                        >
                             GOT IT 🚀
                         </button>
                     </div>
                 </div>
             )}
 
-            <div className="container" style={{ position: 'relative', zIndex: 1, padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-                {/* Modern Header */}
+            <div style={{
+                position: 'relative',
+                zIndex: 1,
+                padding: '1rem',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                boxSizing: 'border-box'
+            }}>
+                {/* Modern Header - Fixed for mobile */}
                 <header style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    marginTop: '1rem', marginBottom: '2rem', padding: '1.25rem',
-                    background: '#1e293b', borderRadius: '1.5rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '1rem',
+                    marginBottom: '2rem',
+                    padding: '1rem',
+                    background: '#1e293b',
+                    borderRadius: '1.5rem',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                    width: '100%',
+                    boxSizing: 'border-box'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
                         <div style={{
-                            width: '50px', height: '50px', borderRadius: '15px',
+                            width: '45px',
+                            height: '45px',
+                            borderRadius: '12px',
                             background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #032540 100%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             boxShadow: '0 10px 20px rgba(37, 170, 225, 0.3)',
-                            animation: 'rotateLogo 60s linear infinite'
+                            animation: 'rotateLogo 60s linear infinite',
+                            flexShrink: 0
                         }}>
-                            <Logo size={30} showText={false} />
+                            <Logo size={25} showText={false} />
                         </div>
-                        <div>
-                            <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, letterSpacing: '2px', color: 'hsl(var(--color-primary))' }}>DOULOS <span style={{ color: 'white' }}>PORTAL</span></h2>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                        <div style={{ minWidth: 0 }}>
+                            <h2 style={{
+                                margin: 0,
+                                fontSize: '0.8rem',
+                                fontWeight: 900,
+                                letterSpacing: '1px',
+                                color: 'hsl(var(--color-primary))',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>
+                                DOULOS <span style={{ color: 'white' }}>PORTAL</span>
+                            </h2>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                marginTop: '0.2rem',
+                                flexWrap: 'wrap'
+                            }}>
                                 <span style={{
-                                    padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'rgba(37, 170, 225, 0.2)',
-                                    fontSize: '0.65rem', fontWeight: 800, color: '#25AAE1'
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '4px',
+                                    background: 'rgba(37, 170, 225, 0.2)',
+                                    fontSize: '0.6rem',
+                                    fontWeight: 800,
+                                    color: '#25AAE1',
+                                    whiteSpace: 'nowrap'
                                 }}>{data.memberType?.toUpperCase()}</span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 600 }}>ID: {data.studentRegNo}</span>
+                                <span style={{
+                                    fontSize: '0.6rem',
+                                    color: 'var(--color-text-dim)',
+                                    fontWeight: 600,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                }}>ID: {data.studentRegNo}</span>
                             </div>
                         </div>
                     </div>
-                    <button className="btn-icon" onClick={handleLogout} style={{
-                        background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.1)'
+                    <button onClick={handleLogout} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#f87171',
+                        border: '1px solid rgba(239, 68, 68, 0.1)',
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0
                     }}>
-                        <LogOut size={20} />
+                        <LogOut size={18} />
                     </button>
                 </header>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', lg: '8fr 4fr', gap: '1.5rem' }} className="portal-grid">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
+                    width: '100%'
+                }}>
                     {/* Main Content Area */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
-                        {/* Welcome Banner */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                        {/* Welcome Banner - Fixed for mobile */}
                         <div className="glass-panel welcome-banner" style={{
-                            padding: '2.5rem', position: 'relative', overflow: 'hidden',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '1.5rem',
+                            position: 'relative',
+                            overflow: 'hidden',
                             background: 'linear-gradient(135deg, hsl(206, 80%, 20%) 0%, hsl(206, 80%, 15%) 100%)',
-                            border: '1px solid var(--glass-border)'
+                            border: '1px solid var(--glass-border)',
+                            animation: 'slideDown 0.5s ease-out',
+                            width: '100%',
+                            boxSizing: 'border-box'
                         }}>
-                            <div style={{ position: 'relative', zIndex: 2 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#B0B0B0', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '2px', marginBottom: '1rem', textTransform: 'uppercase' }}>
-                                    <Sparkles size={14} color="#facc15" /> Welcome Back
-                                </div>
-                                <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>
-                                    Hi, <span style={{ color: 'hsl(var(--color-primary))' }}>{data.memberName?.split(' ')[0] || 'Member'}!</span>
-                                </h1>
-                                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1rem', lineHeight: 1.6, maxWidth: '400px' }}>
-                                    Your consistency is your superpower. Your total Doulos points: <strong style={{ color: '#facc15' }}>{data.totalPoints || 0}</strong>
-                                </p>
-                            </div>
-
-                            {/* Stats Circle - Redesigned */}
-                            <div style={{
-                                position: 'absolute', right: '5%', top: '50%', transform: 'translateY(-50%)',
-                                display: 'flex', flexDirection: 'column', alignItems: 'center'
-                            }} className="header-stats">
-                                <div style={{ position: 'relative', width: '120px', height: '120px' }}>
-                                    <svg width="120" height="120" viewBox="0 0 120 120">
-                                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
-                                        <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--color-primary))" strokeWidth="10"
-                                            strokeDasharray="314.15"
-                                            strokeDashoffset={314.15 - (314.15 * data.stats.percentage / 100)}
-                                            strokeLinecap="round"
-                                            style={{ filter: 'drop-shadow(0 0 8px hsl(var(--color-primary) / 0.5))', transition: 'stroke-dashoffset 2s ease-out' }}
-                                        />
-                                    </svg>
-                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                                        <div style={{ fontSize: '1.75rem', fontWeight: 900 }}>{data.stats.percentage}%</div>
+                            <div className="welcome-content" style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1.5rem',
+                                position: 'relative',
+                                zIndex: 2
+                            }}>
+                                <div style={{ width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fbbf24', marginBottom: '0.75rem' }}>
+                                        <Sparkles size={16} />
+                                        <span style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>Welcome Back</span>
                                     </div>
+                                    <h1 style={{
+                                        fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
+                                        fontWeight: 900,
+                                        margin: 0,
+                                        letterSpacing: '-0.05em',
+                                        lineHeight: 1.2
+                                    }}>
+                                        Hi, <span style={{ color: 'hsl(var(--color-primary))' }}>{data.memberName?.split(' ')[0] || 'Member'}!</span>
+                                    </h1>
+                                    <p style={{
+                                        marginTop: '0.75rem',
+                                        fontSize: '0.9rem',
+                                        color: 'rgba(255,255,255,0.7)',
+                                        lineHeight: 1.5
+                                    }}>
+                                        Your consistency is your superpower. Your total loyalty points: <span style={{ color: '#fbbf24', fontWeight: 800 }}>{data.totalPoints || 0}</span>
+                                    </p>
                                 </div>
-                                <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'hsl(var(--color-primary))', marginTop: '0.5rem', letterSpacing: '1px' }}>RATIO</div>
+
+                                <div className="header-stats" style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    width: '100%'
+                                }}>
+                                    <div className="ratio-circle-container" style={{ position: 'relative', width: '100px', height: '100px' }}>
+                                        <svg width="100" height="100" viewBox="0 0 120 120">
+                                            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+                                            <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--color-primary))" strokeWidth="10"
+                                                strokeDasharray="314.15"
+                                                strokeDashoffset={314.15 - (314.15 * data.stats.percentage / 100)}
+                                                strokeLinecap="round"
+                                                style={{ filter: 'drop-shadow(0 0 8px hsl(var(--color-primary) / 0.5))', transition: 'stroke-dashoffset 2s ease-out' }}
+                                            />
+                                        </svg>
+                                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{data.stats.percentage}%</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'hsl(var(--color-primary))', marginTop: '0.35rem', letterSpacing: '1px' }}>RATIO</div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Action Center - Alerts */}
                         {data.alerts && data.alerts.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                                 {data.alerts.map((alert, i) => (
                                     <div key={i} className="glass-panel alert-card" style={{
-                                        padding: '1.25rem',
+                                        padding: '1rem',
                                         background: alert.priority === 'high' ? 'rgba(37, 170, 225, 0.1)' : 'rgba(255,255,255,0.03)',
                                         border: alert.priority === 'high' ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.05)',
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        animation: 'slideRight 0.5s ease-out'
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '1rem',
+                                        animation: 'slideRight 0.5s ease-out',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
                                     }}>
-                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                             <div style={{
-                                                width: '45px', height: '45px', borderRadius: '12px',
+                                                width: '40px',
+                                                height: '40px',
+                                                borderRadius: '10px',
                                                 background: alert.type === 'finance' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.1)',
                                                 color: alert.type === 'finance' ? '#f87171' : '#25AAE1',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0
                                             }}>
-                                                {alert.type === 'finance' ? <Wallet size={20} /> : alert.type === 'watering' ? <Sparkles size={20} /> : <Calendar size={20} />}
+                                                {alert.type === 'finance' ? <Wallet size={18} /> : alert.type === 'watering' ? <Sparkles size={18} /> : <Calendar size={18} />}
                                             </div>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>{alert.title}</h4>
-                                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>{alert.message}</p>
+                                            <div style={{ minWidth: 0 }}>
+                                                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.title}</h4>
+                                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.message}</p>
                                             </div>
                                         </div>
                                         <button
@@ -691,7 +824,17 @@ const StudentPortal = () => {
                                                 if (alert.action === 'SCAN_QR') handleLogActivity('Tree Watering');
                                                 if (alert.action === 'PAY') setActiveTab('finance');
                                             }}
-                                            style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 800 }}
+                                            style={{
+                                                padding: '0.5rem',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 800,
+                                                background: '#25AAE1',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '0.5rem',
+                                                cursor: 'pointer',
+                                                width: '100%'
+                                            }}
                                         >
                                             {alert.action === 'SCAN_QR' ? 'I DID THIS' : alert.action}
                                         </button>
@@ -700,18 +843,32 @@ const StudentPortal = () => {
                             </div>
                         )}
 
-                        {/* Navigation Tabs */}
-                        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.4rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', width: 'fit-content', overflowX: 'auto' }}>
+                        {/* Navigation Tabs - Fixed for mobile */}
+                        <div style={{
+                            display: 'flex',
+                            gap: '0.35rem',
+                            padding: '0.35rem',
+                            background: 'rgba(255,255,255,0.03)',
+                            borderRadius: '1rem',
+                            width: '100%',
+                            overflowX: 'auto',
+                            boxSizing: 'border-box'
+                        }}>
                             {['overview', 'history', 'activities', 'finance'].map(tab => (
                                 <button key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     style={{
-                                        padding: '0.6rem 1.5rem', borderRadius: '0.75rem', border: 'none',
-                                        fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '0.75rem',
+                                        border: 'none',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
                                         background: activeTab === tab ? 'hsl(var(--color-primary))' : 'transparent',
                                         color: activeTab === tab ? 'white' : 'var(--color-text-dim)',
                                         whiteSpace: 'nowrap',
-                                        transition: 'all 0.3s'
+                                        transition: 'all 0.3s',
+                                        flex: 1
                                     }}
                                 >
                                     {tab.toUpperCase()}
@@ -721,33 +878,86 @@ const StudentPortal = () => {
 
                         {activeTab === 'overview' ? (
                             <>
-                                {/* Quick Access Actions */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                    <div className="glass-panel action-card" onClick={() => setComingSoon('Monthly Contribution')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(74, 222, 128, 0.1)' }}>
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                                            <Star size={20} />
+                                {/* Quick Access Actions - Fixed grid for mobile */}
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '0.75rem',
+                                    width: '100%'
+                                }}>
+                                    <div className="glass-panel action-card" onClick={() => setComingSoon('Monthly Contribution')} style={{
+                                        padding: '1rem',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s',
+                                        border: '1px solid rgba(74, 222, 128, 0.1)',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div style={{
+                                            width: '35px',
+                                            height: '35px',
+                                            borderRadius: '8px',
+                                            background: 'rgba(74, 222, 128, 0.1)',
+                                            color: '#4ade80',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginBottom: '0.75rem'
+                                        }}>
+                                            <Star size={16} />
                                         </div>
-                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Monthly Contribution</h3>
-                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Support Doulos projects and events.</p>
+                                        <h3 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800 }}>Monthly Contribution</h3>
+                                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.65rem', color: 'var(--color-text-dim)' }}>Support Doulos projects</p>
                                     </div>
-                                    <div className="glass-panel action-card" onClick={() => setComingSoon('20 Bob Challenge')} style={{ padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                                            <Trophy size={20} />
+                                    <div className="glass-panel action-card" onClick={() => setComingSoon('20 Bob Challenge')} style={{
+                                        padding: '1rem',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s',
+                                        border: '1px solid rgba(251, 191, 36, 0.1)',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div style={{
+                                            width: '35px',
+                                            height: '35px',
+                                            borderRadius: '8px',
+                                            background: 'rgba(251, 191, 36, 0.1)',
+                                            color: '#fbbf24',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginBottom: '0.75rem'
+                                        }}>
+                                            <Trophy size={16} />
                                         </div>
-                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>20 Bob Challenge</h3>
-                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Small change, big impact. Join today!</p>
+                                        <h3 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800 }}>20 Bob Challenge</h3>
+                                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.65rem', color: 'var(--color-text-dim)' }}>Small change, big impact</p>
                                     </div>
                                 </div>
 
-                                {/* Quick Check-in Section */}
-                                <div className="glass-panel check-in-box" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #25AAE1' }}>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                        <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '12px' }}>
-                                            <Calendar size={24} />
+                                {/* Quick Check-in Section - Fixed for mobile */}
+                                <div className="glass-panel check-in-box" style={{
+                                    padding: '1rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '1rem',
+                                    borderLeft: '4px solid #25AAE1',
+                                    width: '100%',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                        <div style={{
+                                            padding: '0.5rem',
+                                            background: 'rgba(37, 170, 225, 0.1)',
+                                            color: '#25AAE1',
+                                            borderRadius: '8px',
+                                            flexShrink: 0
+                                        }}>
+                                            <Calendar size={20} />
                                         </div>
                                         <div>
-                                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>ATTENDANCE CHECK-IN</h3>
-                                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Scan QR or enter manual code from leaderboard.</p>
+                                            <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800 }}>ATTENDANCE CHECK-IN</h3>
+                                            <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--color-text-dim)' }}>Scan QR or enter code</p>
                                         </div>
                                     </div>
                                     <form onSubmit={(e) => {
@@ -758,49 +968,116 @@ const StudentPortal = () => {
                                         }
                                         const code = e.target.elements.code.value.trim();
                                         if (code) window.location.href = `/check-in/${code}`;
-                                    }} style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <input name="code" placeholder="CODE" className="input-field" style={{ width: '100px', height: '40px', textAlign: 'center', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase' }} required />
-                                        <button className="btn btn-primary" style={{ padding: '0 1.25rem', height: '40px', fontSize: '0.8rem', fontWeight: 800 }}>GO</button>
+                                    }} style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                                        <input
+                                            name="code"
+                                            placeholder="CODE"
+                                            className="input-field"
+                                            style={{
+                                                flex: 1,
+                                                height: '40px',
+                                                textAlign: 'center',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 900,
+                                                textTransform: 'uppercase',
+                                                background: 'rgba(0,0,0,0.3)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '0.5rem',
+                                                color: 'white',
+                                                padding: '0 0.5rem'
+                                            }}
+                                            required
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{
+                                                padding: '0 1rem',
+                                                height: '40px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 800,
+                                                background: '#25AAE1',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '0.5rem',
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            GO
+                                        </button>
                                     </form>
                                 </div>
 
-                                {/* Stats Overview Cards */}
-                                <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                                    <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '2px', marginBottom: '0.5rem' }}>STANDING</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#facc15' }}>{data.stats.totalAttended > 5 ? 'GOLD' : 'SILVER'}</div>
+                                {/* Stats Overview Cards - Fixed for mobile */}
+                                <div className="stats-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '0.75rem',
+                                    width: '100%'
+                                }}>
+                                    <div className="glass-panel" style={{
+                                        padding: '1rem',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div style={{ fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.25rem' }}>STANDING</div>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#facc15' }}>{data.stats.totalAttended > 5 ? 'GOLD' : 'SILVER'}</div>
                                     </div>
-                                    <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '2px', marginBottom: '0.5rem' }}>TOTAL SESSIONS</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#25AAE1' }}>{data.stats.totalAttended} / {data.stats.totalMeetings}</div>
+                                    <div className="glass-panel" style={{
+                                        padding: '1rem',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div style={{ fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.25rem' }}>TOTAL SESSIONS</div>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#25AAE1' }}>{data.stats.totalAttended} / {data.stats.totalMeetings}</div>
                                     </div>
                                 </div>
                             </>
                         ) : activeTab === 'activities' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                                    <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 900 }}>Doulos Hours: Activity Log</h3>
-                                    <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                                        History of your contributions to Freedom Base (Tree watering, setup, etc.)
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                                <div className="glass-panel" style={{
+                                    padding: '1.5rem',
+                                    border: '1px solid rgba(37, 170, 225, 0.2)',
+                                    width: '100%',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 900 }}>Doulos Hours: Activity Log</h3>
+                                    <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+                                        History of your contributions to Freedom Base
                                     </p>
 
                                     {!data.activityLogs?.length ? (
-                                        <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem' }}>
-                                            <History size={32} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>No activities logged yet for this semester.</p>
+                                        <div style={{
+                                            textAlign: 'center',
+                                            padding: '1.5rem',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            borderRadius: '1rem',
+                                            width: '100%',
+                                            boxSizing: 'border-box'
+                                        }}>
+                                            <History size={24} style={{ opacity: 0.2, marginBottom: '0.75rem' }} />
+                                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>No activities logged yet for this semester.</p>
                                         </div>
                                     ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
                                             {data.activityLogs.map((log, i) => (
                                                 <div key={i} style={{
-                                                    padding: '1rem', background: 'rgba(255,255,255,0.03)',
-                                                    borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                                    padding: '0.75rem',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    borderRadius: '0.75rem',
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    width: '100%',
+                                                    boxSizing: 'border-box'
                                                 }}>
                                                     <div>
-                                                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{log.type}</div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
+                                                        <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{log.type}</div>
+                                                        <div style={{ fontSize: '0.6rem', color: 'var(--color-text-dim)' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
                                                     </div>
-                                                    <div style={{ color: '#4ade80', fontWeight: 900, fontSize: '0.9rem' }}>+{log.pointsEarned} Pts</div>
+                                                    <div style={{ color: '#4ade80', fontWeight: 900, fontSize: '0.8rem' }}>+{log.pointsEarned} Pts</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -810,90 +1087,139 @@ const StudentPortal = () => {
                         ) : activeTab === 'finance' ? (
                             <FinanceView regNo={data.studentRegNo} memberName={data.memberName} />
                         ) : (
-                            /* History List - Refined */
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            /* History List - Refined for mobile */
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
                                 {data.history.map((m, i) => (
                                     <div key={m._id} className="glass-panel" style={{
-                                        padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '1rem',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
                                         borderLeft: `4px solid ${m.attended ? '#4ade80' : '#f87171'}`,
-                                        animation: `slideUp 0.4s ease-out ${i * 0.05}s both`
+                                        animation: `slideUp 0.4s ease-out ${i * 0.05}s both`,
+                                        width: '100%',
+                                        boxSizing: 'border-box'
                                     }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                                            <div style={{ textAlign: 'center', minWidth: '50px' }}>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{new Date(m.date).getDate()}</div>
-                                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                                            <div style={{ textAlign: 'center', minWidth: '40px', flexShrink: 0 }}>
+                                                <div style={{ fontSize: '1rem', fontWeight: 900 }}>{new Date(m.date).getDate()}</div>
+                                                <div style={{ fontSize: '0.55rem', fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>
                                                     {new Date(m.date).toLocaleString('default', { month: 'short' })}
                                                 </div>
                                             </div>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>{m.name}</h4>
-                                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 600 }}>{m.campus}</p>
+                                            <div style={{ minWidth: 0 }}>
+                                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</h4>
+                                                <p style={{ margin: '0.1rem 0 0', fontSize: '0.65rem', color: 'var(--color-text-dim)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.campus}</p>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: m.attended ? '#4ade80' : '#f87171' }}>
-                                            {m.attended ? <CheckCircle size={20} /> : <XCircle size={20} />}
-                                            <span style={{ fontSize: '0.7rem', fontWeight: 900 }}>{m.attended ? 'VERIFIED' : 'ABSENT'}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: m.attended ? '#4ade80' : '#f87171', flexShrink: 0 }}>
+                                            {m.attended ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 900 }}>{m.attended ? '✓' : '✗'}</span>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-
-                    {/* Sidebar / Secondary Info */}
-
                 </div>
             </div>
 
-            {/* Floating Chat Widget */}
-            <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+            {/* Floating Chat Widget - Fixed for mobile */}
+            <div className="chat-popup-container" style={{
+                position: 'fixed',
+                bottom: '1rem',
+                right: '1rem',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: '0.75rem',
+                maxWidth: 'calc(100vw - 2rem)'
+            }}>
                 {isChatOpen && (
-                    <div className="glass-panel" style={{
-                        width: '350px',
-                        height: '500px',
+                    <div className="glass-panel chat-full-widget" style={{
+                        width: 'min(350px, calc(100vw - 2rem))',
+                        height: '450px',
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden',
                         boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
                         border: '1px solid rgba(255,255,255,0.1)',
                         animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                        background: 'rgba(15, 23, 42, 0.95)'
+                        background: 'rgba(15, 23, 42, 0.95)',
+                        borderRadius: '1rem'
                     }}>
                         {/* Chat Header */}
-                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.1)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{
+                            padding: '0.75rem',
+                            background: 'rgba(37, 170, 225, 0.1)',
+                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div style={{
-                                    width: '38px', height: '38px', borderRadius: '10px',
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '8px',
                                     background: 'rgba(255,255,255,0.05)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                     border: '1px solid rgba(255,255,255,0.1)'
                                 }}>
-                                    <DoulosBotIcon size={28} />
+                                    <DoulosBotIcon size={24} />
                                 </div>
-                                <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.5px' }}>Doulos Bot</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Doulos Bot</span>
                             </div>
-                            <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><XCircle size={20} /></button>
+                            <button onClick={() => setIsChatOpen(false)} style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--color-text-dim)',
+                                cursor: 'pointer',
+                                padding: '0.25rem'
+                            }}>
+                                <XCircle size={18} />
+                            </button>
                         </div>
 
                         {/* Chat Body */}
-                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{
+                            flex: 1,
+                            padding: '0.75rem',
+                            overflowY: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem'
+                        }}>
                             {chatMessages.map((msg, i) => (
                                 <div key={i} style={{
                                     alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                                    maxWidth: '80%',
-                                    padding: '0.75rem 1rem',
+                                    maxWidth: '85%',
+                                    padding: '0.5rem 0.75rem',
                                     borderRadius: '1rem',
                                     background: msg.sender === 'user' ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.05)',
                                     color: 'white',
-                                    fontSize: '0.9rem',
+                                    fontSize: '0.8rem',
                                     borderBottomRightRadius: msg.sender === 'user' ? '2px' : '1rem',
                                     borderBottomLeftRadius: msg.sender === 'bot' ? '2px' : '1rem',
+                                    wordBreak: 'break-word'
                                 }}>
                                     {msg.text}
                                 </div>
                             ))}
                             {isTyping && (
-                                <div style={{ alignSelf: 'flex-start', padding: '0.75rem 1rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', display: 'flex', gap: '0.3rem' }}>
+                                <div style={{
+                                    alignSelf: 'flex-start',
+                                    padding: '0.5rem 0.75rem',
+                                    borderRadius: '1rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    color: 'var(--color-text-dim)',
+                                    fontSize: '0.75rem',
+                                    display: 'flex',
+                                    gap: '0.2rem'
+                                }}>
                                     <span style={{ animation: 'bounce 1s infinite 0s' }}>•</span>
                                     <span style={{ animation: 'bounce 1s infinite 0.2s' }}>•</span>
                                     <span style={{ animation: 'bounce 1s infinite 0.4s' }}>•</span>
@@ -902,42 +1228,66 @@ const StudentPortal = () => {
                         </div>
 
                         {/* Chat Input */}
-                        <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '0.5rem' }}>
+                        <form onSubmit={handleSendChat} style={{
+                            padding: '0.75rem',
+                            borderTop: '1px solid rgba(255,255,255,0.05)',
+                            display: 'flex',
+                            gap: '0.5rem'
+                        }}>
                             <input
                                 value={chatInput}
                                 onChange={e => setChatInput(e.target.value)}
                                 placeholder="Type a message..."
-                                style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', fontSize: '0.9rem' }}
+                                style={{
+                                    flex: 1,
+                                    background: 'rgba(0,0,0,0.3)',
+                                    border: 'none',
+                                    borderRadius: '0.5rem',
+                                    padding: '0.5rem 0.75rem',
+                                    color: 'white',
+                                    fontSize: '0.8rem'
+                                }}
                             />
-                            <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem', borderRadius: '0.5rem' }} disabled={!chatInput.trim()}>
-                                <Send size={18} />
+                            <button
+                                type="submit"
+                                style={{
+                                    padding: '0.5rem',
+                                    borderRadius: '0.5rem',
+                                    background: '#25AAE1',
+                                    color: 'white',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                                disabled={!chatInput.trim()}
+                            >
+                                <Send size={16} />
                             </button>
                         </form>
                     </div>
                 )}
 
-                {/* Toggle Button */}
                 {/* Toggle Button Container with Popup */}
                 <div style={{ position: 'relative' }}>
                     {!isChatOpen && showChatPopup && (
-                        <div style={{
+                        <div className="chat-popup" style={{
                             position: 'absolute',
-                            bottom: '80px',
+                            bottom: '70px',
                             right: '0',
-                            width: '200px',
-                            padding: '1rem',
+                            width: '180px',
+                            padding: '0.75rem',
                             background: 'white',
                             color: 'black',
-                            borderRadius: '1rem',
+                            borderRadius: '0.75rem',
                             borderBottomRightRadius: '2px',
                             boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontWeight: 600,
-                            animation: 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1), float 3s ease-in-out infinite'
+                            animation: 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
                         }}>
-                            <div style={{ position: 'relative', zIndex: 1 }}>
-                                👋 Hi {data.memberName?.split(' ')[0]}! I'm Doulos Bot. Need help?
-                            </div>
+                            👋 Hi {data.memberName?.split(' ')[0]}! Need help?
                             <div style={{
                                 position: 'absolute',
                                 bottom: '-6px',
@@ -951,16 +1301,20 @@ const StudentPortal = () => {
                     )}
 
                     {!isChatOpen && (
-                        <button onClick={() => { setIsChatOpen(true); setShowChatPopup(false); }} className="btn" style={{
-                            width: '65px', height: '65px', borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        <button onClick={() => { setIsChatOpen(true); setShowChatPopup(false); }} style={{
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             boxShadow: '0 10px 30px rgba(37, 170, 225, 0.4)',
                             animation: 'bounce 2s infinite',
                             background: 'white',
-                            border: '4px solid rgba(37, 170, 225, 0.2)',
+                            border: '3px solid rgba(37, 170, 225, 0.2)',
                             cursor: 'pointer'
                         }}>
-                            <DoulosBotIcon size={40} />
+                            <DoulosBotIcon size={32} />
                         </button>
                     )}
                 </div>
@@ -980,14 +1334,21 @@ const StudentPortal = () => {
                                 }
                             }
                         }}
-                        className="btn"
                         style={{
-                            width: '65px', height: '65px', borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             boxShadow: '0 10px 30px rgba(250, 204, 21, 0.4)',
-                            background: '#facc15', color: 'black',
-                            border: 'none', cursor: 'pointer',
-                            marginTop: '1rem', fontWeight: 'bold', fontSize: '1.5rem'
+                            background: '#facc15',
+                            color: 'black',
+                            border: 'none',
+                            cursor: 'pointer',
+                            marginTop: '0.5rem',
+                            fontWeight: 'bold',
+                            fontSize: '1.5rem'
                         }}
                     >
                         💡
@@ -995,30 +1356,32 @@ const StudentPortal = () => {
                 )}
 
                 <style>{`
-                .container { width: 100%; max-width: 1200px; padding: 1.5rem; }
-                .action-card:hover { 
-                    transform: translateY(-5px); 
-                    background: rgba(255,255,255,0.05);
-                    border-color: rgba(37, 170, 225, 0.3) !important;
-                }
-                @media (max-width: 992px) {
-                    .portal-grid { grid-template-columns: 1fr !important; }
-                    .header-stats { position: relative !important; right: auto !important; top: auto !important; transform: none !important; margin-top: 2rem; }
-                }
-                @keyframes rotateLogo {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                @keyframes congratsPop {
-                    0% { transform: scale(0.8); opacity: 0; }
-                    100% { transform: scale(1); opacity: 1; }
-                }
-                .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: .5; }
-                }
-            `}</style>
+                    @keyframes slideDown {
+                        from { transform: translateY(-20px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                    @keyframes slideUp {
+                        from { transform: translateY(20px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                    @keyframes bounce {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-5px); }
+                    }
+                    @keyframes rotateLogo {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
+                    .action-card:hover { 
+                        transform: translateY(-2px); 
+                        background: rgba(255,255,255,0.05);
+                    }
+                    @media (max-width: 480px) {
+                        .welcome-content {
+                            flex-direction: column;
+                        }
+                    }
+                `}</style>
             </div>
         </div>
     );
