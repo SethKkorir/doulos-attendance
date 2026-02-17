@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 import { checkCampusTime } from '../utils/timeCheck.js';
 
 export const submitAttendance = async (req, res) => {
-    const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime } = req.body;
+    const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong } = req.body;
 
     try {
         // 1. Find the meeting
@@ -17,110 +17,63 @@ export const submitAttendance = async (req, res) => {
         // 2. User & Role check
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
-        // EXTRA SECURITY: 20-Second Freshness Timer (Proximity Timing)
-        if (serverStartTime && !isSuperUser && !meeting.isTestMeeting) {
-            const timeElapsed = Date.now() - serverStartTime;
-            if (timeElapsed > 65000) { // 60 seconds (+5s buffer)
-                return res.status(403).json({
-                    message: "Scan Session Expired (60s limit). Please scan again at the physical banner. Shared QR codes are not allowed."
-                });
-            }
-        }
-
         // 3. Activity Check (Bypass for SuperUser or Test Meetings)
         if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
             return res.status(400).json({ message: 'Meeting is closed' });
         }
 
-        if (!meeting.isTestMeeting && !isSuperUser) {
-            // RECURRING MEETING WINDOW CHECK
-            if (meeting.isRecurring) {
-                const now = new Date();
-                const eatFormat = new Intl.DateTimeFormat('en-CA', {
-                    timeZone: 'Africa/Nairobi',
-                    weekday: 'long',
-                    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-                });
-                const parts = eatFormat.formatToParts(now);
-                const currentDay = parts.find(p => p.type === 'weekday').value;
-                const hh = parts.find(p => p.type === 'hour').value;
-                const mm = parts.find(p => p.type === 'minute').value;
-                const currentTimeVal = parseInt(hh) + parseInt(mm) / 60;
+        // 4. Strict Start Time Check (already enforced in getMeetingByCode, but good to have here too)
+        const now = new Date();
+        const meetingDate = new Date(meeting.date);
+        const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
+        const meetingStart = new Date(meetingDate);
+        meetingStart.setHours(startHours, startMinutes, 0, 0);
 
-                const [startH, startM] = meeting.startTime.split(':').map(Number);
-                const [endH, endM] = meeting.endTime.split(':').map(Number);
-                const startVal = startH + startM / 60;
-                let endVal = endH + endM / 60;
-                if (endVal < startVal) endVal += 24;
-
-                if (currentDay !== meeting.dayOfWeek) {
-                    return res.status(403).json({ message: `This QR code is only active on ${meeting.dayOfWeek}s.` });
-                }
-
-                if (currentTimeVal < startVal || currentTimeVal > endVal) {
-                    return res.status(403).json({ message: `Check-in for this session is only allowed between ${meeting.startTime} and ${meeting.endTime}.` });
-                }
-            } else {
-                const timeReview = checkCampusTime(meeting);
-                if (!timeReview.allowed) {
-                    return res.status(403).json({ message: timeReview.message });
-                }
+        if (!isSuperUser && !meeting.isTestMeeting) {
+            if (now < meetingStart) {
+                return res.status(403).json({ message: 'This meeting has not yet started.' });
+            }
+            if (now.toDateString() !== meetingDate.toDateString()) {
+                return res.status(403).json({ message: 'Meeting is not scheduled for today.' });
             }
 
-            // GEO-FENCE CHECK
-            // If the meeting has a set location OR a campus preset, we must validate student's location
-            let geoLat = meeting.location?.latitude;
-            let geoLong = meeting.location?.longitude;
-            let geoRadius = meeting.location?.radius || 200;
+            // 24-Hour Lockhead: Block submissions if meeting ended > 24h ago
+            const [endH, endM] = meeting.endTime.split(':').map(Number);
+            const meetingEnd = new Date(meetingDate);
+            meetingEnd.setHours(endH, endM, 0, 0);
+            const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
 
-            // If it's a recurring meeting OR no custom coords provided, pull from SuperAdmin campus presets
-            if (meeting.isRecurring || (!geoLat && meeting.campus)) {
-                const settingKey = `geo_${meeting.campus.toLowerCase().replace(/ /g, '_')}`;
-                const geoSetting = await Settings.findOne({ key: settingKey });
-                if (geoSetting) {
-                    try {
-                        const coords = JSON.parse(geoSetting.value);
-                        geoLat = coords.lat;
-                        geoLong = coords.lng;
-                        geoRadius = coords.radius || geoRadius;
-                    } catch (e) {
-                        console.error("Failed to parse geo setting", e);
-                    }
-                }
-            }
-
-            if (geoLat && geoLong) {
-                const { userLat, userLong } = req.body; // Expecting coordinates from frontend
-
-                if (!userLat || !userLong) {
-                    return res.status(403).json({ message: "Location Access Denied. You must enable GPS to check in." });
-                }
-
-                // Haversine Formula for distance in meters
-                const R = 6371e3; // Earth radius in meters
-                const φ1 = geoLat * Math.PI / 180;
-                const φ2 = userLat * Math.PI / 180;
-                const Δφ = (userLat - geoLat) * Math.PI / 180;
-                const Δλ = (userLong - geoLong) * Math.PI / 180;
-
-                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                    Math.cos(φ1) * Math.cos(φ2) *
-                    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-                const distance = R * c; // Distance in meters
-
-                console.log(`[GeoFence] User Distance: ${distance.toFixed(1)}m | Allowed Radius: ${geoRadius}m`);
-
-                if (distance > geoRadius) {
-                    return res.status(403).json({
-                        message: `You are too far from the venue (${distance.toFixed(0)}m away). You must be strictly within ${geoRadius}m to check in.`
-                    });
-                }
+            if (hoursSinceEnd > 48) {
+                return res.status(403).json({ message: 'Attendance window closed. This meeting ended more than 48 hours ago.' });
             }
         }
 
-        // 5. Extract Reg No
+        // 5. Location Check (Geofence)
+        if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !meeting.isTestAccount) {
+            if (!userLat || !userLong) {
+                return res.status(400).json({ message: 'GPS data is required for this meeting. Please enable location.' });
+            }
+
+            const R = 6371e3; // meters
+            const φ1 = (meeting.location.latitude * Math.PI) / 180;
+            const φ2 = (userLat * Math.PI) / 180;
+            const Δφ = ((userLat - meeting.location.latitude) * Math.PI) / 180;
+            const Δλ = ((userLong - meeting.location.longitude) * Math.PI) / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+
+            if (distance > (meeting.location.radius || 200)) {
+                return res.status(403).json({
+                    message: `Location Mismatch: You are too far from ${meeting.location.name}. Please ensure you are at the correct venue.`
+                });
+            }
+        }
+
+        // 6. Extract Reg No
         const data = responses || req.body;
         let rawRegNo = data.studentRegNo || data.regNo || data.admNo;
 
@@ -137,11 +90,10 @@ export const submitAttendance = async (req, res) => {
 
         const studentRegNo = String(rawRegNo).trim().toUpperCase();
 
-        // 6. Device Handcuff Logic (Locking student to one phone)
+        // 7. Device Handcuff Logic (Locking student to one phone)
         let member = await Member.findOne({ studentRegNo });
         if (member) {
             if (!member.linkedDeviceId && deviceId) {
-                // Link the device on first use
                 member.linkedDeviceId = deviceId;
                 await member.save();
             } else if (member.linkedDeviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !member.isTestAccount) {
@@ -151,71 +103,28 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 7. Anti-Proxy Check (One check-in per device per meeting/session)
+        // 8. Anti-Proxy Check (One check-in per device per meeting)
         if (deviceId && !isSuperUser) {
-            let proxyQuery = { meeting: meeting._id, deviceId };
-            if (meeting.isRecurring) {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today);
-                tomorrow.setDate(today.getDate() + 1);
-                proxyQuery.timestamp = { $gte: today, $lt: tomorrow };
-            }
-            const deviceUsed = await Attendance.findOne(proxyQuery);
+            const deviceUsed = await Attendance.findOne({ meeting: meeting._id, deviceId });
             if (deviceUsed) {
-                return res.status(403).json({ message: 'This device has already been used for a check-in for this session.' });
+                return res.status(403).json({ message: 'This device has already been used for a check-in for this meeting.' });
             }
         }
 
-        // 8. One Meeting Per Week Check
-        // Calculate the week range for the current meeting
-        const refDate = meeting.isRecurring ? new Date() : new Date(meeting.date);
-        const dayOfWeekIdx = refDate.getDay(); // 0 (Sun) - 6 (Sat)
-
-        // Assume week starts on Sunday
-        const startOfWeek = new Date(refDate);
-        startOfWeek.setDate(refDate.getDate() - dayOfWeekIdx);
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-
-        // Find any OTHER attendance by this student in this week range
-        const weeklyAttendance = await Attendance.findOne({
-            studentRegNo,
-            timestamp: { $gte: startOfWeek, $lte: endOfWeek },
-            meeting: { $ne: meeting._id } // Not this specific meeting
-        });
-
-        if (weeklyAttendance && !isSuperUser && !meeting.isTestMeeting) {
-            return res.status(409).json({
-                message: `You already checked in for ${weeklyAttendance.meetingName || 'another meeting'} this week. You can only attend one meeting per week!`
-            });
-        }
-
-        // 9. Duplicate check (This meeting/session)
-        let duplicateQuery = { meeting: meeting._id, studentRegNo };
-        if (meeting.isRecurring) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1);
-            duplicateQuery.timestamp = { $gte: today, $lt: tomorrow };
-        }
-        const existing = await Attendance.findOne(duplicateQuery);
+        // 9. Duplicate check (This meeting)
+        const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
         if (existing) {
-            return res.status(409).json({ message: meeting.isRecurring ? "You have already signed in for today's session." : 'You have already signed in for this meeting.' });
+            return res.status(409).json({ message: 'You have already signed in for this meeting.' });
         }
 
-        // 8. Member Registry Lookup
+        // 10. Member Registry Lookup
         if (!member) {
             return res.status(403).json({
                 message: "Access Denied: Your Admission Number is not in the Doulos Registry. Please contact G9s to be added."
             });
         }
 
-        // 9. Record Attendance (Skip if Test Account)
+        // 11. Record Attendance (Skip if Test Account)
         if (!member.isTestAccount) {
             const attendance = new Attendance({
                 meeting: meeting._id,
@@ -224,17 +133,16 @@ export const submitAttendance = async (req, res) => {
                 studentRegNo,
                 memberType: member.memberType,
                 responses: responses || { studentName: data.studentName, studentRegNo },
-                questionOfDay: meeting.questionOfDay,
+                questionOfDay: responses?.dailyQuestionAnswer || '',
                 deviceId
             });
             await attendance.save();
         }
 
-        // 10. Award Points
+        // 12. Award Points
         const showGraduationCongrats = member.needsGraduationCongrats;
 
         if (!member.isTestAccount) {
-            // Only non-test accounts get points incremented
             await Member.findOneAndUpdate({ studentRegNo }, {
                 $inc: { totalPoints: 10 }
             });
@@ -460,6 +368,21 @@ export const manualCheckIn = async (req, res) => {
         const meeting = await Meeting.findById(meetingId);
         if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
 
+        // Security: Lock manual check-in after 24 hours (Bypass for SuperAdmin)
+        const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+        if (!isSuperUser) {
+            const now = new Date();
+            const meetingDate = new Date(meeting.date);
+            const [endH, endM] = meeting.endTime.split(':').map(Number);
+            const meetingEnd = new Date(meetingDate);
+            meetingEnd.setHours(endH, endM, 0, 0);
+            const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
+
+            if (hoursSinceEnd > 48) {
+                return res.status(403).json({ message: 'Manual check-in locked. 48 hours have passed since this meeting ended.' });
+            }
+        }
+
         // Lookup member Registry
         let member = await Member.findOne({ studentRegNo: regNo });
         if (!member) {
@@ -478,8 +401,7 @@ export const manualCheckIn = async (req, res) => {
             campus: meeting.campus,
             studentRegNo: regNo,
             memberType: member.memberType,
-            responses: { studentName: member.name },
-            questionOfDay: meeting.questionOfDay
+            responses: { studentName: member.name }
         });
 
         await attendance.save();
@@ -517,8 +439,24 @@ export const deleteAttendance = async (req, res) => {
 export const toggleExemption = async (req, res) => {
     const { id } = req.params;
     try {
-        const record = await Attendance.findById(id);
+        const record = await Attendance.findById(id).populate('meeting');
         if (!record) return res.status(404).json({ message: 'Record not found' });
+
+        // Security: Lock exemption toggle after 24 hours (Bypass for SuperAdmin)
+        const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+        const meeting = record.meeting;
+        if (!isSuperUser && meeting) {
+            const now = new Date();
+            const meetingDate = new Date(meeting.date);
+            const [endH, endM] = meeting.endTime.split(':').map(Number);
+            const meetingEnd = new Date(meetingDate);
+            meetingEnd.setHours(endH, endM, 0, 0);
+            const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
+
+            if (hoursSinceEnd > 48) {
+                return res.status(403).json({ message: 'Modification locked. 48 hours have passed since this meeting ended.' });
+            }
+        }
 
         record.isExempted = !record.isExempted;
         await record.save();

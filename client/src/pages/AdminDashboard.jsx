@@ -7,7 +7,7 @@ import {
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
     FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText, ListChecks
+    FileText, ListChecks, Settings as SettingsIcon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
@@ -19,9 +19,10 @@ import {
     PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
 
-const MeetingInsights = ({ meeting, onClose, api }) => {
+const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [insightSearch, setInsightSearch] = useState('');
 
     useEffect(() => {
         const fetchInsights = async () => {
@@ -79,6 +80,16 @@ const MeetingInsights = ({ meeting, onClose, api }) => {
 
     const rate = Math.round((stats.presentCount / stats.totalEligible) * 100) || 0;
 
+    const filteredAbsent = stats.absentList.filter(m =>
+        m.name.toLowerCase().includes(insightSearch.toLowerCase()) ||
+        m.studentRegNo.toLowerCase().includes(insightSearch.toLowerCase())
+    );
+
+    const filteredPresent = stats.presentList.filter(a =>
+        (a.responses?.studentName || 'Member').toLowerCase().includes(insightSearch.toLowerCase()) ||
+        a.studentRegNo.toLowerCase().includes(insightSearch.toLowerCase())
+    );
+
     return (
         <div className="glass-panel" style={{
             padding: '2.5rem',
@@ -120,6 +131,57 @@ const MeetingInsights = ({ meeting, onClose, api }) => {
                 </button>
             </div>
 
+            {/* Smart Search Bar */}
+            <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                    <Search
+                        size={18}
+                        style={{
+                            position: 'absolute',
+                            left: '1.25rem',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: 'rgba(255,255,255,0.3)'
+                        }}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Live filter missed members or participants by name or admission number..."
+                        value={insightSearch}
+                        onChange={e => setInsightSearch(e.target.value)}
+                        style={{
+                            width: '100%',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            padding: '1rem 1.5rem 1rem 3.5rem',
+                            borderRadius: '1.25rem',
+                            color: 'white',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            outline: 'none',
+                            transition: 'all 0.3s'
+                        }}
+                    />
+                    {insightSearch && (
+                        <button
+                            onClick={() => setInsightSearch('')}
+                            style={{
+                                position: 'absolute',
+                                right: '1.25rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.3)',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <X size={18} />
+                        </button>
+                    )}
+                </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
                 <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>PRESENCE</div>
@@ -159,17 +221,17 @@ const MeetingInsights = ({ meeting, onClose, api }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Ghost size={20} color="#f87171" />
-                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>MISSED MEMBERS ({stats.absentCount})</h4>
+                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>MISSED MEMBERS ({filteredAbsent.length})</h4>
                         </div>
                     </div>
                     <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
-                        {stats.absentList.length === 0 ? (
+                        {filteredAbsent.length === 0 ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
-                                <h3 style={{ margin: 0, color: '#4ade80' }}>100% Attendance!</h3>
-                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>Every registered member shows up. Outstanding!</p>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '🏆'}</div>
+                                <h3 style={{ margin: 0, color: insightSearch ? 'white' : '#4ade80' }}>{insightSearch ? 'No matches found' : '100% Attendance!'}</h3>
+                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in the missed list.` : 'Every registered member shows up. Outstanding!'}</p>
                             </div>
-                        ) : stats.absentList.map(m => (
+                        ) : filteredAbsent.map(m => (
                             <div key={m._id} style={{
                                 padding: '1.25rem',
                                 background: 'rgba(239, 68, 68, 0.04)',
@@ -183,15 +245,33 @@ const MeetingInsights = ({ meeting, onClose, api }) => {
                                     <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{m.name}</div>
                                     <div style={{ fontSize: '0.8rem', opacity: 0.5, fontWeight: 700 }}>{m.studentRegNo}</div>
                                 </div>
-                                <div style={{
-                                    fontSize: '0.65rem',
-                                    padding: '0.4rem 0.75rem',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    borderRadius: '2rem',
-                                    fontWeight: 900,
-                                    color: '#f87171',
-                                    border: '1px solid rgba(248, 113, 113, 0.2)'
-                                }}>{m.memberType.toUpperCase()}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{
+                                        fontSize: '0.65rem',
+                                        padding: '0.4rem 0.75rem',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        borderRadius: '2rem',
+                                        fontWeight: 900,
+                                        color: '#f87171',
+                                        border: '1px solid rgba(248, 113, 113, 0.2)'
+                                    }}>{m.memberType.toUpperCase()}</div>
+                                    <button
+                                        onClick={() => onQuickCheckIn && onQuickCheckIn(meeting._id, m.studentRegNo)}
+                                        className="btn"
+                                        style={{
+                                            padding: '0.4rem 0.75rem',
+                                            background: '#25AAE1',
+                                            color: 'white',
+                                            fontSize: '0.65rem',
+                                            fontWeight: 900,
+                                            borderRadius: '0.5rem',
+                                            border: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        CHECK IN
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -201,11 +281,17 @@ const MeetingInsights = ({ meeting, onClose, api }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Users size={20} color="#4ade80" />
-                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>PARTICIPANTS ({stats.presentCount})</h4>
+                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>PARTICIPANTS ({filteredPresent.length})</h4>
                         </div>
                     </div>
                     <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
-                        {stats.presentList.map(a => (
+                        {filteredPresent.length === 0 ? (
+                            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '⏳'}</div>
+                                <h3 style={{ margin: 0, color: 'white' }}>{insightSearch ? 'No matches found' : 'No participants yet'}</h3>
+                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in participants.` : 'Waiting for members to check in...'}</p>
+                            </div>
+                        ) : filteredPresent.map(a => (
                             <div key={a._id} style={{
                                 padding: '1.25rem',
                                 background: 'rgba(74, 222, 128, 0.04)',
@@ -264,15 +350,11 @@ const AdminDashboard = () => {
             { label: 'Admission Number', key: 'studentRegNo', required: true }
         ],
         questionOfDay: '',
-        isTestMeeting: false,
-        isRecurring: false,
-        dayOfWeek: 'Monday',
-        secretRoomCode: '',
         location: {
+            name: '',
             latitude: null,
             longitude: null,
-            radius: 200,
-            name: ''
+            radius: 200
         }
     });
     const [msg, setMsg] = useState(null);
@@ -298,8 +380,6 @@ const AdminDashboard = () => {
     const [admins, setAdmins] = useState([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState(null);
-    const [campusGeoSettings, setCampusGeoSettings] = useState({});
-    const [updatingRecurringMeeting, setUpdatingRecurringMeeting] = useState(null); // For quick question update
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
     const [locationSource, setLocationSource] = useState(null); // 'gps' or 'default'
@@ -455,6 +535,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchMeetings();
+        fetchMembers(); // Load members early for quick lookup
     }, []);
 
     useEffect(() => {
@@ -518,6 +599,23 @@ const AdminDashboard = () => {
             setImportLoading(false);
         }
     };
+
+    const handleBulkEnroll = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        if (!window.confirm(`This will automatically ENROLL all members who checked into any meetings assigned to ${currentSem}. Continue?`)) return;
+
+        setImportLoading(true);
+        try {
+            const res = await api.post('/members/bulk-enroll');
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Bulk enrollment failed' });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
 
 
 
@@ -601,8 +699,9 @@ const AdminDashboard = () => {
         const reg = regNoOverride || quickRegNo;
         if (!reg) return;
 
-        // Smart Lookup: Find member in registry
-        const member = members.find(m => m.studentRegNo === reg);
+        // Smart Lookup: Find member in registry (Normalize both sides for robust matching)
+        const normalize = (s) => s?.replace(/\D/g, '') || '';
+        const member = members.find(m => normalize(m.studentRegNo) === normalize(reg));
         const meeting = meetings.find(m => m._id === meetingId);
         let studentName = member ? member.name : null;
 
@@ -654,46 +753,23 @@ const AdminDashboard = () => {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        if (isGuest) {
-            setMsg({ type: 'error', text: 'Creation is disabled in Guest Mode.' });
-            return;
+        if (isGuest) return setMsg({ type: 'error', text: 'Creation disabled in Guest Mode.' });
+
+        // Basic validation for location name
+        if (!formData.location.name) {
+            return setMsg({ type: 'error', text: 'Location name is required.' });
         }
 
-        setMsg(null);
-
-        let dataToSubmit = { ...formData };
-
-        // Strictly enforce campus defaults for recurring meetings
-        if (formData.isRecurring) {
-            const duplicate = meetings.find(m => m.isRecurring && m.campus === formData.campus && m.semester === formData.semester);
-            if (duplicate) {
-                setMsg({ type: 'error', text: `A recurring meeting for ${formData.campus} already exists.` });
-                return;
-            }
-            const defaults = campusGeoSettings[formData.campus];
-            if (defaults) {
-                dataToSubmit.location = {
-                    latitude: defaults.lat,
-                    longitude: defaults.lng,
-                    radius: defaults.radius,
-                    name: defaults.name || `${formData.campus} Campus`
-                };
-            } else {
-                setMsg({ type: 'error', text: `Campus geo-defaults for ${formData.campus} are not configured. Please contact SuperAdmin.` });
-                return;
-            }
-        } else if (!formData.location.latitude || !formData.location.longitude) {
-            setMsg({ type: 'error', text: 'You MUST set the meeting location. Click "Refresh GPS" to capture coordinates.' });
-            return;
-        }
-
+        setImportLoading(true);
         try {
-            await api.post('/meetings', dataToSubmit);
-            setMsg({ type: 'success', text: 'Meeting Created!' });
+            await api.post('/meetings', formData);
+            setMsg({ type: 'success', text: 'Meeting created successfully!' });
             setShowCreate(false);
             fetchMeetings();
         } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create' });
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create meeting' });
+        } finally {
+            setImportLoading(false);
         }
     };
 
@@ -1237,7 +1313,7 @@ const AdminDashboard = () => {
                                 <div class="meeting-meta">
                                     <span>${meeting.campus.toUpperCase()} CAMPUS</span>
                                     <span>•</span>
-                                    <span>${meeting.isRecurring ? `OFFICIAL SEMESTER PASS` : new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                    <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                                 </div>
                             </div>
 
@@ -1263,8 +1339,8 @@ const AdminDashboard = () => {
                                     <p>Open your camera or QR scanner to mark your attendance instantly.</p>
                                 </div>
                                 <div class="meta">
-                                    ${meeting.isRecurring ? 'Semester Attendance QR' : new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
-                                    Doulos Solidarity System
+                                    ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
+                                    Leaders In Service System
                                 </div>
                             </div>
                         </div>
@@ -1369,6 +1445,22 @@ const AdminDashboard = () => {
             fetchMembers();
         } catch (err) {
             setMsg({ type: 'error', text: 'Failed to graduate recruits' });
+        }
+    };
+
+    const handleUndoGraduation = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        if (!window.confirm('⚠️ UNDO GRADUATION ⚠️\n\nThis will revert all recently graduated members back to Recruits. Do you want to proceed?')) return;
+
+        const pwd = prompt('Enter admin password to confirm undo:');
+        if (!pwd) return;
+
+        try {
+            const res = await api.post('/members/undo-graduation', { confirmPassword: pwd });
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to undo graduation' });
         }
     };
 
@@ -1487,19 +1579,7 @@ const AdminDashboard = () => {
                 setCurrentSemester(semRes.data.value);
             }
 
-            // Fetch Campus Geo Defaults
-            const geoSettings = {};
-            try {
-                const athiRes = await api.get('/settings/geo_athi_river');
-                if (athiRes.data?.value) geoSettings['Athi River'] = JSON.parse(athiRes.data.value);
 
-                const valleyRes = await api.get('/settings/geo_valley_road');
-                if (valleyRes.data?.value) geoSettings['Valley Road'] = JSON.parse(valleyRes.data.value);
-
-                setCampusGeoSettings(geoSettings);
-            } catch (err) {
-                console.warn("Failed to fetch geo settings", err);
-            }
         } catch (err) {
             console.error('Failed to fetch settings', err);
         }
@@ -1516,291 +1596,240 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleUpdateQuestion = async (e) => {
-        e.preventDefault();
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        try {
-            await api.patch(`/meetings/${updatingRecurringMeeting._id}`, {
-                questionOfDay: updatingRecurringMeeting.questionOfDay
-            });
-            setMsg({ type: 'success', text: 'Weekly question updated successfully!' });
-            setUpdatingRecurringMeeting(null);
-            fetchMeetings();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to update question' });
-        }
-    };
-
-    useEffect(() => {
-        fetchSettings();
-    }, []);
-
-    const daystarQuestions = [
-        "What is your favorite Bible verse this week?",
-        "Which chapel service has impacted you most recently?",
-        "How can the Doulos family pray for you today?",
-        "What is one thing you are grateful to God for today?",
-        "Which worship song is currently on repeat in your playlist?",
-        "What's the highlight of your walk with Christ this month?",
-        "Share a small victory and a big grace you've experienced this week.",
-        "What are you trusting God for in this current semester?",
-        "How have you seen God's faithfulness in your studies today?",
-        "What does 'Christian Excellence' look like in your department?",
-        "Who has been a sister/brother in Christ to you on campus this week?",
-        "What character trait of Jesus are you focused on emulating right now?",
-        "What is your biggest takeaway from your personal devotions today?",
-        "How has your campus experience shaped your faith journey so far?"
-    ];
-
-    const pickRandomQuestion = () => daystarQuestions[Math.floor(Math.random() * daystarQuestions.length)];
-
-    // Automatic Defaults & Location Setup
+    // Automatic Defaults
     useEffect(() => {
         if (!showCreate) return;
 
-        // Set Date to Today & Day of Week
+        // Set Date to Today
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0];
-        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 
         setFormData(prev => ({
             ...prev,
-            date: dateStr,
-            dayOfWeek: dayName,
-            questionOfDay: prev.questionOfDay || pickRandomQuestion()
+            date: dateStr
         }));
-
-        const applyCampusDefaults = (campus) => {
-            const defaults = campusGeoSettings[campus];
-            if (defaults) {
-                setFormData(prev => ({
-                    ...prev,
-                    location: {
-                        latitude: defaults.lat,
-                        longitude: defaults.lng,
-                        radius: defaults.radius,
-                        name: defaults.name || `${campus} Campus`
-                    }
-                }));
-                setLocationSource('default');
-                return true;
-            }
-            return false;
-        };
-
-        // Prioritize Campus Defaults for a seamless experience
-        const defaultApplied = applyCampusDefaults(formData.campus);
-        if (defaultApplied) return;
-
-        // Fallback to GPS only if no campus default exists
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setFormData(prev => ({
-                        ...prev,
-                        location: {
-                            ...prev.location,
-                            latitude: pos.coords.latitude,
-                            longitude: pos.coords.longitude,
-                            name: prev.location.name || 'Current Venue'
-                        }
-                    }));
-                    setLocationSource('gps');
-                },
-                () => {
-                    setLocationSource('none');
-                }
-            );
-        }
-    }, [showCreate, formData.campus, campusGeoSettings]);
+    }, [showCreate]);
 
     const totalAttendanceCount = meetings.reduce((acc, current) => acc + (current.attendanceCount || 0), 0);
     const activeMeetingsCount = meetings.filter(m => m.isActive).length;
 
-    const renderMeetingCard = (m) => (
-        <div
-            key={m._id}
-            className="glass-panel meeting-card-hover"
-            style={{
-                padding: '1.5rem',
-                position: 'relative',
-                transition: 'all 0.3s ease',
-                border: m.isActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--glass-border)',
-                cursor: 'pointer'
-            }}
-            onClick={() => setInsightMeeting(m)}
-        >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                        <MapPin size={14} /> {m.campus}
+    const renderMeetingCard = (m) => {
+        const now = new Date();
+        const mDate = new Date(m.date);
+        const [h, min] = m.startTime.split(':').map(Number);
+        const mStart = new Date(mDate);
+        mStart.setHours(h, min, 0, 0);
+        const isActuallyLive = m.isActive && now >= mStart;
+
+        return (
+            <div
+                key={m._id}
+                className="glass-panel meeting-card-hover"
+                style={{
+                    padding: '1.5rem',
+                    position: 'relative',
+                    transition: 'all 0.3s ease',
+                    border: isActuallyLive ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid var(--glass-border)',
+                    cursor: 'pointer',
+                    boxShadow: isActuallyLive ? '0 0 20px rgba(74, 222, 128, 0.1)' : 'none'
+                }}
+                onClick={() => setInsightMeeting(m)}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                            <MapPin size={14} /> {m.campus}
+                        </div>
                     </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                    <div style={{ padding: '0.5rem', background: m.isActive ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: m.isActive ? '#4ade80' : 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
-                        {m.isActive ? '• LIVE NOW' : '• COMPLETED'}
-                    </div>
-                    {(m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        {(() => {
+                            if (!m.isActive) return (
+                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
+                                    • COMPLETED
+                                </div>
+                            );
+
+                            const now = new Date();
+                            const mDate = new Date(m.date);
+                            const [h, min] = m.startTime.split(':').map(Number);
+                            const mStart = new Date(mDate);
+                            mStart.setHours(h, min, 0, 0);
+
+                            const isFuture = now < mStart;
+                            const isToday = now.toDateString() === mDate.toDateString();
+
+                            if (isFuture) {
+                                return (
+                                    <div style={{
+                                        padding: '0.5rem 0.8rem',
+                                        background: isToday ? 'rgba(59, 130, 246, 0.1)' : 'rgba(124, 58, 237, 0.05)',
+                                        borderRadius: '2rem',
+                                        color: isToday ? '#3b82f6' : '#a78bfa',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        border: `1px solid ${isToday ? 'rgba(59, 130, 246, 0.2)' : 'rgba(124, 58, 237, 0.1)'}`
+                                    }}>
+                                        • {isToday ? 'STANDBY / UPCOMING' : 'SCHEDULED'}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div style={{ padding: '0.5rem', background: 'rgba(74, 222, 128, 0.1)', borderRadius: '2rem', color: '#4ade80', fontSize: '0.7rem', fontWeight: 800 }}>
+                                    • LIVE NOW
+                                </div>
+                            );
+                        })()}
+                        {(m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedMeeting(m);
+                                }}
+                                className="btn"
+                                style={{
+                                    padding: '0.5rem 0.75rem',
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#3b82f6',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 800,
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                                }}
+                                title="QR Code"
+                            >
+                                <QrIcon size={18} />
+                            </button>
+                        )}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedMeeting(m);
+                                setInsightMeeting(m);
                             }}
                             className="btn"
                             style={{
                                 padding: '0.5rem 0.75rem',
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                color: '#3b82f6',
+                                background: 'rgba(124, 58, 237, 0.1)',
+                                color: 'hsl(var(--color-primary))',
                                 fontSize: '0.75rem',
                                 fontWeight: 800,
                                 borderRadius: '0.5rem',
-                                border: '1px solid rgba(59, 130, 246, 0.2)',
-                            }}
-                            title="QR Code"
-                        >
-                            <QrIcon size={18} />
-                        </button>
-                    )}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setInsightMeeting(m);
-                        }}
-                        className="btn"
-                        style={{
-                            padding: '0.5rem 0.75rem',
-                            background: 'rgba(124, 58, 237, 0.1)',
-                            color: 'hsl(var(--color-primary))',
-                            fontSize: '0.75rem',
-                            fontWeight: 800,
-                            borderRadius: '0.5rem',
-                            border: '1px solid rgba(124, 58, 237, 0.2)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem'
-                        }}
-                    >
-                        <BarChart3 size={14} /> Insights
-                    </button>
-                    {m.isRecurring && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setUpdatingRecurringMeeting({ ...m });
-                            }}
-                            className="btn"
-                            style={{
-                                padding: '0.5rem 0.75rem',
-                                background: 'rgba(250, 204, 21, 0.1)',
-                                color: '#facc15',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                borderRadius: '0.5rem',
-                                border: '1px solid rgba(250, 204, 21, 0.2)',
+                                border: '1px solid rgba(124, 58, 237, 0.2)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.3rem'
+                                gap: '0.4rem'
                             }}
                         >
-                            <FileText size={14} /> Update Question
+                            <BarChart3 size={14} /> Insights
+                        </button>
+
+
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                        <Calendar size={14} /> {new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                        <Clock size={14} /> {m.startTime} - {m.endTime}
+                    </div>
+                </div>
+
+                {
+                    (m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <div style={{ position: 'relative', flex: 1 }}>
+                                <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)', opacity: 0.5 }} />
+                                <input
+                                    className="input-field"
+                                    placeholder="Search Name / Reg No"
+                                    list="members-search"
+                                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem 0.4rem 2.2rem' }}
+                                    value={quickRegNo}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setQuickRegNo(val);
+                                    }}
+                                />
+                            </div>
+                            <button
+                                className="btn"
+                                style={{ padding: '0.4rem 0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', border: '1px solid var(--glass-border)' }}
+                                onClick={() => handleLookupMemberInsights(quickRegNo)}
+                                title="Lookup Member History"
+                            >
+                                <Search size={16} />
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
+                                onClick={() => handleQuickCheckIn(m._id)}
+                                disabled={quickCheckInLoading}
+                                title="Manual Check-In"
+                            >
+                                {quickCheckInLoading ? '...' : <Plus size={16} />}
+                            </button>
+                        </div>
+                    )
+                }
+
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {m.isActive && (
+                        <button
+                            className="btn"
+                            style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
+                            onClick={() => {
+                                const now = new Date();
+                                const [startH, startM] = m.startTime.split(':').map(Number);
+                                const [endH, endM] = m.endTime.split(':').map(Number);
+
+                                const start = new Date(m.date);
+                                start.setHours(startH, startM, 0, 0);
+
+                                const end = new Date(m.date);
+                                end.setHours(endH, endM, 0, 0);
+
+                                // Use state 'userRole' which is initialized from localStorage
+                                const role = userRole || localStorage.getItem('role');
+                                const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
+
+                                const isWithinTime = now >= start && now <= end;
+
+                                if (isSuperUser || isWithinTime) {
+                                    setSelectedMeeting(m);
+                                } else {
+                                    // Developer Mode: Skip Time Restrictions
+                                    if (window.confirm(`⚠️ Time Restriction ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code anyway?`)) {
+                                        setSelectedMeeting(m);
+                                    }
+                                }
+                            }}
+                        >
+                            <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
                         </button>
                     )}
-
-                </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                    <Calendar size={14} /> {new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                    <Clock size={14} /> {m.startTime} - {m.endTime}
-                </div>
-            </div>
-
-            {
-                (m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
-                    <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
-                        <input
-                            className="input-field"
-                            placeholder="e.g. 22-0000"
-                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-                            value={quickRegNo}
-                            onChange={e => {
-                                let val = e.target.value.replace(/\D/g, '');
-                                if (val.length > 2) {
-                                    val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                }
-                                setQuickRegNo(val);
-                            }}
-                        />
+                    <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
+                        View Attendance
+                    </button>
+                    <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                        <Pencil size={16} />
+                    </button>
+                    {['developer', 'superadmin'].includes(userRole) && (
                         <button
-                            className="btn btn-primary"
-                            style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
-                            onClick={() => handleQuickCheckIn(m._id)}
-                            disabled={quickCheckInLoading}
+                            className="btn"
+                            style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
+                            onClick={() => handleDeleteMeeting(m._id, m.name)}
+                            title="Delete Meeting (Requires password)"
                         >
-                            {quickCheckInLoading ? '...' : <Plus size={16} />}
+                            <Trash2 size={16} />
                         </button>
-                    </div>
-                )
-            }
-
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                {m.isActive && (
-                    <button
-                        className="btn"
-                        style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
-                        onClick={() => {
-                            const now = new Date();
-                            const [startH, startM] = m.startTime.split(':').map(Number);
-                            const [endH, endM] = m.endTime.split(':').map(Number);
-
-                            const start = new Date(m.date);
-                            start.setHours(startH, startM, 0, 0);
-
-                            const end = new Date(m.date);
-                            end.setHours(endH, endM, 0, 0);
-
-                            // Use state 'userRole' which is initialized from localStorage
-                            const role = userRole || localStorage.getItem('role');
-                            const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
-
-                            const isWithinTime = now >= start && now <= end;
-
-                            if (isSuperUser || isWithinTime) {
-                                setSelectedMeeting(m);
-                            } else {
-                                // Developer Mode: Skip Time Restrictions
-                                if (window.confirm(`⚠️ Time Restriction ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code anyway?`)) {
-                                    setSelectedMeeting(m);
-                                }
-                            }
-                        }}
-                    >
-                        <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
-                    </button>
-                )}
-                <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
-                    View Attendance
-                </button>
-                <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
-                    <Pencil size={16} />
-                </button>
-                {['developer', 'superadmin'].includes(userRole) && (
-                    <button
-                        className="btn"
-                        style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
-                        onClick={() => handleDeleteMeeting(m._id, m.name)}
-                        title="Delete Meeting (Requires password)"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                )}
+                    )}
+                </div>
             </div>
-        </div >
-    );
+        );
+    };
 
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
@@ -2086,208 +2115,64 @@ const AdminDashboard = () => {
                                             <option value="SEP-DEC 2026">SEP-DEC 2026</option>
                                         </select>
                                     </div>
-
-                                    {/* Recurring Option - SuperAdmin Only */}
-                                    {['superadmin', 'developer'].includes(userRole) && (
-                                        <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(250,204,21,0.05)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid rgba(250,204,21,0.1)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    id="isRecurring"
-                                                    checked={formData.isRecurring}
-                                                    onChange={e => setFormData({ ...formData, isRecurring: e.target.checked })}
-                                                    style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
-                                                />
-                                                <label htmlFor="isRecurring" style={{ cursor: 'pointer', margin: 0, fontWeight: 700, color: '#facc15' }}>
-                                                    Make this a Recurring Semester Meeting (One QR for the whole semester)
-                                                </label>
-                                            </div>
-                                            {formData.isRecurring && (
-                                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', animation: 'fadeIn 0.3s' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Repeat every:</label>
-                                                        <select className="input-field" value={formData.dayOfWeek} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
-                                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                                                                <option key={day} value={day}>{day}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div style={{ flex: 2 }}>
-                                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                                                            * Students will only be able to scan between <strong>{formData.startTime}</strong> and <strong>{formData.endTime}</strong> every <strong>{formData.dayOfWeek}</strong>.
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#facc15', textTransform: 'uppercase', letterSpacing: '1px' }}>Weekly Dynamic Content</span>
-                                    </div>
                                     <div style={{ gridColumn: '1 / -1' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <label>Question of the Day (Auto-generated)</label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, questionOfDay: pickRandomQuestion() })}
-                                                style={{ background: 'transparent', border: 'none', color: '#facc15', fontSize: '0.7rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                                            >
-                                                <RotateCcw size={12} /> Regenerate Idea
-                                            </button>
-                                        </div>
-                                        <input
-                                            placeholder="e.g. What are you grateful for today?"
+                                        <label>Question of the Day</label>
+                                        <textarea
                                             className="input-field"
+                                            style={{ width: '100%', minHeight: '60px' }}
                                             value={formData.questionOfDay}
                                             onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
+                                            placeholder="e.g. What are you most grateful for this week?"
                                         />
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '0.3rem' }}>
-                                            This question will appear on the student check-in form.
-                                        </p>
-                                    </div>
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(37, 170, 225, 0.1)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                                            <input
-                                                type="checkbox"
-                                                id="testMode"
-                                                checked={formData.isTestMeeting}
-                                                onChange={e => setFormData({ ...formData, isTestMeeting: e.target.checked })}
-                                                style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
-                                            />
-                                            <label htmlFor="testMode" style={{ cursor: 'pointer', margin: 0, color: '#25AAE1', fontWeight: 600 }}>
-                                                Developer Mode: Skip Time Restrictions
-                                            </label>
-                                        </div>
-                                    )}
-
-
-
-
-
-
-                                    {/* Dynamic Fields Section */}
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                            <label style={{ fontWeight: 'bold' }}>Student Form Fields</label>
-                                            <button type="button" className="btn" onClick={addField} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}>+ Add Field</button>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            {formData.requiredFields.map((field, index) => (
-                                                <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                    <input
-                                                        placeholder="Label (e.g. Department)"
-                                                        className="input-field"
-                                                        value={field.label}
-                                                        onChange={e => updateField(index, 'label', e.target.value)}
-                                                        style={{ flex: 2 }}
-                                                        required
-                                                    />
-                                                    <input
-                                                        placeholder="Key (slug)"
-                                                        className="input-field"
-                                                        value={field.key}
-                                                        onChange={e => updateField(index, 'key', e.target.value)}
-                                                        style={{ flex: 1, fontSize: '0.8rem', opacity: 0.7 }}
-                                                        required
-                                                    />
-                                                    <button type="button" onClick={() => removeField(index)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', marginTop: '0.5rem' }}>
-                                            * Use "Admission Number" (key: studentRegNo) for unique check-ins (Format: 00-0000).
-                                        </p>
                                     </div>
 
-                                    {/* Location Settings - Prioritize Clean System View */}
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-                                        {locationSource === 'default' && !formData.showManualLocation ? (
-                                            <div style={{ background: 'rgba(74, 222, 128, 0.05)', padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(74, 222, 128, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <div style={{ padding: '0.75rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', borderRadius: '50%' }}>
-                                                        <MapPin size={24} />
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '1px' }}>Official Campus Venue Active</div>
-                                                        <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{formData.location.name}</div>
-                                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>Locked to SuperAdmin coordinates for {formData.campus}</div>
-                                                    </div>
-                                                </div>
-                                                {!formData.isRecurring && (
-                                                    <button
-                                                        type="button"
-                                                        className="btn"
-                                                        style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem', opacity: 0.7 }}
-                                                        onClick={() => setFormData({ ...formData, showManualLocation: true })}
-                                                    >
-                                                        Manual Override
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div style={{ animation: 'fadeIn 0.4s' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <label style={{ fontWeight: 'bold' }}>Geo-Location Security {formData.isRecurring ? '(Locked)' : '(Manual Capture)'}</label>
-                                                        {locationSource === 'gps' && <span style={{ color: '#4ade80', fontSize: '0.7rem', fontWeight: 600 }}>📍 LIVE GPS CAPTURE ACTIVE</span>}
-                                                        {locationSource === 'default' && <span style={{ color: '#facc15', fontSize: '0.7rem', fontWeight: 600 }}>📍 USING CAMPUS BASE SETTINGS</span>}
-                                                    </div>
-                                                    {!formData.isRecurring && (
-                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                            <button
-                                                                type="button"
-                                                                className="btn"
-                                                                style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1' }}
-                                                                onClick={() => {
-                                                                    navigator.geolocation.getCurrentPosition((pos) => {
-                                                                        setFormData({
-                                                                            ...formData,
-                                                                            location: { ...formData.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude }
-                                                                        });
-                                                                        setLocationSource('gps');
-                                                                    });
-                                                                }}
-                                                            >
-                                                                Refresh GPS
-                                                            </button>
-                                                            {locationSource === 'default' && (
-                                                                <button type="button" className="btn" style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }} onClick={() => setFormData({ ...formData, showManualLocation: false })}>
-                                                                    Cancel
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
-                                                    <div>
-                                                        <label style={{ fontSize: '0.75rem' }}>Location Name (e.g. SRC Room)</label>
-                                                        <input
-                                                            className="input-field"
-                                                            value={formData.location.name}
-                                                            onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })}
-                                                            placeholder="e.g. Athi River Chapel"
-                                                            disabled={formData.isRecurring}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '0.75rem' }}>Radius (meters)</label>
-                                                        <input
-                                                            type="number"
-                                                            className="input-field"
-                                                            value={formData.location.radius}
-                                                            onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })}
-                                                            disabled={formData.isRecurring}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {formData.isRecurring && (
-                                                    <p style={{ fontSize: '0.75rem', color: '#4ade80', marginTop: '0.75rem', fontWeight: 600 }}>
-                                                        <Check size={14} /> Recurring meetings are locked to campus defaults for semester-long QR validity.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '1px' }}>Location Settings</span>
                                     </div>
+
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label>Location Name</label>
+                                        <input className="input-field" value={formData.location.name} onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })} placeholder="e.g. Daystar University, Athi River Chapel" required />
+                                    </div>
+
+                                    <div style={{ position: 'relative' }}>
+                                        <label>Latitude</label>
+                                        <input type="number" step="any" className="input-field" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.2345" />
+                                    </div>
+                                    <div>
+                                        <label>Longitude</label>
+                                        <input type="number" step="any" className="input-field" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="36.7890" />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <button
+                                            type="button"
+                                            className="btn"
+                                            onClick={() => {
+                                                if (navigator.geolocation) {
+                                                    navigator.geolocation.getCurrentPosition(pos => {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            location: {
+                                                                ...prev.location,
+                                                                latitude: pos.coords.latitude,
+                                                                longitude: pos.coords.longitude
+                                                            }
+                                                        }));
+                                                    });
+                                                }
+                                            }}
+                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                        >
+                                            <MapPin size={16} style={{ marginRight: '8px' }} /> Use Current GPS Position
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label>Geofence Radius (meters)</label>
+                                        <input type="number" className="input-field" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} />
+                                    </div>
+
+
 
                                     <div style={{ gridColumn: '1 / -1', marginTop: '1rem' }}>
                                         <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>Create Meeting</button>
@@ -2482,6 +2367,9 @@ const AdminDashboard = () => {
                                 </div>
 
                                 <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                    <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleBulkEnroll} title="Enroll everyone who has attended a meeting this semester">
+                                        <CheckCircle size={14} style={{ marginRight: '0.4rem' }} /> Bulk Enroll
+                                    </button>
                                     <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
                                         <RotateCcw size={14} style={{ marginRight: '0.4rem' }} /> Sync
                                     </button>
@@ -2498,6 +2386,12 @@ const AdminDashboard = () => {
                                                 </button>
                                             )}
                                         </>
+                                    )}
+                                    {memberTypeFilter === 'Douloid' && (
+                                        <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            onClick={handleUndoGraduation} title="Undo recently graduated recruits (revert to Recruit)">
+                                            <RotateCcw size={16} /> Undo Graduation
+                                        </button>
                                     )}
                                     {['developer', 'superadmin'].includes(userRole) && (
                                         <>
@@ -3201,40 +3095,7 @@ const AdminDashboard = () => {
                         </div>
                     )}
 
-                {/* Quick Question Update Modal for Recurring Meetings */}
-                {updatingRecurringMeeting && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
-                    }} onClick={() => setUpdatingRecurringMeeting(null)}>
-                        <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h3 style={{ margin: 0 }}>Update Weekly Question</h3>
-                                <button className="btn" onClick={() => setUpdatingRecurringMeeting(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Change the question students see when checking in to <strong>{updatingRecurringMeeting.name}</strong> this week.</p>
-                            <form onSubmit={handleUpdateQuestion}>
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Question of the Day</label>
-                                    <textarea
-                                        className="input-field"
-                                        style={{ width: '100%', minHeight: '100px', resize: 'vertical' }}
-                                        value={updatingRecurringMeeting.questionOfDay}
-                                        onChange={e => setUpdatingRecurringMeeting({ ...updatingRecurringMeeting, questionOfDay: e.target.value })}
-                                        placeholder="e.g. What is your highlight of the week?"
-                                        required
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Update Question</button>
-                                    <button type="button" className="btn" style={{ flex: 1 }} onClick={() => setUpdatingRecurringMeeting(null)}>Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Edit Admin Modal */}
                 {editingAdmin && (
@@ -3298,6 +3159,26 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
+                {/* Meeting Insights Modal */}
+                {insightMeeting && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
+                    }}>
+                        <div style={{ width: '100%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto' }}>
+                            <MeetingInsights
+                                meeting={insightMeeting}
+                                onClose={() => setInsightMeeting(null)}
+                                api={api}
+                                onQuickCheckIn={async (mid, reg) => {
+                                    await handleQuickCheckIn(mid, reg);
+                                    // Refresh insights after manual checkin
+                                    setInsightMeeting({ ...insightMeeting });
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
                 {/* Edit Meeting Modal */}
                 {
                     editingMeeting && (
@@ -3376,15 +3257,7 @@ const AdminDashboard = () => {
                                                 />
                                             </div>
                                         </div>
-                                        <div>
-                                            <label>Question Of The Day</label>
-                                            <input
-                                                className="input-field"
-                                                value={editingMeeting.questionOfDay || ''}
-                                                onChange={e => setEditingMeeting({ ...editingMeeting, questionOfDay: e.target.value })}
-                                                placeholder="e.g. What are you grateful for?"
-                                            />
-                                        </div>
+
                                         <div>
                                             <label>Reporting Semester</label>
                                             <select className="input-field" value={editingMeeting.semester || 'JAN-APR 2026'} onChange={e => setEditingMeeting({ ...editingMeeting, semester: e.target.value })}>
@@ -3392,6 +3265,61 @@ const AdminDashboard = () => {
                                                 <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                                 <option value="SEP-DEC 2026">SEP-DEC 2026</option>
                                             </select>
+                                        </div>
+
+                                        <div>
+                                            <label>Question of the Day</label>
+                                            <textarea
+                                                className="input-field"
+                                                rows="2"
+                                                value={editingMeeting.questionOfDay || ''}
+                                                onChange={e => setEditingMeeting({ ...editingMeeting, questionOfDay: e.target.value })}
+                                                placeholder="e.g. What are you grateful for?"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label>Location Name</label>
+                                            <input
+                                                className="input-field"
+                                                value={editingMeeting.location?.name || ''}
+                                                onChange={e => setEditingMeeting({
+                                                    ...editingMeeting,
+                                                    location: { ...(editingMeeting.location || {}), name: e.target.value }
+                                                })}
+                                                placeholder="Venue Name"
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label>Latitude</label>
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    className="input-field"
+                                                    value={editingMeeting.location?.latitude || ''}
+                                                    onChange={e => setEditingMeeting({
+                                                        ...editingMeeting,
+                                                        location: { ...(editingMeeting.location || {}), latitude: parseFloat(e.target.value) }
+                                                    })}
+                                                    placeholder="-1.2345"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label>Longitude</label>
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    className="input-field"
+                                                    value={editingMeeting.location?.longitude || ''}
+                                                    onChange={e => setEditingMeeting({
+                                                        ...editingMeeting,
+                                                        location: { ...(editingMeeting.location || {}), longitude: parseFloat(e.target.value) }
+                                                    })}
+                                                    placeholder="36.7890"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -3433,94 +3361,7 @@ const AdminDashboard = () => {
                                         <button type="button" className="btn" onClick={() => setEditingMeeting(null)} style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Cancel</button>
                                     </div>
 
-                                    {/* Location Settings */}
-                                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
-                                        <h4 style={{ marginBottom: '1rem' }}>Geo-Location Security</h4>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '1rem' }}>
-                                                Set the allowed check-in zone to your current location.
-                                                Students must be within <strong>{editingMeeting.location?.radius || 200} meters</strong> of this point.
-                                            </p>
 
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <label style={{ fontSize: '0.8rem' }}>Location Name</label>
-                                                    <input
-                                                        className="input-field"
-                                                        value={editingMeeting.location?.name || ''}
-                                                        onChange={e => setEditingMeeting({
-                                                            ...editingMeeting,
-                                                            location: { ...editingMeeting.location, name: e.target.value }
-                                                        })}
-                                                        placeholder="e.g. Athi River Chapel"
-                                                    />
-                                                </div>
-                                                <div style={{ width: '100px' }}>
-                                                    <label style={{ fontSize: '0.8rem' }}>Radius (m)</label>
-                                                    <input
-                                                        type="number"
-                                                        className="input-field"
-                                                        value={editingMeeting.location?.radius || ''}
-                                                        onChange={e => {
-                                                            const val = e.target.value;
-                                                            setEditingMeeting({
-                                                                ...editingMeeting,
-                                                                location: { ...editingMeeting.location, radius: val === '' ? '' : parseInt(val) }
-                                                            });
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (!navigator.geolocation) {
-                                                        setMsg({ type: 'error', text: 'Geolocation is not supported by your browser' });
-                                                        return;
-                                                    }
-                                                    navigator.geolocation.getCurrentPosition(
-                                                        async (position) => {
-                                                            const { latitude, longitude } = position.coords;
-                                                            try {
-                                                                await api.post(`/meetings/${editingMeeting._id}/location`, {
-                                                                    latitude,
-                                                                    longitude,
-                                                                    radius: editingMeeting.location?.radius || 200,
-                                                                    name: editingMeeting.location?.name || 'My Current Location'
-                                                                });
-                                                                setMsg({ type: 'success', text: 'Location updated to your current position!' });
-                                                                fetchMeetings();
-                                                                setEditingMeeting(null);
-                                                            } catch (err) {
-                                                                setMsg({ type: 'error', text: 'Failed to update location' });
-                                                            }
-                                                        },
-                                                        (err) => {
-                                                            setMsg({ type: 'error', text: 'Could not get your location. Allow permission.' });
-                                                        }
-                                                    );
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    width: '100%',
-                                                    background: 'rgba(37, 170, 225, 0.1)',
-                                                    color: '#25AAE1',
-                                                    border: '1px solid rgba(37, 170, 225, 0.2)',
-                                                    display: 'flex',
-                                                    justifyContent: 'center',
-                                                    alignItems: 'center',
-                                                    gap: '0.5rem'
-                                                }}>
-                                                <MapPin size={16} /> Mark Current Location
-                                            </button>
-                                            {editingMeeting.location && editingMeeting.location.latitude && (
-                                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#4ade80', textAlign: 'center' }}>
-                                                    Check-in Allowed Nearby: {editingMeeting.location.name || 'Set Location'}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
                                 </form>
                             </div>
                         </div>
@@ -3868,12 +3709,13 @@ const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
         Object.keys(responses).forEach(k => {
             if (k !== 'dailyQuestionAnswer') allKeys.add(k);
         });
-        if (r.questionOfDay) sampleQuestion = r.questionOfDay;
+        if (r.questionOfDay && !sampleQuestion) sampleQuestion = r.questionOfDay;
     });
 
+    const hasDailyQuestion = records.some(r => r.questionOfDay);
+
     const headers = Array.from(allKeys);
-    // Add Daily Question to the end if any record has a question
-    const hasDailyQuestion = records.some(r => r.responses?.dailyQuestionAnswer);
+
 
     // Filtering logic
     const filteredRecords = records.filter(r => {
@@ -3919,6 +3761,7 @@ const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
                                         {h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                                     </th>
                                 ))}
+
                                 {hasDailyQuestion && (
                                     <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)', minWidth: '200px' }}>
                                         Question of the Day
@@ -3949,9 +3792,10 @@ const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
                                                 {responses[h] || '-'}
                                             </td>
                                         ))}
+
                                         {hasDailyQuestion && (
-                                            <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#a78bfa' }}>
-                                                {responses.dailyQuestionAnswer || '-'}
+                                            <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#a78bfa', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                {r.questionOfDay || r.responses?.dailyQuestionAnswer || '-'}
                                             </td>
                                         )}
                                         <td style={{ padding: '1rem' }}>
@@ -4270,124 +4114,80 @@ const FeedbackView = ({ isGuest }) => {
 };
 
 const SystemView = ({ onUpdateSetting, isGuest }) => {
-    const [athiRiver, setAthiRiver] = useState({ lat: -1.4481, lng: 37.0097, radius: 200, name: 'Main Campus' });
-    const [valleyRoad, setValleyRoad] = useState({ lat: -1.2917, lng: 36.8066, radius: 200, name: 'Nairobi Campus' });
+    const [semester, setSemester] = useState('JAN-APR 2026');
+    const [guestAccess, setGuestAccess] = useState('true');
+    const [waLink, setWaLink] = useState('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchGeo = async () => {
+        const fetchSettings = async () => {
             setLoading(true);
             try {
-                const athiRes = await api.get('/settings/geo_athi_river');
-                if (athiRes.data?.value) setAthiRiver(JSON.parse(athiRes.data.value));
-
-                const valleyRes = await api.get('/settings/geo_valley_road');
-                if (valleyRes.data?.value) setValleyRoad(JSON.parse(valleyRes.data.value));
+                const [semRes, guestRes, waRes] = await Promise.all([
+                    api.get('/settings/current_semester'),
+                    api.get('/settings/guest_features'),
+                    api.get('/settings/whatsapp_link')
+                ]);
+                if (semRes.data?.value) setSemester(semRes.data.value);
+                if (guestRes.data?.value) setGuestAccess(guestRes.data.value);
+                if (waRes.data?.value) setWaLink(waRes.data.value);
             } catch (err) {
-                console.error("Failed to fetch geo settings", err);
+                console.error("Failed to fetch system settings", err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchGeo();
+        fetchSettings();
     }, []);
-
-    const saveGeo = async (campus, data) => {
-        const key = `geo_${campus.toLowerCase().replace(/ /g, '_')}`;
-        await onUpdateSetting(key, JSON.stringify(data));
-    };
-
-    const handleCaptureLocation = (campus) => {
-        if (!navigator.geolocation) return alert("Geolocation is not supported by your browser");
-
-        navigator.geolocation.getCurrentPosition((pos) => {
-            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            if (campus === 'Athi River') {
-                setAthiRiver(prev => ({ ...prev, ...coords }));
-            } else {
-                setValleyRoad(prev => ({ ...prev, ...coords }));
-            }
-        }, (err) => {
-            alert("Failed to capture location: " + err.message);
-        });
-    };
 
     if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading System Configurations...</div>;
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s' }}>
-            <div className="glass-panel" style={{ padding: '2.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
+            <div className="glass-panel" style={{ padding: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                     <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '1rem' }}>
-                        <ShieldAlert size={32} />
+                        <SettingsIcon size={32} />
                     </div>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Campus Geo-Fencing (SuperAdmin Only)</h2>
-                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)' }}>Configure base coordinates for campus locations. These are used by default for recurring semester meetings.</p>
+                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Global Settings</h2>
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)' }}>Configure system-wide parameters and access controls.</p>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-                    {/* Athi River */}
-                    <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Athi River Campus</h3>
-                            <button className="btn" onClick={() => handleCaptureLocation('Athi River')} style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}>
-                                <MapPin size={14} style={{ marginRight: '0.3rem' }} /> Set to Current Location
-                            </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Location Name (e.g. Amphitheatre)</label>
-                                <input className="input-field" placeholder="e.g. PAC Amphitheatre" value={athiRiver.name} onChange={e => setAthiRiver({ ...athiRiver, name: e.target.value })} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Latitude</label>
-                                <input className="input-field" type="number" step="any" value={athiRiver.lat} onChange={e => setAthiRiver({ ...athiRiver, lat: parseFloat(e.target.value) })} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Longitude</label>
-                                <input className="input-field" type="number" step="any" value={athiRiver.lng} onChange={e => setAthiRiver({ ...athiRiver, lng: parseFloat(e.target.value) })} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Default Radius (m)</label>
-                                <input className="input-field" type="number" value={athiRiver.radius} onChange={e => setAthiRiver({ ...athiRiver, radius: parseInt(e.target.value) })} />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => saveGeo('Athi River', athiRiver)}>Update Athi River</button>
-                            </div>
-                        </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                    {/* Active Semester */}
+                    <div className="input-group">
+                        <label>Active Tracking Semester</label>
+                        <input
+                            className="input-field"
+                            value={semester}
+                            onChange={(e) => setSemester(e.target.value)}
+                            placeholder="JAN-APR 2026"
+                        />
+                        <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('current_semester', semester)}>Update Semester</button>
                     </div>
 
-                    {/* Valley Road */}
-                    <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Valley Road (Nairobi)</h3>
-                            <button className="btn" onClick={() => handleCaptureLocation('Valley Road')} style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}>
-                                <MapPin size={14} style={{ marginRight: '0.3rem' }} /> Set to Current Location
-                            </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Location Name (e.g. DAC Hall)</label>
-                                <input className="input-field" placeholder="e.g. DAC 201" value={valleyRoad.name} onChange={e => setValleyRoad({ ...valleyRoad, name: e.target.value })} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Latitude</label>
-                                <input className="input-field" type="number" step="any" value={valleyRoad.lat} onChange={e => setValleyRoad({ ...valleyRoad, lat: parseFloat(e.target.value) })} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Longitude</label>
-                                <input className="input-field" type="number" step="any" value={valleyRoad.lng} onChange={e => setValleyRoad({ ...valleyRoad, lng: parseFloat(e.target.value) })} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>Default Radius (m)</label>
-                                <input className="input-field" type="number" value={valleyRoad.radius} onChange={e => setValleyRoad({ ...valleyRoad, radius: parseInt(e.target.value) })} />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => saveGeo('Valley Road', valleyRoad)}>Update Valley Road</button>
-                            </div>
-                        </div>
+                    {/* WhatsApp Support Link */}
+                    <div className="input-group">
+                        <label>G9 Group/Support Link</label>
+                        <input
+                            className="input-field"
+                            value={waLink}
+                            onChange={(e) => setWaLink(e.target.value)}
+                            placeholder="https://chat.whatsapp.com/..."
+                        />
+                        <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('whatsapp_link', waLink)}>Update Link</button>
+                    </div>
+
+                    {/* Guest Mode */}
+                    <div className="input-group">
+                        <label>Public Guest Access</label>
+                        <select className="input-field" value={guestAccess} onChange={(e) => setGuestAccess(e.target.value)}>
+                            <option value="true">Enabled (Allow Guest Link on Login)</option>
+                            <option value="false">Disabled (Private Only)</option>
+                        </select>
+                        <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('guest_features', guestAccess)}>Update Policy</button>
                     </div>
                 </div>
             </div>

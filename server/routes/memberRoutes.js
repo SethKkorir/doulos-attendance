@@ -1,10 +1,11 @@
 import express from 'express';
 import {
     getMembers, importMembers, updateMember, createMember, addPoints,
-    syncMembersFromAttendance, graduateAllRecruits, setupTestAccount,
+    syncMembersFromAttendance, graduateAllRecruits, undoGraduation, setupTestAccount,
     resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock,
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
-    enrollMember, archiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos
+    enrollMember, archiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos,
+    bulkEnrollFromAttendance
 } from '../controllers/memberController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -14,7 +15,9 @@ router.get('/', verifyAdmin, getMembers);
 router.post('/', verifyAdmin, createMember);
 router.post('/import', verifyAdmin, importMembers);
 router.post('/sync', verifyAdmin, syncMembersFromAttendance);
+router.post('/bulk-enroll', verifyAdmin, bulkEnrollFromAttendance);
 router.post('/graduate-all', verifyAdmin, graduateAllRecruits);
+router.post('/undo-graduation', verifyAdmin, undoGraduation);
 router.post('/reset-all-points', verifyAdmin, resetAllMemberPoints);
 router.post('/setup-test-account', verifyAdmin, setupTestAccount);
 router.post('/enroll', enrollMember);

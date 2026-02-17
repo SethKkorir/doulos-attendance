@@ -618,8 +618,9 @@ const StudentPortal = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
                         {/* Welcome Banner */}
-                        <div className="glass-panel" style={{
+                        <div className="glass-panel welcome-banner" style={{
                             padding: '2.5rem', position: 'relative', overflow: 'hidden',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             background: 'linear-gradient(135deg, hsl(206, 80%, 20%) 0%, hsl(206, 80%, 15%) 100%)',
                             border: '1px solid var(--glass-border)'
                         }}>
@@ -662,7 +663,7 @@ const StudentPortal = () => {
                         {data.alerts && data.alerts.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {data.alerts.map((alert, i) => (
-                                    <div key={i} className="glass-panel" style={{
+                                    <div key={i} className="glass-panel alert-card" style={{
                                         padding: '1.25rem',
                                         background: alert.priority === 'high' ? 'rgba(37, 170, 225, 0.1)' : 'rgba(255,255,255,0.03)',
                                         border: alert.priority === 'high' ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.05)',
@@ -739,7 +740,7 @@ const StudentPortal = () => {
                                 </div>
 
                                 {/* Quick Check-in Section */}
-                                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #25AAE1' }}>
+                                <div className="glass-panel check-in-box" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #25AAE1' }}>
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                         <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '12px' }}>
                                             <Calendar size={24} />
@@ -764,7 +765,7 @@ const StudentPortal = () => {
                                 </div>
 
                                 {/* Stats Overview Cards */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                     <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '2px', marginBottom: '0.5rem' }}>STANDING</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#facc15' }}>{data.stats.totalAttended > 5 ? 'GOLD' : 'SILVER'}</div>

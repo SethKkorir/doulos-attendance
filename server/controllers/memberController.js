@@ -156,6 +156,47 @@ export const syncMembersFromAttendance = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const bulkEnrollFromAttendance = async (req, res) => {
+    try {
+        // 1. Get Current Semester from Settings
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semesterSetting ? semesterSetting.value : 'JAN-APR 2026';
+
+        // 2. Find all meetings in this semester
+        const meetingsInSem = await Meeting.find({ semester: currentSemester });
+        const meetingIds = meetingsInSem.map(m => m._id);
+
+        if (meetingIds.length === 0) {
+            return res.status(404).json({ message: `No meetings found for semester: ${currentSemester}. Ensure meetings are assigned to this semester first.` });
+        }
+
+        // 3. Find unique attendees for these meetings
+        const uniqueRegNos = await Attendance.distinct('studentRegNo', { meeting: { $in: meetingIds } });
+
+        if (uniqueRegNos.length === 0) {
+            return res.status(404).json({ message: `No attendance records found for ${currentSemester}.` });
+        }
+
+        // 4. Bulk Update Members
+        const result = await Member.updateMany(
+            { studentRegNo: { $in: uniqueRegNos } },
+            {
+                $set: {
+                    lastActiveSemester: currentSemester,
+                    status: 'Active'
+                }
+            }
+        );
+
+        res.json({
+            message: `Successfully enrolled ${result.modifiedCount} members into ${currentSemester}.`,
+            count: result.modifiedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 export const graduateAllRecruits = async (req, res) => {
     const { confirmPassword } = req.body;
 
@@ -184,6 +225,39 @@ export const graduateAllRecruits = async (req, res) => {
 
         res.json({
             message: `Successfully graduated ${result.modifiedCount} recruits to Douloids!`,
+            modifiedCount: result.modifiedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const undoGraduation = async (req, res) => {
+    const { confirmPassword } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+        const isDevBypass = ['developer', 'superadmin'].includes(req.user.role) && confirmPassword === '657';
+
+        if (!isDevBypass) {
+            if (!user) return res.status(404).json({ message: 'Admin user not found' });
+            const isMatch = await bcrypt.compare(confirmPassword, user.password);
+            if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Action cancelled.' });
+        }
+
+        // Find all Douloids who have the congrats flag (likely graduated recently)
+        const result = await Member.updateMany(
+            { memberType: 'Douloid', needsGraduationCongrats: true },
+            {
+                $set: {
+                    needsGraduationCongrats: false,
+                    memberType: 'Recruit'
+                }
+            }
+        );
+
+        res.json({
+            message: `Successfully reverted ${result.modifiedCount} members back to Recruits!`,
             modifiedCount: result.modifiedCount
         });
     } catch (error) {

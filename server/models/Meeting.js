@@ -12,12 +12,6 @@ const meetingSchema = new mongoose.Schema({
     endTime: { type: String, required: true },   // e.g., "23:00"
     semester: { type: String, default: '' },      // e.g., "JAN-APR 2026"
     isActive: { type: Boolean, default: true },
-    isRecurring: { type: Boolean, default: false },
-    dayOfWeek: {
-        type: String,
-        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', ''],
-        default: ''
-    },
     code: { type: String, unique: true }, // Unique meeting ID/Token for QR
     requiredFields: [
         {
@@ -26,17 +20,15 @@ const meetingSchema = new mongoose.Schema({
             required: { type: Boolean, default: true }
         }
     ],
-    questionOfDay: { type: String, default: '' },
     isTestMeeting: { type: Boolean, default: false },
     devotion: { type: String, default: '' },
-    iceBreaker: { type: String, default: '' },
     announcements: { type: String, default: '' },
-    secretRoomCode: { type: String, default: '' },
+    questionOfDay: { type: String, default: '' },
     location: {
+        name: { type: String, default: '' },
         latitude: { type: Number },
         longitude: { type: Number },
-        radius: { type: Number, default: 200 }, // Default 200 meters
-        name: { type: String, default: '' } // e.g. "Daystar Athi River Chapel"
+        radius: { type: Number, default: 200 } // in meters
     }
 }, { timestamps: true });
 

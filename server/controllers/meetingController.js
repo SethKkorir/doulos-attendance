@@ -5,43 +5,16 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { checkCampusTime } from '../utils/timeCheck.js';
 
-// Helper to validate time windows
-const validateMeetingTime = (dateStr, startTime, endTime, campus) => {
-    // Re-enabling validation after testing phase
-    /*
-    const date = new Date(dateStr);
-    const day = date.getDay(); // 0=Sun, 1=Mon, ..., 3=Wed, ...
 
-    // Parse times (e.g. "20:30" -> 20.5)
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    const startVal = startH + startM / 60;
-    const endVal = endH + endM / 60;
-
-    if (campus === 'Athi River') {
-        // Mon 8:30 PM - 11:00 PM (20.5 - 23.0)
-        if (day !== 1) return 'Athi River meetings must be on Mondays.';
-        if (startVal < 20.5 || endVal > 23.0) return 'Athi River meetings must be between 8:30 PM and 11:00 PM.';
-    } else if (campus === 'Valley Road') {
-        // Wed 2:00 PM - 4:00 PM (14.0 - 16.0)
-        if (day !== 3) return 'Valley Road meetings must be on Wednesdays.';
-        if (startVal < 14.0 || endVal > 16.0) return 'Valley Road meetings must be between 2:00 PM and 4:00 PM.';
-    }
-    */
-    return null; // Valid
-};
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, semester, requiredFields, questionOfDay, location, isTestMeeting, isRecurring, dayOfWeek } = req.body;
+    const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay } = req.body;
 
-    // 1. Restriction: One meeting per week per campus for regular admins
-    if (!['developer', 'superadmin'].includes(req.user.role) && !isRecurring) {
+    try {
+        // Enforce frequency check: One meeting per campus once per week
         const meetingDate = new Date(date);
-        const dayOfWeekIdx = meetingDate.getDay(); // 0 (Sun) - 6 (Sat)
-
-        // Calculate start of week (Sunday 00:00) and end of week (Saturday 23:59)
         const startOfWeek = new Date(meetingDate);
-        startOfWeek.setDate(meetingDate.getDate() - dayOfWeekIdx);
+        startOfWeek.setDate(meetingDate.getDate() - meetingDate.getDay());
         startOfWeek.setHours(0, 0, 0, 0);
 
         const endOfWeek = new Date(startOfWeek);
@@ -50,25 +23,18 @@ export const createMeeting = async (req, res) => {
 
         const existingMeeting = await Meeting.findOne({
             campus,
-            date: { $gte: startOfWeek, $lte: endOfWeek },
-            isRecurring: false
+            date: { $gte: startOfWeek, $lte: endOfWeek }
         });
 
-        if (existingMeeting) {
-            return res.status(403).json({
-                message: `Creation Denied: A meeting already exists for ${campus} this week (${new Date(existingMeeting.date).toLocaleDateString()}). Only SuperAdmins can create multiple meetings per week.`
+        if (existingMeeting && !isTestMeeting) {
+            return res.status(400).json({
+                message: `A meeting already exists for ${campus} this week (${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}). Only one official meeting per campus per week is allowed.`
             });
         }
-    }
 
-    // Validation
-    const error = validateMeetingTime(date, startTime, endTime, campus);
-    if (error) return res.status(400).json({ message: error });
-
-    try {
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, semester, code, requiredFields, questionOfDay, location, isTestMeeting, isRecurring, dayOfWeek
+            name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay
         });
         await meeting.save();
         res.status(201).json(meeting);
@@ -81,96 +47,10 @@ export const createMeeting = async (req, res) => {
 
 export const getMeetings = async (req, res) => {
     try {
-        // 0. Intelligent Auto-Creation for Standard Weekly Meetings
-        const now = new Date();
-        const eatFormat = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Africa/Nairobi',
-            hourCycle: 'h23',
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        const [todayDate, todayTime] = eatFormat.format(now).split(', ');
-        const [eatH, eatM] = todayTime.split(':').map(Number);
-        const timeDecimal = eatH + (eatM / 60);
-
-        // Determine if we should trigger an auto-creation
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayOfWeekLabel = dayNames[now.getUTCDay()];
-
-        // Get EAT Day (more accurate)
-        const eatDateObj = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
-        const eatDayOfWeek = eatDateObj.getDay(); // 0-6
-
-        let autoCampus = null;
-        let autoConfig = null;
-
-        if (eatDayOfWeek === 1 && timeDecimal >= 20.5) { // Monday 8:30 PM
-            autoCampus = 'Athi River';
-            autoConfig = { name: 'Weekly Doulos - Athi River', startTime: '20:30', endTime: '23:00' };
-        } else if (eatDayOfWeek === 3 && timeDecimal >= 14.0) { // Wednesday 2:00 PM
-            autoCampus = 'Valley Road';
-            autoConfig = { name: 'Weekly Doulos - Valley Road', startTime: '14:00', endTime: '16:00' };
-        }
-
-        if (autoCampus) {
-            // Check if meeting already exists for today/campus
-            const startOfToday = new Date(eatDateObj);
-            startOfToday.setHours(0, 0, 0, 0);
-            const endOfToday = new Date(eatDateObj);
-            endOfToday.setHours(23, 59, 59, 999);
-
-            const exists = await Meeting.findOne({
-                campus: autoCampus,
-                date: { $gte: startOfToday, $lte: endOfToday },
-                isRecurring: false
-            });
-
-            if (!exists) {
-                console.log(`[Auto-Create] Creating scheduled meeting for ${autoCampus}...`);
-                const daystarQuestions = [
-                    "What is your favorite Bible verse this week?",
-                    "Which chapel service has impacted you most recently?",
-                    "How can the Doulos family pray for you today?",
-                    "What is one thing you are grateful to God for today?",
-                    "Which worship song is currently on repeat in your playlist?",
-                    "What's the highlight of your walk with Christ this month?",
-                    "Share a small victory and a big grace you've experienced this week.",
-                    "What are you trusting God for in this current semester?",
-                    "How have you seen God's faithfulness in your studies today?",
-                    "What does 'Christian Excellence' look like in your department?",
-                    "Who has been a sister/brother in Christ to you on campus this week?",
-                    "What character trait of Jesus are you focused on emulating right now?",
-                    "What is your biggest takeaway from your personal devotions today?",
-                    "How has your campus experience shaped your faith journey so far?"
-                ];
-                const randomQuestion = daystarQuestions[Math.floor(Math.random() * daystarQuestions.length)];
-
-                const code = crypto.randomBytes(4).toString('hex').toUpperCase();
-
-                // Fetch current semester from settings if possible, otherwise use a placeholder
-                // For simplicity here, we'll use a placeholder or common pattern
-                const semester = 'JAN-APR 2026';
-
-                const newMeeting = new Meeting({
-                    ...autoConfig,
-                    date: eatDateObj,
-                    campus: autoCampus,
-                    semester,
-                    code,
-                    questionOfDay: randomQuestion,
-                    isActive: true,
-                    isRecurring: false
-                });
-                await newMeeting.save();
-                console.log(`[Auto-Create] Successfully created "${newMeeting.name}"`);
-            }
-        }
-
         // 1. Fetch meetings with attendance count
         const pipeline = [];
 
-        // Filter by Campus for regular admins (but allow history/finalized meetings from all campuses)
+        // Filter by Campus for regular admins
         if (req.user && !['developer', 'superadmin'].includes(req.user.role)) {
             const userCampus = req.user.campus || 'Athi River';
             pipeline.push({
@@ -199,54 +79,9 @@ export const getMeetings = async (req, res) => {
             },
             { $project: { attendance: 0 } },
             { $sort: { date: -1 } }
-
         );
-        let meetings = await Meeting.aggregate(pipeline);
 
-        // 2. Auto-Activate and Auto-Finalize based on strict time windows
-        // Variables (now, eatFormat, todayDate, todayTime, eatH, eatM, timeDecimal) already declared above
-
-        const updates = [];
-
-        meetings = meetings.map(m => {
-            if (!m.isTestMeeting) {
-                // Get meeting's scheduled date string (YYYY-MM-DD)
-                const meetingDateStr = eatFormat.format(new Date(m.date)).split(', ')[0];
-
-                // Parse Schedule
-                const [startH, startM] = m.startTime.split(':').map(Number);
-                const [endH, endM] = m.endTime.split(':').map(Number);
-
-                const startVal = startH + (startM / 60);
-                let endVal = endH + (endM / 60);
-
-                // Handle midnight crossing
-                if (endVal < startVal) endVal += 24;
-
-                // Logic to determine if it SHOULD be active right now
-                // REVISED LOGIC: Only AUTO-CLOSE meetings. Do NOT auto-open or force-close early meetings.
-                if (meetingDateStr < todayDate) {
-                    // Past Date -> Close
-                    if (m.isActive) {
-                        updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
-                        console.log(`[Meeting Control] Auto-Close "${m.name}": Date Passed`);
-                        return { ...m, isActive: false };
-                    }
-                } else if (meetingDateStr === todayDate) {
-                    // Today
-                    if (timeDecimal > endVal && m.isActive) {
-                        // Time Passed -> Close
-                        updates.push(Meeting.findByIdAndUpdate(m._id, { isActive: false }));
-                        console.log(`[Meeting Control] Auto-Close "${m.name}": Time Window Closed`);
-                        return { ...m, isActive: false };
-                    }
-                }
-            }
-            return m;
-        });
-
-        // Execute updates in background
-        if (updates.length > 0) await Promise.all(updates);
+        const meetings = await Meeting.aggregate(pipeline);
 
         // 3. Sort: Active First, then Date Descending
         meetings.sort((a, b) => {
@@ -308,7 +143,7 @@ export const updateMeetingStatus = async (req, res) => {
 
 export const setMeetingLocation = async (req, res) => {
     const { id } = req.params;
-    const { latitude, longitude, radius, name } = req.body;
+    const { name } = req.body;
 
     try {
         const meeting = await Meeting.findByIdAndUpdate(
@@ -316,9 +151,6 @@ export const setMeetingLocation = async (req, res) => {
             {
                 $set: {
                     'location': {
-                        latitude,
-                        longitude,
-                        radius: radius || 200,
                         name: name || 'Custom Location'
                     }
                 }
@@ -337,18 +169,28 @@ export const getMeetingByCode = async (req, res) => {
         const meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
         if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
 
-        // Check time restriction
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
         // Check if meeting is active (Bypass for SuperUser or Test Meetings)
-        if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
-            return res.status(403).json({ message: 'This meeting is currently closed by the admin.' });
-        }
+        const now = new Date();
+        const meetingDate = new Date(meeting.date);
 
-        if (!meeting.isTestMeeting && !isSuperUser) {
-            const timeReview = checkCampusTime(meeting);
-            if (!timeReview.allowed) {
-                return res.status(403).json({ message: timeReview.message });
+        // Construct start time date object
+        const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
+        const meetingStart = new Date(meetingDate);
+        meetingStart.setHours(startHours, startMinutes, 0, 0);
+
+        const isTimeStarted = now >= meetingStart;
+        const isToday = now.toDateString() === meetingDate.toDateString();
+
+        if (!isSuperUser && !meeting.isTestMeeting) {
+            if (!meeting.isActive) {
+                return res.status(403).json({ message: 'This meeting is currently closed by the admin.' });
+            }
+            if (!isToday || !isTimeStarted) {
+                return res.status(403).json({
+                    message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()} at ${meeting.startTime}. It is not yet open for attendance.`
+                });
             }
         }
 
@@ -358,7 +200,7 @@ export const getMeetingByCode = async (req, res) => {
             _id: { $ne: meeting._id },
             date: { $lt: meeting.date },
             $or: [{ devotion: { $ne: '' } }, { announcements: { $ne: '' } }]
-        }).sort({ date: -1 }).select('name date devotion iceBreaker announcements');
+        }).sort({ date: -1 }).select('name date devotion announcements');
 
         // Check if this device has already attended
         let hasAttended = false;

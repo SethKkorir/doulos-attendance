@@ -312,6 +312,60 @@ select.input-field {
   .glass-panel {
     padding: 1.5rem !important;
   }
+
+  /* Student Portal Fixes */
+  .header-stats {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin-top: 1.5rem;
+    width: 100%;
+    align-items: center;
+  }
+
+  .portal-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .welcome-banner {
+    padding: 1.5rem !important;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .welcome-banner h1 {
+    font-size: 1.75rem !important;
+  }
+
+  .welcome-banner p {
+    margin: 0.5rem auto 0 !important;
+  }
+
+  .check-in-box {
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: stretch !important;
+    text-align: center;
+  }
+
+  .check-in-box form {
+    justify-content: center;
+  }
+
+  .alert-card {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+
+  .alert-card button {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* Animations & Spinners */

@@ -34,7 +34,10 @@ const connectDB = async () => {
     console.log('URI Presence:', !!process.env.MONGO_URI);
 
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance');
+        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance', {
+            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s or more
+            socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+        });
         cachedConnection = conn;
         console.log('✅ MongoDB Connected');
 

@@ -18,9 +18,7 @@ const CheckIn = () => {
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [msg, setMsg] = useState('');
-    const [timeLeft, setTimeLeft] = useState(60); // 60 seconds for the "Race"
-    const [serverStartTime, setServerStartTime] = useState(null);
-    const [isExpired, setIsExpired] = useState(false);
+    const [isLocating, setIsLocating] = useState(false);
     const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
 
     useEffect(() => {
@@ -48,20 +46,13 @@ const CheckIn = () => {
                 const deviceId = getPersistentDeviceId();
                 const res = await api.get(`/meetings/code/${meetingCode}?deviceId=${deviceId}`);
                 setMeeting(res.data);
-                setServerStartTime(res.data.serverStartTime);
 
-                // Initialize timer
-                const sessionDuration = 60;
-                setTimeLeft(sessionDuration);
 
                 // Initialize responses with empty strings for each required field
                 const initialResponses = {};
                 res.data.requiredFields.forEach(f => {
                     initialResponses[f.key] = '';
                 });
-                if (res.data.questionOfDay) {
-                    initialResponses['dailyQuestionAnswer'] = '';
-                }
                 setResponses(initialResponses);
 
                 const userRole = localStorage.getItem('role');
@@ -113,22 +104,7 @@ const CheckIn = () => {
         fetchMeeting();
     }, [meetingCode]);
 
-    useEffect(() => {
-        if (status !== 'idle' || !meeting) return;
 
-        const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    setIsExpired(true);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [status, meeting]);
 
     const lookupMember = async (regNo) => {
         if (!regNo || regNo.length < 5) {
@@ -163,7 +139,7 @@ const CheckIn = () => {
         }
     };
 
-    const [isLocating, setIsLocating] = useState(false);
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -206,7 +182,6 @@ const CheckIn = () => {
             const res = await api.post('/attendance/submit', {
                 meetingCode: meetingCode.toLowerCase(),
                 deviceId,
-                serverStartTime,
                 userLat: userLocation.lat,
                 userLong: userLocation.long,
                 responses: {
@@ -372,45 +347,10 @@ const CheckIn = () => {
                             CHECK MY PORTAL
                         </button>
                     </div>
-                ) : isExpired ? (
-                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                            <Clock size={40} color="#ef4444" />
-                        </div>
-                        <h2 style={{ color: '#ef4444', fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' }}>SESSION EXPIRED</h2>
-                        <p style={{ marginBottom: '2rem', fontSize: '0.95rem', color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
-                            For security, you must submit your check-in within 20 seconds of scanning the physical banner.
-                        </p>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => window.location.reload()}
-                            style={{ width: '100%', height: '55px', borderRadius: '0.75rem' }}
-                        >
-                            RE-SCAN BANNER
-                        </button>
-                    </div>
+
                 ) : (status === 'idle' || status === 'submitting') ? (
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {/* Countdown Header */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '0.75rem 1rem',
-                            background: timeLeft < 10 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.1)',
-                            borderRadius: '0.75rem',
-                            border: `1px solid ${timeLeft < 10 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(37, 170, 225, 0.2)'}`,
-                            marginBottom: '1rem',
-                            animation: timeLeft < 10 ? 'pulse-border 1s infinite' : 'none'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: timeLeft < 10 ? '#f87171' : '#25AAE1' }}>
-                                <Clock size={16} />
-                                <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px' }}>SECURITY TIMER</span>
-                            </div>
-                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: timeLeft < 10 ? '#f87171' : '#25AAE1' }}>
-                                {timeLeft}s
-                            </div>
-                        </div>
+
                         {msg && (
                             <div style={{
                                 padding: '1rem',
@@ -529,39 +469,43 @@ const CheckIn = () => {
                             })}
 
                         {meeting?.questionOfDay && (
-                            <div style={{ marginTop: '1rem' }}>
+                            <div style={{ animation: 'fadeIn 0.5s ease-out', marginTop: '1rem' }}>
                                 <label style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    marginBottom: '1rem',
-                                    fontSize: '0.85rem',
+                                    display: 'block',
+                                    marginBottom: '0.75rem',
+                                    fontSize: '0.75rem',
                                     fontWeight: 900,
                                     letterSpacing: '1px',
-                                    color: '#dd5d6c',
-                                    textTransform: 'uppercase'
+                                    textTransform: 'uppercase',
+                                    color: 'hsl(var(--color-primary))'
                                 }}>
-                                    <Star size={18} /> {meeting.questionOfDay}
+                                    Question of the Day <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
+                                    "{meeting.questionOfDay}"
+                                </p>
                                 <textarea
                                     className="input-field"
-                                    placeholder="Type your response here..."
+                                    placeholder="Type your answer here..."
                                     style={{
-                                        background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid rgba(255,255,255,0.05)',
-                                        minHeight: '120px',
-                                        borderRadius: '1rem',
-                                        fontSize: '1rem',
-                                        padding: '1.25rem',
-                                        lineHeight: '1.6'
+                                        width: '100%',
+                                        minHeight: '80px',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 700,
+                                        padding: '1rem',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: '0.75rem',
+                                        transition: 'all 0.3s ease'
                                     }}
-                                    value={responses['dailyQuestionAnswer'] || ''}
+                                    value={responses.dailyQuestionAnswer || ''}
                                     onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
                                     required
                                     disabled={status === 'submitting'}
                                 />
                             </div>
                         )}
+
+
 
                         <button
                             type="submit"
