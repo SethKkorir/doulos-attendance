@@ -117,6 +117,39 @@ export const submitAttendance = async (req, res) => {
             return res.status(409).json({ message: 'You have already signed in for this meeting.' });
         }
 
+        // 9.5. Weekly Check-In Restriction (One check-in per week across ALL campuses)
+        if (!isSuperUser && !meeting.isTestMeeting) {
+            const mDate = new Date(meeting.date);
+            const startOfWeek = new Date(mDate);
+            startOfWeek.setDate(mDate.getDate() - mDate.getDay()); // Sunday
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+            endOfWeek.setHours(23, 59, 59, 999);
+
+            // Find all meetings this week
+            const meetingsThisWeek = await Meeting.find({
+                date: { $gte: startOfWeek, $lte: endOfWeek },
+                _id: { $ne: meeting._id } // Exclude current meeting
+            }).select('_id name campus');
+
+            const otherMeetingIds = meetingsThisWeek.map(m => m._id);
+
+            if (otherMeetingIds.length > 0) {
+                const attendedOther = await Attendance.findOne({
+                    studentRegNo,
+                    meeting: { $in: otherMeetingIds }
+                }).populate('meeting');
+
+                if (attendedOther) {
+                    return res.status(403).json({
+                        message: `Thank you for attending, but you already checked in to the ${attendedOther.meeting.name} (${attendedOther.meeting.campus}) meeting this week.`
+                    });
+                }
+            }
+        }
+
         // 10. Member Registry Lookup
         if (!member) {
             return res.status(403).json({

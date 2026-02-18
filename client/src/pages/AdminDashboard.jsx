@@ -2846,7 +2846,7 @@ const AdminDashboard = () => {
                                                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
                                                                 <span>{h.name}</span>
                                                                 <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-                                                                    {h.isExempted ? 'EXEMPTED' : 'PRESENT'}
+                                                                    {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
                                                                 </span>
                                                             </div>
                                                         ))}

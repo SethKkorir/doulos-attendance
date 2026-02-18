@@ -50,7 +50,8 @@ export const getMeetings = async (req, res) => {
         // 1. Fetch meetings with attendance count
         const pipeline = [];
 
-        // Filter by Campus for regular admins
+        // Filter by Campus for regular admins - DISABLED to allow visibility
+        /*
         if (req.user && !['developer', 'superadmin'].includes(req.user.role)) {
             const userCampus = req.user.campus || 'Athi River';
             pipeline.push({
@@ -62,6 +63,7 @@ export const getMeetings = async (req, res) => {
                 }
             });
         }
+        */
 
         pipeline.push(
             {
