@@ -1686,7 +1686,7 @@ const AdminDashboard = () => {
                                 </div>
                             );
                         })()}
-                        {(m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                        {(m.isActive || userRole) && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1781,7 +1781,7 @@ const AdminDashboard = () => {
                 }
 
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    {m.isActive && (
+                    {(m.isActive || userRole) && (
                         <button
                             className="btn"
                             style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
@@ -1802,11 +1802,13 @@ const AdminDashboard = () => {
 
                                 const isWithinTime = now >= start && now <= end;
 
-                                if (isSuperUser || isWithinTime) {
+                                // Anyone logged in is an "Admin" here. 
+                                // Relax restriction: Allow any admin to open it, but warn if time is wrong.
+                                if (isWithinTime) {
                                     setSelectedMeeting(m);
                                 } else {
-                                    // Developer Mode: Skip Time Restrictions
-                                    if (window.confirm(`⚠️ Time Restriction ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code anyway?`)) {
+                                    // Admin Override
+                                    if (window.confirm(`⚠️ TIME WARNING ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code for printing/testing?`)) {
                                         setSelectedMeeting(m);
                                     }
                                 }
