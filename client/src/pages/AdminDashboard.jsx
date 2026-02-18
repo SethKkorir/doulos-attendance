@@ -1624,7 +1624,13 @@ const AdminDashboard = () => {
         const [h, min] = m.startTime.split(':').map(Number);
         const mStart = new Date(mDate);
         mStart.setHours(h, min, 0, 0);
+
+        const [endH, endMin] = m.endTime.split(':').map(Number);
+        const mEnd = new Date(mDate);
+        mEnd.setHours(endH, endMin, 0, 0);
+
         const isActuallyLive = m.isActive && now >= mStart;
+        const isMeetingOver = now > mEnd;
 
         return (
             <div
@@ -1686,7 +1692,7 @@ const AdminDashboard = () => {
                                 </div>
                             );
                         })()}
-                        {(m.isActive || userRole) && (
+                        {((m.isActive || userRole) && !isMeetingOver) && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1743,7 +1749,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {
-                    (m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                    ((m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && !isMeetingOver) && (
                         <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <div style={{ position: 'relative', flex: 1 }}>
                                 <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)', opacity: 0.5 }} />
@@ -1781,7 +1787,7 @@ const AdminDashboard = () => {
                 }
 
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    {(m.isActive || userRole) && (
+                    {((m.isActive || userRole) && !isMeetingOver) && (
                         <button
                             className="btn"
                             style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
@@ -1820,9 +1826,11 @@ const AdminDashboard = () => {
                     <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
                         View Attendance
                     </button>
-                    <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
-                        <Pencil size={16} />
-                    </button>
+                    {!isMeetingOver && (
+                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                            <Pencil size={16} />
+                        </button>
+                    )}
                     {['developer', 'superadmin'].includes(userRole) && (
                         <button
                             className="btn"
