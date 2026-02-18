@@ -789,8 +789,8 @@ const StudentPortal = () => {
                                 {data.alerts.map((alert, i) => (
                                     <div key={i} className="glass-panel alert-card" style={{
                                         padding: '1rem',
-                                        background: alert.priority === 'high' ? 'rgba(37, 170, 225, 0.1)' : 'rgba(255,255,255,0.03)',
-                                        border: alert.priority === 'high' ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.05)',
+                                        background: 'rgba(239, 68, 68, 0.15)',
+                                        border: '1px solid rgba(239, 68, 68, 0.5)',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: '1rem',
@@ -803,8 +803,8 @@ const StudentPortal = () => {
                                                 width: '40px',
                                                 height: '40px',
                                                 borderRadius: '10px',
-                                                background: alert.type === 'finance' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.1)',
-                                                color: alert.type === 'finance' ? '#f87171' : '#25AAE1',
+                                                background: 'rgba(239, 68, 68, 0.2)',
+                                                color: '#f87171',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
@@ -828,7 +828,7 @@ const StudentPortal = () => {
                                                 padding: '0.5rem',
                                                 fontSize: '0.7rem',
                                                 fontWeight: 800,
-                                                background: '#25AAE1',
+                                                background: '#ef4444',
                                                 color: 'white',
                                                 border: 'none',
                                                 borderRadius: '0.5rem',
@@ -881,34 +881,10 @@ const StudentPortal = () => {
                                 {/* Quick Access Actions - Fixed grid for mobile */}
                                 <div style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '1fr 1fr',
+                                    gridTemplateColumns: '1fr',
                                     gap: '0.75rem',
                                     width: '100%'
                                 }}>
-                                    <div className="glass-panel action-card" onClick={() => setComingSoon('Monthly Contribution')} style={{
-                                        padding: '1rem',
-                                        cursor: 'pointer',
-                                        transition: 'transform 0.2s',
-                                        border: '1px solid rgba(74, 222, 128, 0.1)',
-                                        width: '100%',
-                                        boxSizing: 'border-box'
-                                    }}>
-                                        <div style={{
-                                            width: '35px',
-                                            height: '35px',
-                                            borderRadius: '8px',
-                                            background: 'rgba(74, 222, 128, 0.1)',
-                                            color: '#4ade80',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginBottom: '0.75rem'
-                                        }}>
-                                            <Star size={16} />
-                                        </div>
-                                        <h3 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800 }}>Monthly Contribution</h3>
-                                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.65rem', color: 'var(--color-text-dim)' }}>Support Doulos projects</p>
-                                    </div>
                                     <div className="glass-panel action-card" onClick={() => setComingSoon('20 Bob Challenge')} style={{
                                         padding: '1rem',
                                         cursor: 'pointer',
@@ -1319,41 +1295,7 @@ const StudentPortal = () => {
                     )}
                 </div>
 
-                {/* Guest Feedback Button */}
-                {isGuest && (
-                    <button
-                        onClick={async () => {
-                            const message = window.prompt("💡 Share your thoughts on the Student Portal:");
-                            if (message) {
-                                try {
-                                    await api.post('/feedback', { message, category: 'student_guest_feedback' });
-                                    alert("Thanks for your feedback!");
-                                } catch (e) {
-                                    console.error(e);
-                                    alert("Failed to send feedback. Please try again.");
-                                }
-                            }
-                        }}
-                        style={{
-                            width: '55px',
-                            height: '55px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 10px 30px rgba(250, 204, 21, 0.4)',
-                            background: '#facc15',
-                            color: 'black',
-                            border: 'none',
-                            cursor: 'pointer',
-                            marginTop: '0.5rem',
-                            fontWeight: 'bold',
-                            fontSize: '1.5rem'
-                        }}
-                    >
-                        💡
-                    </button>
-                )}
+
 
                 <style>{`
                     @keyframes slideDown {
