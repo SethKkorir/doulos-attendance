@@ -24,6 +24,12 @@ const meetingSchema = new mongoose.Schema({
     devotion: { type: String, default: '' },
     announcements: { type: String, default: '' },
     questionOfDay: { type: String, default: '' },
+    category: {
+        type: String,
+        enum: ['Meeting', 'Training'],
+        default: 'Meeting'
+    },
+    allowManualOverride: { type: Boolean, default: false }, // Toggle for "Admin-Only" or "Manual" mode
     location: {
         name: { type: String, default: '' },
         latitude: { type: Number },

@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     getMembers, importMembers, updateMember, createMember, addPoints,
-    syncMembersFromAttendance, graduateAllRecruits, undoGraduation, setupTestAccount,
+    syncMembersFromAttendance, graduateAllRecruits, archiveAllRecruits, undoGraduation, setupTestAccount,
     resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock,
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
     enrollMember, archiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos,
@@ -17,6 +17,7 @@ router.post('/import', verifyAdmin, importMembers);
 router.post('/sync', verifyAdmin, syncMembersFromAttendance);
 router.post('/bulk-enroll', verifyAdmin, bulkEnrollFromAttendance);
 router.post('/graduate-all', verifyAdmin, graduateAllRecruits);
+router.post('/archive-all-recruits', verifyAdmin, archiveAllRecruits);
 router.post('/undo-graduation', verifyAdmin, undoGraduation);
 router.post('/reset-all-points', verifyAdmin, resetAllMemberPoints);
 router.post('/setup-test-account', verifyAdmin, setupTestAccount);

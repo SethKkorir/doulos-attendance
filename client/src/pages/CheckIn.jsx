@@ -297,6 +297,24 @@ const CheckIn = () => {
                         <div style={{ width: '15px', height: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
                     </div>
                 )}
+                {meeting?.allowManualOverride && (
+                    <div style={{
+                        marginTop: '1rem',
+                        padding: '0.8rem',
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        border: '1px solid rgba(234, 179, 8, 0.2)',
+                        borderRadius: '0.75rem',
+                        color: '#eab308',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                    }}>
+                        <span>📡 REMOTE MODE: Admin check-in preferred today.</span>
+                    </div>
+                )}
             </div>
 
             <div className="glass-panel" style={{

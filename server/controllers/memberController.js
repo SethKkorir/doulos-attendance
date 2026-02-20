@@ -232,6 +232,37 @@ export const graduateAllRecruits = async (req, res) => {
     }
 };
 
+export const archiveAllRecruits = async (req, res) => {
+    const { confirmPassword } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+        const isDevBypass = ['developer', 'superadmin'].includes(req.user.role) && confirmPassword === '657';
+
+        if (!isDevBypass) {
+            if (!user) return res.status(404).json({ message: 'Admin user not found' });
+            const isMatch = await bcrypt.compare(confirmPassword, user.password);
+            if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Action cancelled.' });
+        }
+
+        const result = await Member.updateMany(
+            { memberType: 'Recruit' },
+            {
+                $set: {
+                    status: 'Archived'
+                }
+            }
+        );
+
+        res.json({
+            message: `Successfully archived ${result.modifiedCount} remaining recruits.`,
+            modifiedCount: result.modifiedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const undoGraduation = async (req, res) => {
     const { confirmPassword } = req.body;
 

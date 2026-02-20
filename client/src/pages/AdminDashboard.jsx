@@ -7,7 +7,7 @@ import {
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
     FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText, ListChecks, Settings as SettingsIcon, CheckCircle
+    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, Archive
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
@@ -260,20 +260,25 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                         border: '1px solid rgba(248, 113, 113, 0.2)'
                                     }}>{m.memberType.toUpperCase()}</div>
                                     <button
-                                        onClick={() => onQuickCheckIn && onQuickCheckIn(meeting._id, m.studentRegNo)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onQuickCheckIn(meeting._id, m.studentRegNo);
+                                        }}
                                         className="btn"
                                         style={{
-                                            padding: '0.4rem 0.75rem',
-                                            background: '#25AAE1',
-                                            color: 'white',
-                                            fontSize: '0.65rem',
+                                            padding: '0.4rem 0.8rem',
+                                            background: 'rgba(74, 222, 128, 0.1)',
+                                            color: '#4ade80',
+                                            fontSize: '0.7rem',
                                             fontWeight: 900,
                                             borderRadius: '0.5rem',
-                                            border: 'none',
-                                            cursor: 'pointer'
+                                            border: '1px solid rgba(74, 222, 128, 0.2)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.3rem'
                                         }}
                                     >
-                                        CHECK IN
+                                        <CheckCircle size={14} /> MARK PRESENT
                                     </button>
                                 </div>
                             </div>
@@ -349,6 +354,8 @@ const AdminDashboard = () => {
         startTime: '20:30',
         endTime: '23:00',
         semester: 'JAN-APR 2026',
+        category: 'Meeting',
+        allowManualOverride: false,
         requiredFields: [
             { label: 'Full Name', key: 'studentName', required: true },
             { label: 'Admission Number', key: 'studentRegNo', required: true }
@@ -1453,6 +1460,22 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleArchiveAllRecruits = async () => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        if (!window.confirm('⚠️ ARCHIVE ALL RECRUITS ⚠️\n\nThis will archive ALL members currently marked as Recruits. They will no longer be able to log in but their data will remain. Proceed?')) return;
+
+        const pwd = prompt('Enter admin password to confirm archival:');
+        if (!pwd) return;
+
+        try {
+            const res = await api.post('/members/archive-all-recruits', { confirmPassword: pwd });
+            setMsg({ type: 'success', text: res.data.message });
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to archive recruits' });
+        }
+    };
+
     const handleUndoGraduation = async () => {
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
         if (!window.confirm('⚠️ UNDO GRADUATION ⚠️\n\nThis will revert all recently graduated members back to Recruits. Do you want to proceed?')) return;
@@ -1648,7 +1671,21 @@ const AdminDashboard = () => {
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
+                            {m.category === 'Training' && (
+                                <span style={{
+                                    fontSize: '0.6rem',
+                                    padding: '0.2rem 0.5rem',
+                                    background: 'rgba(234, 179, 8, 0.2)',
+                                    color: '#eab308',
+                                    borderRadius: '0.3rem',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    border: '1px solid rgba(234, 179, 8, 0.3)'
+                                }}>Training</span>
+                            )}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
                             <MapPin size={14} /> {m.campus}
                         </div>
@@ -1954,7 +1991,7 @@ const AdminDashboard = () => {
                                         display: 'flex', alignItems: 'center', gap: '0.5rem'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1rem' }}>💡</span> Feedback
+                                    <span style={{ fontSize: '1.2rem' }}>💡</span> Feedback
                                 </button>
                             )}
                             {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
@@ -2052,6 +2089,7 @@ const AdminDashboard = () => {
                             meeting={insightMeeting}
                             onClose={() => setInsightMeeting(null)}
                             api={api}
+                            onQuickCheckIn={handleQuickCheckIn}
                         />
                     </div>
                 ) : activeTab === 'meetings' && (
@@ -2139,6 +2177,29 @@ const AdminDashboard = () => {
                                             onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
                                             placeholder="e.g. What are you most grateful for this week?"
                                         />
+                                    </div>
+
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '1px' }}>Meeting Type & Training</span>
+                                    </div>
+                                    <div>
+                                        <label>Category</label>
+                                        <select className="input-field" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                                            <option value="Meeting">Standard Meeting</option>
+                                            <option value="Training">Doulos Training</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="create-manual"
+                                            checked={formData.allowManualOverride}
+                                            onChange={e => setFormData({ ...formData, allowManualOverride: e.target.checked })}
+                                            style={{ width: '20px', height: '20px' }}
+                                        />
+                                        <label htmlFor="create-manual" style={{ margin: 0, cursor: 'pointer' }}>
+                                            Admin-Only Check-in (Internet/Remote Mode)
+                                        </label>
                                     </div>
 
                                     <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
@@ -2393,6 +2454,10 @@ const AdminDashboard = () => {
                                             <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                                                 onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
                                                 <GraduationCap size={16} /> Graduate All
+                                            </button>
+                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                onClick={handleArchiveAllRecruits} title="Archive all members who are currently Recruits">
+                                                <Archive size={16} /> Archive Remaining
                                             </button>
                                             {selectedMemberIds.length > 0 && (
                                                 <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
@@ -3309,6 +3374,32 @@ const AdminDashboard = () => {
                                                 })}
                                                 placeholder="Venue Name"
                                             />
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label>Category</label>
+                                                <select
+                                                    className="input-field"
+                                                    value={editingMeeting.category || 'Meeting'}
+                                                    onChange={e => setEditingMeeting({ ...editingMeeting, category: e.target.value })}
+                                                >
+                                                    <option value="Meeting">Standard Meeting</option>
+                                                    <option value="Training">Doulos Training</option>
+                                                </select>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    id="edit-manual"
+                                                    checked={editingMeeting.allowManualOverride || false}
+                                                    onChange={e => setEditingMeeting({ ...editingMeeting, allowManualOverride: e.target.checked })}
+                                                    style={{ width: '20px', height: '20px' }}
+                                                />
+                                                <label htmlFor="edit-manual" style={{ margin: 0, cursor: 'pointer', fontSize: '0.8rem' }}>
+                                                    Admin-Only Mode
+                                                </label>
+                                            </div>
                                         </div>
 
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

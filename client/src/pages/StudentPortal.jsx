@@ -783,6 +783,42 @@ const StudentPortal = () => {
                             </div>
                         </div>
 
+                        {/* Training Track Progress for Douloids */}
+                        {data.memberType === 'Douloid' && (
+                            <div className="glass-panel" style={{
+                                padding: '1.5rem',
+                                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.02) 100%)',
+                                border: '1px solid rgba(234, 179, 8, 0.2)',
+                                borderRadius: '1.5rem',
+                                width: '100%',
+                                marginTop: '1rem',
+                                boxSizing: 'border-box'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <Trophy size={20} color="#eab308" />
+                                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Training Track</h4>
+                                    </div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 1000, color: '#eab308' }}>
+                                        {data.stats.trainingAttended || 0} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>SESSIONS</span>
+                                    </div>
+                                </div>
+                                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: `${Math.min((data.stats.trainingAttended || 0) * 10, 100)}%`, // Mock progress: 10 sessions = 100%
+                                        height: '100%',
+                                        background: '#eab308',
+                                        boxShadow: '0 0 10px rgba(234, 179, 8, 0.4)',
+                                        borderRadius: '10px',
+                                        transition: 'width 1.5s cubic-bezier(0.16, 1, 0.3, 1)'
+                                    }}></div>
+                                </div>
+                                <p style={{ margin: '0.75rem 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                                    Keep attending training sessions to reach 100% completion.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Action Center - Alerts */}
                         {data.alerts && data.alerts.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>

@@ -150,7 +150,8 @@ export const submitAttendance = async (req, res) => {
         }
 
         // 9.5. Weekly Check-In Restriction (One check-in per week across ALL campuses)
-        if (!isSuperUser && !meeting.isTestMeeting) {
+        // Exempt 'Training' category from this restriction
+        if (!isSuperUser && !meeting.isTestMeeting && meeting.category !== 'Training') {
             const mDate = new Date(meeting.date);
             const startOfWeek = new Date(mDate);
             startOfWeek.setDate(mDate.getDate() - mDate.getDay()); // Sunday
@@ -329,6 +330,7 @@ export const getStudentPortalData = async (req, res) => {
         const totalMeetings = campusMeetings.length; // Baseline is their campus meetings
         const physicalAttended = attendanceRecords.filter(a => !a.isExempted).length;
         const exemptedCount = attendanceRecords.filter(a => a.isExempted).length;
+        const trainingAttended = attendedMeetings.filter(m => m.category === 'Training').length;
         const totalValid = physicalAttended + exemptedCount;
 
         // 6. Doulos Hours & Activity Check
@@ -409,6 +411,7 @@ export const getStudentPortalData = async (req, res) => {
                 totalMeetings,
                 physicalAttended,
                 exemptedCount,
+                trainingAttended,
                 totalAttended: totalValid,
                 percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },
