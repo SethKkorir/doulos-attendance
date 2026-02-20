@@ -144,33 +144,62 @@ const CheckIn = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        let userLocation = { lat: null, long: null };
+
         // Check if meeting requires location
         if (meeting?.location?.latitude) {
             setIsLocating(true);
             try {
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                // Check if browser supports geolocation and is in a secure context
+                if (!navigator.geolocation) {
+                    throw new Error("Geolocation not supported by this browser.");
+                }
+
+                const getPosition = (options) => new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+                });
+
+                let position;
+                try {
+                    // Try High Accuracy first
+                    position = await getPosition({
                         enableHighAccuracy: true,
-                        timeout: 20000, // 20s for remote areas
+                        timeout: 15000,
                         maximumAge: 0
                     });
-                });
+                } catch (err) {
+                    console.warn("High accuracy GPS failed, trying standard accuracy...", err);
+                    // Fallback to standard accuracy
+                    position = await getPosition({
+                        enableHighAccuracy: false,
+                        timeout: 15000,
+                        maximumAge: 60000 // Allow 1-minute old cached location
+                    });
+                }
+
                 userLocation.lat = position.coords.latitude;
                 userLocation.long = position.coords.longitude;
             } catch (error) {
-                console.warn("GPS Failure:", error);
-                setIsLocating(false);
-                setStatus('error');
-                if (error.code === 1) {
-                    setMsg("Location access denied. You MUST enable GPS to check in.");
-                } else if (error.code === 2) {
-                    setMsg("Location unavailable. Try moving to a clear area or wait for signal.");
-                } else if (error.code === 3) {
-                    setMsg("Location request timed out. Please try again.");
-                } else {
-                    setMsg("Could not verify your location.");
+                console.error("GPS Failure:", error);
+
+                // CRITICAL: If Admin has enabled Manual Override for this meeting, 
+                // we allow submission even if GPS fails (useful for remote areas/insecure contexts)
+                const isRelaxed = meeting?.allowManualOverride || meeting?.category === 'Training';
+                if (!isRelaxed) {
+                    setIsLocating(false);
+                    setStatus('error');
+                    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+                        setMsg("SECURITY BLOCK: Browsers disable GPS on non-HTTPS connections. Please use the Vercel link or Admin check-in.");
+                    } else if (error.code === 1) {
+                        setMsg("Location access denied. You must grant permission to check in.");
+                    } else if (error.code === 2 || error.code === 3) {
+                        setMsg("GPS signal too weak. Try moving outdoors or wait a moment.");
+                    } else {
+                        setMsg(`Location error: ${error.message || 'Verification failed'}`);
+                    }
+                    return;
                 }
-                return;
+                console.warn("GPS failed but Manual Override/Training is active. Proceeding...");
             }
             setIsLocating(false);
         }
