@@ -1,5 +1,6 @@
 import Attendance from '../models/Attendance.js';
 import Meeting from '../models/Meeting.js';
+import Training from '../models/Training.js';
 import Member from '../models/Member.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Settings from '../models/Settings.js';
@@ -11,9 +12,18 @@ export const submitAttendance = async (req, res) => {
     const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong } = req.body;
 
     try {
-        // 1. Find the meeting
-        const meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
-        if (!meeting) return res.status(404).json({ message: 'Invalid Meeting Code' });
+        // 1. Find in Meeting collection first, then Training collection
+        let meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+        let isTrainingSession = false;
+
+        if (!meeting) {
+            // Check Training collection
+            const training = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+            if (!training) return res.status(404).json({ message: 'Invalid Meeting/Training Code' });
+            // Wrap training as a meeting-like object so downstream logic works
+            meeting = training;
+            isTrainingSession = true;
+        }
 
         // 2. User & Role check
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
@@ -142,9 +152,8 @@ export const submitAttendance = async (req, res) => {
             return res.status(409).json({ message: 'You have already signed in for this meeting.' });
         }
 
-        // 9.5. Weekly Check-In Restriction (One check-in per week across ALL campuses)
-        // Exempt 'Training' category from this restriction
-        if (!isSuperUser && !meeting.isTestMeeting && meeting.category !== 'Training') {
+        // 9.5. Weekly Check-In Restriction — MEETINGS ONLY (Trainings are exempt)
+        if (!isSuperUser && !meeting.isTestMeeting && !isTrainingSession) {
             const mDate = new Date(meeting.date);
             const startOfWeek = new Date(mDate);
             startOfWeek.setDate(mDate.getDate() - mDate.getDay()); // Sunday
@@ -186,7 +195,8 @@ export const submitAttendance = async (req, res) => {
         // 11. Record Attendance (Skip if Test Account)
         if (!member.isTestAccount) {
             const attendance = new Attendance({
-                meeting: meeting._id,
+                meeting: isTrainingSession ? undefined : meeting._id,
+                trainingId: isTrainingSession ? meeting._id : undefined,
                 meetingName: meeting.name,
                 campus: meeting.campus,
                 studentRegNo,
@@ -225,7 +235,10 @@ export const submitAttendance = async (req, res) => {
 export const getAttendance = async (req, res) => {
     const { meetingId } = req.params;
     try {
-        const records = await Attendance.find({ meeting: meetingId }).sort({ timestamp: -1 });
+        // Find records where either meeting or trainingId matches
+        const records = await Attendance.find({
+            $or: [{ meeting: meetingId }, { trainingId: meetingId }]
+        }).sort({ timestamp: -1 });
         res.json(records);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -267,7 +280,7 @@ export const getStudentPortalData = async (req, res) => {
             return start.getTime();
         };
 
-        // 5. Group by week
+        // 5. Group by week (Mainly for Weekly Meetings)
         const weeklyData = new Map();
 
         // Initialize with campus meetings as 'ABSENT'
@@ -283,25 +296,41 @@ export const getStudentPortalData = async (req, res) => {
                 announcements: m.announcements,
                 attended: false,
                 isExempted: false,
-                attendanceTime: null
+                attendanceTime: null,
+                isTraining: false
             });
         });
 
-        // Overlay with actual attendance (which might be from a different campus/meeting)
-        // We fetch meeting details for non-campus meetings if needed
-        const attendedMeetingIds = attendanceRecords.map(a => a.meeting);
+        // Overlay with actual attendance
+        const attendedMeetingIds = attendanceRecords.filter(a => a.meeting).map(a => a.meeting);
         const attendedMeetings = await Meeting.find({ _id: { $in: attendedMeetingIds } });
 
+        const attendedTrainingIds = attendanceRecords.filter(a => a.trainingId).map(a => a.trainingId);
+        const attendedTrainings = await Training.find({ _id: { $in: attendedTrainingIds } });
+
+        const trainingHistory = [];
+
         attendanceRecords.forEach(record => {
-            // We use the meeting's date for week grouping, not the check-in time, 
-            // to align with the scheduled meeting week.
-            const meeting = attendedMeetings.find(m => m._id.toString() === record.meeting.toString());
+            if (record.trainingId) {
+                const training = attendedTrainings.find(t => t._id.toString() === record.trainingId.toString());
+                if (training) {
+                    trainingHistory.push({
+                        _id: training._id,
+                        name: training.name,
+                        date: training.date,
+                        campus: training.campus,
+                        attended: true,
+                        isTraining: true,
+                        attendanceTime: record.timestamp
+                    });
+                }
+                return;
+            }
+
+            const meeting = attendedMeetings.find(m => m._id.toString() === record.meeting?.toString());
             if (!meeting) return;
 
             const weekKey = getWeekStart(meeting.date);
-
-            // If they attended a meeting this week, it overrides the 'ABSENT' record
-            // regardless of whether it's the default campus meeting or not.
             weeklyData.set(weekKey, {
                 _id: meeting._id,
                 name: meeting.name,
@@ -312,18 +341,20 @@ export const getStudentPortalData = async (req, res) => {
                 announcements: meeting.announcements,
                 attended: true,
                 isExempted: record.isExempted || false,
-                attendanceTime: record.timestamp
+                attendanceTime: record.timestamp,
+                isTraining: false
             });
         });
 
-        // Convert Map to sorted array
-        const history = Array.from(weeklyData.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Convert Map to sorted array and merge with trainings
+        const meetingHistory = Array.from(weeklyData.values());
+        const history = [...meetingHistory, ...trainingHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         // Stats calculation
-        const totalMeetings = campusMeetings.length; // Baseline is their campus meetings
+        const totalMeetings = campusMeetings.length;
         const physicalAttended = attendanceRecords.filter(a => !a.isExempted).length;
         const exemptedCount = attendanceRecords.filter(a => a.isExempted).length;
-        const trainingAttended = attendedMeetings.filter(m => m.category === 'Training').length;
+        const totalTrainingAttended = attendanceRecords.filter(a => a.trainingId).length;
         const totalValid = physicalAttended + exemptedCount;
 
         // 6. Doulos Hours & Activity Check
@@ -404,7 +435,7 @@ export const getStudentPortalData = async (req, res) => {
                 totalMeetings,
                 physicalAttended,
                 exemptedCount,
-                trainingAttended,
+                trainingAttended: totalTrainingAttended,
                 totalAttended: totalValid,
                 percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },
@@ -423,15 +454,25 @@ export const manualCheckIn = async (req, res) => {
     try {
         const regNo = studentRegNo.trim().toUpperCase();
 
-        const existing = await Attendance.findOne({ meeting: meetingId, studentRegNo: regNo });
+        const existing = await Attendance.findOne({
+            $or: [{ meeting: meetingId }, { trainingId: meetingId }],
+            studentRegNo: regNo
+        });
         if (existing) return res.status(409).json({ message: 'Already checked in' });
 
-        const meeting = await Meeting.findById(meetingId);
-        if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
+        let meeting = await Meeting.findById(meetingId);
+        let isTraining = false;
 
-        // Security: Lock manual check-in after 24 hours (Bypass for SuperAdmin)
+        if (!meeting) {
+            meeting = await Training.findById(meetingId);
+            if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
+            isTraining = true;
+        }
+
+        // Security: Lock manual check-in after 24-48 hours (Bypass for SuperAdmin)
+        // Exempt training from strict lock for flexibility
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
-        if (!isSuperUser) {
+        if (!isSuperUser && !isTraining) {
             const now = new Date();
             const meetingDate = new Date(meeting.date);
             const [endH, endM] = meeting.endTime.split(':').map(Number);
@@ -457,7 +498,8 @@ export const manualCheckIn = async (req, res) => {
         }
 
         const attendance = new Attendance({
-            meeting: meetingId,
+            meeting: isTraining ? undefined : meetingId,
+            trainingId: isTraining ? meetingId : undefined,
             meetingName: meeting.name,
             campus: meeting.campus,
             studentRegNo: regNo,

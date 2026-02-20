@@ -371,7 +371,7 @@ const AdminDashboard = () => {
     const [msg, setMsg] = useState(null);
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
     const [viewingAttendance, setViewingAttendance] = useState(null); // Meeting object
-    const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'members', 'finance', or 'reports'
+    const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'trainings', 'members', 'finance', or 'reports'
     const [financeTab, setFinanceTab] = useState('pending'); // 'pending' or 'log-cash'
     const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'admin');
     const [members, setMembers] = useState([]);
@@ -398,6 +398,20 @@ const AdminDashboard = () => {
     const [showBulkListTool, setShowBulkListTool] = useState(false);
     const [bulkListType, setBulkListType] = useState('graduate'); // 'graduate' or 'archive'
     const [bulkListInput, setBulkListInput] = useState('');
+    // --- TRAINING STATE ---
+    const [trainings, setTrainings] = useState([]);
+    const [showCreateTraining, setShowCreateTraining] = useState(false);
+    const [trainingFormData, setTrainingFormData] = useState({
+        name: 'Doulos Training',
+        date: new Date().toISOString().split('T')[0],
+        campus: 'Athi River',
+        startTime: '14:00',
+        endTime: '17:00',
+        semester: 'JAN-APR 2026',
+        questionOfDay: '',
+        location: { name: '', latitude: null, longitude: null, radius: 200 }
+    });
+    const [selectedTraining, setSelectedTraining] = useState(null); // for QR modal
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -546,8 +560,62 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchMeetings();
+        fetchTrainings();
         fetchMembers(); // Load members early for quick lookup
     }, []);
+
+    const fetchTrainings = async () => {
+        try {
+            const res = await api.get('/trainings');
+            setTrainings(res.data);
+        } catch (err) {
+            console.error('Failed to fetch trainings', err);
+        }
+    };
+
+    const handleCreateTraining = async (e) => {
+        e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Creation disabled in Guest Mode.' });
+        if (!trainingFormData.location.name) return setMsg({ type: 'error', text: 'Venue name is required.' });
+        setImportLoading(true);
+        try {
+            await api.post('/trainings', trainingFormData);
+            setMsg({ type: 'success', text: 'Training session created!' });
+            setShowCreateTraining(false);
+            fetchTrainings();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create training' });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleDeleteTraining = async (id, name) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        const password = window.prompt(`SECURITY CHECK: Enter admin password to DELETE "${name}":`);;
+        if (!password) return;
+        setImportLoading(true);
+        try {
+            const res = await api.post(`/trainings/${id}/delete-secure`, { confirmPassword: password });
+            setMsg({ type: 'success', text: res.data.message });
+            fetchTrainings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
+        } finally {
+            setImportLoading(false);
+        }
+    };
+
+    const handleToggleTrainingStatus = async (id, currentStatus) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        try {
+            await api.patch(`/trainings/${id}`, { isActive: !currentStatus });
+            setMsg({ type: 'success', text: `Training ${!currentStatus ? 'opened' : 'closed'}.` });
+            fetchTrainings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to update training status' });
+        }
+    };
 
     useEffect(() => {
         if (activeTab === 'members') fetchMembers();
@@ -1800,12 +1868,16 @@ const AdminDashboard = () => {
                                         const val = e.target.value;
                                         setQuickRegNo(val);
                                     }}
+                                    onClick={(e) => e.stopPropagation()}
                                 />
                             </div>
                             <button
                                 className="btn"
                                 style={{ padding: '0.4rem 0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', border: '1px solid var(--glass-border)' }}
-                                onClick={() => handleLookupMemberInsights(quickRegNo)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLookupMemberInsights(quickRegNo);
+                                }}
                                 title="Lookup Member History"
                             >
                                 <Search size={16} />
@@ -1813,7 +1885,10 @@ const AdminDashboard = () => {
                             <button
                                 className="btn btn-primary"
                                 style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
-                                onClick={() => handleQuickCheckIn(m._id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickCheckIn(m._id);
+                                }}
                                 disabled={quickCheckInLoading}
                                 title="Manual Check-In"
                             >
@@ -1828,7 +1903,8 @@ const AdminDashboard = () => {
                         <button
                             className="btn"
                             style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 const now = new Date();
                                 const [startH, startM] = m.startTime.split(':').map(Number);
                                 const [endH, endM] = m.endTime.split(':').map(Number);
@@ -1860,11 +1936,21 @@ const AdminDashboard = () => {
                             <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
                         </button>
                     )}
-                    <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }} onClick={() => setViewingAttendance(m)}>
+                    <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingAttendance(m);
+                        }}
+                    >
                         View Attendance
                     </button>
                     {!isMeetingOver && (
-                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }} onClick={() => setEditingMeeting(m)}>
+                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingMeeting(m);
+                            }}
+                        >
                             <Pencil size={16} />
                         </button>
                     )}
@@ -1872,7 +1958,10 @@ const AdminDashboard = () => {
                         <button
                             className="btn"
                             style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
-                            onClick={() => handleDeleteMeeting(m._id, m.name)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMeeting(m._id, m.name);
+                            }}
                             title="Delete Meeting (Requires password)"
                         >
                             <Trash2 size={16} />
@@ -1942,6 +2031,19 @@ const AdminDashboard = () => {
                                 }}
                             >
                                 Meetings
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('trainings')}
+                                style={{
+                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                                    background: activeTab === 'trainings' ? 'hsl(168, 80%, 40%)' : 'transparent',
+                                    color: activeTab === 'trainings' ? 'white' : 'var(--color-text-dim)',
+                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap',
+                                    display: 'flex', alignItems: 'center', gap: '0.4rem'
+                                }}
+                            >
+                                🎓 Trainings
                             </button>
                             <button
                                 onClick={() => setActiveTab('members')}
@@ -2083,7 +2185,7 @@ const AdminDashboard = () => {
                 )}
 
                 {/* New Meeting Insights Area */}
-                {insightMeeting && activeTab === 'meetings' ? (
+                {insightMeeting && (activeTab === 'meetings' || activeTab === 'trainings') ? (
                     <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.5s' }}>
                         <MeetingInsights
                             meeting={insightMeeting}
@@ -2110,6 +2212,236 @@ const AdminDashboard = () => {
                         <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--color-primary))' }}>Meeting Attendance Intelligence</h3>
                         <p style={{ marginTop: '0.75rem', opacity: 0.6, fontSize: '1rem', fontWeight: 500 }}>Select any meeting card below to decode detailed participation insights, absent lists, and growth metrics.</p>
                     </div>
+                )}
+
+                {/* ============================================================ */}
+                {/* TRAININGS TAB */}
+                {/* ============================================================ */}
+                {activeTab === 'trainings' && (
+                    <>
+                        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <button className="btn btn-primary" onClick={() => setShowCreateTraining(!showCreateTraining)}
+                                style={{ background: 'hsl(168, 80%, 40%)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Plus size={20} /> New Training
+                            </button>
+                            <span style={{ opacity: 0.5, fontSize: '0.8rem', fontWeight: 700 }}>
+                                {trainings.filter(t => t.isActive).length} active · {trainings.length} total
+                            </span>
+                        </div>
+
+                        {/* Create Training Form */}
+                        {showCreateTraining && (
+                            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h3 style={{ margin: 0 }}>🎓 Create Training Session</h3>
+                                    <button onClick={() => setShowCreateTraining(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-dim)' }}>✕</button>
+                                </div>
+                                <form onSubmit={handleCreateTraining}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label>Training Name</label>
+                                            <input className="input-field" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} required />
+                                        </div>
+                                        <div>
+                                            <label>Date</label>
+                                            <input type="date" className="input-field" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
+                                        </div>
+                                        <div>
+                                            <label>Campus</label>
+                                            <select className="input-field" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
+                                                <option value="Athi River">Athi River</option>
+                                                <option value="Valley Road">Valley Road</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>Semester</label>
+                                            <select className="input-field" value={trainingFormData.semester} onChange={e => setTrainingFormData({ ...trainingFormData, semester: e.target.value })}>
+                                                <option value="JAN-APR 2026">JAN-APR 2026</option>
+                                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
+                                                <option value="SEP-DEC 2026">SEP-DEC 2026</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>Start Time</label>
+                                            <input type="time" className="input-field" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
+                                        </div>
+                                        <div>
+                                            <label>End Time</label>
+                                            <input type="time" className="input-field" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
+                                        </div>
+                                        <div>
+                                            <label>Venue Name *</label>
+                                            <input className="input-field" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
+                                                onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
+                                        </div>
+                                        <div>
+                                            <label>Geofence Radius (m)</label>
+                                            <input type="number" className="input-field" value={trainingFormData.location.radius}
+                                                onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label>Question of the Day (optional)</label>
+                                        <input className="input-field" placeholder="E.g. What is your takeaway from this session?" value={trainingFormData.questionOfDay}
+                                            onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })} />
+                                    </div>
+                                    {/* GPS Capture */}
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <button type="button" className="btn" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                            onClick={() => {
+                                                navigator.geolocation.getCurrentPosition(pos => {
+                                                    setTrainingFormData(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
+                                                    setMsg({ type: 'success', text: `GPS captured: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}` });
+                                                }, () => setMsg({ type: 'error', text: 'GPS capture failed. Please enable location.' }));
+                                            }}>
+                                            <MapPin size={16} /> Use My Current Location
+                                        </button>
+                                        {trainingFormData.location.latitude && (
+                                            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#34d399' }}>
+                                                ✅ GPS: {trainingFormData.location.latitude.toFixed(5)}, {trainingFormData.location.longitude.toFixed(5)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" disabled={importLoading} style={{ background: 'hsl(168, 80%, 40%)' }}>
+                                        {importLoading ? 'Creating...' : '🎓 Create Training'}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* QR Modal for Training */}
+                        {selectedTraining && (
+                            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={() => setSelectedTraining(null)}>
+                                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
+                                    <h3 style={{ marginBottom: '0.5rem' }}>{selectedTraining.name}</h3>
+                                    <p style={{ opacity: 0.5, marginBottom: '1.5rem', fontSize: '0.85rem' }}>Training QR Code · Code: {selectedTraining.code}</p>
+                                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block' }}>
+                                        <QRCode value={`${window.location.origin}/check-in/${selectedTraining.code}`} size={220} />
+                                    </div>
+                                    <p style={{ marginTop: '1rem', opacity: 0.4, fontSize: '0.75rem' }}>Scan to check in · No weekly limit</p>
+                                    <button onClick={() => setSelectedTraining(null)} className="btn" style={{ marginTop: '1rem', background: 'rgba(255,255,255,0.1)', color: 'white' }}>Close</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Training Cards */}
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                            {trainings.length === 0 ? (
+                                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', border: '2px dashed rgba(52,211,153,0.2)' }}>
+                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎓</div>
+                                    <h3 style={{ margin: 0, color: '#34d399' }}>No Training Sessions Yet</h3>
+                                    <p style={{ opacity: 0.5 }}>Create your first training session above.</p>
+                                </div>
+                            ) : trainings.map(t => {
+                                const now = new Date();
+                                const tDate = new Date(t.date);
+                                const [endH, endM] = t.endTime.split(':').map(Number);
+                                const tEnd = new Date(tDate);
+                                tEnd.setHours(endH, endM, 0, 0);
+                                const isOver = now > tEnd;
+
+                                return (
+                                    <div key={t._id} className="glass-panel"
+                                        onClick={() => setInsightMeeting(t)}
+                                        style={{
+                                            padding: '1.5rem',
+                                            cursor: 'pointer',
+                                            border: t.isActive && !isOver ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid var(--glass-border)',
+                                            boxShadow: t.isActive && !isOver ? '0 0 20px rgba(52,211,153,0.08)' : 'none'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    {t.name}
+                                                    <span style={{ fontSize: '0.6rem', padding: '0.2rem 0.5rem', background: 'rgba(52,211,153,0.2)', color: '#34d399', borderRadius: '0.3rem', fontWeight: 900 }}>TRAINING</span>
+                                                </h3>
+                                                <div style={{ fontSize: '0.85rem', opacity: 0.5, marginTop: '0.3rem', display: 'flex', gap: '1rem' }}>
+                                                    <span><Calendar size={12} style={{ marginRight: '0.3rem' }} />{new Date(t.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                                    <span><Clock size={12} style={{ marginRight: '0.3rem' }} />{t.startTime} – {t.endTime}</span>
+                                                    <span><MapPin size={12} style={{ marginRight: '0.3rem' }} />{t.campus}</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                {/* Status Badge */}
+                                                <span style={{
+                                                    padding: '0.4rem 0.8rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 800,
+                                                    background: !t.isActive ? 'rgba(255,255,255,0.05)' : isOver ? 'rgba(255,255,255,0.05)' : 'rgba(52,211,153,0.1)',
+                                                    color: !t.isActive ? 'var(--color-text-dim)' : isOver ? 'var(--color-text-dim)' : '#34d399'
+                                                }}>
+                                                    {!t.isActive ? '• CLOSED' : isOver ? '• COMPLETED' : '• ACTIVE'}
+                                                </span>
+                                                {/* Attendance Count */}
+                                                <button
+                                                    className="btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setInsightMeeting(t);
+                                                    }}
+                                                    style={{
+                                                        padding: '0.4rem 0.8rem',
+                                                        borderRadius: '2rem',
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 800,
+                                                        background: 'rgba(52, 211, 153, 0.1)',
+                                                        color: '#34d399',
+                                                        border: '1px solid rgba(52, 211, 153, 0.2)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.4rem'
+                                                    }}
+                                                >
+                                                    <BarChart3 size={12} /> {t.attendanceCount || 0}
+                                                </button>
+                                                {/* QR Button */}
+                                                {t.isActive && !isOver && (
+                                                    <button className="btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedTraining(t);
+                                                        }}
+                                                        style={{ padding: '0.5rem 0.75rem', background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                        <QrIcon size={16} />
+                                                    </button>
+                                                )}
+                                                {/* Toggle Button */}
+                                                <button className="btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleToggleTrainingStatus(t._id, t.isActive);
+                                                    }}
+                                                    style={{ padding: '0.5rem 0.75rem', background: t.isActive ? 'rgba(239,68,68,0.1)' : 'rgba(52,211,153,0.1)', color: t.isActive ? '#ef4444' : '#34d399', border: `1px solid ${t.isActive ? 'rgba(239,68,68,0.3)' : 'rgba(52,211,153,0.3)'}`, borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                    {t.isActive ? 'Close' : 'Reopen'}
+                                                </button>
+                                                {/* Delete Button */}
+                                                {['developer', 'superadmin'].includes(userRole) && (
+                                                    <button className="btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteTraining(t._id, t.name);
+                                                        }}
+                                                        style={{ padding: '0.5rem 0.75rem', background: 'rgba(239,68,68,0.05)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontSize: '0.75rem' }}>
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {t.location?.name && (
+                                            <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', opacity: 0.5 }}>
+                                                📍 {t.location.name} {t.location.latitude ? `· GPS ✓` : '· No GPS'}
+                                            </div>
+                                        )}
+                                        {t.code && (
+                                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.4, fontFamily: 'monospace' }}>
+                                                Code: {t.code}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
                 )}
 
                 {activeTab === 'meetings' ? (

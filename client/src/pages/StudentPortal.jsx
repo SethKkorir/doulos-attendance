@@ -1120,7 +1120,12 @@ const StudentPortal = () => {
                                                 </div>
                                             </div>
                                             <div style={{ minWidth: 0 }}>
-                                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</h4>
+                                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                    {m.name}
+                                                    {m.isTraining && (
+                                                        <span style={{ fontSize: '0.45rem', padding: '0.1rem 0.3rem', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '4px', fontWeight: 900 }}>TRAINING</span>
+                                                    )}
+                                                </h4>
                                                 <p style={{ margin: '0.1rem 0 0', fontSize: '0.65rem', color: 'var(--color-text-dim)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.campus}</p>
                                             </div>
                                         </div>

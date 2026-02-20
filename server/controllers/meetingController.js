@@ -26,23 +26,37 @@ export const createMeeting = async (req, res) => {
 
 export const getMeetings = async (req, res) => {
     try {
+        // --- AUTO-CLOSE EXPIRED MEETINGS ---
+        // Get current Kenyan time
+        const now = getKenyanTime();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        // Find all meetings that are still marked active
+        const activeMeetings = await Meeting.find({ isActive: true });
+
+        for (const m of activeMeetings) {
+            const meetingDate = new Date(m.date);
+            const meetingStr = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
+
+            if (meetingStr > todayStr) continue; // Future meeting, skip
+
+            const [endH, endM] = m.endTime.split(':').map(Number);
+            const endTotalMinutes = endH * 60 + endM;
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            // If it's a past day OR same day but past end time (+30min buffer) → close it
+            const isPastDay = meetingStr < todayStr;
+            const isPastEndTime = meetingStr === todayStr && currentMinutes > (endTotalMinutes + 30);
+
+            if (isPastDay || isPastEndTime) {
+                await Meeting.findByIdAndUpdate(m._id, { isActive: false });
+                console.log(`[AUTO-CLOSE] Meeting "${m.name}" (${meetingStr}) has been automatically closed.`);
+            }
+        }
+        // --- END AUTO-CLOSE ---
+
         // 1. Fetch meetings with attendance count
         const pipeline = [];
-
-        // Filter by Campus for regular admins - DISABLED to allow visibility
-        /*
-        if (req.user && !['developer', 'superadmin'].includes(req.user.role)) {
-            const userCampus = req.user.campus || 'Athi River';
-            pipeline.push({
-                $match: {
-                    $or: [
-                        { campus: userCampus },
-                        { isActive: false }
-                    ]
-                }
-            });
-        }
-        */
 
         pipeline.push(
             {
@@ -64,7 +78,7 @@ export const getMeetings = async (req, res) => {
 
         const meetings = await Meeting.aggregate(pipeline);
 
-        // 3. Sort: Active First, then Date Descending
+        // Sort: Active First, then Date Descending
         meetings.sort((a, b) => {
             if (a.isActive === b.isActive) {
                 return new Date(b.date) - new Date(a.date);
