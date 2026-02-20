@@ -3,7 +3,7 @@ import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { checkCampusTime } from '../utils/timeCheck.js';
+import { getKenyanTime } from '../utils/kenyanTime.js';
 
 
 
@@ -153,24 +153,38 @@ export const getMeetingByCode = async (req, res) => {
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
         // Check if meeting is active (Bypass for SuperUser or Test Meetings)
-        const now = new Date();
+        const now = getKenyanTime();
         const meetingDate = new Date(meeting.date);
 
-        // Construct start time date object
-        const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
-        const meetingStart = new Date(meetingDate);
-        meetingStart.setHours(startHours, startMinutes, 0, 0);
+        // Date comparison markers
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const meetingStr = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
 
-        const isTimeStarted = now >= meetingStart;
-        const isToday = now.toDateString() === meetingDate.toDateString();
+        const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
+        const [endHours, endMinutes] = meeting.endTime.split(':').map(Number);
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const startTotalMinutes = startHours * 60 + startMinutes;
+        const endTotalMinutes = endHours * 60 + endMinutes;
+
+        const isTimeStarted = currentMinutes >= (startTotalMinutes - 60); // 1hr grace
+        const isTimeEnded = currentMinutes > (endTotalMinutes + 30); // 30min buffer
+        const isToday = todayStr === meetingStr;
 
         if (!isSuperUser && !meeting.isTestMeeting) {
             if (!meeting.isActive) {
-                return res.status(403).json({ message: 'This meeting is currently closed by the admin.' });
+                return res.status(403).json({ message: 'This meeting has been manually closed by the admin.' });
             }
-            if (!isToday || !isTimeStarted) {
+            if (!isToday) {
+                return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}. It is not open today.` });
+            }
+            if (!isTimeStarted) {
                 return res.status(403).json({
-                    message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()} at ${meeting.startTime}. It is not yet open for attendance.`
+                    message: `This meeting starts at ${meeting.startTime} EAT. Please wait until then.`
+                });
+            }
+            if (isTimeEnded) {
+                return res.status(403).json({
+                    message: `This meeting ended at ${meeting.endTime} EAT. Attendance is no longer being accepted.`
                 });
             }
         }

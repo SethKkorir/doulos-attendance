@@ -5,6 +5,7 @@ import ActivityLog from '../models/ActivityLog.js';
 import Settings from '../models/Settings.js';
 import mongoose from 'mongoose';
 import { checkCampusTime } from '../utils/timeCheck.js';
+import { getKenyanTime } from '../utils/kenyanTime.js';
 
 export const submitAttendance = async (req, res) => {
     const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong } = req.body;
@@ -27,14 +28,20 @@ export const submitAttendance = async (req, res) => {
         const meetingDate = new Date(meeting.date);
 
         // Normalize both to date strings for day comparison (YYYY-MM-DD)
-        const todayStr = now.toISOString().split('T')[0];
-        const meetingStr = meetingDate.toISOString().split('T')[0];
+        const Y = meetingDate.getFullYear();
+        const M = String(meetingDate.getMonth() + 1).padStart(2, '0');
+        const D = String(meetingDate.getDate()).padStart(2, '0');
+        const meetingStr = `${Y}-${M}-${D}`;
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
         const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
+        const [endHours, endMinutes] = meeting.endTime.split(':').map(Number);
+
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         const startTotalMinutes = startHours * 60 + startMinutes;
+        const endTotalMinutes = endHours * 60 + endMinutes;
 
-        console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.toLocaleTimeString()} vs Start=${meeting.startTime}`);
+        console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.getHours()}:${now.getMinutes()} vs Start=${meeting.startTime} End=${meeting.endTime}`);
 
         if (!isSuperUser && !meeting.isTestMeeting) {
             // 1. Future Day Block
@@ -42,22 +49,27 @@ export const submitAttendance = async (req, res) => {
                 return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}.` });
             }
 
-            // 2. Same Day Time Block (With 1-hour grace period for early arrivals)
+            // 2. Same Day Timing
             if (todayStr === meetingStr) {
-                const graceMinutes = 60; // 1 hour early
-                if (currentMinutes < (startTotalMinutes - graceMinutes)) {
+                // Grace period: 60 mins before start
+                if (currentMinutes < (startTotalMinutes - 60)) {
                     return res.status(403).json({ message: `This meeting has not yet started. It starts at ${meeting.startTime} EAT.` });
+                }
+
+                // End period: 30 mins after end (to allow for final scans)
+                if (currentMinutes > (endTotalMinutes + 30)) {
+                    return res.status(403).json({ message: `This meeting has already ended. It ended at ${meeting.endTime} EAT.` });
                 }
             }
 
-            // 24-Hour Lockhead
-            const [endH, endM] = meeting.endTime.split(':').map(Number);
-            const meetingEnd = new Date(meetingDate);
-            meetingEnd.setHours(endH, endM, 0, 0);
-
-            const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
-            if (hoursSinceEnd > 48) {
-                return res.status(403).json({ message: 'Attendance window closed.' });
+            // 3. Past Day Block (Lock after 48 hours for general safety, but day check handled above)
+            if (todayStr > meetingStr) {
+                const meetingEnd = new Date(meetingDate);
+                meetingEnd.setHours(endHours, endMinutes, 0, 0);
+                const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
+                if (hoursSinceEnd > 24) { // Only allow late scans for 24 hours (backdated updates etc)
+                    return res.status(403).json({ message: 'Attendance window closed.' });
+                }
             }
         }
 
