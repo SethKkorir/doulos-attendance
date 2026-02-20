@@ -144,8 +144,6 @@ const CheckIn = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        let userLocation = { lat: null, long: null };
-
         // Check if meeting requires location
         if (meeting?.location?.latitude) {
             setIsLocating(true);
@@ -153,21 +151,22 @@ const CheckIn = () => {
                 const position = await new Promise((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, {
                         enableHighAccuracy: true,
-                        timeout: 10000,
+                        timeout: 20000, // 20s for remote areas
                         maximumAge: 0
                     });
                 });
                 userLocation.lat = position.coords.latitude;
                 userLocation.long = position.coords.longitude;
             } catch (error) {
+                console.warn("GPS Failure:", error);
                 setIsLocating(false);
                 setStatus('error');
                 if (error.code === 1) {
                     setMsg("Location access denied. You MUST enable GPS to check in.");
                 } else if (error.code === 2) {
-                    setMsg("Location unavailable. Try moving to a clear area.");
+                    setMsg("Location unavailable. Try moving to a clear area or wait for signal.");
                 } else if (error.code === 3) {
-                    setMsg("Location request timed out.");
+                    setMsg("Location request timed out. Please try again.");
                 } else {
                     setMsg("Could not verify your location.");
                 }

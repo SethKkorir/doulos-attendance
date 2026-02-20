@@ -23,56 +23,37 @@ export const submitAttendance = async (req, res) => {
         }
 
         // 4. Strict Start Time Check (EAT / Nairobi Time)
-        // Get current time in Kenya explicitly
-        const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
-
+        const now = getKenyanTime();
         const meetingDate = new Date(meeting.date);
 
-        // Parse Start Time
+        // Normalize both to date strings for day comparison (YYYY-MM-DD)
+        const todayStr = now.toISOString().split('T')[0];
+        const meetingStr = meetingDate.toISOString().split('T')[0];
+
         const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
-
-        // Construct Meeting Start Time Object (Assumes meeting is on 'meetingDate')
-        // We need to be careful with timezone of 'meetingDate' from DB. 
-        // Best approach: Combine meetingDate string YYYY-MM-DDToLocaleString with startTime
-
-        const meetingStart = new Date(meetingDate);
-        meetingStart.setHours(startHours, startMinutes, 0, 0);
-
-        // Adjust meetingStart to be comparable to 'now' (Nairobi Time) if server is UTC
-        // But since we converted 'now' to resemble local time, we should treat meetingStart similarly.
-        // If meetingDate is 2026-02-18T00:00:00Z, setHours(14) makes it T14:00:00Z.
-        // If 'now' is T12:00:00 local-fake-UTC, comparison works IF DB date was recorded cleanly.
-
-        // STRICTER APPROACH: Compare "Time of Day" if it's the same day.
-        const isSameDay = now.toDateString() === meetingDate.toDateString();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         const startTotalMinutes = startHours * 60 + startMinutes;
 
-        console.log(`[DEBUG] Time Check (EAT): Now=${now.toLocaleTimeString()} (${currentMinutes}m) vs Start=${meeting.startTime} (${startTotalMinutes}m)`);
+        console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.toLocaleTimeString()} vs Start=${meeting.startTime}`);
 
         if (!isSuperUser && !meeting.isTestMeeting) {
             // 1. Future Day Block
-            const todayReset = new Date(now); todayReset.setHours(0, 0, 0, 0);
-            const meetingReset = new Date(meetingDate); meetingReset.setHours(0, 0, 0, 0);
-
-            if (todayReset < meetingReset) {
+            if (todayStr < meetingStr) {
                 return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}.` });
             }
 
-            // 2. Same Day Time Block
-            if (isSameDay) {
-                if (currentMinutes < startTotalMinutes) {
-                    return res.status(403).json({ message: `This meeting has not yet started. Starts at ${meeting.startTime} EAT.` });
+            // 2. Same Day Time Block (With 1-hour grace period for early arrivals)
+            if (todayStr === meetingStr) {
+                const graceMinutes = 60; // 1 hour early
+                if (currentMinutes < (startTotalMinutes - graceMinutes)) {
+                    return res.status(403).json({ message: `This meeting has not yet started. It starts at ${meeting.startTime} EAT.` });
                 }
             }
 
-            // 24-Hour Lockhead (using EAT now)
+            // 24-Hour Lockhead
             const [endH, endM] = meeting.endTime.split(':').map(Number);
             const meetingEnd = new Date(meetingDate);
             meetingEnd.setHours(endH, endM, 0, 0);
-            // Since meetingEnd is based on meetingDate (UTC-ish), and now is shifted... 
-            // Better to rely on day difference for safety or reimplement robust diff.
-            // Keeping existing expiry logic roughly intact but using 'now' EAT.
 
             const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
             if (hoursSinceEnd > 48) {
