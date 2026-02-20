@@ -11,27 +11,6 @@ export const createMeeting = async (req, res) => {
     const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay } = req.body;
 
     try {
-        // Enforce frequency check: One meeting per campus once per week
-        const meetingDate = new Date(date);
-        const startOfWeek = new Date(meetingDate);
-        startOfWeek.setDate(meetingDate.getDate() - meetingDate.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-
-        const existingMeeting = await Meeting.findOne({
-            campus,
-            date: { $gte: startOfWeek, $lte: endOfWeek }
-        });
-
-        if (existingMeeting && !isTestMeeting) {
-            return res.status(400).json({
-                message: `A meeting already exists for ${campus} this week (${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}). Only one official meeting per campus per week is allowed.`
-            });
-        }
-
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
             name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay
