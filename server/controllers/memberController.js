@@ -30,7 +30,7 @@ export const importMembers = async (req, res) => {
 
 export const getMembers = async (req, res) => {
     try {
-        const { search, campus, memberType } = req.query;
+        const { search, campus, memberType, includeArchived } = req.query;
         let query = {};
 
         if (search) {
@@ -44,6 +44,11 @@ export const getMembers = async (req, res) => {
 
         // Never show test accounts in the main registry
         query.isTestAccount = { $ne: true };
+
+        // Exclude archived members unless explicitly requested
+        if (includeArchived !== 'true') {
+            query.status = { $ne: 'Archived' };
+        }
 
         const members = await Member.find(query).sort({ name: 1 }).lean();
 

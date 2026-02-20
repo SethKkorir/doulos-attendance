@@ -537,7 +537,7 @@ const AdminDashboard = () => {
         return () => clearTimeout(timer);
     }, [msg]);
 
-    const fetchMembers = async () => {
+    const fetchMembers = async (forMembersTab = false) => {
         setLoadingMembers(true);
         if (isGuest) {
             setMembers([
@@ -552,7 +552,9 @@ const AdminDashboard = () => {
             const res = await api.get('/members', {
                 params: {
                     campus: memberCampusFilter,
-                    memberType: memberTypeFilter
+                    memberType: memberTypeFilter,
+                    // Only include archived members when on the members tab (for the Archived section)
+                    ...(forMembersTab && { includeArchived: 'true' })
                 }
             });
             setMembers(res.data);
@@ -623,7 +625,7 @@ const AdminDashboard = () => {
     };
 
     useEffect(() => {
-        if (activeTab === 'members') fetchMembers();
+        if (activeTab === 'members') fetchMembers(true);
     }, [activeTab, memberCampusFilter, memberTypeFilter]);
 
     const handleCSVUpload = async (e) => {
@@ -2302,11 +2304,13 @@ const AdminDashboard = () => {
                 {msg && (
                     <div style={{
                         position: 'fixed',
-                        top: '2rem',
+                        top: '1.5rem',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         zIndex: 2000,
-                        minWidth: '300px',
+                        minWidth: '280px',
+                        maxWidth: 'calc(100vw - 2rem)',
+                        width: 'max-content',
                         padding: '1rem 1.5rem',
                         borderRadius: '0.75rem',
                         background: msg.type === 'error' ? '#dc2626' : '#059669',
@@ -2317,6 +2321,9 @@ const AdminDashboard = () => {
                         justifyContent: 'center',
                         gap: '0.75rem',
                         fontWeight: 600,
+                        fontSize: '0.9rem',
+                        wordBreak: 'break-word',
+                        textAlign: 'center',
                         animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                         border: '1px solid rgba(255, 255, 255, 0.1)'
                     }}>

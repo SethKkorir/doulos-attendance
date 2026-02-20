@@ -18,6 +18,7 @@ const CheckIn = () => {
     const [memberInfo, setMemberInfo] = useState(null); // { name, type } from registry
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
+    const [showTrainingBanner, setShowTrainingBanner] = useState(false);
     const [msg, setMsg] = useState('');
     const [isLocating, setIsLocating] = useState(false);
     const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
@@ -226,7 +227,12 @@ const CheckIn = () => {
             });
             setStatus('success');
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
-            localStorage.setItem(`doulos_attendance_status_${meetingCode}`, 'success'); // Mark as done locally
+            localStorage.setItem(`doulos_attendance_status_${meetingCode}`, 'success');
+            // Show training celebration banner for training sessions
+            if (meeting?.isTraining || meeting?.category === 'Training') {
+                setShowTrainingBanner(true);
+                setTimeout(() => setShowTrainingBanner(false), 5000);
+            }
             if (res.data.showGraduationCongrats) {
                 setShowCongrats(true);
             }
@@ -667,6 +673,74 @@ const CheckIn = () => {
                     </form>
                 ) : status === 'success' ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0', animation: 'fadeIn 1s ease-out' }}>
+
+                        {/* Training celebration banner */}
+                        {showTrainingBanner && (
+                            <div style={{
+                                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 3000,
+                                overflow: 'hidden', pointerEvents: 'none'
+                            }}>
+                                {/* Confetti particles */}
+                                {['🎉', '🔥', '✨', '🙌', '🎊', '💪', '⚡', '🎯'].map((emoji, i) => (
+                                    <div key={i} style={{
+                                        position: 'absolute',
+                                        top: `${10 + Math.random() * 30}%`,
+                                        left: `${5 + i * 12}%`,
+                                        fontSize: '1.8rem',
+                                        animation: `confettiFall${i % 3} ${1.5 + Math.random()}s ease-out forwards`,
+                                        animationDelay: `${i * 0.15}s`
+                                    }}>{emoji}</div>
+                                ))}
+                                {/* Moving banner */}
+                                <div style={{
+                                    background: 'linear-gradient(90deg, #34d399, #059669, #10b981, #34d399)',
+                                    backgroundSize: '300% 100%',
+                                    animation: 'bannerSlideIn 0.5s ease-out, gradientShift 2s linear infinite',
+                                    padding: '0.6rem 0',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                }}>
+                                    <div style={{
+                                        display: 'inline-block',
+                                        animation: 'marqueeScroll 6s linear infinite',
+                                        fontWeight: 900,
+                                        fontSize: '1rem',
+                                        color: 'white',
+                                        letterSpacing: '3px',
+                                        textTransform: 'uppercase',
+                                        textShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                                    }}>
+                                        &nbsp;&nbsp;&nbsp;🔥 WELCOME TO TRAINING! &nbsp;•&nbsp; GOD IS FAITHFUL &nbsp;•&nbsp; 🙌 WELCOME TO TRAINING! &nbsp;•&nbsp; GOD IS FAITHFUL &nbsp;•&nbsp;
+                                    </div>
+                                </div>
+                                <style>{`
+                                    @keyframes bannerSlideIn {
+                                        from { transform: translateY(-100%); opacity: 0; }
+                                        to { transform: translateY(0); opacity: 1; }
+                                    }
+                                    @keyframes marqueeScroll {
+                                        from { transform: translateX(0%); }
+                                        to { transform: translateX(-50%); }
+                                    }
+                                    @keyframes gradientShift {
+                                        0% { background-position: 0% 50%; }
+                                        100% { background-position: 300% 50%; }
+                                    }
+                                    @keyframes confettiFall0 {
+                                        0% { transform: translateY(-20px) scale(0); opacity: 1; }
+                                        100% { transform: translateY(120px) scale(1.2) rotate(20deg); opacity: 0; }
+                                    }
+                                    @keyframes confettiFall1 {
+                                        0% { transform: translateY(-20px) scale(0); opacity: 1; }
+                                        100% { transform: translateY(100px) scale(1) rotate(-15deg); opacity: 0; }
+                                    }
+                                    @keyframes confettiFall2 {
+                                        0% { transform: translateY(-20px) scale(0); opacity: 1; }
+                                        100% { transform: translateY(140px) scale(1.4) rotate(30deg); opacity: 0; }
+                                    }
+                                `}</style>
+                            </div>
+                        )}
                         <div style={{
                             background: 'radial-gradient(circle, rgba(74, 222, 128, 0.2) 0%, transparent 70%)',
                             width: '120px', height: '120px', borderRadius: '50%',
