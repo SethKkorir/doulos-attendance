@@ -1,4 +1,5 @@
 import Meeting from '../models/Meeting.js';
+import Training from '../models/Training.js';
 import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
@@ -161,8 +162,14 @@ export const setMeetingLocation = async (req, res) => {
 
 export const getMeetingByCode = async (req, res) => {
     try {
-        const meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
-        if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
+        let isTraining = false;
+        let meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
+
+        if (!meeting) {
+            meeting = await Training.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
+            if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
+            isTraining = true;
+        }
 
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
@@ -186,42 +193,56 @@ export const getMeetingByCode = async (req, res) => {
 
         if (!isSuperUser && !meeting.isTestMeeting) {
             if (!meeting.isActive) {
-                return res.status(403).json({ message: 'This meeting has been manually closed by the admin.' });
+                return res.status(403).json({ message: isTraining ? 'This training has been closed by the admin.' : 'This meeting has been manually closed by the admin.' });
             }
-            if (!isToday) {
-                return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}. It is not open today.` });
-            }
-            if (!isTimeStarted) {
-                return res.status(403).json({
-                    message: `This meeting starts at ${meeting.startTime} EAT. Please wait until then.`
-                });
-            }
-            if (isTimeEnded) {
-                return res.status(403).json({
-                    message: `This meeting ended at ${meeting.endTime} EAT. Attendance is no longer being accepted.`
-                });
+            // Trainings span multiple days — skip date/time window checks entirely
+            if (!isTraining) {
+                if (!isToday) {
+                    return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}. It is not open today.` });
+                }
+                if (!isTimeStarted) {
+                    return res.status(403).json({
+                        message: `This meeting starts at ${meeting.startTime} EAT. Please wait until then.`
+                    });
+                }
+                if (isTimeEnded) {
+                    return res.status(403).json({
+                        message: `This meeting ended at ${meeting.endTime} EAT. Attendance is no longer being accepted.`
+                    });
+                }
             }
         }
 
-        // Fetch the previous meeting recap from the same campus
-        const previousRecap = await Meeting.findOne({
-            campus: meeting.campus,
-            _id: { $ne: meeting._id },
-            date: { $lt: meeting.date },
-            $or: [{ devotion: { $ne: '' } }, { announcements: { $ne: '' } }]
-        }).sort({ date: -1 }).select('name date devotion announcements');
+        // Fetch the previous meeting recap from the same campus (Meetings only)
+        let previousRecap = null;
+        if (!isTraining) {
+            previousRecap = await Meeting.findOne({
+                campus: meeting.campus,
+                _id: { $ne: meeting._id },
+                date: { $lt: meeting.date },
+                $or: [{ devotion: { $ne: '' } }, { announcements: { $ne: '' } }]
+            }).sort({ date: -1 }).select('name date devotion announcements');
+        }
 
         // Check if this device has already attended
         let hasAttended = false;
         if (req.query.deviceId) {
+            const query = isTraining ? { trainingId: meeting._id } : { meeting: meeting._id };
             const existingRecord = await Attendance.findOne({
-                meeting: meeting._id,
+                ...query,
                 deviceId: req.query.deviceId
             });
             if (existingRecord) hasAttended = true;
         }
 
-        res.json({ ...meeting.toObject(), previousRecap, serverStartTime: Date.now(), hasAttended });
+        res.json({
+            ...meeting.toObject(),
+            previousRecap,
+            serverStartTime: Date.now(),
+            hasAttended,
+            isTraining,
+            category: isTraining ? 'Training' : (meeting.category || 'Meeting')
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

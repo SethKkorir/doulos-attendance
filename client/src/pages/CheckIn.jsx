@@ -9,6 +9,7 @@ import ValentineRain from '../components/ValentineRain';
 const CheckIn = () => {
     const params = useParams();
     const meetingCode = (params.meetingCode?.replace(/\/$/, '') || '').toLowerCase();
+    const isTestMode = new URLSearchParams(window.location.search).get('test') === '1';
     const [meeting, setMeeting] = useState(null);
     const [responses, setResponses] = useState({});
     const [memberType, setMemberType] = useState(''); // Douloid, Recruit, Visitor
@@ -53,32 +54,38 @@ const CheckIn = () => {
                 res.data.requiredFields.forEach(f => {
                     initialResponses[f.key] = '';
                 });
+                // Security: Ensure studentRegNo is always in state
+                if (initialResponses.studentRegNo === undefined) initialResponses.studentRegNo = '';
                 setResponses(initialResponses);
 
                 const userRole = localStorage.getItem('role');
                 const isSuperUser = ['developer', 'superadmin'].includes(userRole);
+                const bypassLocks = isSuperUser || isTestMode;
 
                 // --- DUPLICATE CHECK-IN DETECTION ---
                 // Check both LocalStorage AND Server-Side Record
                 const localStatus = localStorage.getItem(`doulos_attendance_status_${meetingCode}`);
                 const serverHasAttended = res.data.hasAttended;
 
-                if ((localStatus === 'success' || serverHasAttended) && !isSuperUser) {
+                if ((localStatus === 'success' || serverHasAttended) && !bypassLocks) {
                     setHasAlreadyCheckedIn(true);
                     return; // Stop loading form
                 }
 
-                if ((localStatus === 'success' || serverHasAttended) && isSuperUser) {
-                    setMsg("Admin Notice: You have already checked in on this device. (Bypassing lock for testing)");
+                if ((localStatus === 'success' || serverHasAttended) && bypassLocks) {
+                    setMsg("🔧 Test Mode: Already checked in — bypassing lock for testing.");
                 }
 
                 // --- STRICT LOCK CHECK (Security Layer) ---
-                const lockData = localStorage.getItem(`doulos_attendance_lock_${meetingCode}`);
-                if (lockData) {
-                    const { reason } = JSON.parse(lockData);
-                    setStatus('locked');
-                    setMsg(reason || 'Access Denied');
-                    return;
+                // Superusers and test mode bypass the localStorage lock entirely
+                if (!bypassLocks) {
+                    const lockData = localStorage.getItem(`doulos_attendance_lock_${meetingCode}`);
+                    if (lockData) {
+                        const { reason } = JSON.parse(lockData);
+                        setStatus('locked');
+                        setMsg(reason || 'Access Denied');
+                        return;
+                    }
                 }
 
                 if (!res.data.isActive && !res.data.isTestMeeting && !isSuperUser) {
@@ -230,14 +237,16 @@ const CheckIn = () => {
             // Lock out on specific violations (403 Forbidden / 409 Conflict)
             // e.g. Device Mismatch, One Scan Per Week, Time Violation
             if (status === 403 || status === 409) {
-                localStorage.setItem(`doulos_attendance_lock_${meetingCode}`, JSON.stringify({
-                    reason: errorMsg,
-                    timestamp: Date.now()
-                }));
+                // Don't write the lock in test/superuser mode so retesting works
+                if (!isTestMode && !['developer', 'superadmin'].includes(localStorage.getItem('role'))) {
+                    localStorage.setItem(`doulos_attendance_lock_${meetingCode}`, JSON.stringify({
+                        reason: errorMsg,
+                        timestamp: Date.now()
+                    }));
+                    setTimeout(() => window.location.href = '/portal', 4000);
+                }
                 setStatus('locked');
                 setMsg(errorMsg);
-                // Optional: Redirect to dashboard after a delay
-                setTimeout(() => window.location.href = '/portal', 4000);
             } else {
                 setStatus('error');
                 setMsg(errorMsg);
@@ -442,13 +451,16 @@ const CheckIn = () => {
                             </div>
                         )}
 
-                        {[...(meeting?.requiredFields || [])]
-                            .sort((a, b) => {
+                        {(() => {
+                            const fields = [...(meeting?.requiredFields || [])];
+                            if (!fields.find(f => f.key === 'studentRegNo')) {
+                                fields.push({ label: 'Admission Number', key: 'studentRegNo', required: true });
+                            }
+                            return fields.sort((a, b) => {
                                 if (a.key === 'studentRegNo') return -1;
                                 if (b.key === 'studentRegNo') return 1;
                                 return 0;
-                            })
-                            .map((field) => {
+                            }).map((field) => {
                                 const isNameField = field.key.toLowerCase().includes('name') && field.key !== 'studentRegNo';
                                 const isLocked = memberInfo && isNameField;
 
@@ -512,7 +524,8 @@ const CheckIn = () => {
                                         </div>
                                     </div>
                                 );
-                            })}
+                            });
+                        })()}
 
                         {meeting?.questionOfDay && (
                             <div style={{ animation: 'fadeIn 0.5s ease-out', marginTop: '1rem' }}>

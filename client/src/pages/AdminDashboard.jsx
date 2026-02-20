@@ -388,6 +388,7 @@ const AdminDashboard = () => {
     const [loadingInsights, setLoadingInsights] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [meetingSemesterFilter, setMeetingSemesterFilter] = useState('Current');
+    const [trainingSemesterFilter, setTrainingSemesterFilter] = useState('Current');
     const [admins, setAdmins] = useState([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState(null);
@@ -408,6 +409,10 @@ const AdminDashboard = () => {
         startTime: '14:00',
         endTime: '17:00',
         semester: 'JAN-APR 2026',
+        requiredFields: [
+            { label: 'Full Name', key: 'studentName', required: true },
+            { label: 'Admission Number', key: 'studentRegNo', required: true }
+        ],
         questionOfDay: '',
         location: { name: '', latitude: null, longitude: null, radius: 200 }
     });
@@ -1177,17 +1182,17 @@ const AdminDashboard = () => {
     };
 
     const handlePrintQR = () => {
-        if (!selectedMeeting) return;
+        const meeting = selectedMeeting || selectedTraining;
+        if (!meeting) return;
 
         // Find the QR code SVG. 
         // Note: The on-screen version is blurred, but the SVG data itself is valid.
         // We will print it cleanly without the blur styles.
-        const qrSvg = document.querySelector('.qr-modal-content svg');
+        const qrSvg = document.querySelector('.qr-modal-content svg') || document.querySelector('.training-qr-container svg');
         if (!qrSvg) return;
 
         // Create a clean version of the SVG for printing (removing parent filters if any)
         const qrDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(qrSvg));
-        const meeting = selectedMeeting;
 
         const printHtml = `
             <html>
@@ -1797,7 +1802,7 @@ const AdminDashboard = () => {
                                 </div>
                             );
                         })()}
-                        {((m.isActive || userRole) && !isMeetingOver) && (
+                        {((m.isActive && !isMeetingOver) || ['developer', 'superadmin'].includes(userRole)) && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1936,33 +1941,174 @@ const AdminDashboard = () => {
                             <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
                         </button>
                     )}
-                    <button className="btn" style={{ flex: '2 1 100px', background: 'var(--glass-bg)', color: 'hsl(var(--color-text))', padding: '0.5rem', fontSize: '0.8rem', border: '1px solid var(--glass-border)' }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setViewingAttendance(m);
-                        }}
-                    >
-                        View Attendance
-                    </button>
-                    {!isMeetingOver && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-primary" style={{ flex: 1, background: 'rgba(124, 58, 237, 0.1)', color: '#a78bfa', fontSize: '0.75rem', padding: '0.5rem', fontWeight: 800, border: '1px solid rgba(124, 58, 237, 0.2)' }}
+                            onClick={(e) => { e.stopPropagation(); setInsightMeeting(m); }}>
+                            <BarChart3 size={14} style={{ marginRight: '0.4rem' }} /> {m.attendees || 0} Insights
+                        </button>
                         <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingMeeting(m);
+                                toggleStatus(m);
                             }}
                         >
-                            <Pencil size={16} />
+                            {m.isActive ? <X size={16} title="Close Meeting" /> : <RotateCcw size={16} title="Reopen Meeting" />}
                         </button>
-                    )}
+                        {['developer', 'superadmin'].includes(userRole) && (
+                            <button
+                                className="btn"
+                                style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteMeeting(m._id, m.name);
+                                }}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderTrainingCard = (t) => {
+        const now = new Date();
+        const tDate = new Date(t.date);
+        const [h, min] = t.startTime.split(':').map(Number);
+        const tStart = new Date(tDate);
+        tStart.setHours(h, min, 0, 0);
+
+        const [endH, endMin] = t.endTime.split(':').map(Number);
+        const tEnd = new Date(tDate);
+        tEnd.setHours(endH, endMin, 0, 0);
+
+        const isActuallyLive = t.isActive && now >= tStart;
+        const isOver = now > tEnd;
+
+        return (
+            <div
+                key={t._id}
+                className="glass-panel meeting-card-hover"
+                style={{
+                    padding: '1.5rem',
+                    position: 'relative',
+                    transition: 'all 0.3s ease',
+                    border: isActuallyLive ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid var(--glass-border)',
+                    boxShadow: isActuallyLive ? '0 0 20px rgba(52, 211, 153, 0.1)' : 'none'
+                }}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{t.name}</h3>
+                            <span style={{
+                                fontSize: '0.6rem',
+                                padding: '0.2rem 0.5rem',
+                                background: 'rgba(52, 211, 153, 0.2)',
+                                color: '#34d399',
+                                borderRadius: '0.3rem',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                border: '1px solid rgba(52, 211, 153, 0.3)'
+                            }}>Training</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+                            <MapPin size={14} /> {t.campus}
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        {(() => {
+                            if (!t.isActive) return (
+                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
+                                    • ARCHIVED
+                                </div>
+                            );
+
+                            if (isOver) return (
+                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
+                                    • COMPLETED
+                                </div>
+                            );
+
+                            if (now < tStart) {
+                                const isToday = now.toDateString() === tDate.toDateString();
+                                return (
+                                    <div style={{
+                                        padding: '0.5rem 0.8rem',
+                                        background: isToday ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                                        borderRadius: '2rem',
+                                        color: isToday ? '#34d399' : 'var(--color-text-dim)',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        border: `1px solid ${isToday ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255, 255, 255, 0.1)'}`
+                                    }}>
+                                        • {isToday ? 'STANDBY' : 'SCHEDULED'}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div style={{ padding: '0.5rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '2rem', color: '#34d399', fontSize: '0.7rem', fontWeight: 800 }}>
+                                    • LIVE NOW
+                                </div>
+                            );
+                        })()}
+                        {(t.isActive && !isOver || ['developer', 'superadmin'].includes(userRole)) && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTraining(t);
+                                }}
+                                className="btn"
+                                style={{
+                                    padding: '0.5rem 0.75rem',
+                                    background: 'rgba(52, 211, 153, 0.1)',
+                                    color: '#34d399',
+                                    border: '1px solid rgba(52, 211, 153, 0.3)',
+                                    borderRadius: '0.5rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 800
+                                }}
+                            >
+                                <QrIcon size={16} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '0.5rem' }}>
+                    <div style={{ fontSize: '0.8rem' }}>
+                        <div style={{ opacity: 0.5, fontSize: '0.65rem', textTransform: 'uppercase' }}>Date</div>
+                        <div style={{ fontWeight: 700 }}>{new Date(t.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
+                    </div>
+                    <div style={{ fontSize: '0.8rem' }}>
+                        <div style={{ opacity: 0.5, fontSize: '0.65rem', textTransform: 'uppercase' }}>Time</div>
+                        <div style={{ fontWeight: 700 }}>{t.startTime}</div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-primary" style={{ flex: 1, background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', fontSize: '0.75rem', padding: '0.5rem', fontWeight: 800, border: '1px solid rgba(52, 211, 153, 0.2)' }}
+                        onClick={(e) => { e.stopPropagation(); setInsightMeeting(t); }}>
+                        <BarChart3 size={14} style={{ marginRight: '0.4rem' }} /> {t.attendanceCount || 0} Insights
+                    </button>
+                    <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTrainingStatus(t._id, t.isActive);
+                        }}
+                    >
+                        {t.isActive ? <X size={16} title="Close Training" /> : <RotateCcw size={16} title="Reopen Training" />}
+                    </button>
                     {['developer', 'superadmin'].includes(userRole) && (
                         <button
                             className="btn"
                             style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteMeeting(m._id, m.name);
+                                handleDeleteTraining(t._id, t.name);
                             }}
-                            title="Delete Meeting (Requires password)"
                         >
                             <Trash2 size={16} />
                         </button>
@@ -2194,7 +2340,7 @@ const AdminDashboard = () => {
                             onQuickCheckIn={handleQuickCheckIn}
                         />
                     </div>
-                ) : activeTab === 'meetings' && (
+                ) : (activeTab === 'meetings' || activeTab === 'trainings') && (
                     <div
                         className="glass-panel"
                         style={{
@@ -2209,102 +2355,93 @@ const AdminDashboard = () => {
                         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', opacity: 0.3 }}>
                             <BarChart3 size={48} />
                         </div>
-                        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'hsl(var(--color-primary))' }}>Meeting Attendance Intelligence</h3>
-                        <p style={{ marginTop: '0.75rem', opacity: 0.6, fontSize: '1rem', fontWeight: 500 }}>Select any meeting card below to decode detailed participation insights, absent lists, and growth metrics.</p>
+                        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: activeTab === 'trainings' ? '#34d399' : 'hsl(var(--color-primary))' }}>
+                            {activeTab === 'meetings' ? 'Meeting' : 'Training'} Attendance Intelligence
+                        </h3>
+                        <p style={{ marginTop: '0.75rem', opacity: 0.6, fontSize: '1rem', fontWeight: 500 }}>
+                            Select any {activeTab === 'meetings' ? 'meeting' : 'training'} card below to decode detailed participation insights, absent lists, and growth metrics.
+                        </p>
                     </div>
                 )}
 
                 {/* ============================================================ */}
                 {/* TRAININGS TAB */}
                 {/* ============================================================ */}
-                {activeTab === 'trainings' && (
+                {activeTab === 'trainings' ? (
                     <>
                         <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <button className="btn btn-primary" onClick={() => setShowCreateTraining(!showCreateTraining)}
-                                style={{ background: 'hsl(168, 80%, 40%)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Plus size={20} /> New Training
+                                style={{ background: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'black', fontWeight: 800 }}>
+                                <Plus size={20} /> New Training Session
                             </button>
-                            <span style={{ opacity: 0.5, fontSize: '0.8rem', fontWeight: 700 }}>
-                                {trainings.filter(t => t.isActive).length} active · {trainings.length} total
-                            </span>
                         </div>
 
                         {/* Create Training Form */}
                         {showCreateTraining && (
                             <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h3 style={{ margin: 0 }}>🎓 Create Training Session</h3>
-                                    <button onClick={() => setShowCreateTraining(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-dim)' }}>✕</button>
+                                    <h3 style={{ margin: 0 }}>Create Training Session</h3>
+                                    <button onClick={() => setShowCreateTraining(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
+                                        <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                    </button>
                                 </div>
-                                <form onSubmit={handleCreateTraining}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                        <div>
-                                            <label>Training Name</label>
-                                            <input className="input-field" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} required />
-                                        </div>
-                                        <div>
-                                            <label>Date</label>
-                                            <input type="date" className="input-field" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
-                                        </div>
-                                        <div>
-                                            <label>Campus</label>
-                                            <select className="input-field" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
-                                                <option value="Athi River">Athi River</option>
-                                                <option value="Valley Road">Valley Road</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label>Semester</label>
-                                            <select className="input-field" value={trainingFormData.semester} onChange={e => setTrainingFormData({ ...trainingFormData, semester: e.target.value })}>
-                                                <option value="JAN-APR 2026">JAN-APR 2026</option>
-                                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
-                                                <option value="SEP-DEC 2026">SEP-DEC 2026</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label>Start Time</label>
-                                            <input type="time" className="input-field" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
-                                        </div>
-                                        <div>
-                                            <label>End Time</label>
-                                            <input type="time" className="input-field" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
-                                        </div>
-                                        <div>
-                                            <label>Venue Name *</label>
-                                            <input className="input-field" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
-                                                onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
-                                        </div>
-                                        <div>
-                                            <label>Geofence Radius (m)</label>
-                                            <input type="number" className="input-field" value={trainingFormData.location.radius}
-                                                onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} />
-                                        </div>
+                                <form onSubmit={handleCreateTraining} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Training Configuration</span>
                                     </div>
-                                    <div style={{ marginBottom: '1rem' }}>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label>Training Name</label>
+                                        <input className="input-field" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} required />
+                                    </div>
+                                    <div>
+                                        <label>Date</label>
+                                        <input type="date" className="input-field" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
+                                    </div>
+                                    <div>
+                                        <label>Campus</label>
+                                        <select className="input-field" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label>Start Time</label>
+                                        <input type="time" className="input-field" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
+                                    </div>
+                                    <div>
+                                        <label>End Time</label>
+                                        <input type="time" className="input-field" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
+                                    </div>
+                                    <div>
+                                        <label>Venue Name *</label>
+                                        <input className="input-field" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
+                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
+                                    </div>
+                                    <div>
+                                        <label>Geofence Radius (m)</label>
+                                        <input type="number" className="input-field" value={trainingFormData.location.radius}
+                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
                                         <label>Question of the Day (optional)</label>
-                                        <input className="input-field" placeholder="E.g. What is your takeaway from this session?" value={trainingFormData.questionOfDay}
+                                        <input className="input-field" placeholder="What is your takeaway?" value={trainingFormData.questionOfDay}
                                             onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })} />
                                     </div>
-                                    {/* GPS Capture */}
-                                    <div style={{ marginBottom: '1rem' }}>
-                                        <button type="button" className="btn" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <button type="button" className="btn" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem' }}
                                             onClick={() => {
                                                 navigator.geolocation.getCurrentPosition(pos => {
                                                     setTrainingFormData(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
-                                                    setMsg({ type: 'success', text: `GPS captured: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}` });
-                                                }, () => setMsg({ type: 'error', text: 'GPS capture failed. Please enable location.' }));
+                                                    setMsg({ type: 'success', text: `GPS captured!` });
+                                                }, () => setMsg({ type: 'error', text: 'GPS failed.' }));
                                             }}>
-                                            <MapPin size={16} /> Use My Current Location
+                                            <MapPin size={16} /> Capture GPS
                                         </button>
-                                        {trainingFormData.location.latitude && (
-                                            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#34d399' }}>
-                                                ✅ GPS: {trainingFormData.location.latitude.toFixed(5)}, {trainingFormData.location.longitude.toFixed(5)}
-                                            </p>
-                                        )}
+                                        {trainingFormData.location.latitude && <span style={{ color: '#34d399', fontSize: '0.8rem', fontWeight: 700 }}>✓ GPS Linked</span>}
+                                        <button type="submit" className="btn btn-primary" disabled={importLoading} style={{ background: '#34d399', marginLeft: 'auto', padding: '0.75rem 2rem', color: 'black', fontWeight: 800 }}>
+                                            {importLoading ? 'Creating...' : 'Create Training Session'}
+                                        </button>
                                     </div>
-                                    <button type="submit" className="btn btn-primary" disabled={importLoading} style={{ background: 'hsl(168, 80%, 40%)' }}>
-                                        {importLoading ? 'Creating...' : '🎓 Create Training'}
-                                    </button>
                                 </form>
                             </div>
                         )}
@@ -2314,142 +2451,135 @@ const AdminDashboard = () => {
                             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 onClick={() => setSelectedTraining(null)}>
                                 <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
-                                    <h3 style={{ marginBottom: '0.5rem' }}>{selectedTraining.name}</h3>
-                                    <p style={{ opacity: 0.5, marginBottom: '1.5rem', fontSize: '0.85rem' }}>Training QR Code · Code: {selectedTraining.code}</p>
-                                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block' }}>
-                                        <QRCode value={`${window.location.origin}/check-in/${selectedTraining.code}`} size={220} />
+                                    <h3 style={{ marginBottom: '0.5rem' }}>Scan Training QR</h3>
+
+                                    <div className="training-qr-container" style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '1rem' }}>
+                                        <QRCode value={`${window.location.origin}/check-in/${selectedTraining.code}`} size={220} level="H" />
                                     </div>
-                                    <p style={{ marginTop: '1rem', opacity: 0.4, fontSize: '0.75rem' }}>Scan to check in · No weekly limit</p>
-                                    <button onClick={() => setSelectedTraining(null)} className="btn" style={{ marginTop: '1rem', background: 'rgba(255,255,255,0.1)', color: 'white' }}>Close</button>
+
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>TRAINING CODE</div>
+                                        <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#34d399', letterSpacing: '2px', lineHeight: 1 }}>
+                                            {selectedTraining.code.toUpperCase()}
+                                        </div>
+                                    </div>
+
+                                    <h4 style={{ margin: '0 0 0.25rem' }}>{selectedTraining.name}</h4>
+                                    <p style={{ opacity: 0.5, marginBottom: '1.5rem', fontSize: '0.85rem' }}>{selectedTraining.campus} | Training Session</p>
+
+                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ background: '#34d399', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                                            onClick={() => handlePrintQR()}
+                                        >
+                                            <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
+                                        </button>
+                                        <button
+                                            className="btn"
+                                            style={{ background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                            onClick={() => {
+                                                const link = `${window.location.origin}/check-in/${selectedTraining.code}`;
+                                                navigator.clipboard.writeText(link);
+                                                setMsg({ type: 'success', text: 'Link copied!' });
+                                            }}
+                                        >
+                                            <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
+                                        </button>
+                                        {['developer', 'superadmin'].includes(userRole) && (
+                                            <a
+                                                href={`/check-in/${selectedTraining.code}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="btn"
+                                                style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.5rem 1rem', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                                            >
+                                                <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
+                                            </a>
+                                        )}
+                                    </div>
+                                    <p style={{ marginTop: '1.5rem', opacity: 0.4, fontSize: '0.75rem' }}>Click anywhere outside to close</p>
                                 </div>
                             </div>
                         )}
 
-                        {/* Training Cards */}
-                        <div style={{ display: 'grid', gap: '1rem' }}>
-                            {trainings.length === 0 ? (
-                                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', border: '2px dashed rgba(52,211,153,0.2)' }}>
-                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎓</div>
-                                    <h3 style={{ margin: 0, color: '#34d399' }}>No Training Sessions Yet</h3>
-                                    <p style={{ opacity: 0.5 }}>Create your first training session above.</p>
-                                </div>
-                            ) : trainings.map(t => {
-                                const now = new Date();
-                                const tDate = new Date(t.date);
-                                const [endH, endM] = t.endTime.split(':').map(Number);
-                                const tEnd = new Date(tDate);
-                                tEnd.setHours(endH, endM, 0, 0);
-                                const isOver = now > tEnd;
+                        {/* Training Grid - Unified Layout */}
+                        {(() => {
+                            const getSem = (d) => {
+                                const date = new Date(d);
+                                const m = date.getMonth();
+                                const y = date.getFullYear();
+                                if (m <= 3) return `Jan Semester ${y}`;
+                                if (m <= 7) return `May Semester ${y}`;
+                                return `Sept Semester ${y}`;
+                            };
 
-                                return (
-                                    <div key={t._id} className="glass-panel"
-                                        onClick={() => setInsightMeeting(t)}
-                                        style={{
-                                            padding: '1.5rem',
-                                            cursor: 'pointer',
-                                            border: t.isActive && !isOver ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid var(--glass-border)',
-                                            boxShadow: t.isActive && !isOver ? '0 0 20px rgba(52,211,153,0.08)' : 'none'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                            <div>
-                                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    {t.name}
-                                                    <span style={{ fontSize: '0.6rem', padding: '0.2rem 0.5rem', background: 'rgba(52,211,153,0.2)', color: '#34d399', borderRadius: '0.3rem', fontWeight: 900 }}>TRAINING</span>
-                                                </h3>
-                                                <div style={{ fontSize: '0.85rem', opacity: 0.5, marginTop: '0.3rem', display: 'flex', gap: '1rem' }}>
-                                                    <span><Calendar size={12} style={{ marginRight: '0.3rem' }} />{new Date(t.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                                    <span><Clock size={12} style={{ marginRight: '0.3rem' }} />{t.startTime} – {t.endTime}</span>
-                                                    <span><MapPin size={12} style={{ marginRight: '0.3rem' }} />{t.campus}</span>
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                {/* Status Badge */}
-                                                <span style={{
-                                                    padding: '0.4rem 0.8rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 800,
-                                                    background: !t.isActive ? 'rgba(255,255,255,0.05)' : isOver ? 'rgba(255,255,255,0.05)' : 'rgba(52,211,153,0.1)',
-                                                    color: !t.isActive ? 'var(--color-text-dim)' : isOver ? 'var(--color-text-dim)' : '#34d399'
-                                                }}>
-                                                    {!t.isActive ? '• CLOSED' : isOver ? '• COMPLETED' : '• ACTIVE'}
-                                                </span>
-                                                {/* Attendance Count */}
-                                                <button
-                                                    className="btn"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setInsightMeeting(t);
-                                                    }}
-                                                    style={{
-                                                        padding: '0.4rem 0.8rem',
-                                                        borderRadius: '2rem',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 800,
-                                                        background: 'rgba(52, 211, 153, 0.1)',
-                                                        color: '#34d399',
-                                                        border: '1px solid rgba(52, 211, 153, 0.2)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.4rem'
-                                                    }}
-                                                >
-                                                    <BarChart3 size={12} /> {t.attendanceCount || 0}
-                                                </button>
-                                                {/* QR Button */}
-                                                {t.isActive && !isOver && (
-                                                    <button className="btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedTraining(t);
-                                                        }}
-                                                        style={{ padding: '0.5rem 0.75rem', background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                        <QrIcon size={16} />
-                                                    </button>
-                                                )}
-                                                {/* Toggle Button */}
-                                                <button className="btn"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleToggleTrainingStatus(t._id, t.isActive);
-                                                    }}
-                                                    style={{ padding: '0.5rem 0.75rem', background: t.isActive ? 'rgba(239,68,68,0.1)' : 'rgba(52,211,153,0.1)', color: t.isActive ? '#ef4444' : '#34d399', border: `1px solid ${t.isActive ? 'rgba(239,68,68,0.3)' : 'rgba(52,211,153,0.3)'}`, borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                    {t.isActive ? 'Close' : 'Reopen'}
-                                                </button>
-                                                {/* Delete Button */}
-                                                {['developer', 'superadmin'].includes(userRole) && (
-                                                    <button className="btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteTraining(t._id, t.name);
-                                                        }}
-                                                        style={{ padding: '0.5rem 0.75rem', background: 'rgba(239,68,68,0.05)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontSize: '0.75rem' }}>
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                )}
-                                            </div>
+                            const activeList = trainings.filter(t => t.isActive);
+                            const historyList = trainings.filter(t => !t.isActive);
+
+                            const semesters = Array.from(new Set(historyList.map(t => getSem(t.date))));
+                            const currentSem = getSem(new Date());
+
+                            const filteredHistory = historyList.filter(t => {
+                                if (trainingSemesterFilter === 'All') return true;
+                                const target = trainingSemesterFilter === 'Current' ? currentSem : trainingSemesterFilter;
+                                return getSem(t.date) === target;
+                            });
+
+                            return (
+                                <div>
+                                    <h3 style={{ margin: '0 0 1rem 0', opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid rgba(52,211,153,0.2)', paddingBottom: '0.5rem', color: '#34d399' }}>
+                                        Active & Upcoming Trainings
+                                    </h3>
+
+                                    {activeList.length === 0 ? (
+                                        <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(52,211,153,0.02)', borderRadius: '1rem', marginBottom: '2rem', border: '1px dashed rgba(52,211,153,0.1)' }}>
+                                            <p style={{ margin: 0, color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>No active training sessions.</p>
                                         </div>
-                                        {t.location?.name && (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', opacity: 0.5 }}>
-                                                📍 {t.location.name} {t.location.latitude ? `· GPS ✓` : '· No GPS'}
-                                            </div>
-                                        )}
-                                        {t.code && (
-                                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.4, fontFamily: 'monospace' }}>
-                                                Code: {t.code}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </>
-                )}
+                                    ) : (
+                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                                            {activeList.map(t => renderTrainingCard(t))}
+                                        </div>
+                                    )}
 
-                {activeTab === 'meetings' ? (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
+                                        <h3 style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Training History</h3>
+                                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                                            <button onClick={() => setTrainingSemesterFilter('Current')}
+                                                style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === 'Current' ? '#34d399' : 'transparent', color: trainingSemesterFilter === 'Current' ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>
+                                                Current
+                                            </button>
+                                            {semesters.filter(s => s !== currentSem).map(s => (
+                                                <button key={s} onClick={() => setTrainingSemesterFilter(s)}
+                                                    style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === s ? '#34d399' : 'transparent', color: trainingSemesterFilter === s ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>
+                                                    {s}
+                                                </button>
+                                            ))}
+                                            <button onClick={() => setTrainingSemesterFilter('All')}
+                                                style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === 'All' ? '#34d399' : 'transparent', color: trainingSemesterFilter === 'All' ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>
+                                                All Time
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {filteredHistory.length === 0 ? (
+                                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No archived trainings.</div>
+                                    ) : (
+                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                            {filteredHistory.map(t => renderTrainingCard(t))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </>
+                ) : activeTab === 'meetings' ? (
                     <>
                         {/* Actions */}
                         <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-                                <Plus size={20} style={{ marginRight: '0.5rem' }} /> New Meeting
+                            <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+                                <Plus size={20} /> New Meeting Session
                             </button>
                         </div>
 
@@ -2619,8 +2749,8 @@ const AdminDashboard = () => {
                             return (
                                 <div>
                                     {/* Active & Upcoming Section */}
-                                    <h3 style={{ margin: '0 0 1rem 0', opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-                                        Active & Upcoming
+                                    <h3 style={{ margin: '0 0 1rem 0', opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid rgba(124,58,237,0.2)', paddingBottom: '0.5rem', color: 'hsl(var(--color-primary))' }}>
+                                        Active & Upcoming Meetings
                                     </h3>
 
                                     {activeList.length === 0 ? (
@@ -2989,7 +3119,7 @@ const AdminDashboard = () => {
                     />
                 ) : activeTab === 'system' ? (
                     <SystemView onUpdateSetting={handleSaveSetting} isGuest={isGuest} />
-                ) : (
+                ) : activeTab === 'reports' ? (
                     <ReportsView
                         meetings={meetings}
                         members={members}
@@ -2998,7 +3128,7 @@ const AdminDashboard = () => {
                         onDownloadCSV={downloadCSV}
                         onDownloadCumulativeCSV={downloadCumulativeCSV}
                     />
-                )}
+                ) : null}
 
                 {/* Member Insights & Profile Modal */}
                 {
@@ -3930,7 +4060,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                     <div className="glass-panel" style={{ padding: '2rem', height: '350px', background: 'rgba(0,0,0,0.2)' }}>
                         <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1.5rem', color: '#25AAE1' }}>Frequency Analysis</h3>
-                        <ResponsiveContainer width="100%" height="85%">
+                        <ResponsiveContainer width="100%" height={280}>
                             <LineChart data={[...filteredMeetings].reverse().map(m => ({ name: new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: m.attendanceCount || 0 }))}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                                 <XAxis dataKey="name" stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
@@ -3946,7 +4076,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
 
                     <div className="glass-panel" style={{ padding: '2rem', height: '350px', background: 'var(--glass-bg)' }}>
                         <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1.5rem', color: '#a78bfa' }}>Segment Integrity</h3>
-                        <ResponsiveContainer width="100%" height="85%">
+                        <ResponsiveContainer width="100%" height={280}>
                             <PieChart>
                                 <Pie
                                     data={[

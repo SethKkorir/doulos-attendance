@@ -53,7 +53,9 @@ export const submitAttendance = async (req, res) => {
 
         console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.getHours()}:${now.getMinutes()} vs Start=${meeting.startTime} End=${meeting.endTime}`);
 
-        if (!isSuperUser && !meeting.isTestMeeting) {
+        // Training sessions span multiple days (Fri–Sun) — skip all time-window checks.
+        // The only gate is isActive. Admins can also manually check in anyone at any time.
+        if (!isTrainingSession && !isSuperUser && !meeting.isTestMeeting) {
             // 1. Future Day Block
             if (todayStr < meetingStr) {
                 return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}.` });
@@ -72,12 +74,12 @@ export const submitAttendance = async (req, res) => {
                 }
             }
 
-            // 3. Past Day Block (Lock after 48 hours for general safety, but day check handled above)
+            // 3. Past Day Block (Lock after 48 hours for general safety)
             if (todayStr > meetingStr) {
                 const meetingEnd = new Date(meetingDate);
                 meetingEnd.setHours(endHours, endMinutes, 0, 0);
                 const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
-                if (hoursSinceEnd > 24) { // Only allow late scans for 24 hours (backdated updates etc)
+                if (hoursSinceEnd > 24) {
                     return res.status(403).json({ message: 'Attendance window closed.' });
                 }
             }
@@ -138,18 +140,24 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 8. Anti-Proxy Check (One check-in per device per meeting)
+        // 8. Anti-Proxy Check (One check-in per device per session)
         if (deviceId && !isSuperUser) {
-            const deviceUsed = await Attendance.findOne({ meeting: meeting._id, deviceId });
+            const deviceQuery = isTrainingSession
+                ? { trainingId: meeting._id, deviceId }
+                : { meeting: meeting._id, deviceId };
+            const deviceUsed = await Attendance.findOne(deviceQuery);
             if (deviceUsed) {
-                return res.status(403).json({ message: 'This device has already been used for a check-in for this meeting.' });
+                return res.status(403).json({ message: 'This device has already been used for a check-in for this session.' });
             }
         }
 
-        // 9. Duplicate check (This meeting)
-        const existing = await Attendance.findOne({ meeting: meeting._id, studentRegNo });
+        // 9. Duplicate check (This session)
+        const dupQuery = isTrainingSession
+            ? { trainingId: meeting._id, studentRegNo }
+            : { meeting: meeting._id, studentRegNo };
+        const existing = await Attendance.findOne(dupQuery);
         if (existing) {
-            return res.status(409).json({ message: 'You have already signed in for this meeting.' });
+            return res.status(409).json({ message: 'You have already signed in for this session.' });
         }
 
         // 9.5. Weekly Check-In Restriction — MEETINGS ONLY (Trainings are exempt)

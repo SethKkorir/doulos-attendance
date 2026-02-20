@@ -35,12 +35,14 @@ export const getTrainings = async (req, res) => {
             const endTotalMinutes = endH * 60 + endM;
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-            const isPastDay = tStr < todayStr;
-            const isPastEndTime = tStr === todayStr && currentMinutes > (endTotalMinutes + 30);
+            // Trainings span multiple days (Fri–Sun).
+            // Only auto-close if the training started more than 3 days ago.
+            // Admins are expected to manually close trainings when done.
+            const isPastDay = (now - new Date(t.date)) > (3 * 24 * 60 * 60 * 1000); // 3 days in ms
 
-            if (isPastDay || isPastEndTime) {
+            if (isPastDay) {
                 await Training.findByIdAndUpdate(t._id, { isActive: false });
-                console.log(`[AUTO-CLOSE] Training "${t.name}" (${tStr}) has been automatically closed.`);
+                console.log(`[AUTO-CLOSE] Training "${t.name}" auto-closed after 3+ days.`);
             }
         }
 

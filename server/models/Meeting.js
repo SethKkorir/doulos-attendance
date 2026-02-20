@@ -13,13 +13,19 @@ const meetingSchema = new mongoose.Schema({
     semester: { type: String, default: '' },      // e.g., "JAN-APR 2026"
     isActive: { type: Boolean, default: true },
     code: { type: String, unique: true }, // Unique meeting ID/Token for QR
-    requiredFields: [
-        {
-            label: { type: String, default: 'Full Name' },
-            key: { type: String, default: 'studentName' },
-            required: { type: Boolean, default: true }
-        }
-    ],
+    requiredFields: {
+        type: [
+            {
+                label: { type: String, default: 'Full Name' },
+                key: { type: String, default: 'studentName' },
+                required: { type: Boolean, default: true }
+            }
+        ],
+        default: [
+            { label: 'Full Name', key: 'studentName', required: true },
+            { label: 'Admission Number', key: 'studentRegNo', required: true }
+        ]
+    },
     isTestMeeting: { type: Boolean, default: false },
     devotion: { type: String, default: '' },
     announcements: { type: String, default: '' },

@@ -13,13 +13,19 @@ const trainingSchema = new mongoose.Schema({
     semester: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     code: { type: String, unique: true },
-    requiredFields: [
-        {
-            label: { type: String, default: 'Full Name' },
-            key: { type: String, default: 'studentName' },
-            required: { type: Boolean, default: true }
-        }
-    ],
+    requiredFields: {
+        type: [
+            {
+                label: { type: String, default: 'Full Name' },
+                key: { type: String, default: 'studentName' },
+                required: { type: Boolean, default: true }
+            }
+        ],
+        default: [
+            { label: 'Full Name', key: 'studentName', required: true },
+            { label: 'Admission Number', key: 'studentRegNo', required: true }
+        ]
+    },
     isTestMeeting: { type: Boolean, default: false },
     questionOfDay: { type: String, default: '' },
     location: {
