@@ -1,17 +1,17 @@
 export const getKenyanTime = () => {
     // Return a Date object representing the current time in Kenya (EAT, UTC+3)
     const now = new Date();
-    // EAT is strictly UTC+3. No DST.
-    // Calculate UTC time first, then add 3 hours.
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * 3));
+    // Date.getTime() is always UTC. Adding 3 hours gives us the EAT timestamp.
+    const eatTimestamp = now.getTime() + (3 * 60 * 60 * 1000);
+    return new Date(eatTimestamp);
 };
 
 export const getKenyanDate = () => {
     // Return only the date string YYYY-MM-DD in Kenyan time
     const now = getKenyanTime();
-    const Y = now.getFullYear();
-    const M = String(now.getMonth() + 1).padStart(2, '0');
-    const D = String(now.getDate()).padStart(2, '0');
+    const Y = now.getUTCFullYear();
+    const M = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const D = String(now.getUTCDate()).padStart(2, '0');
     return `${Y}-${M}-${D}`;
 };
+

@@ -30,20 +30,20 @@ export const getMeetings = async (req, res) => {
         // --- AUTO-CLOSE EXPIRED MEETINGS ---
         // Get current Kenyan time
         const now = getKenyanTime();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
 
         // Find all meetings that are still marked active
         const activeMeetings = await Meeting.find({ isActive: true });
 
         for (const m of activeMeetings) {
             const meetingDate = new Date(m.date);
-            const meetingStr = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
+            const meetingStr = `${meetingDate.getUTCFullYear()}-${String(meetingDate.getUTCMonth() + 1).padStart(2, '0')}-${String(meetingDate.getUTCDate()).padStart(2, '0')}`;
 
             if (meetingStr > todayStr) continue; // Future meeting, skip
 
             const [endH, endM] = m.endTime.split(':').map(Number);
             const endTotalMinutes = endH * 60 + endM;
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 
             // If it's a past day OR same day but past end time (+30min buffer) → close it
             const isPastDay = meetingStr < todayStr;
@@ -178,12 +178,12 @@ export const getMeetingByCode = async (req, res) => {
         const meetingDate = new Date(meeting.date);
 
         // Date comparison markers
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const meetingStr = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
+        const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+        const meetingStr = `${meetingDate.getUTCFullYear()}-${String(meetingDate.getUTCMonth() + 1).padStart(2, '0')}-${String(meetingDate.getUTCDate()).padStart(2, '0')}`;
 
         const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
         const [endHours, endMinutes] = meeting.endTime.split(':').map(Number);
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
         const startTotalMinutes = startHours * 60 + startMinutes;
         const endTotalMinutes = endHours * 60 + endMinutes;
 
