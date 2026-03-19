@@ -133,11 +133,14 @@ export const submitAttendance = async (req, res) => {
             if (!member.linkedDeviceId && deviceId) {
                 member.linkedDeviceId = deviceId;
                 await member.save();
-            } else if (member.linkedDeviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !member.isTestAccount) {
-                return res.status(403).json({
-                    message: "Device Mismatch. This Admission Number is linked to a different phone. Please contact G9s if you have a new phone."
-                });
             }
+            // TEMPORARILY DISABLED: iPhones aggressive LocalStorage clearing and In-App browsers (WhatsApp)
+            // cause legitimate users to lose their deviceId frequently. Relying strictly on Step 8 instead.
+            // else if (member.linkedDeviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !member.isTestAccount) {
+            //     return res.status(403).json({
+            //         message: "Device Mismatch. This Admission Number is linked to a different phone. Please contact G9s if you have a new phone."
+            //     });
+            // }
         }
 
         // 8. Anti-Proxy Check (One check-in per device per session)
