@@ -1,9 +1,11 @@
+import downtimeManager from './downtimeManager.js';
+
 const errorHandler = (err, req, res, next) => {
-    console.error(`[ERROR] ${new Date().toISOString()}`);
+    console.error(`[CRITICAL ERROR] ${new Date().toISOString()}`);
     console.error(`Path: ${req.path}`);
     console.error(`Method: ${req.method}`);
     console.error(`Message: ${err.message}`);
-    console.error(err.stack);
+    if (process.env.NODE_ENV !== 'production') console.error(err.stack);
 
     // Mongoose Validation Error
     if (err.name === 'ValidationError') {
@@ -23,8 +25,18 @@ const errorHandler = (err, req, res, next) => {
         return res.status(401).json({ message: 'Session expired. Please login again.' });
     }
 
-    // Default Error
+    // Default Error Handling via Downtime Manager
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    
+    if (statusCode === 500) {
+        return downtimeManager.renderDowntime(
+            res, 
+            'System Latency Optimization', 
+            'Our system detected a minor inconsistency and is performing a safety bypass. We will be back in less than a minute.', 
+            500
+        );
+    }
+
     res.status(statusCode).json({
         message: err.message || 'Internal Server Error',
         stack: process.env.NODE_ENV === 'production' ? null : err.stack

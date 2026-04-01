@@ -16,10 +16,15 @@ import activityRoutes from './routes/activityRoutes.js';
 import trainingRoutes from './routes/trainingRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
+import downtimeManager from './middleware/downtimeManager.js';
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Unified Downtime & Isolation System (Must be early)
+app.use(downtimeManager.getDowntimeMiddleware());
 
 // Essential Middleware
 app.use(cors());
