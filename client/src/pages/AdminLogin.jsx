@@ -7,6 +7,7 @@ import BackgroundGallery from '../components/BackgroundGallery';
 
 const AdminLogin = () => {
     const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
@@ -59,7 +60,7 @@ const AdminLogin = () => {
         setError('');
         setLoading(true);
         try {
-            const res = await api.post('/auth/login', { username });
+            const res = await api.post('/auth/login', { username, password });
             
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('role', res.data.role);
@@ -138,7 +139,7 @@ const AdminLogin = () => {
                         color: 'white',
                         textShadow: '0 0 20px rgba(37, 170, 225, 0.3)'
                     }}>
-                        ADMIN <span style={{ color: 'hsl(var(--color-primary))' }}>LOGIN</span>
+                        ADMIN ACCESS
                     </h1>
                     <div style={{
                         display: 'flex',
@@ -226,13 +227,25 @@ const AdminLogin = () => {
                 )}
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="input-group">
-                        <label>Registration Number</label>
+                        <label>Username</label>
                         <input
                             type="text"
                             className="input-field input-field-premium"
-                            placeholder="e.g. 24-0001"
+                            placeholder="Developer Username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="input-group">
+                        <label>Password</label>
+                        <input
+                            type="password"
+                            className="input-field input-field-premium"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>
