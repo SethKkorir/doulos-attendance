@@ -7,10 +7,10 @@ import BackgroundGallery from '../components/BackgroundGallery';
 
 const AdminLogin = () => {
     const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -56,17 +56,15 @@ const AdminLogin = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setError('');
+        setLoading(true);
         try {
-            const isBypass = username === '657' || password === '657';
-            const loginUsername = isBypass ? (username === '657' ? 'SuperAdmin' : username) : username;
-            const loginPassword = isBypass ? '657' : password;
-
-            const res = await api.post('/auth/login', { username: loginUsername, password: loginPassword });
+            const res = await api.post('/auth/login', { username });
+            
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('role', res.data.role);
             localStorage.setItem('username', res.data.username);
             
-            // Separation of Power: Only supersuperadmin goes to Command Center
             if (res.data.username === 'supersuperadmin') {
                 navigate('/superadmin');
             } else {
@@ -74,6 +72,8 @@ const AdminLogin = () => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -226,24 +226,13 @@ const AdminLogin = () => {
                 )}
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="input-group">
-                        <label>Username</label>
+                        <label>Registration Number</label>
                         <input
                             type="text"
                             className="input-field input-field-premium"
-                            placeholder="Enter username"
+                            placeholder="e.g. 24-0001"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="input-group">
-                        <label>Password</label>
-                        <input
-                            type="password"
-                            className="input-field input-field-premium"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>
@@ -251,6 +240,7 @@ const AdminLogin = () => {
                     <button
                         type="submit"
                         className="btn btn-primary"
+                        disabled={loading}
                         style={{
                             width: '100%',
                             height: '50px',
@@ -263,7 +253,7 @@ const AdminLogin = () => {
                             boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)'
                         }}
                     >
-                        LOG IN
+                        {loading ? 'Authenticating...' : 'LOG IN'}
                     </button>
                 </form>
 

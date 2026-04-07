@@ -1,6 +1,7 @@
 import Member from '../models/Member.js';
 import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
+import Settings from '../models/Settings.js';
 import bcrypt from 'bcryptjs';
 
 export const importMembers = async (req, res) => {
@@ -503,5 +504,34 @@ export const updateWateringDays = async (req, res) => {
         res.json({ message: 'Watering schedule updated', member });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const selfRegisterMember = async (req, res) => {
+    const { studentRegNo, name, campus, memberType } = req.body;
+    try {
+        // Only allow in Recovery Mode
+        const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
+        const isRecovery = (recoverySetting?.value === 'true') || (process.env.RECOVERY_MODE === 'true');
+
+        if (!isRecovery) {
+            return res.status(403).json({ message: 'Self-registration is only allowed during System Recovery.' });
+        }
+
+        const regNo = String(studentRegNo).trim().toUpperCase();
+        const exists = await Member.findOne({ studentRegNo: regNo });
+        if (exists) return res.status(400).json({ message: 'Member record already exists.' });
+
+        const member = new Member({
+            studentRegNo: regNo,
+            name: name,
+            campus: campus || 'Athi River',
+            memberType: memberType || 'Douloid',
+            status: 'Active'
+        });
+        await member.save();
+        res.status(201).json({ message: 'Welcome to Doulos! Your record has been created.', member });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to register', error: error.message });
     }
 };

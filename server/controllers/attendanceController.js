@@ -284,7 +284,19 @@ export const getStudentPortalData = async (req, res) => {
         const member = await Member.findOne({ studentRegNo });
 
         if (!member) {
-            return res.status(404).json({ message: "Access Denied: You must be a registered member to access the Doulos Portal. Please see an admin." });
+            // Check if we are in recovery mode
+            const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
+            const isRecovery = (recoverySetting?.value === 'true') || (process.env.RECOVERY_MODE === 'true');
+
+            if (isRecovery) {
+                return res.status(200).json({ 
+                    registrationRequired: true, 
+                    message: "Access Denied: You must be a registered member to access the Doulos Portal. Since we are in Recovery Mode, you can register below.",
+                    studentRegNo
+                });
+            }
+
+            return res.status(404).json({ message: "Access Denied: You must be a registered member to access the Doulos Portal. Please see an admin to be added to the registry." });
         }
 
         // 1.1 Status Block

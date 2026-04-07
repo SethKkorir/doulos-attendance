@@ -43,6 +43,10 @@ const StudentPortal = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [comingSoon, setComingSoon] = useState(null);
     const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
+    const [registrationRequired, setRegistrationRequired] = useState(false);
+    const [newMemberName, setNewMemberName] = useState('');
+    const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
+    const [newMemberType, setNewMemberType] = useState('Douloid');
     const navigate = useNavigate();
 
     // Chat Widget State
@@ -120,6 +124,12 @@ const StudentPortal = () => {
         try {
             const res = await api.get(`/attendance/student/${regNo}`);
 
+            if (res.data.registrationRequired) {
+                setRegistrationRequired(true);
+                setLoading(false);
+                return;
+            }
+
             setData(res.data);
             setIsLoggedIn(true);
             const sessionData = {
@@ -130,6 +140,27 @@ const StudentPortal = () => {
         } catch (err) {
             setError(err.response?.data?.message || "Something went wrong. Please try again.");
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSelfRegister = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            await api.post('/members/self-register', {
+                studentRegNo: regNo,
+                name: newMemberName,
+                campus: newMemberCampus,
+                memberType: newMemberType
+            });
+            
+            // After registration, log them in
+            setRegistrationRequired(false);
+            handleLogin();
+        } catch (err) {
+            setError(err.response?.data?.message || "Registration failed. Please try again.");
             setLoading(false);
         }
     };
@@ -272,75 +303,146 @@ const StudentPortal = () => {
                         </h1>
                     </div>
 
-                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
-                        <div className="input-group" style={{ width: '100%' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1.5px', textAlign: 'left', textTransform: 'uppercase' }}>
-                                Admission No
-                            </label>
-                            <div style={{ position: 'relative', width: '100%' }}>
-                                <input
-                                    placeholder="21-1234"
-                                    style={{
-                                        height: '45px',
-                                        background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid var(--glass-border)',
-                                        borderRadius: '0.75rem',
-                                        fontSize: '0.9rem',
-                                        fontWeight: 600,
-                                        padding: '0 2.5rem 0 1rem',
-                                        width: '100%',
-                                        color: 'white',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    value={regNo}
-                                    onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, '');
-                                        if (val.length > 2) {
-                                            val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                        }
-                                        setRegNo(val);
-                                    }}
-                                    required
-                                />
-                                <Search size={18} style={{
-                                    position: 'absolute',
-                                    right: '1rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: 'var(--color-text-dim)',
-                                    opacity: 0.5,
-                                    pointerEvents: 'none'
-                                }} />
+                    {registrationRequired ? (
+                        <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                            <div style={{ 
+                                background: 'rgba(56, 189, 248, 0.1)', 
+                                border: '1px solid rgba(56, 189, 248, 0.2)',
+                                borderRadius: '1rem',
+                                padding: '1rem',
+                                marginBottom: '1.5rem',
+                                textAlign: 'left'
+                            }}>
+                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-primary)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Doulos Enrollment</div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'white', opacity: 0.8 }}>No record found for `{regNo}`. Please register your details to continue.</div>
                             </div>
-                        </div>
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={loading}
-                            style={{
-                                width: '100%',
-                                height: '50px',
-                                fontSize: '0.9rem',
-                                marginTop: '0.5rem',
-                                letterSpacing: '2px',
-                                fontWeight: 800,
-                                textTransform: 'uppercase',
-                                borderRadius: '0.75rem',
-                                boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)',
-                                background: '#25AAE1',
-                                color: 'white',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {loading ? (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
-                                    <div className="loading-spinner-small"></div>
-                                    VERIFYING...
+
+                            <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                                <div className="input-group">
+                                    <label style={{ fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1.5px', textAlign: 'left', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem' }}>Full Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter your full name"
+                                        style={{ height: '45px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '0.75rem', fontSize: '0.9rem', color: 'white', width: '100%', padding: '0 1rem', boxSizing: 'border-box' }}
+                                        value={newMemberName}
+                                        onChange={(e) => setNewMemberName(e.target.value)}
+                                        required
+                                    />
                                 </div>
-                            ) : 'LOG IN'}
-                        </button>
-                    </form>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="input-group">
+                                        <label style={{ fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1.5px', textAlign: 'left', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem' }}>Campus</label>
+                                        <select 
+                                            style={{ height: '45px', background: '#1e293b', border: '1px solid var(--glass-border)', borderRadius: '0.75rem', fontSize: '0.9rem', color: 'white', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' }}
+                                            value={newMemberCampus}
+                                            onChange={(e) => setNewMemberCampus(e.target.value)}
+                                        >
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
+                                    </div>
+                                    <div className="input-group">
+                                        <label style={{ fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1.5px', textAlign: 'left', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem' }}>Category</label>
+                                        <select 
+                                            style={{ height: '45px', background: '#1e293b', border: '1px solid var(--glass-border)', borderRadius: '0.75rem', fontSize: '0.9rem', color: 'white', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' }}
+                                            value={newMemberType}
+                                            onChange={(e) => setNewMemberType(e.target.value)}
+                                        >
+                                            <option value="Douloid">Douloid</option>
+                                            <option value="Recruit">Recruit</option>
+                                            <option value="Visitor">Visitor</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    disabled={loading}
+                                    style={{ width: '100%', height: '50px', fontSize: '0.9rem', marginTop: '0.5rem', letterSpacing: '2px', fontWeight: 800, textTransform: 'uppercase', borderRadius: '0.75rem', background: '#25AAE1', color: 'white', border: 'none', cursor: 'pointer' }}
+                                >
+                                    {loading ? 'ENROLLING...' : 'REGISTER & PROCEED'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRegistrationRequired(false)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', marginTop: '0.5rem' }}
+                                >
+                                    ← BACK TO LOGIN
+                                </button>
+                            </form>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+                            <div className="input-group" style={{ width: '100%' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.6rem', color: 'var(--color-text-dim)', fontWeight: 800, letterSpacing: '1.5px', textAlign: 'left', textTransform: 'uppercase' }}>
+                                    Admission No
+                                </label>
+                                <div style={{ position: 'relative', width: '100%' }}>
+                                    <input
+                                        placeholder="21-1234"
+                                        style={{
+                                            height: '45px',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '0.75rem',
+                                            fontSize: '0.9rem',
+                                            fontWeight: 600,
+                                            padding: '0 2.5rem 0 1rem',
+                                            width: '100%',
+                                            color: 'white',
+                                            boxSizing: 'border-box'
+                                        }}
+                                        value={regNo}
+                                        onChange={(e) => {
+                                            let val = e.target.value.replace(/\D/g, '');
+                                            if (val.length > 2) {
+                                                val = val.slice(0, 2) + '-' + val.slice(2, 6);
+                                            }
+                                            setRegNo(val);
+                                        }}
+                                        required
+                                    />
+                                    <Search size={18} style={{
+                                        position: 'absolute',
+                                        right: '1rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: 'var(--color-text-dim)',
+                                        opacity: 0.5,
+                                        pointerEvents: 'none'
+                                    }} />
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={loading}
+                                style={{
+                                    width: '100%',
+                                    height: '50px',
+                                    fontSize: '0.9rem',
+                                    marginTop: '0.5rem',
+                                    letterSpacing: '2px',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    borderRadius: '0.75rem',
+                                    boxShadow: '0 10px 20px -5px hsla(198, 76%, 51%, 0.3)',
+                                    background: '#25AAE1',
+                                    color: 'white',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {loading ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
+                                        <div className="loading-spinner-small"></div>
+                                        VERIFYING...
+                                    </div>
+                                ) : 'LOG IN'}
+                            </button>
+                        </form>
+                    )}
 
                     {error && (
                         <div style={{
