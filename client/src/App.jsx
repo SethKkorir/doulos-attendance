@@ -31,7 +31,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/superadmin" element={<SuperAdmin />} />
+        <Route
+          path="/superadmin"
+          element={
+            <ProtectedRoute>
+              <SuperAdmin />
+            </ProtectedRoute>
+          }
+        />
       </Routes >
     </Router >
   );

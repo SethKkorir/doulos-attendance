@@ -21,12 +21,21 @@ const SuperAdmin = () => {
 
     useEffect(() => {
         const fetchStatus = async () => {
+            // Give localStorage a moment to settle after redirect if needed
+            await new Promise(r => setTimeout(r, 100));
+
             const role = localStorage.getItem('role');
             const token = localStorage.getItem('token');
+            const username = localStorage.getItem('username');
             
-            // If strictly no token or role, mark as unauthorized but don't kick out yet
-            if (!token || !['admin', 'superadmin', 'developer', 'SuperAdmin'].includes(role)) {
-                console.warn("Unauthorized access attempt:", role);
+            // If strictly no token or role, mark as unauthorized
+            const isAuthorized = token && (
+                ['admin', 'superadmin', 'developer', 'SuperAdmin'].includes(role) ||
+                username === 'supersuperadmin'
+            );
+
+            if (!isAuthorized) {
+                console.warn("Unauthorized access attempt:", { role, username });
                 setUnauthorized(true);
                 return;
             }
@@ -37,7 +46,6 @@ const SuperAdmin = () => {
                 setUnauthorized(false);
             } catch (err) {
                 console.error("System Offline");
-                // If it's a 401/403 from the server, then we are really unauthorized
                 if (err.response?.status === 401 || err.response?.status === 403) {
                     setUnauthorized(true);
                 }
