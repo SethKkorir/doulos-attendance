@@ -66,9 +66,15 @@ const AdminLogin = () => {
             localStorage.setItem('role', res.data.role);
             localStorage.setItem('username', res.data.username);
             
+            // Strict Routing Logic
             if (res.data.username === 'supersuperadmin') {
+                console.log('Redirecting to Premium Super Admin Dashboard...');
                 navigate('/superadmin');
+            } else if (res.data.username === 'superadmin' || res.data.role === 'superadmin') {
+                console.log('Redirecting to Super Admin View...');
+                navigate('/admin/dashboard');
             } else {
+                console.log('Redirecting to Admin Dashboard...');
                 navigate('/admin/dashboard');
             }
         } catch (err) {

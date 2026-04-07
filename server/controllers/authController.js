@@ -18,19 +18,22 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
     const { username, password } = req.body;
-    console.log(`--- Login Attempt: ${username} ---`);
+    console.log(`--- Login Attempt Tracking ---`);
+    console.log(`Target: ${username}`);
+    
     try {
-        const user = await User.findOne({ username });
+        // Case-insensitive lookup
+        const user = await User.findOne({ username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } });
 
         if (!user) {
-            console.log('User not found');
+            console.log(`❌ Login Failed: User '${username}' not found in registry.`);
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
         // Verify password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log('Invalid password');
+            console.log(`❌ Login Failed: Incorrect password for '${user.username}'`);
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
