@@ -23,15 +23,23 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Unified Downtime & Isolation System (Must be early)
-app.use(downtimeManager.getDowntimeMiddleware());
-
 // Essential Middleware
 app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection Strategy for Serverless
 let cachedConnection = null;
+
+// Register Models Early to prevent MissingSchemaError during health checks
+import './models/User.js';
+import './models/Settings.js';
+import './models/ActivityLog.js';
+import './models/Attendance.js';
+import './models/Feedback.js';
+import './models/Meeting.js';
+import './models/Member.js';
+import './models/Payment.js';
+import './models/Training.js';
 
 const connectDB = async () => {
     if (cachedConnection) return cachedConnection;
@@ -42,28 +50,30 @@ const connectDB = async () => {
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance', {
             serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s or more
-            socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+            socketTimeoutMS: 120000, // Keep-alive for serverless
         });
         cachedConnection = conn;
         console.log('✅ MongoDB Connected');
 
-        // Auto-seed admin
-        const User = (await import('./models/User.js')).default;
-        
-        const adminExists = await User.findOne({ role: 'admin' });
-        if (!adminExists) {
-            console.log('Seeding initial admin user...');
-            await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
-        }
-
-        const superAdminExists = await User.findOne({ role: 'superadmin' });
-        if (!superAdminExists) {
-            const adminExists = await User.findOne({ username: 'supersuperadmin' });
+        // Auto-seed admin (deferred)
+        (async () => {
+            const User = mongoose.model('User');
+            
+            const adminExists = await User.findOne({ role: 'admin' });
             if (!adminExists) {
-                await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
-                console.log('✅ Premium Super Admin account initialized: supersuperadmin');
+                console.log('Seeding initial admin user...');
+                await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
             }
-        }
+
+            const superAdminExists = await User.findOne({ role: 'superadmin' });
+            if (!superAdminExists) {
+                const adminExists = await User.findOne({ username: 'supersuperadmin' });
+                if (!adminExists) {
+                    await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
+                    console.log('✅ Premium Super Admin account initialized: supersuperadmin');
+                }
+            }
+        })().catch(err => console.error('Seeding Error:', err.message));
 
         return conn;
     } catch (err) {
@@ -72,15 +82,21 @@ const connectDB = async () => {
     }
 };
 
-// Middleware to ensure DB connection before every request
+// 1. Connection Initializer (MUST BE FIRST)
 app.use(async (req, res, next) => {
     try {
         await connectDB();
         next();
     } catch (err) {
-        res.status(500).json({ message: 'Database connection failed', error: err.message });
+        // Let it pass to downtime manager even if it fails
+        // This allows the beautiful downtime page to handle it
+        console.warn('Deferred connection failure handling to DowntimeManager');
+        next();
     }
 });
+
+// 2. Unified Downtime & Isolation System (Must be after connection attempt)
+app.use(downtimeManager.getDowntimeMiddleware());
 
 // Routes Middleware
 app.use('/api/auth', authRoutes);

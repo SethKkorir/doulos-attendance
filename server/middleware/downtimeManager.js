@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import '../models/Settings.js'; // Ensure model is registered
 
 class DowntimeManager {
     constructor() {
@@ -42,14 +43,22 @@ class DowntimeManager {
                 errors.push('Database connection is not active');
             } else {
                 // If connected, fetch dynamic settings
-                const Settings = mongoose.model('Settings');
-                const [maintenance, recovery] = await Promise.all([
-                    Settings.findOne({ key: 'MANUAL_MAINTENANCE' }),
-                    Settings.findOne({ key: 'RECOVERY_MODE' })
-                ]);
+                let Settings;
+                try {
+                    Settings = mongoose.model('Settings');
+                } catch (e) {
+                    console.warn('[HEALTH CHECK] Settings model not yet registered.');
+                }
 
-                if (maintenance) this.status.isManualMaintenance = maintenance.value === 'true';
-                if (recovery) this.status.isRecoveryMode = recovery.value === 'true';
+                if (Settings) {
+                    const [maintenance, recovery] = await Promise.all([
+                        Settings.findOne({ key: 'MANUAL_MAINTENANCE' }),
+                        Settings.findOne({ key: 'RECOVERY_MODE' })
+                    ]);
+
+                    if (maintenance) this.status.isManualMaintenance = maintenance.value === 'true';
+                    if (recovery) this.status.isRecoveryMode = recovery.value === 'true';
+                }
             }
         } catch (err) {
             console.error(`Health check logic error: ${err.message}`);
