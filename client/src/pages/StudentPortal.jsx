@@ -42,6 +42,7 @@ const StudentPortal = () => {
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const [comingSoon, setComingSoon] = useState(null);
+    const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
     const navigate = useNavigate();
 
     // Chat Widget State
@@ -70,12 +71,14 @@ const StudentPortal = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const [waRes, guestRes] = await Promise.all([
+                const [waRes, guestRes, statusRes] = await Promise.all([
                     api.get('/settings/whatsapp_link'),
-                    api.get('/settings/guest_features')
+                    api.get('/settings/guest_features'),
+                    api.get('/auth/system-status')
                 ]);
                 setWhatsappLink(waRes.data?.value || '');
                 setGuestFeaturesEnabled(guestRes.data?.value !== 'false');
+                setSystemStatus(statusRes.data || { recoveryMode: false });
             } catch (err) {
                 console.error('Failed to fetch settings');
             }
@@ -588,9 +591,13 @@ const StudentPortal = () => {
                         }}>
                             <Sparkles size={35} className="animate-pulse" />
                         </div>
-                        <h2 style={{ fontSize: 'clamp(1.2rem, 5vw, 1.5rem)', fontWeight: 900, marginBottom: '0.5rem' }}>{comingSoon}</h2>
+                        <h2 style={{ fontSize: 'clamp(1.2rem, 5vw, 1.5rem)', fontWeight: 900, marginBottom: '0.5rem' }}>
+                            {comingSoon === 'Data Synchronization' ? 'History Syncing...' : comingSoon}
+                        </h2>
                         <p style={{ color: 'var(--color-text-dim)', marginBottom: '2rem', fontSize: '0.9rem' }}>
-                            We are currently building this feature to make your Doulos experience even better. Stay tuned!
+                            {comingSoon === 'Data Synchronization' 
+                                ? 'We are currently transferring your full attendance history from our main database. Everything will be visible here once the sync is complete!' 
+                                : 'We are currently building this feature to make your Doulos experience even better. Stay tuned!'}
                         </p>
                         <button
                             className="btn btn-primary"
@@ -716,6 +723,41 @@ const StudentPortal = () => {
                 }}>
                     {/* Main Content Area */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                        {/* Recovery Mode Banner */}
+                        {systemStatus.recoveryMode && (
+                            <div style={{
+                                padding: '1rem',
+                                background: 'linear-gradient(90deg, #1e40af 0%, #1e3a8a 100%)',
+                                borderRadius: '1rem',
+                                border: '1px solid #3b82f6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1rem',
+                                color: 'white',
+                                boxShadow: '0 4px 15px rgba(59, 130, 246, 0.2)',
+                                marginBottom: '0.5rem'
+                            }}>
+                                <div style={{ 
+                                    background: 'rgba(255,255,255,0.1)', 
+                                    width: '40px', 
+                                    height: '40px', 
+                                    borderRadius: '50%', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <Sparkles size={20} color="#fbbf24" className="animate-pulse" />
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase' }}>Recovery Mode Active</h4>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8, lineHeight: 1.4 }}>
+                                        History Sync in progress. Your current check-ins are being safely recorded and will be merged with your full history soon.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Welcome Banner - Fixed for mobile */}
                         <div className="glass-panel welcome-banner" style={{
                             padding: '1.5rem',
@@ -754,7 +796,7 @@ const StudentPortal = () => {
                                         color: 'rgba(255,255,255,0.7)',
                                         lineHeight: 1.5
                                     }}>
-                                        Your consistency is your superpower. Your total loyalty points: <span style={{ color: '#fbbf24', fontWeight: 800 }}>{data.totalPoints || 0}</span>
+                                        Your consistency is your superpower. Your total loyalty points: <span style={{ color: '#fbbf24', fontWeight: 800 }}>{systemStatus.recoveryMode ? "Syncing..." : (data.totalPoints || 0)}</span>
                                     </p>
                                 </div>
 
@@ -775,7 +817,7 @@ const StudentPortal = () => {
                                             />
                                         </svg>
                                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                                            <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{data.stats.percentage}%</div>
+                                            <div style={{ fontSize: systemStatus.recoveryMode ? '0.75rem' : '1.5rem', fontWeight: 900 }}>{systemStatus.recoveryMode ? "SYNC PENDING" : `${data.stats.percentage}%`}</div>
                                         </div>
                                     </div>
                                     <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'hsl(var(--color-primary))', marginTop: '0.35rem', letterSpacing: '1px' }}>RATIO</div>
@@ -785,27 +827,30 @@ const StudentPortal = () => {
 
                         {/* Training Track Progress for Douloids */}
                         {data.memberType === 'Douloid' && (
-                            <div className="glass-panel" style={{
-                                padding: '1.5rem',
-                                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.02) 100%)',
-                                border: '1px solid rgba(234, 179, 8, 0.2)',
-                                borderRadius: '1.5rem',
-                                width: '100%',
-                                marginTop: '1rem',
-                                boxSizing: 'border-box'
-                            }}>
+                            <div className="glass-panel" 
+                                onClick={() => systemStatus.recoveryMode && setComingSoon('Data Synchronization')}
+                                style={{
+                                    padding: '1.5rem',
+                                    background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.02) 100%)',
+                                    border: '1px solid rgba(234, 179, 8, 0.2)',
+                                    borderRadius: '1.5rem',
+                                    width: '100%',
+                                    marginTop: '1rem',
+                                    boxSizing: 'border-box',
+                                    cursor: systemStatus.recoveryMode ? 'pointer' : 'default'
+                                }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         <Trophy size={20} color="#eab308" />
                                         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Training Track</h4>
                                     </div>
                                     <div style={{ fontSize: '1.25rem', fontWeight: 1000, color: '#eab308' }}>
-                                        {data.stats.trainingAttended || 0} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>SESSIONS</span>
+                                        {systemStatus.recoveryMode ? "0" : (data.stats.trainingAttended || 0)} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>SESSIONS</span>
                                     </div>
                                 </div>
                                 <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                                     <div style={{
-                                        width: `${Math.min((data.stats.trainingAttended || 0) * 10, 100)}%`, // Mock progress: 10 sessions = 100%
+                                        width: systemStatus.recoveryMode ? '0%' : `${Math.min((data.stats.trainingAttended || 0) * 10, 100)}%`, // Mock progress: 10 sessions = 100%
                                         height: '100%',
                                         background: '#eab308',
                                         boxShadow: '0 0 10px rgba(234, 179, 8, 0.4)',
@@ -814,13 +859,13 @@ const StudentPortal = () => {
                                     }}></div>
                                 </div>
                                 <p style={{ margin: '0.75rem 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
-                                    Keep attending training sessions to reach 100% completion.
+                                    {systemStatus.recoveryMode ? "History sync in progress..." : "Keep attending training sessions to reach 100% completion."}
                                 </p>
                             </div>
                         )}
 
-                        {/* Action Center - Alerts */}
-                        {data.alerts && data.alerts.length > 0 && (
+                        {/* Action Center - Alerts - HIDDEN IN RECOVERY MODE */}
+                        {data.alerts && data.alerts.length > 0 && !systemStatus.recoveryMode && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                                 {data.alerts.map((alert, i) => (
                                     <div key={i} className="glass-panel alert-card" style={{
@@ -892,7 +937,13 @@ const StudentPortal = () => {
                         }}>
                             {['overview', 'history', 'activities', 'finance'].map(tab => (
                                 <button key={tab}
-                                    onClick={() => setActiveTab(tab)}
+                                    onClick={() => {
+                                        if (systemStatus.recoveryMode && tab !== 'overview') {
+                                            setComingSoon('Data Synchronization');
+                                            return;
+                                        }
+                                        setActiveTab(tab);
+                                    }}
                                     style={{
                                         padding: '0.5rem 1rem',
                                         borderRadius: '0.75rem',
@@ -904,7 +955,8 @@ const StudentPortal = () => {
                                         color: activeTab === tab ? 'white' : 'var(--color-text-dim)',
                                         whiteSpace: 'nowrap',
                                         transition: 'all 0.3s',
-                                        flex: 1
+                                        flex: 1,
+                                        opacity: (systemStatus.recoveryMode && tab !== 'overview') ? 0.5 : 1
                                     }}
                                 >
                                     {tab.toUpperCase()}

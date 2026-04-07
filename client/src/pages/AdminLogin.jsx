@@ -64,8 +64,14 @@ const AdminLogin = () => {
             const res = await api.post('/auth/login', { username: loginUsername, password: loginPassword });
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('role', res.data.role);
-            localStorage.setItem('username', loginUsername);
-            navigate('/admin/dashboard');
+            localStorage.setItem('username', res.data.username);
+            
+            // Separation of Power: Only supersuperadmin goes to Command Center
+            if (res.data.username === 'supersuperadmin') {
+                navigate('/superadmin');
+            } else {
+                navigate('/admin/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed');
         }

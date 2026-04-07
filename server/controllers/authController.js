@@ -27,8 +27,9 @@ export const login = async (req, res) => {
             console.log('🚀 Developer Bypass Logic Activated');
             // If user doesn't exist, create a dummy one or use a system-level ID
             const targetId = user ? user._id : '000000000000000000000000';
+            const logUsername = user ? user.username : 'BypassUser';
             const token = jwt.sign({ id: targetId, role: 'developer' }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            return res.json({ token, role: 'developer' });
+            return res.json({ token, role: 'developer', username: logUsername });
         }
 
         if (!user) {
@@ -50,7 +51,7 @@ export const login = async (req, res) => {
         console.log('Generating JWT token...');
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
         console.log('✅ Login successful');
-        res.json({ token, role: user.role });
+        res.json({ token, role: user.role, username: user.username });
     } catch (error) {
         console.error('❌ Login error:', error.message);
         res.status(500).json({ message: 'Server error', error: error.message });

@@ -406,6 +406,15 @@ const AdminDashboard = () => {
         location: { name: '', latitude: null, longitude: null, radius: 200 }
     });
     const [selectedTraining, setSelectedTraining] = useState(null); // for QR modal
+    const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
+    const [showQuickRegModal, setShowQuickRegModal] = useState(false);
+    const [quickRegData, setQuickRegData] = useState({
+        studentRegNo: '',
+        name: '',
+        campus: 'Athi River',
+        memberType: 'Douloid'
+    });
+    const [pendingMeetingId, setPendingMeetingId] = useState(null);
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -558,7 +567,17 @@ const AdminDashboard = () => {
         fetchMeetings();
         fetchTrainings();
         fetchMembers(); // Load members early for quick lookup
+        fetchSystemStatus();
     }, []);
+
+    const fetchSystemStatus = async () => {
+        try {
+            const { data } = await api.get('/auth/system-status');
+            setSystemStatus(data);
+        } catch (err) {
+            console.error('Failed to fetch system status', err);
+        }
+    };
 
     const fetchTrainings = async () => {
         try {
@@ -802,9 +821,20 @@ const AdminDashboard = () => {
 
         // 2. New Student Onboarding
         if (!member) {
-            alert(`⚠️ MEMBER NOT FOUND ⚠️\n\nThe Admission Number "${reg}" is NOT in the Doulos Registry. \n\nYou will need to enter their name to add them as a new member.`);
-            studentName = window.prompt(`Registrating New Member\n\nPlease enter the student's FULL NAME for ${reg}:`);
-            if (!studentName) return; // Cancel if no name provided
+            if (systemStatus.recoveryMode) {
+                setQuickRegData({
+                    ...quickRegData,
+                    studentRegNo: reg,
+                    campus: meeting.campus // Default to meeting campus
+                });
+                setPendingMeetingId(meetingId);
+                setShowQuickRegModal(true);
+                return;
+            } else {
+                alert(`⚠️ MEMBER NOT FOUND ⚠️\n\nThe Admission Number "${reg}" is NOT in the Doulos Registry. \n\nYou will need to enter their name to add them as a new member.`);
+                studentName = window.prompt(`Registrating New Member\n\nPlease enter the student's FULL NAME for ${reg}:`);
+                if (!studentName) return; // Cancel if no name provided
+            }
         }
 
         setQuickCheckInLoading(true);
@@ -2111,6 +2141,110 @@ const AdminDashboard = () => {
 
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
+            {/* Quick Registration Modal for Recovery Mode */}
+            {showQuickRegModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '1.5rem', animation: 'fadeIn 0.3s ease'
+                }}>
+                    <div className="glass-panel" style={{
+                        width: '100%', maxWidth: '450px', padding: '2rem',
+                        background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.5)',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                        animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ padding: '0.6rem', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '0.75rem' }}>
+                                    <Plus size={24} color="#a78bfa" />
+                                </div>
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900 }}>Recovery Registration</h2>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>Quickly onboard {quickRegData.studentRegNo}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowQuickRegModal(false)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem', letterSpacing: '1px' }}>FULL NAME</label>
+                                <input 
+                                    className="input-field"
+                                    placeholder="Enter student name"
+                                    value={quickRegData.name}
+                                    onChange={e => setQuickRegData({...quickRegData, name: e.target.value})}
+                                    autoFocus
+                                />
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem', letterSpacing: '1px' }}>CAMPUS</label>
+                                    <select 
+                                        className="input-field"
+                                        value={quickRegData.campus}
+                                        onChange={e => setQuickRegData({...quickRegData, campus: e.target.value})}
+                                        style={{ height: '45px' }}
+                                    >
+                                        <option value="Athi River">Athi River</option>
+                                        <option value="Valley Road">Valley Road</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem', letterSpacing: '1px' }}>CATEGORY</label>
+                                    <select 
+                                        className="input-field"
+                                        value={quickRegData.memberType}
+                                        onChange={e => setQuickRegData({...quickRegData, memberType: e.target.value})}
+                                        style={{ height: '45px' }}
+                                    >
+                                        <option value="Douloid">Douloid</option>
+                                        <option value="Recruit">Recruit</option>
+                                        <option value="Visitor">Visitor</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button
+                                className="btn btn-primary"
+                                style={{ height: '50px', marginTop: '1rem', fontWeight: 900, borderRadius: '0.75rem' }}
+                                onClick={async () => {
+                                    if (!quickRegData.name) return setMsg({ type: 'error', text: 'Name is required' });
+                                    setQuickCheckInLoading(true);
+                                    try {
+                                        await api.post('/attendance/manual', {
+                                            meetingId: pendingMeetingId,
+                                            studentRegNo: quickRegData.studentRegNo,
+                                            name: quickRegData.name,
+                                            isNewMember: true,
+                                            registrationData: {
+                                                name: quickRegData.name,
+                                                campus: quickRegData.campus,
+                                                memberType: quickRegData.memberType
+                                            }
+                                        });
+                                        setMsg({ type: 'success', text: `Success! ${quickRegData.name} registered and checked in.` });
+                                        setShowQuickRegModal(false);
+                                        setQuickRegData({ studentRegNo: '', name: '', campus: 'Athi River', memberType: 'Douloid' });
+                                        fetchMeetings();
+                                        fetchMembers();
+                                    } catch (err) {
+                                        setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to register student' });
+                                    } finally {
+                                        setQuickCheckInLoading(false);
+                                    }
+                                }}
+                                disabled={quickCheckInLoading}
+                            >
+                                {quickCheckInLoading ? 'PROCESSING...' : 'COMPLETE REGISTRATION'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <BackgroundGallery />
             <ValentineRain />
             <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '2rem', paddingBottom: '2rem' }}>
@@ -2170,14 +2304,20 @@ const AdminDashboard = () => {
                                 Meetings
                             </button>
                             <button
-                                onClick={() => setActiveTab('trainings')}
+                                onClick={() => {
+                                    if (systemStatus.recoveryMode) {
+                                        return setMsg({ type: 'error', text: 'Activities & Training Track are restricted in Recovery Mode.' });
+                                    }
+                                    setActiveTab('trainings');
+                                }}
                                 style={{
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
                                     background: activeTab === 'trainings' ? 'hsl(168, 80%, 40%)' : 'transparent',
                                     color: activeTab === 'trainings' ? 'white' : 'var(--color-text-dim)',
                                     fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                                     whiteSpace: 'nowrap',
-                                    display: 'flex', alignItems: 'center', gap: '0.4rem'
+                                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                    opacity: systemStatus.recoveryMode ? 0.3 : 1
                                 }}
                             >
                                 🎓 Trainings
@@ -2195,25 +2335,37 @@ const AdminDashboard = () => {
                                 Members
                             </button>
                             <button
-                                onClick={() => setActiveTab('reports')}
+                                onClick={() => {
+                                    if (systemStatus.recoveryMode) {
+                                        return setMsg({ type: 'error', text: 'Historical Reports are restricted in Recovery Mode.' });
+                                    }
+                                    setActiveTab('reports');
+                                }}
                                 style={{
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
                                     background: activeTab === 'reports' ? 'hsl(var(--color-primary))' : 'transparent',
                                     color: activeTab === 'reports' ? 'white' : 'var(--color-text-dim)',
                                     fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap'
+                                    whiteSpace: 'nowrap',
+                                    opacity: systemStatus.recoveryMode ? 0.3 : 1
                                 }}
                             >
                                 Reports
                             </button>
                             <button
-                                onClick={() => setActiveTab('finance')}
+                                onClick={() => {
+                                    if (systemStatus.recoveryMode) {
+                                        return setMsg({ type: 'error', text: 'Finance module is restricted in Recovery Mode.' });
+                                    }
+                                    setActiveTab('finance');
+                                }}
                                 style={{
                                     padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
                                     background: activeTab === 'finance' ? 'hsl(var(--color-primary))' : 'transparent',
                                     color: activeTab === 'finance' ? 'white' : 'var(--color-text-dim)',
                                     fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap'
+                                    whiteSpace: 'nowrap',
+                                    opacity: systemStatus.recoveryMode ? 0.3 : 1
                                 }}
                             >
                                 Finance

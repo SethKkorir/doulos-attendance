@@ -196,11 +196,31 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 10. Member Registry Lookup
+        // 10. Member Registry Lookup & Auto-Registration (RECOVERY MODE ONLY)
         if (!member) {
-            return res.status(403).json({
-                message: "Access Denied: Your Admission Number is not in the Doulos Registry. Please contact G9s to be added."
-            });
+            const { isNewMember, registrationData } = req.body;
+            
+            // Check if we are in recovery mode
+            const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
+            const isRecovery = (recoverySetting?.value === 'true') || (process.env.RECOVERY_MODE === 'true');
+
+            if (isRecovery && isNewMember && registrationData?.name) {
+                member = new Member({
+                    studentRegNo,
+                    name: registrationData.name,
+                    campus: registrationData.campus || meeting.campus,
+                    memberType: registrationData.memberType || 'Douloid',
+                    status: 'Active'
+                });
+                await member.save();
+                console.log(`[RECOVERY AUTO-REGISTER] New student created: ${studentRegNo} (${registrationData.name})`);
+            } else {
+                return res.status(403).json({
+                    message: isRecovery 
+                        ? "Access Denied: Your Admission Number is not in our records yet. Please fill in your name and campus to register."
+                        : "Access Denied: Your Admission Number is not in the Doulos Registry. Please contact G9s to be added."
+                });
+            }
         }
 
         // 11. Record Attendance (Skip if Test Account)
@@ -499,13 +519,16 @@ export const manualCheckIn = async (req, res) => {
         // Lookup member Registry
         let member = await Member.findOne({ studentRegNo: regNo });
         if (!member) {
+            const { registrationData } = req.body;
             member = new Member({
                 studentRegNo: regNo,
-                name: name || 'Manual Entry',
-                memberType: 'Visitor',
-                campus: meeting.campus
+                name: registrationData?.name || name || 'Manual Entry',
+                memberType: registrationData?.memberType || 'Visitor',
+                campus: registrationData?.campus || meeting.campus,
+                status: 'Active'
             });
             await member.save();
+            console.log(`[ADMIN-AUTO-REGISTER] New student created: ${regNo} (${member.name})`);
         }
 
         const attendance = new Attendance({

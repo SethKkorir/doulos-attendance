@@ -17,6 +17,19 @@ class DowntimeManager {
     init() {
         // Start periodic health check
         setInterval(() => this.performHealthCheck(), this.checkInterval);
+        
+        // Listen for connection events for immediate recovery
+        mongoose.connection.on('connected', () => {
+            this.status.isSystemCrashed = false;
+            this.status.errors = [];
+            console.log('[HEALTH CHECK] System recovered: Database connected.');
+        });
+
+        mongoose.connection.on('error', (err) => {
+            this.status.isSystemCrashed = true;
+            this.status.errors = [`Database error: ${err.message}`];
+        });
+
         // Initial check
         this.performHealthCheck();
     }
@@ -27,9 +40,19 @@ class DowntimeManager {
             // Check MongoDB Connection
             if (mongoose.connection.readyState !== 1) {
                 errors.push('Database connection is not active');
+            } else {
+                // If connected, fetch dynamic settings
+                const Settings = mongoose.model('Settings');
+                const [maintenance, recovery] = await Promise.all([
+                    Settings.findOne({ key: 'MANUAL_MAINTENANCE' }),
+                    Settings.findOne({ key: 'RECOVERY_MODE' })
+                ]);
+
+                if (maintenance) this.status.isManualMaintenance = maintenance.value === 'true';
+                if (recovery) this.status.isRecoveryMode = recovery.value === 'true';
             }
         } catch (err) {
-            errors.push(`Health check failed: ${err.message}`);
+            console.error(`Health check logic error: ${err.message}`);
         }
 
         this.status.isSystemCrashed = errors.length > 0;
@@ -38,8 +61,6 @@ class DowntimeManager {
 
         if (this.status.isSystemCrashed) {
             console.warn(`[HEALTH CHECK] System moved to Isolation Mode. Errors: ${errors.join(', ')}`);
-        } else if (errors.length === 0 && this.status.isSystemCrashed) {
-            console.log('[HEALTH CHECK] System recovered automatically.');
         }
 
         return !this.status.isSystemCrashed;

@@ -22,6 +22,13 @@ const CheckIn = () => {
     const [msg, setMsg] = useState('');
     const [isLocating, setIsLocating] = useState(false);
     const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
+    const [isNewMember, setIsNewMember] = useState(false);
+    const [registrationData, setRegistrationData] = useState({
+        name: '',
+        campus: 'Athi River',
+        memberType: 'Douloid'
+    });
+    const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
 
     useEffect(() => {
         let timer;
@@ -46,13 +53,18 @@ const CheckIn = () => {
         const fetchMeeting = async () => {
             try {
                 const deviceId = getPersistentDeviceId();
-                const res = await api.get(`/meetings/code/${meetingCode}?deviceId=${deviceId}`);
-                setMeeting(res.data);
-
+                const [meetingRes, statusRes] = await Promise.all([
+                    api.get(`/meetings/code/${meetingCode}?deviceId=${deviceId}`),
+                    api.get('/auth/system-status')
+                ]);
+                
+                const meetingData = meetingRes.data;
+                setMeeting(meetingData);
+                setSystemStatus(statusRes.data || { recoveryMode: false });
 
                 // Initialize responses with empty strings for each required field
                 const initialResponses = {};
-                res.data.requiredFields.forEach(f => {
+                meetingData.requiredFields.forEach(f => {
                     initialResponses[f.key] = '';
                 });
                 // Security: Ensure studentRegNo is always in state
@@ -66,7 +78,7 @@ const CheckIn = () => {
                 // --- DUPLICATE CHECK-IN DETECTION ---
                 // Check both LocalStorage AND Server-Side Record
                 const localStatus = localStorage.getItem(`doulos_attendance_status_${meetingCode}`);
-                const serverHasAttended = res.data.hasAttended;
+                const serverHasAttended = meetingData.hasAttended;
 
                 if ((localStatus === 'success' || serverHasAttended) && !bypassLocks) {
                     setHasAlreadyCheckedIn(true);
@@ -89,7 +101,13 @@ const CheckIn = () => {
                     }
                 }
 
-                if (!res.data.isActive && !res.data.isTestMeeting && !isSuperUser) {
+                if (statusRes.data.manualMaintenance) {
+                    setStatus('maintenance');
+                    setMsg('The attendance system is undergoing scheduled maintenance. Please try again later.');
+                    return;
+                }
+
+                if (!meetingData.isActive && !meetingData.isTestMeeting && !isSuperUser) {
                     setStatus('error');
                     setMsg('This meeting is currently closed for attendance.');
                 } else {
@@ -141,7 +159,11 @@ const CheckIn = () => {
                 setMemberInfo(null);
             }
         } catch (err) {
-            setMemberInfo(null);
+            if (err.response?.status === 404 && systemStatus.recoveryMode) {
+                setIsNewMember(true);
+            } else {
+                setMemberInfo(null);
+            }
         } finally {
             setIsLookingUp(false);
         }
@@ -223,7 +245,9 @@ const CheckIn = () => {
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
-                }
+                },
+                isNewMember,
+                registrationData: isNewMember ? registrationData : null
             });
             setStatus('success');
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
@@ -411,6 +435,25 @@ const CheckIn = () => {
 
                 ) : (status === 'idle' || status === 'submitting') ? (
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {/* Permanent Welcome Banner for New Members */}
+                        {isNewMember && (
+                            <div style={{
+                                background: 'rgba(37, 170, 225, 0.1)',
+                                border: '1px solid rgba(37, 170, 225, 0.3)',
+                                padding: '1rem 1.25rem',
+                                borderRadius: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                marginBottom: '0.5rem',
+                                animation: 'slideDown 0.5s ease-out'
+                            }}>
+                                <span style={{ fontSize: '1.25rem' }}>👋</span>
+                                <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.4, color: '#fff', fontWeight: 600 }}>
+                                    Welcome! We couldn't find your record in our new system yet. <strong>Please tell us a bit about yourself</strong> to check in.
+                                </p>
+                            </div>
+                        )}
 
                         {msg && (
                             <div style={{
@@ -462,6 +505,29 @@ const CheckIn = () => {
                             if (!fields.find(f => f.key === 'studentRegNo')) {
                                 fields.push({ label: 'Admission Number', key: 'studentRegNo', required: true });
                             }
+
+                            // If Member is not found in recovery mode, inject registration fields into the main flow
+                            if (isNewMember) {
+                                // Add Full Name if no name-like field exists
+                                if (!fields.some(f => f.key.toLowerCase().includes('name') && f.key !== 'studentRegNo')) {
+                                    fields.push({ label: 'Full Name', key: 'studentName', required: true });
+                                }
+                                fields.push({ 
+                                    label: 'Campus', 
+                                    key: 'campus', 
+                                    required: true, 
+                                    type: 'select', 
+                                    options: ['Athi River', 'Valley Road'] 
+                                });
+                                fields.push({ 
+                                    label: 'Category', 
+                                    key: 'memberType', 
+                                    required: true, 
+                                    type: 'select', 
+                                    options: ['Douloid', 'Recruit', 'Visitor'] 
+                                });
+                            }
+
                             return fields.sort((a, b) => {
                                 if (a.key === 'studentRegNo') return -1;
                                 if (b.key === 'studentRegNo') return 1;
@@ -484,44 +550,86 @@ const CheckIn = () => {
                                             {field.label} {field.required && !isLocked && <span style={{ color: '#ef4444' }}>*</span>}
                                         </label>
                                         <div style={{ position: 'relative' }}>
-                                            <input
-                                                className="input-field"
-                                                placeholder={field.key === 'studentRegNo' ? 'ADMISSION NO (22-0000)' : field.label}
-                                                style={{
-                                                    height: '45px',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: 700,
-                                                    paddingLeft: '1.25rem',
-                                                    background: isLocked ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
-                                                    borderColor: isLocked ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
-                                                    color: isLocked ? '#25AAE1' : 'white',
-                                                    cursor: isLocked ? 'not-allowed' : 'text',
-                                                    borderRadius: '0.75rem',
-                                                    transition: 'all 0.3s ease'
-                                                }}
-                                                value={isLocked ? memberInfo.name : (responses[field.key] || '')}
-                                                readOnly={isLocked}
-                                                onChange={e => {
-                                                    if (isLocked) return;
-                                                    let val = e.target.value.replace(/\D/g, '');
-                                                    let formatted = val;
-                                                    if (val.length > 2) {
-                                                        formatted = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                                    }
+                                            {field.type === 'select' ? (
+                                                <select
+                                                    className="input-field"
+                                                    style={{
+                                                        height: '45px',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: 700,
+                                                        paddingLeft: '1.25rem',
+                                                        background: 'rgba(0,0,0,0.2)',
+                                                        borderRadius: '0.75rem',
+                                                        color: 'white',
+                                                        width: '100%',
+                                                        border: '1px solid var(--glass-border)'
+                                                    }}
+                                                    value={responses[field.key] || ''}
+                                                    onChange={e => {
+                                                        setResponses({ ...responses, [field.key]: e.target.value });
+                                                        setRegistrationData(prev => ({ ...prev, [field.key]: e.target.value }));
+                                                    }}
+                                                    required={field.required}
+                                                    disabled={status === 'submitting'}
+                                                >
+                                                    <option value="">Select {field.label}</option>
+                                                    {field.options.map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    className="input-field"
+                                                    placeholder={field.key === 'studentRegNo' ? 'ADMISSION NO (22-0000)' : field.label}
+                                                    style={{
+                                                        height: '45px',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: 700,
+                                                        paddingLeft: '1.25rem',
+                                                        background: isLocked ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
+                                                        borderColor: isLocked ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
+                                                        color: isLocked ? '#25AAE1' : 'white',
+                                                        cursor: isLocked ? 'not-allowed' : 'text',
+                                                        borderRadius: '0.75rem',
+                                                        transition: 'all 0.3s ease',
+                                                        width: '100%'
+                                                    }}
+                                                    value={isLocked ? memberInfo.name : (responses[field.key] || '')}
+                                                    readOnly={isLocked}
+                                                    onChange={e => {
+                                                        if (isLocked) return;
+                                                        let val = e.target.value;
+                                                        
+                                                        if (field.key === 'studentRegNo') {
+                                                            let digits = val.replace(/\D/g, '');
+                                                            let formatted = digits;
+                                                            if (digits.length > 2) {
+                                                                formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
+                                                            }
+                                                            val = formatted;
 
-                                                    if (val.length === 6) {
-                                                        lookupMember(formatted);
-                                                    } else {
-                                                        setMemberInfo(null);
-                                                    }
+                                                            if (digits.length === 6) {
+                                                                lookupMember(formatted);
+                                                            } else {
+                                                                setMemberInfo(null);
+                                                            }
+                                                        }
 
-                                                    setResponses({ ...responses, [field.key]: formatted });
-                                                    if (msg) setMsg('');
-                                                }}
-                                                maxLength={field.key === 'studentRegNo' ? 7 : undefined}
-                                                required={field.required}
-                                                disabled={status === 'submitting'}
-                                            />
+                                                        setResponses({ ...responses, [field.key]: val });
+                                                        
+                                                        if (isNewMember) {
+                                                            const isName = field.key.toLowerCase().includes('name') || field.key === 'studentName';
+                                                            if (isName) setRegistrationData(prev => ({ ...prev, name: val }));
+                                                            else setRegistrationData(prev => ({ ...prev, [field.key]: val }));
+                                                        }
+
+                                                        if (msg) setMsg('');
+                                                    }}
+                                                    maxLength={field.key === 'studentRegNo' ? 7 : undefined}
+                                                    required={field.required}
+                                                    disabled={status === 'submitting'}
+                                                />
+                                            )}
                                             {field.key === 'studentRegNo' && isLookingUp && (
                                                 <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
                                                     <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
@@ -532,6 +640,8 @@ const CheckIn = () => {
                                 );
                             });
                         })()}
+
+                        {/* Quick Registration block removed - now integrated into the main loop above */}
 
                         {meeting?.questionOfDay && (
                             <div style={{ animation: 'fadeIn 0.5s ease-out', marginTop: '1rem' }}>
@@ -780,6 +890,30 @@ const CheckIn = () => {
                                 CLOSE
                             </button>
                         </div>
+                    </div>
+                ) : status === 'maintenance' ? (
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                        <div style={{ background: 'rgba(250, 204, 21, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                            <Clock size={60} color="#facc15" />
+                        </div>
+                        <h2 style={{ color: '#facc15', fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>SYSTEM MAINTENANCE</h2>
+                        <p style={{ marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.8)' }}>
+                            {msg}
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => window.location.href = 'https://doulos.co.ke'}
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                fontWeight: 800,
+                                borderRadius: '0.75rem',
+                                background: '#facc15',
+                                color: 'black'
+                            }}
+                        >
+                            VISIT WEBSITE
+                        </button>
                     </div>
                 ) : status === 'locked' ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>

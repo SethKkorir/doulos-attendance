@@ -49,18 +49,20 @@ const connectDB = async () => {
 
         // Auto-seed admin
         const User = (await import('./models/User.js')).default;
+        
         const adminExists = await User.findOne({ role: 'admin' });
         if (!adminExists) {
             console.log('Seeding initial admin user...');
-            const admin = new User({
-                username: 'admin',
-                password: process.env.ADMIN_PASSWORD || 'admin123',
-                role: 'admin'
-            });
-            await admin.save();
-            console.log('✅ Admin auto-seeded successfully');
-        } else {
-            console.log('Admin user verified');
+            await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
+        }
+
+        const superAdminExists = await User.findOne({ role: 'superadmin' });
+        if (!superAdminExists) {
+            const adminExists = await User.findOne({ username: 'supersuperadmin' });
+            if (!adminExists) {
+                await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
+                console.log('✅ Premium Super Admin account initialized: supersuperadmin');
+            }
         }
 
         return conn;
@@ -99,11 +101,22 @@ app.get('/', (req, res) => {
 // Error Handling
 app.use(errorHandler);
 
+import { initBackupScheduler } from './utils/backupService.js';
+
 // Start Server locally
 if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
         console.log(`Server running on port ${PORT}`);
+        try {
+            await connectDB();
+            initBackupScheduler(); // Start the midnight backup clock
+        } catch (err) {
+            console.error('Failed to connect to database on startup');
+        }
     });
+} else {
+    // For production/serverless, usually cron is triggered via an external ping or platform cron
+    initBackupScheduler();
 }
 
 export default app;
