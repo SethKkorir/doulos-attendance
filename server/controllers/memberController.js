@@ -512,7 +512,7 @@ export const selfRegisterMember = async (req, res) => {
     try {
         // Only allow in Recovery Mode
         const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
-        const isRecovery = (recoverySetting?.value === 'true') || (process.env.RECOVERY_MODE === 'true');
+        const isRecovery = recoverySetting?.value === 'true';
 
         if (!isRecovery) {
             return res.status(403).json({ message: 'Self-registration is only allowed during System Recovery.' });

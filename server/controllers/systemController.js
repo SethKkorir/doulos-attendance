@@ -7,9 +7,12 @@ import User from '../models/User.js';
 export const getSystemStatus = async (req, res) => {
     try {
         const targetUri = await Settings.findOne({ key: 'TARGET_CLUSTER_URI' });
+        const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
+        const maintenanceSetting = await Settings.findOne({ key: 'MANUAL_MAINTENANCE' });
+        
         res.json({
-            recoveryMode: process.env.RECOVERY_MODE === 'true',
-            manualMaintenance: process.env.MANUAL_MAINTENANCE === 'true',
+            recoveryMode: recoverySetting?.value === 'true',
+            manualMaintenance: maintenanceSetting?.value === 'true',
             targetClusterUri: targetUri?.value || '',
             currentCluster: 'New (Temporary)'
         });
@@ -30,12 +33,23 @@ export const updateSystemStatus = async (req, res) => {
             );
         }
 
-        // Note: ENV variables can't be updated permanently via process.env in a running app (especially on Vercel)
-        // In a real app, these would be in a DB too. 
-        // For this project, we'll suggest the user updates Vercel env, 
-        // but we'll use these settings for the merge logic.
+        if (recoveryMode !== undefined) {
+            await Settings.findOneAndUpdate(
+                { key: 'RECOVERY_MODE' },
+                { value: recoveryMode ? 'true' : 'false' },
+                { upsert: true }
+            );
+        }
 
-        res.json({ message: 'System settings updated (Target Cluster Saved)' });
+        if (manualMaintenance !== undefined) {
+            await Settings.findOneAndUpdate(
+                { key: 'MANUAL_MAINTENANCE' },
+                { value: manualMaintenance ? 'true' : 'false' },
+                { upsert: true }
+            );
+        }
+
+        res.json({ message: 'System settings updated (Target Cluster & Status Saved)' });
     } catch (error) {
         res.status(500).json({ message: 'Update failed' });
     }
