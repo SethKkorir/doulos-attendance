@@ -7,7 +7,7 @@ import {
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
     FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, Archive, LayoutDashboard, ClipboardCheck
+    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, Archive, LayoutDashboard, ClipboardCheck, Lightbulb
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
