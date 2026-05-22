@@ -377,6 +377,7 @@ const StudentPortal = () => {
     const handleLogout = () => {
         localStorage.removeItem('studentSession');
         setIsLoggedIn(false); setData(null); setRegNo('');
+        navigate('/portal', { replace: true, state: {} });
     };
 
     const handleClearCongrats = async () => {
@@ -655,6 +656,10 @@ const StudentPortal = () => {
                                 {activeTab === t.id && <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
                             </button>
                         ))}
+                        <button className="sp-nav-link" onClick={handleLogout} style={{ color: '#f87171', marginTop: '1rem' }}>
+                            <div className="sp-nav-icon" style={{ background: 'rgba(248,113,113,0.08)' }}><LogOut size={17} /></div>
+                            Sign Out
+                        </button>
                     </nav>
 
                     {/* Bottom user card */}
