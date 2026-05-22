@@ -42,7 +42,7 @@ const SpiritualDashboard = () => {
         campus: 'Athi River',
         startTime: '19:00',
         endTime: '21:00',
-        semester: 'JAN-APR 2026',
+        semester: 'MAY-AUG 2026',
         requiredFields: [],
         questionOfDay: '',  // Used for sermon/word sometimes
         location: { name: '', latitude: null, longitude: null, radius: 200 }

@@ -11,7 +11,7 @@ export const logActivity = async (req, res) => {
         if (!member) return res.status(404).json({ message: 'Member not found' });
 
         const currentSemesterSetting = await Settings.findOne({ key: 'current_semester' });
-        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'JAN-APR 2026';
+        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
 
         const log = new ActivityLog({
             studentRegNo: regNo,

@@ -14,6 +14,7 @@ import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import AdminFinanceView from '../components/AdminFinanceView';
+import EventsManager from '../components/EventsManager';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, BarChart, Bar, Legend
@@ -342,7 +343,7 @@ const AdminDashboard = () => {
         campus: 'Athi River',
         startTime: '20:30',
         endTime: '23:00',
-        semester: 'JAN-APR 2026',
+        semester: 'MAY-AUG 2026',
         category: 'Meeting',
         allowManualOverride: false,
         requiredFields: [
@@ -372,6 +373,7 @@ const AdminDashboard = () => {
     const [importLoading, setImportLoading] = useState(false);
     const [memberCampusFilter, setMemberCampusFilter] = useState('All');
     const [memberTypeFilter, setMemberTypeFilter] = useState('All');
+    const [activeSemesterFilter, setActiveSemesterFilter] = useState(false);
     const [editingMember, setEditingMember] = useState(null);
     const [memberInsights, setMemberInsights] = useState(null);
     const [loadingInsights, setLoadingInsights] = useState(false);
@@ -384,7 +386,7 @@ const AdminDashboard = () => {
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
     const [locationSource, setLocationSource] = useState(null); // 'gps' or 'default'
-    const [currentSemester, setCurrentSemester] = useState('JAN-APR 2026');
+    const [currentSemester, setCurrentSemester] = useState('MAY-AUG 2026');
     const [showBulkListTool, setShowBulkListTool] = useState(false);
     const [bulkListType, setBulkListType] = useState('graduate'); // 'graduate' or 'archive'
     const [bulkListInput, setBulkListInput] = useState('');
@@ -397,7 +399,7 @@ const AdminDashboard = () => {
         campus: 'Athi River',
         startTime: '14:00',
         endTime: '17:00',
-        semester: 'JAN-APR 2026',
+        semester: 'MAY-AUG 2026',
         requiredFields: [
             { label: 'Full Name', key: 'studentName', required: true },
             { label: 'Admission Number', key: 'studentRegNo', required: true }
@@ -551,6 +553,7 @@ const AdminDashboard = () => {
                 params: {
                     campus: memberCampusFilter,
                     memberType: memberTypeFilter,
+                    activeThisSemester: activeSemesterFilter ? 'true' : undefined,
                     // Only include archived members when on the members tab (for the Archived section)
                     ...(forMembersTab && { includeArchived: 'true' })
                 }
@@ -634,7 +637,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         if (activeTab === 'members') fetchMembers(true);
-    }, [activeTab, memberCampusFilter, memberTypeFilter]);
+    }, [activeTab, memberCampusFilter, memberTypeFilter, activeSemesterFilter]);
 
     const handleCSVUpload = async (e) => {
         if (isGuest) return setMsg({ type: 'error', text: 'Import disabled in Guest Mode.' });
@@ -2247,61 +2250,134 @@ const AdminDashboard = () => {
             )}
             <BackgroundGallery />
             <ValentineRain />
-            <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '2rem', paddingBottom: '2rem' }}>
-                <header className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-                        <div className="rotating-logo">
-                            <Logo size={45} />
-                        </div>
-                        {/* Guest Feedback Button */}
-                        {isGuest && (
-                            <button
-                                onClick={async () => {
-                                    const message = window.prompt("💡 Share your thoughts on the Admin Dashboard:");
-                                    if (message) {
-                                        try {
-                                            await api.post('/feedback', { message, category: 'admin_guest_feedback' });
-                                            alert("Thanks for your feedback!");
-                                        } catch (e) {
-                                            console.error(e);
-                                            alert("Failed to send feedback. Please try again.");
-                                        }
-                                    }
-                                }}
-                                style={{
-                                    position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 3000,
-                                    padding: '1rem 1.5rem', borderRadius: '2rem',
-                                    background: '#facc15', color: 'black', fontWeight: 'bold',
-                                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)', border: 'none', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: '0.5rem'
-                                }}
-                            >
-                                <span style={{ fontSize: '1.2rem' }}>💡</span> Give Feedback
-                            </button>
-                        )}
+            <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'row', width: '100%' }}>
+                <style>{`
+                    .glass-panel { background: rgba(9, 29, 46, 0.6); backdrop-filter: blur(16px); border-radius: 1rem; border: 1px solid var(--glass-border-light); }
+                    .light-mode .glass-panel { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0, 0, 0, 0.1); }
+                    .btn { cursor: pointer; border: none; transition: transform 0.2s; }
+                    .btn:active { transform: scale(0.95); }
+                    .btn-primary { background: linear-gradient(135deg, var(--primary-electric) 0%, #0a4d68 100%); color: white; box-shadow: 0 4px 15px rgba(29, 166, 217, 0.2); }
+                    .btn-primary:hover { box-shadow: 0 0 25px rgba(29, 166, 217, 0.4); transform: translateY(-1px); }
+                    .btn-danger { background: #ef4444; color: white; }
+                    .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; }
+                    .light-mode .input-field { background: white; border-color: #ddd; color: black; }
+                    
+                    .admin-sidebar {
+                        width: 260px;
+                        position: fixed;
+                        left: 0;
+                        top: 0;
+                        bottom: 0;
+                        background: rgba(9, 29, 46, 0.85);
+                        backdrop-filter: blur(20px);
+                        border-right: 1px solid var(--glass-border);
+                        padding: 2rem 1.25rem;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        z-index: 100;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .admin-main {
+                        margin-left: 260px;
+                        flex: 1;
+                        padding: 3rem 2rem;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        position: relative;
+                        width: calc(100% - 260px);
+                        box-sizing: border-box;
+                    }
+                    @media (max-width: 1024px) {
+                        .admin-sidebar {
+                            width: 80px;
+                            padding: 2rem 0.5rem;
+                            align-items: center;
+                        }
+                        .admin-sidebar .sidebar-text {
+                            display: none !important;
+                        }
+                        .admin-sidebar .sidebar-logo-text {
+                            display: none !important;
+                        }
+                        .admin-main {
+                            margin-left: 80px;
+                            width: calc(100% - 80px);
+                            padding: 2rem 1.5rem;
+                        }
+                    }
+                    @media (max-width: 768px) {
+                        .admin-sidebar {
+                            width: 100%;
+                            height: auto;
+                            position: relative;
+                            border-right: none;
+                            border-bottom: 1px solid var(--glass-border);
+                            flex-direction: column;
+                            padding: 1rem;
+                            align-items: stretch;
+                            gap: 1rem;
+                        }
+                        .admin-sidebar .sidebar-logo-text {
+                            display: block !important;
+                        }
+                        .admin-sidebar nav {
+                            flex-direction: row !important;
+                            overflow-x: auto;
+                            width: 100%;
+                            gap: 0.5rem;
+                            padding: 0.25rem 0;
+                        }
+                        .admin-sidebar nav button {
+                            padding: 0.5rem 0.75rem !important;
+                            white-space: nowrap;
+                        }
+                        .admin-sidebar .sidebar-footer {
+                            display: none !important;
+                        }
+                        .admin-main {
+                            margin-left: 0;
+                            width: 100%;
+                            padding: 1.5rem 1rem;
+                        }
+                    }
+                `}</style>
 
-                        <style>{`
-                .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.1); }
-                .light-mode .glass-panel { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0, 0, 0, 0.1); }
-                .btn { cursor: pointer; border: none; transition: transform 0.2s; }
-                .btn:active { transform: scale(0.95); }
-                .btn-primary { background: hsl(var(--color-primary)); color: white; }
-                .btn-danger { background: #ef4444; color: white; }
-                .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; outline: none; }
-                .light-mode .input-field { background: white; border-color: #ddd; color: black; }
-            `}</style>
-                        <div className="admin-nav" style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                {/* Sidebar Navigation */}
+                <aside className="admin-sidebar">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        {/* Branding Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div className="rotating-logo">
+                                <Logo size={36} />
+                            </div>
+                            <div className="sidebar-logo-text">
+                                <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #fff 0%, var(--primary-electric) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Doulos Admin</h1>
+                                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--primary-electric)', letterSpacing: '1px', textTransform: 'uppercase', display: 'block' }}>Daystar University</span>
+                            </div>
+                        </div>
+
+                        {/* Navigation Items */}
+                        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             <button
                                 onClick={() => setActiveTab('meetings')}
                                 style={{
-                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                    background: activeTab === 'meetings' ? 'hsl(var(--color-primary))' : 'transparent',
-                                    color: activeTab === 'meetings' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap'
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'meetings' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                    color: activeTab === 'meetings' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    borderLeft: activeTab === 'meetings' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                    textAlign: 'left'
                                 }}
                             >
-                                Meetings
+                                <span>📅</span> <span className="sidebar-text">Meetings</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -2311,28 +2387,66 @@ const AdminDashboard = () => {
                                     setActiveTab('trainings');
                                 }}
                                 style={{
-                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                    background: activeTab === 'trainings' ? 'hsl(168, 80%, 40%)' : 'transparent',
-                                    color: activeTab === 'trainings' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap',
-                                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'trainings' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
+                                    color: activeTab === 'trainings' ? '#34d399' : 'rgba(255, 255, 255, 0.5)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    borderLeft: activeTab === 'trainings' ? '3px solid #34d399' : '3px solid transparent',
+                                    textAlign: 'left',
                                     opacity: systemStatus.recoveryMode ? 0.3 : 1
                                 }}
                             >
-                                🎓 Trainings
+                                <span>🎓</span> <span className="sidebar-text">Trainings</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('members')}
                                 style={{
-                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                    background: activeTab === 'members' ? 'hsl(var(--color-primary))' : 'transparent',
-                                    color: activeTab === 'members' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap'
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'members' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                    color: activeTab === 'members' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    borderLeft: activeTab === 'members' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                    textAlign: 'left'
                                 }}
                             >
-                                Members
+                                <span>👥</span> <span className="sidebar-text">Members</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('events')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'events' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                    color: activeTab === 'events' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    borderLeft: activeTab === 'events' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                    textAlign: 'left'
+                                }}
+                            >
+                                <span>🏆</span> <span className="sidebar-text">Events</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -2342,15 +2456,24 @@ const AdminDashboard = () => {
                                     setActiveTab('reports');
                                 }}
                                 style={{
-                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                    background: activeTab === 'reports' ? 'hsl(var(--color-primary))' : 'transparent',
-                                    color: activeTab === 'reports' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'reports' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                    color: activeTab === 'reports' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    borderLeft: activeTab === 'reports' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                    textAlign: 'left',
                                     opacity: systemStatus.recoveryMode ? 0.3 : 1
                                 }}
                             >
-                                Reports
+                                <span>📊</span> <span className="sidebar-text">Reports</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -2360,87 +2483,184 @@ const AdminDashboard = () => {
                                     setActiveTab('finance');
                                 }}
                                 style={{
-                                    padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                    background: activeTab === 'finance' ? 'hsl(var(--color-primary))' : 'transparent',
-                                    color: activeTab === 'finance' ? 'white' : 'var(--color-text-dim)',
-                                    fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'finance' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                    color: activeTab === 'finance' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    transition: 'all 0.2s ease',
+                                    borderLeft: activeTab === 'finance' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                    textAlign: 'left',
                                     opacity: systemStatus.recoveryMode ? 0.3 : 1
                                 }}
                             >
-                                Finance
+                                <span>💰</span> <span className="sidebar-text">Finance</span>
                             </button>
                             {guestFeaturesEnabled && (
                                 <button
-                                    onClick={() => setActiveTab('feedback')} // Feedback tab is hidden if features disabled
+                                    onClick={() => setActiveTab('feedback')}
                                     style={{
-                                        padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                        background: activeTab === 'feedback' ? 'hsl(var(--color-primary))' : 'transparent',
-                                        color: activeTab === 'feedback' ? 'white' : 'var(--color-text-dim)',
-                                        fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                        whiteSpace: 'nowrap',
-                                        display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.75rem 0.75rem',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: activeTab === 'feedback' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                        color: activeTab === 'feedback' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 700,
+                                        transition: 'all 0.2s ease',
+                                        borderLeft: activeTab === 'feedback' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                        textAlign: 'left'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.2rem' }}>💡</span> Feedback
+                                    <span>💡</span> <span className="sidebar-text">Feedback</span>
                                 </button>
                             )}
                             {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
                                 <button
                                     onClick={() => setActiveTab('admins')}
                                     style={{
-                                        padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                        background: activeTab === 'admins' ? 'hsl(var(--color-primary))' : 'transparent',
-                                        color: activeTab === 'admins' ? 'white' : 'var(--color-text-dim)',
-                                        fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                        whiteSpace: 'nowrap'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.75rem 0.75rem',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: activeTab === 'admins' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                        color: activeTab === 'admins' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 700,
+                                        transition: 'all 0.2s ease',
+                                        borderLeft: activeTab === 'admins' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                        textAlign: 'left'
                                     }}
                                 >
-                                    Admins
+                                    <span>🛡️</span> <span className="sidebar-text">Admins</span>
                                 </button>
                             )}
                             {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
                                 <button
                                     onClick={() => setActiveTab('system')}
                                     style={{
-                                        padding: '0.5rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                        background: activeTab === 'system' ? 'hsl(var(--color-primary))' : 'transparent',
-                                        color: activeTab === 'system' ? 'white' : 'var(--color-text-dim)',
-                                        fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                                        whiteSpace: 'nowrap'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.75rem 0.75rem',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: activeTab === 'system' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
+                                        color: activeTab === 'system' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 700,
+                                        transition: 'all 0.2s ease',
+                                        borderLeft: activeTab === 'system' ? '3px solid var(--primary-electric)' : '3px solid transparent',
+                                        textAlign: 'left'
                                     }}
                                 >
-                                    System
+                                    <span>⚙️</span> <span className="sidebar-text">System</span>
                                 </button>
                             )}
+                        </nav>
+                    </div>
+
+                    {/* Guest Feedback Button */}
+                    {isGuest && (
+                        <button
+                            onClick={async () => {
+                                const message = window.prompt("💡 Share your thoughts on the Admin Dashboard:");
+                                if (message) {
+                                    try {
+                                        await api.post('/feedback', { message, category: 'admin_guest_feedback' });
+                                        alert("Thanks for your feedback!");
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert("Failed to send feedback. Please try again.");
+                                    }
+                                }
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.85rem 1rem',
+                                borderRadius: '0.75rem',
+                                background: '#facc15',
+                                color: 'black',
+                                fontWeight: 'bold',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                width: '100%',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <span>💡</span> <span className="sidebar-text">Give Feedback</span>
+                        </button>
+                    )}
+
+                    <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-electric), #a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', color: '#ffffff' }}>
+                                {userRole ? userRole[0].toUpperCase() : 'A'}
+                            </div>
+                            <div style={{ overflow: 'hidden' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{localStorage.getItem('username') || 'Administrator'}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-electric)', fontWeight: 700, textTransform: 'uppercase' }}>{userRole}</div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                            <button
+                                className="btn"
+                                style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    color: isDarkMode ? '#facc15' : 'var(--color-bg)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '0.4rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'center'
+                                }}
+                                onClick={() => setIsDarkMode(!isDarkMode)}
+                                title="Toggle Theme"
+                            >
+                                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                            </button>
+                            <button
+                                className="btn"
+                                style={{
+                                    flex: 2,
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    color: '#f87171',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    borderRadius: '0.4rem',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    fontSize: '0.8rem'
+                                }}
+                                onClick={logout}
+                            >
+                                Logout
+                            </button>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <button
-                            className="btn"
-                            style={{
-                                padding: '0.6rem',
-                                background: 'rgba(255,255,255,0.05)',
-                                color: isDarkMode ? '#facc15' : 'var(--color-bg)',
-                                border: '1px solid rgba(255,255,255,0.1)'
-                            }}
-                            onClick={() => setIsDarkMode(!isDarkMode)}
-                        >
-                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
-                        <button
-                            className="btn"
-                            style={{
-                                background: isDarkMode ? '#1e293b' : '#f1f5f9',
-                                color: 'hsl(var(--color-text))',
-                                border: '1px solid var(--glass-border)'
-                            }}
-                            onClick={logout}
-                        >
-                            Logout
-                        </button>
-                    </div>
-                </header>
+                </aside>
+
+                {/* Main Content Area */}
+                <main className="admin-main">
 
                 {msg && (
                     <div style={{
@@ -2773,7 +2993,7 @@ const AdminDashboard = () => {
                                     <div>
                                         <label>Reporting Semester</label>
                                         <select className="input-field" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}>
-                                            <option value="JAN-APR 2026">JAN-APR 2026</option>
+                                            <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                             <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                             <option value="SEP-DEC 2026">SEP-DEC 2026</option>
                                         </select>
@@ -2961,6 +3181,8 @@ const AdminDashboard = () => {
                     </>
                 ) : activeTab === 'feedback' ? (
                     <FeedbackView isGuest={isGuest} />
+                ) : activeTab === 'events' ? (
+                    <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
                 ) : activeTab === 'finance' ? (
                     <AdminFinanceView isGuest={isGuest} />
                 ) : activeTab === 'members' ? (
@@ -3050,6 +3272,19 @@ const AdminDashboard = () => {
                                             }}
                                         >{t}</button>
                                     ))}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                                    <button onClick={() => setActiveSemesterFilter(!activeSemesterFilter)}
+                                        style={{
+                                            padding: '0.5rem 1rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                            background: activeSemesterFilter ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                                            color: activeSemesterFilter ? '#10b981' : 'var(--color-text-dim)',
+                                            fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem'
+                                        }}
+                                    >
+                                        <CheckCircle size={14} style={{ opacity: activeSemesterFilter ? 1 : 0.5 }} /> Active This Sem
+                                    </button>
                                 </div>
 
                                 <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -3374,7 +3609,7 @@ const AdminDashboard = () => {
                                                     className="input-field"
                                                     value={editingMember.lastActiveSemester || ''}
                                                     onChange={e => setEditingMember({ ...editingMember, lastActiveSemester: e.target.value })}
-                                                    placeholder="e.g. JAN-APR 2026"
+                                                    placeholder="e.g. MAY-AUG 2026"
                                                 />
                                             </div>
                                         </div>
@@ -3670,10 +3905,10 @@ const AdminDashboard = () => {
                             <div style={{ marginBottom: '2rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.6 }}>PASTE REGISTRATION NUMBERS</label>
                                 <textarea
-                                    className="input"
+                                    className="textarea-field"
                                     rows="8"
                                     placeholder="PASTE LIST HERE...&#10;CIT-1-1234/2022&#10;CIT-1-5678/2022"
-                                    style={{ width: '100%', padding: '1rem', background: 'rgba(0,0,0,0.3)', fontSize: '0.9rem', fontFamily: 'monospace', borderRadius: '0.75rem', color: 'white' }}
+                                    style={{ fontFamily: 'monospace', color: 'white' }}
                                     value={bulkListInput}
                                     onChange={(e) => setBulkListInput(e.target.value)}
                                 />
@@ -3955,8 +4190,8 @@ const AdminDashboard = () => {
 
                                         <div>
                                             <label>Reporting Semester</label>
-                                            <select className="input-field" value={editingMeeting.semester || 'JAN-APR 2026'} onChange={e => setEditingMeeting({ ...editingMeeting, semester: e.target.value })}>
-                                                <option value="JAN-APR 2026">JAN-APR 2026</option>
+                                            <select className="input-field" value={editingMeeting.semester || 'MAY-AUG 2026'} onChange={e => setEditingMeeting({ ...editingMeeting, semester: e.target.value })}>
+                                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                                 <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                                 <option value="SEP-DEC 2026">SEP-DEC 2026</option>
                                             </select>
@@ -4088,9 +4323,10 @@ const AdminDashboard = () => {
                         </div>
                     )
                 }
-            </div>
+            </main>
         </div>
-    );
+    </div>
+);
 };
 
 const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownloadCSV, onDownloadCumulativeCSV }) => {
@@ -4690,7 +4926,7 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
                                 style={{ width: '200px', fontSize: '0.9rem' }}
                                 value={currentSemester}
                                 onChange={(e) => onUpdateSetting('current_semester', e.target.value)}
-                                placeholder="e.g. JAN-APR 2026"
+                                placeholder="e.g. MAY-AUG 2026"
                             />
                         </div>
                     </div>
@@ -4838,7 +5074,7 @@ const FeedbackView = ({ isGuest }) => {
 };
 
 const SystemView = ({ onUpdateSetting, isGuest }) => {
-    const [semester, setSemester] = useState('JAN-APR 2026');
+    const [semester, setSemester] = useState('MAY-AUG 2026');
     const [guestAccess, setGuestAccess] = useState('true');
     const [waLink, setWaLink] = useState('');
     const [loading, setLoading] = useState(true);
@@ -4887,7 +5123,7 @@ const SystemView = ({ onUpdateSetting, isGuest }) => {
                             className="input-field"
                             value={semester}
                             onChange={(e) => setSemester(e.target.value)}
-                            placeholder="JAN-APR 2026"
+                            placeholder="MAY-AUG 2026"
                         />
                         <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('current_semester', semester)}>Update Semester</button>
                     </div>

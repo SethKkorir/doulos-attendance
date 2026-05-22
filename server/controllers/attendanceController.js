@@ -417,7 +417,7 @@ export const getStudentPortalData = async (req, res) => {
 
         // Semester Alert
         const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
-        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'JAN-APR 2026';
+        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
 
         if (member.lastActiveSemester !== currentSemester) {
             alerts.push({

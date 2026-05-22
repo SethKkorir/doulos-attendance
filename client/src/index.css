@@ -1,10 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --font-main: 'Outfit', sans-serif;
+  /* Doulos Signature Palette */
+  --bg-deep: #021525;         /* HSL: 206 91% 8% */
+  --primary-electric: #1da6d9; /* HSL: 198 76% 51% */
+  --surface-slate: #091d2e;    /* HSL: 206 80% 14% */
+  --surface-bright: #293b4d;
+  
+  --glass-border: rgba(29, 166, 217, 0.15);
+  --glass-border-light: rgba(255, 255, 255, 0.03);
+  --neon-glow: 0 0 20px rgba(29, 166, 217, 0.3);
+  
+  --font-main: 'Hanken Grotesk', sans-serif;
 
-  /* HSL Colors */
-  /* Premium Daystar University Palette */
+  /* HSL Colors - kept for backward compatibility */
   --color-bg-h: 206;
   --color-bg-s: 91%;
   --color-bg-l: 8%;
@@ -15,9 +25,9 @@
   --color-primary-glow: 198 76% 51% / 0.4;
   --color-accent: 330 80% 60%;
 
-  --glass-bg: hsl(var(--color-bg-h), var(--color-bg-s), 15%);
-  --glass-border: hsla(206, 80%, 30%, 0.5);
-  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(9, 29, 46, 0.6);
+  --glass-border-hsla: hsla(206, 80%, 30%, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 
   --color-text: 0 0% 100%;
   --color-text-dim: 206 20% 70%;
@@ -40,7 +50,7 @@
   --color-text-dim: 206 20% 40%;
 
   --glass-bg: #ffffff;
-  --glass-border: #e2e8f0;
+  --glass-border-hsla: #e2e8f0;
   --glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 
   --bg-gradient: radial-gradient(circle at 0% 0%, hsla(198, 76%, 51%, 0.05), transparent 40%),
@@ -56,24 +66,37 @@
 
 body {
   font-family: var(--font-main);
-  background-color: hsl(var(--color-bg));
-  color: hsl(var(--color-text));
+  background-color: var(--bg-deep);
+  color: #ffffff;
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Background Gradients */
-body::before {
+/* Atmospheric Radial Glows */
+body::before, body::after {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--bg-gradient);
-  z-index: -2;
+  width: 60vw;
+  height: 60vw;
+  border-radius: 50%;
+  z-index: -1;
+  filter: blur(120px);
+  opacity: 0.15;
   pointer-events: none;
+}
+
+body::before {
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(circle, var(--primary-electric) 0%, transparent 70%);
+}
+
+body::after {
+  bottom: -20%;
+  right: -10%;
+  background: radial-gradient(circle, #ff00ff 0%, transparent 70%);
 }
 
 /* Utilities */
@@ -103,22 +126,43 @@ body::before {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, hsl(var(--color-primary)), hsla(206, 91%, 30%, 1));
+  background: linear-gradient(135deg, var(--primary-electric) 0%, #0a4d68 100%);
   color: white;
-  box-shadow: 0 4px 15px var(--color-primary-glow);
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(29, 166, 217, 0.2);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px hsla(45, 100%, 50%, 0.2);
-  filter: brightness(1.1);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 0 25px rgba(29, 166, 217, 0.4);
 }
 
 .glass-panel {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 1rem;
-  box-shadow: var(--glass-shadow);
+  background: rgba(9, 29, 46, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-panel.interactive:hover,
+.glass-card-hover:hover,
+.meeting-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+  border-color: var(--primary-electric);
+}
+
+.glass-panel:hover {
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
+  border-color: var(--glass-border);
 }
 
 .input-field {
@@ -139,19 +183,35 @@ body::before {
   background-size: 1rem;
 }
 
-.light-mode .input-field {
+.textarea-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: hsl(var(--color-bg-h), var(--color-bg-s), 10%);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  color: hsl(var(--color-text));
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  resize: vertical;
+}
+
+.light-mode .input-field,
+.light-mode .textarea-field {
   background: #ffffff;
   color: hsl(var(--color-bg));
 }
 
-.input-field:focus {
+.input-field:focus,
+.textarea-field:focus {
   outline: none;
   border-color: hsl(var(--color-primary));
   background: rgba(15, 23, 42, 0.6);
   box-shadow: 0 0 0 4px var(--color-primary-glow);
 }
 
-.light-mode .input-field:focus {
+.light-mode .input-field:focus,
+.light-mode .textarea-field:focus {
   background: rgba(255, 255, 255, 1);
 }
 

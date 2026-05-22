@@ -38,11 +38,14 @@ api.interceptors.response.use(
 
         // Global Downtime & Isolation Handler (503)
         if (error.response && error.response.status === 503) {
-            console.error('SERVER DOWNTIME DETECTED: Rendering barrier...');
-            // Replace the entire page with the server's premium HTML
-            document.open();
-            document.write(error.response.data);
-            document.close();
+            if (!window.downtimeRendered) {
+                window.downtimeRendered = true;
+                console.error('SERVER DOWNTIME DETECTED: Rendering barrier...');
+                // Replace the entire page with the server's premium HTML
+                document.open();
+                document.write(error.response.data);
+                document.close();
+            }
             return new Promise(() => {}); // Prevent further error handling in the app
         }
         return Promise.reject(error);

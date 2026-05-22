@@ -14,11 +14,19 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
 import trainingRoutes from './routes/trainingRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 import downtimeManager from './middleware/downtimeManager.js';
 
-dotenv.config();
+const envPathLocal = path.resolve(process.cwd(), '.env');
+const envPathParent = path.resolve(process.cwd(), '..', '.env');
+console.log('Loading env from:', envPathLocal);
+dotenv.config({ path: envPathLocal });
+if (!process.env.MONGO_URI) {
+    console.log('MONGO_URI not found in local env, trying parent env:', envPathParent);
+    dotenv.config({ path: envPathParent });
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -45,10 +53,13 @@ const connectDB = async () => {
     if (cachedConnection) return cachedConnection;
 
     console.log('--- Database Connection Attempt ---');
+    const primaryUri = process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance';
+    const fallbackUri = process.env.MONGO_URI_FALLBACK || null;
     console.log('URI Presence:', !!process.env.MONGO_URI);
+    console.log('Connecting to MongoDB URI type:', primaryUri.startsWith('mongodb+srv://') ? 'srv' : 'standard');
 
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance', {
+        const conn = await mongoose.connect(primaryUri, {
             serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s or more
             socketTimeoutMS: 120000, // Keep-alive for serverless
         });
@@ -78,6 +89,22 @@ const connectDB = async () => {
         return conn;
     } catch (err) {
         console.error('❌ MongoDB Error:', err.message);
+
+        if (fallbackUri && primaryUri.startsWith('mongodb+srv://')) {
+            console.log('Trying fallback MongoDB URI due to SRV lookup failure...');
+            try {
+                const conn = await mongoose.connect(fallbackUri, {
+                    serverSelectionTimeoutMS: 5000,
+                    socketTimeoutMS: 120000,
+                });
+                cachedConnection = conn;
+                console.log('✅ MongoDB Connected with fallback URI');
+                return conn;
+            } catch (fallbackErr) {
+                console.error('❌ MongoDB Fallback Error:', fallbackErr.message);
+            }
+        }
+
         throw err;
     }
 };
@@ -108,6 +135,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/trainings', trainingRoutes);
+app.use('/api/events', eventRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

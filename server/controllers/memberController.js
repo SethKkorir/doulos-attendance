@@ -31,7 +31,7 @@ export const importMembers = async (req, res) => {
 
 export const getMembers = async (req, res) => {
     try {
-        const { search, campus, memberType, includeArchived } = req.query;
+        const { search, campus, memberType, includeArchived, activeThisSemester } = req.query;
         let query = {};
 
         if (search) {
@@ -45,6 +45,13 @@ export const getMembers = async (req, res) => {
 
         // Never show test accounts in the main registry
         query.isTestAccount = { $ne: true };
+
+        // Active this semester filter
+        if (activeThisSemester === 'true') {
+            const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+            const currentSemester = semesterSetting ? semesterSetting.value : 'MAY-AUG 2026';
+            query.lastActiveSemester = currentSemester;
+        }
 
         // Exclude archived members unless explicitly requested
         if (includeArchived !== 'true') {
@@ -167,7 +174,7 @@ export const bulkEnrollFromAttendance = async (req, res) => {
     try {
         // 1. Get Current Semester from Settings
         const semesterSetting = await Settings.findOne({ key: 'current_semester' });
-        const currentSemester = semesterSetting ? semesterSetting.value : 'JAN-APR 2026';
+        const currentSemester = semesterSetting ? semesterSetting.value : 'MAY-AUG 2026';
 
         // 2. Find all meetings in this semester
         const meetingsInSem = await Meeting.find({ semester: currentSemester });

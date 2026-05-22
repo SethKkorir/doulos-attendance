@@ -45,7 +45,7 @@ const G5TrainingDashboard = () => {
         campus: 'Athi River',
         startTime: '18:00',
         endTime: '20:00',
-        semester: 'JAN-APR 2026',
+        semester: 'MAY-AUG 2026',
         requiredFields: [],
         questionOfDay: '',
         location: { name: '', latitude: null, longitude: null, radius: 200 }
