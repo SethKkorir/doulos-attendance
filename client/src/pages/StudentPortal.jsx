@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
 import {
@@ -167,6 +167,20 @@ const CSS = `
         width: 420px; display: flex; align-items: center; justify-content: center;
         background: #0d1f2d; padding: 2.5rem;
     }
+    .sp-login-card {
+        width: 100%; max-width: 360px; transition: all 0.3s ease;
+    }
+    .sp-login-mobile-header {
+        display: none;
+    }
+    /* MOBILE HEADER BAR */
+    .sp-mobile-header {
+        display: none;
+    }
+    /* RESPONSIVE CHECK-IN */
+    .sp-checkin-form {
+        display: flex; gap: 0.5rem; max-width: 500px; width: 100%;
+    }
     /* MOBILE NAV */
     .sp-mobile-bottom-nav {
         display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -188,11 +202,53 @@ const CSS = `
         .sp-mobile-bottom-nav { display: flex; }
         .sp-main { padding: 1.25rem 1rem 5rem; }
         .sp-login-left { display: none; }
-        .sp-login-right { width: 100%; }
+        .sp-login-right {
+            width: 100%;
+            background: transparent !important;
+            padding: 1.5rem;
+        }
+        .sp-login-card {
+            background: rgba(9, 29, 46, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.25rem;
+            padding: 2.25rem 1.75rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .sp-login-mobile-header {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .sp-mobile-header {
+            display: flex !important;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(9, 29, 46, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-light);
+            margin-bottom: 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+        }
     }
     @media (max-width: 480px) {
         .sp-stat-pill { padding: 0.75rem; }
         .sp-stat-num { font-size: 1.4rem; }
+        .sp-checkin-form {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .sp-checkin-btn {
+            width: 100%;
+        }
     }
     .loading-spinner-small { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
     .rotating-logo { animation: rotateLogo 60s linear infinite; filter: drop-shadow(0 0 20px rgba(37,170,225,0.3)); }
@@ -235,6 +291,7 @@ const StudentPortal = () => {
     const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
     const [newMemberType, setNewMemberType] = useState('Douloid');
     const navigate = useNavigate();
+    const tabContentRef = useRef(null);
 
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState([
@@ -405,7 +462,20 @@ const StudentPortal = () => {
 
                 {/* Right login card */}
                 <div className="sp-login-right">
-                    <div style={{ width: '100%', maxWidth: '360px' }}>
+                    <div className="sp-login-card">
+                        {/* Mobile logo header (visible on mobile only) */}
+                        <div className="sp-login-mobile-header">
+                            <div className="rotating-logo" style={{ marginBottom: '1rem' }}>
+                                <Logo size={64} showText={false} />
+                            </div>
+                            <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em', margin: 0 }}>
+                                DOULOS <span style={{ color: '#25AAE1' }}>PORTAL</span>
+                            </h1>
+                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', textAlign: 'center', marginTop: '0.4rem', maxWidth: '280px', lineHeight: 1.4 }}>
+                                Track attendance, log activities, and manage finances.
+                            </p>
+                        </div>
+
                         <div style={{ marginBottom: '2rem' }}>
                             <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>MEMBER ACCESS</div>
                             <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: 0, letterSpacing: '-0.02em' }}>
@@ -538,6 +608,11 @@ const StudentPortal = () => {
     const goTab = (id) => {
         if (systemStatus.recoveryMode && id !== 'overview') { setComingSoon('Data Synchronization'); return; }
         setActiveTab(id);
+        if (window.innerWidth <= 768) {
+            setTimeout(() => {
+                tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
     };
 
     return (
@@ -601,6 +676,21 @@ const StudentPortal = () => {
 
                 {/* ══ MAIN CONTENT ══ */}
                 <main className="sp-main">
+                    {/* Mobile-only header bar with avatar and logout */}
+                    <div className="sp-mobile-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #25AAE1, #091d2e)', border: '2px solid rgba(37,170,225,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', flexShrink: 0 }}>
+                                {firstName.charAt(0)}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.memberName}</div>
+                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{data.studentRegNo}</div>
+                            </div>
+                        </div>
+                        <button onClick={handleLogout} style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '0.5rem', color: '#f87171', padding: '0.4rem 0.75rem', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', letterSpacing: '0.5px', flexShrink: 0 }}>
+                            <LogOut size={12} /> SIGN OUT
+                        </button>
+                    </div>
 
                     {/* Greeting + check-in */}
                     <div style={{ marginBottom: '1.75rem' }}>
@@ -613,8 +703,8 @@ const StudentPortal = () => {
                         </p>
 
                         {/* Quick check-in bar */}
-                        <form onSubmit={e => { e.preventDefault(); if (isGuest) { alert('Guest users cannot perform check-ins.'); return; } const code = e.target.elements.code.value.trim(); if (code) window.location.href = `/check-in/${code}`; }} style={{ display: 'flex', gap: '0.5rem', maxWidth: '500px' }}>
-                            <div style={{ position: 'relative', flex: 1 }}>
+                        <form onSubmit={e => { e.preventDefault(); if (isGuest) { alert('Guest users cannot perform check-ins.'); return; } const code = e.target.elements.code.value.trim(); if (code) window.location.href = `/check-in/${code}`; }} className="sp-checkin-form">
+                            <div style={{ position: 'relative', flex: 1, minWidth: 0, width: '100%' }}>
                                 <Search size={16} style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.25)', pointerEvents: 'none' }} />
                                 <input name="code" placeholder="ENTER MEETING CODE..." className="sp-checkin-input" style={{ paddingLeft: '2.5rem' }} required />
                             </div>
@@ -747,7 +837,7 @@ const StudentPortal = () => {
                     </div>
 
                     {/* ══ TAB CONTENT ══ */}
-                    <div className="sp-tab-content">
+                    <div className="sp-tab-content" ref={tabContentRef}>
 
                         {/* OVERVIEW */}
                         {activeTab === 'overview' && (
@@ -958,54 +1048,60 @@ const StudentPortal = () => {
                         {t.label}
                     </button>
                 ))}
+                <button className="sp-mobile-tab-btn" onClick={handleLogout} style={{ color: '#f87171' }}>
+                    <LogOut size={20} />
+                    SIGN OUT
+                </button>
             </div>
 
             {/* ══ CHAT WIDGET ══ */}
-            <div style={{ position: 'fixed', bottom: '1.25rem', right: '1.25rem', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
-                {isChatOpen && (
-                    <div style={{ width: 'min(340px, calc(100vw - 2rem))', height: '430px', display: 'flex', flexDirection: 'column', background: 'rgba(9,29,46,0.97)', backdropFilter: 'blur(20px)', border: '1px solid rgba(37,170,225,0.25)', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-                        <div style={{ padding: '0.85rem 1rem', background: 'rgba(37,170,225,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}><DoulosBotIcon size={22} /></div>
-                                <div>
-                                    <div style={{ fontWeight: 900, fontSize: '0.85rem' }}>Doulos Bot</div>
-                                    <div style={{ fontSize: '0.6rem', color: '#4ade80', fontWeight: 700 }}>● Online</div>
+            {false && (
+                <div style={{ position: 'fixed', bottom: '1.25rem', right: '1.25rem', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
+                    {isChatOpen && (
+                        <div style={{ width: 'min(340px, calc(100vw - 2rem))', height: '430px', display: 'flex', flexDirection: 'column', background: 'rgba(9,29,46,0.97)', backdropFilter: 'blur(20px)', border: '1px solid rgba(37,170,225,0.25)', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+                            <div style={{ padding: '0.85rem 1rem', background: 'rgba(37,170,225,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}><DoulosBotIcon size={22} /></div>
+                                    <div>
+                                        <div style={{ fontWeight: 900, fontSize: '0.85rem' }}>Doulos Bot</div>
+                                        <div style={{ fontSize: '0.6rem', color: '#4ade80', fontWeight: 700 }}>● Online</div>
+                                    </div>
                                 </div>
+                                <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '0.25rem' }}><XCircle size={18} /></button>
                             </div>
-                            <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '0.25rem' }}><XCircle size={18} /></button>
-                        </div>
-                        <div style={{ flex: 1, padding: '0.85rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                            {chatMessages.map((msg, i) => (
-                                <div key={i} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', padding: '0.5rem 0.85rem', borderRadius: '1rem', background: msg.sender === 'user' ? 'linear-gradient(135deg, #25AAE1, #0a4d68)' : 'rgba(255,255,255,0.06)', color: 'white', fontSize: '0.8rem', lineHeight: 1.5, borderBottomRightRadius: msg.sender === 'user' ? '2px' : '1rem', borderBottomLeftRadius: msg.sender === 'bot' ? '2px' : '1rem', wordBreak: 'break-word' }}>
-                                    {msg.text}
-                                </div>
-                            ))}
-                            {isTyping && (
-                                <div style={{ alignSelf: 'flex-start', padding: '0.5rem 0.85rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', display: 'flex', gap: '0.2rem' }}>
-                                    <span style={{ animation: 'bounce 1s infinite 0s' }}>•</span>
-                                    <span style={{ animation: 'bounce 1s infinite 0.2s' }}>•</span>
-                                    <span style={{ animation: 'bounce 1s infinite 0.4s' }}>•</span>
-                                </div>
-                            )}
-                        </div>
-                        <form onSubmit={handleSendChat} style={{ padding: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '0.5rem' }}>
-                            <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Type a message..." style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', color: 'white', fontSize: '0.82rem', outline: 'none' }} />
-                            <button type="submit" disabled={!chatInput.trim()} style={{ padding: '0.5rem 0.75rem', borderRadius: '0.5rem', background: '#25AAE1', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Send size={16} /></button>
-                        </form>
-                    </div>
-                )}
-                <div style={{ position: 'relative' }}>
-                    {!isChatOpen && showChatPopup && (
-                        <div style={{ position: 'absolute', bottom: '68px', right: 0, width: '170px', padding: '0.75rem', background: 'white', color: '#0d1f2d', borderRadius: '0.75rem', borderBottomRightRadius: '2px', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', fontSize: '0.78rem', fontWeight: 700, animation: 'slideUp 0.5s', zIndex: 10 }}>
-                            👋 Hi {firstName}! Need help?
-                            <div style={{ position: 'absolute', bottom: '-6px', right: '18px', width: '12px', height: '12px', background: 'white', transform: 'rotate(45deg)' }} />
+                            <div style={{ flex: 1, padding: '0.85rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                                {chatMessages.map((msg, i) => (
+                                    <div key={i} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', padding: '0.5rem 0.85rem', borderRadius: '1rem', background: msg.sender === 'user' ? 'linear-gradient(135deg, #25AAE1, #0a4d68)' : 'rgba(255,255,255,0.06)', color: 'white', fontSize: '0.8rem', lineHeight: 1.5, borderBottomRightRadius: msg.sender === 'user' ? '2px' : '1rem', borderBottomLeftRadius: msg.sender === 'bot' ? '2px' : '1rem', wordBreak: 'break-word' }}>
+                                        {msg.text}
+                                    </div>
+                                ))}
+                                {isTyping && (
+                                    <div style={{ alignSelf: 'flex-start', padding: '0.5rem 0.85rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', display: 'flex', gap: '0.2rem' }}>
+                                        <span style={{ animation: 'bounce 1s infinite 0s' }}>•</span>
+                                        <span style={{ animation: 'bounce 1s infinite 0.2s' }}>•</span>
+                                        <span style={{ animation: 'bounce 1s infinite 0.4s' }}>•</span>
+                                    </div>
+                                )}
+                            </div>
+                            <form onSubmit={handleSendChat} style={{ padding: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '0.5rem' }}>
+                                <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Type a message..." style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', color: 'white', fontSize: '0.82rem', outline: 'none' }} />
+                                <button type="submit" disabled={!chatInput.trim()} style={{ padding: '0.5rem 0.75rem', borderRadius: '0.5rem', background: '#25AAE1', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Send size={16} /></button>
+                            </form>
                         </div>
                     )}
-                    <button onClick={() => { setIsChatOpen(true); setShowChatPopup(false); }} style={{ width: '52px', height: '52px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '3px solid rgba(37,170,225,0.25)', cursor: 'pointer', boxShadow: '0 8px 25px rgba(37,170,225,0.35)', animation: 'bounce 2.5s infinite' }}>
-                        <DoulosBotIcon size={30} />
-                    </button>
+                    <div style={{ position: 'relative' }}>
+                        {!isChatOpen && showChatPopup && (
+                            <div style={{ position: 'absolute', bottom: '68px', right: 0, width: '170px', padding: '0.75rem', background: 'white', color: '#0d1f2d', borderRadius: '0.75rem', borderBottomRightRadius: '2px', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', fontSize: '0.78rem', fontWeight: 700, animation: 'slideUp 0.5s', zIndex: 10 }}>
+                                👋 Hi {firstName}! Need help?
+                                <div style={{ position: 'absolute', bottom: '-6px', right: '18px', width: '12px', height: '12px', background: 'white', transform: 'rotate(45deg)' }} />
+                            </div>
+                        )}
+                        <button onClick={() => { setIsChatOpen(true); setShowChatPopup(false); }} style={{ width: '52px', height: '52px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '3px solid rgba(37,170,225,0.25)', cursor: 'pointer', boxShadow: '0 8px 25px rgba(37,170,225,0.35)', animation: 'bounce 2.5s infinite' }}>
+                            <DoulosBotIcon size={30} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
