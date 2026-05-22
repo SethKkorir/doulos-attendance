@@ -7,7 +7,7 @@ import {
     BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
     ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
     FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, Archive
+    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, Archive, LayoutDashboard, ClipboardCheck
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
@@ -2268,15 +2268,15 @@ const AdminDashboard = () => {
                         left: 0;
                         top: 0;
                         bottom: 0;
-                        background: rgba(9, 29, 46, 0.85);
-                        backdrop-filter: blur(20px);
-                        border-right: 1px solid var(--glass-border);
-                        padding: 2rem 1.25rem;
+                        background: #021525;
+                        border-right: 1px solid rgba(255, 255, 255, 0.06);
+                        padding: 2.25rem 1.25rem 1.5rem 1.25rem;
                         display: flex;
                         flex-direction: column;
                         justify-content: space-between;
                         z-index: 100;
                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3);
                     }
                     .admin-main {
                         margin-left: 260px;
@@ -2286,6 +2286,74 @@ const AdminDashboard = () => {
                         position: relative;
                         width: calc(100% - 260px);
                         box-sizing: border-box;
+                    }
+                    .sidebar-nav-btn {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.75rem;
+                        padding: 0.85rem 1rem;
+                        border-radius: 0.5rem;
+                        border: none;
+                        cursor: pointer;
+                        background: transparent;
+                        color: #7f92b0;
+                        font-size: 0.9rem;
+                        font-weight: 600;
+                        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                        border-right: 3px solid transparent;
+                        text-align: left;
+                        width: 100%;
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .sidebar-nav-btn svg {
+                        color: #7f92b0;
+                        transition: color 0.25s ease, transform 0.25s ease;
+                        flex-shrink: 0;
+                    }
+                    .sidebar-nav-btn:hover {
+                        background: rgba(255, 255, 255, 0.02);
+                        color: #ffffff;
+                        transform: translateX(4px);
+                    }
+                    .sidebar-nav-btn:hover svg {
+                        color: #ffffff;
+                        transform: scale(1.05);
+                    }
+                    .sidebar-nav-btn.active {
+                        background: rgba(29, 166, 217, 0.08);
+                        color: #1da6d9;
+                        border-right: 3px solid #1da6d9;
+                        font-weight: 700;
+                    }
+                    .sidebar-nav-btn.active svg {
+                        color: #1da6d9;
+                    }
+                    .new-session-btn {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 0.5rem;
+                        padding: 0.85rem 1rem;
+                        border-radius: 0.75rem;
+                        background: linear-gradient(135deg, var(--primary-electric) 0%, #0a4d68 100%);
+                        color: white;
+                        font-weight: 800;
+                        font-size: 0.85rem;
+                        letter-spacing: 0.5px;
+                        border: none;
+                        cursor: pointer;
+                        box-shadow: 0 4px 15px rgba(29, 166, 217, 0.25);
+                        width: 100%;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .new-session-btn:hover {
+                        box-shadow: 0 6px 20px rgba(29, 166, 217, 0.45);
+                        transform: translateY(-2px);
+                        background: linear-gradient(135deg, #24bbf0 0%, #0c5c7d 100%);
+                    }
+                    .new-session-btn:active {
+                        transform: scale(0.96);
                     }
                     @media (max-width: 1024px) {
                         .admin-sidebar {
@@ -2297,6 +2365,25 @@ const AdminDashboard = () => {
                             display: none !important;
                         }
                         .admin-sidebar .sidebar-logo-text {
+                            display: none !important;
+                        }
+                        .sidebar-nav-btn {
+                            justify-content: center;
+                            padding: 0.85rem;
+                            border-right: none !important;
+                            border-left: none !important;
+                        }
+                        .sidebar-nav-btn.active {
+                            border-left: 3px solid #1da6d9 !important;
+                        }
+                        .new-session-btn {
+                            padding: 0.85rem;
+                            border-radius: 50%;
+                            width: 42px;
+                            height: 42px;
+                            justify-content: center;
+                        }
+                        .new-session-btn .sidebar-text {
                             display: none !important;
                         }
                         .admin-main {
@@ -2311,9 +2398,9 @@ const AdminDashboard = () => {
                             height: auto;
                             position: relative;
                             border-right: none;
-                            border-bottom: 1px solid var(--glass-border);
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
                             flex-direction: column;
-                            padding: 1rem;
+                            padding: 1.25rem 1rem;
                             align-items: stretch;
                             gap: 1rem;
                         }
@@ -2324,12 +2411,31 @@ const AdminDashboard = () => {
                             flex-direction: row !important;
                             overflow-x: auto;
                             width: 100%;
-                            gap: 0.5rem;
+                            gap: 0.35rem;
                             padding: 0.25rem 0;
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                            padding-bottom: 0.75rem;
                         }
-                        .admin-sidebar nav button {
-                            padding: 0.5rem 0.75rem !important;
+                        .sidebar-nav-btn {
+                            padding: 0.6rem 0.85rem !important;
                             white-space: nowrap;
+                            width: auto !important;
+                            border-right: none !important;
+                            border-bottom: 2px solid transparent;
+                            border-left: none !important;
+                            border-radius: 0.35rem;
+                        }
+                        .sidebar-nav-btn.active {
+                            border-bottom: 2px solid #1da6d9 !important;
+                            background: rgba(29, 166, 217, 0.08) !important;
+                        }
+                        .new-session-btn {
+                            width: auto !important;
+                            border-radius: 0.5rem;
+                            padding: 0.6rem 1rem;
+                        }
+                        .new-session-btn .sidebar-text {
+                            display: inline !important;
                         }
                         .admin-sidebar .sidebar-footer {
                             display: none !important;
@@ -2346,38 +2452,33 @@ const AdminDashboard = () => {
                 <aside className="admin-sidebar">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         {/* Branding Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div className="rotating-logo">
-                                <Logo size={36} />
-                            </div>
-                            <div className="sidebar-logo-text">
-                                <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #fff 0%, var(--primary-electric) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Doulos Admin</h1>
-                                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--primary-electric)', letterSpacing: '1px', textTransform: 'uppercase', display: 'block' }}>Daystar University</span>
-                            </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.5rem', marginBottom: '0.5rem' }}>
+                            <h1 className="sidebar-logo-text" style={{ 
+                                margin: 0, 
+                                fontSize: '1.75rem', 
+                                fontWeight: 800, 
+                                letterSpacing: '-0.03em', 
+                                color: '#1da6d9',
+                                fontFamily: "'Hanken Grotesk', sans-serif"
+                            }}>Doulos</h1>
+                            <span className="sidebar-logo-text" style={{ 
+                                fontSize: '0.75rem', 
+                                fontWeight: 600, 
+                                color: '#7f92b0', 
+                                letterSpacing: '0.5px',
+                                textTransform: 'capitalize',
+                                display: 'block' 
+                            }}>University Admin</span>
                         </div>
 
                         {/* Navigation Items */}
                         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             <button
                                 onClick={() => setActiveTab('meetings')}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: activeTab === 'meetings' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                    color: activeTab === 'meetings' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    transition: 'all 0.2s ease',
-                                    borderLeft: activeTab === 'meetings' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                    textAlign: 'left'
-                                }}
+                                className={`sidebar-nav-btn ${activeTab === 'meetings' ? 'active' : ''}`}
                             >
-                                <span>📅</span> <span className="sidebar-text">Meetings</span>
+                                <LayoutDashboard size={18} />
+                                <span className="sidebar-text">Meetings</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -2386,67 +2487,25 @@ const AdminDashboard = () => {
                                     }
                                     setActiveTab('trainings');
                                 }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: activeTab === 'trainings' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
-                                    color: activeTab === 'trainings' ? '#34d399' : 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    transition: 'all 0.2s ease',
-                                    borderLeft: activeTab === 'trainings' ? '3px solid #34d399' : '3px solid transparent',
-                                    textAlign: 'left',
-                                    opacity: systemStatus.recoveryMode ? 0.3 : 1
-                                }}
+                                className={`sidebar-nav-btn ${activeTab === 'trainings' ? 'active' : ''}`}
+                                style={{ opacity: systemStatus.recoveryMode ? 0.35 : 1 }}
                             >
-                                <span>🎓</span> <span className="sidebar-text">Trainings</span>
+                                <GraduationCap size={18} />
+                                <span className="sidebar-text">Trainings</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('members')}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: activeTab === 'members' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                    color: activeTab === 'members' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    transition: 'all 0.2s ease',
-                                    borderLeft: activeTab === 'members' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                    textAlign: 'left'
-                                }}
+                                className={`sidebar-nav-btn ${activeTab === 'members' ? 'active' : ''}`}
                             >
-                                <span>👥</span> <span className="sidebar-text">Members</span>
+                                <Users size={18} />
+                                <span className="sidebar-text">Members</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('events')}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: activeTab === 'events' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                    color: activeTab === 'events' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    transition: 'all 0.2s ease',
-                                    borderLeft: activeTab === 'events' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                    textAlign: 'left'
-                                }}
+                                className={`sidebar-nav-btn ${activeTab === 'events' ? 'active' : ''}`}
                             >
-                                <span>🏆</span> <span className="sidebar-text">Events</span>
+                                <Trophy size={18} />
+                                <span className="sidebar-text">Events</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -2455,25 +2514,11 @@ const AdminDashboard = () => {
                                     }
                                     setActiveTab('reports');
                                 }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: activeTab === 'reports' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                    color: activeTab === 'reports' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    transition: 'all 0.2s ease',
-                                    borderLeft: activeTab === 'reports' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                    textAlign: 'left',
-                                    opacity: systemStatus.recoveryMode ? 0.3 : 1
-                                }}
+                                className={`sidebar-nav-btn ${activeTab === 'reports' ? 'active' : ''}`}
+                                style={{ opacity: systemStatus.recoveryMode ? 0.35 : 1 }}
                             >
-                                <span>📊</span> <span className="sidebar-text">Reports</span>
+                                <BarChart3 size={18} />
+                                <span className="sidebar-text">Reports</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -2482,95 +2527,53 @@ const AdminDashboard = () => {
                                     }
                                     setActiveTab('finance');
                                 }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: activeTab === 'finance' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                    color: activeTab === 'finance' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    transition: 'all 0.2s ease',
-                                    borderLeft: activeTab === 'finance' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                    textAlign: 'left',
-                                    opacity: systemStatus.recoveryMode ? 0.3 : 1
-                                }}
+                                className={`sidebar-nav-btn ${activeTab === 'finance' ? 'active' : ''}`}
+                                style={{ opacity: systemStatus.recoveryMode ? 0.35 : 1 }}
                             >
-                                <span>💰</span> <span className="sidebar-text">Finance</span>
+                                <Wallet size={18} />
+                                <span className="sidebar-text">Finance</span>
                             </button>
                             {guestFeaturesEnabled && (
                                 <button
                                     onClick={() => setActiveTab('feedback')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        padding: '0.75rem 0.75rem',
-                                        borderRadius: '0.5rem',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        background: activeTab === 'feedback' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                        color: activeTab === 'feedback' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                        fontSize: '0.85rem',
-                                        fontWeight: 700,
-                                        transition: 'all 0.2s ease',
-                                        borderLeft: activeTab === 'feedback' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                        textAlign: 'left'
-                                    }}
+                                    className={`sidebar-nav-btn ${activeTab === 'feedback' ? 'active' : ''}`}
                                 >
-                                    <span>💡</span> <span className="sidebar-text">Feedback</span>
+                                    <Lightbulb size={18} />
+                                    <span className="sidebar-text">Feedback</span>
                                 </button>
                             )}
                             {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
                                 <button
                                     onClick={() => setActiveTab('admins')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        padding: '0.75rem 0.75rem',
-                                        borderRadius: '0.5rem',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        background: activeTab === 'admins' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                        color: activeTab === 'admins' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                        fontSize: '0.85rem',
-                                        fontWeight: 700,
-                                        transition: 'all 0.2s ease',
-                                        borderLeft: activeTab === 'admins' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                        textAlign: 'left'
-                                    }}
+                                    className={`sidebar-nav-btn ${activeTab === 'admins' ? 'active' : ''}`}
                                 >
-                                    <span>🛡️</span> <span className="sidebar-text">Admins</span>
+                                    <ShieldAlert size={18} />
+                                    <span className="sidebar-text">Admins</span>
                                 </button>
                             )}
                             {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
                                 <button
                                     onClick={() => setActiveTab('system')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        padding: '0.75rem 0.75rem',
-                                        borderRadius: '0.5rem',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        background: activeTab === 'system' ? 'rgba(29, 166, 217, 0.15)' : 'transparent',
-                                        color: activeTab === 'system' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-                                        fontSize: '0.85rem',
-                                        fontWeight: 700,
-                                        transition: 'all 0.2s ease',
-                                        borderLeft: activeTab === 'system' ? '3px solid var(--primary-electric)' : '3px solid transparent',
-                                        textAlign: 'left'
-                                    }}
+                                    className={`sidebar-nav-btn ${activeTab === 'system' ? 'active' : ''}`}
                                 >
-                                    <span>⚙️</span> <span className="sidebar-text">System</span>
+                                    <SettingsIcon size={18} />
+                                    <span className="sidebar-text">System</span>
                                 </button>
                             )}
+
+                            {/* New Session Button */}
+                            <div style={{ padding: '0 0.5rem', marginTop: '0.5rem' }}>
+                                <button
+                                    onClick={() => {
+                                        setActiveTab('meetings');
+                                        setShowCreate(true);
+                                    }}
+                                    className="new-session-btn"
+                                >
+                                    <Plus size={16} strokeWidth={3} />
+                                    <span className="sidebar-text">New Session</span>
+                                </button>
+                            </div>
                         </nav>
                     </div>
 
@@ -2589,6 +2592,7 @@ const AdminDashboard = () => {
                                     }
                                 }
                             }}
+                            className="btn feedback-btn"
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2597,26 +2601,28 @@ const AdminDashboard = () => {
                                 borderRadius: '0.75rem',
                                 background: '#facc15',
                                 color: 'black',
-                                fontWeight: 'bold',
+                                fontWeight: 800,
                                 border: 'none',
                                 cursor: 'pointer',
                                 fontSize: '0.85rem',
                                 width: '100%',
-                                justifyContent: 'center'
+                                justifyContent: 'center',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 4px 12px rgba(250, 204, 21, 0.2)'
                             }}
                         >
-                            <span>💡</span> <span className="sidebar-text">Give Feedback</span>
+                            <Lightbulb size={16} /> <span className="sidebar-text">Give Feedback</span>
                         </button>
                     )}
 
-                    <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-electric), #a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', color: '#ffffff' }}>
+                    <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.02)' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-electric), #a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', color: '#ffffff', flexShrink: 0 }}>
                                 {userRole ? userRole[0].toUpperCase() : 'A'}
                             </div>
-                            <div style={{ overflow: 'hidden' }}>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{localStorage.getItem('username') || 'Administrator'}</div>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-electric)', fontWeight: 700, textTransform: 'uppercase' }}>{userRole}</div>
+                            <div style={{ overflow: 'hidden' }} className="sidebar-text">
+                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{localStorage.getItem('username') || 'Administrator'}</div>
+                                <div style={{ fontSize: '0.65rem', color: '#7f92b0', fontWeight: 600, textTransform: 'uppercase' }}>{userRole}</div>
                             </div>
                         </div>
 
