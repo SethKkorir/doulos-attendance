@@ -156,7 +156,7 @@ const FinanceView = ({ regNo, memberName }) => {
             )}
 
             {/* Current Month Hero Status */}
-            <div className="glass-panel" style={{
+            <div className="glass-card-premium" style={{
                 padding: '2rem',
                 borderLeft: currentMonthStatus.status === 'approved' ? '4px solid #4ade80' : '4px solid #25AAE1',
                 position: 'relative', overflow: 'hidden'
@@ -211,7 +211,7 @@ const FinanceView = ({ regNo, memberName }) => {
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
                         {pastUnpaidMonths.map(month => (
-                            <div key={month} className="glass-panel" style={{
+                            <div key={month} className="glass-card-premium" style={{
                                 padding: '1rem', border: '1px solid rgba(248, 113, 113, 0.2)',
                                 background: 'rgba(248, 113, 113, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                             }}>
@@ -235,7 +235,7 @@ const FinanceView = ({ regNo, memberName }) => {
                             return (
                                 <div key={month}
                                     onClick={() => setSelectedReceipt(data)}
-                                    className="glass-panel"
+                                    className="glass-card-premium metric-card-glow"
                                     style={{
                                         minWidth: '140px', padding: '1rem', cursor: 'pointer',
                                         border: '1px solid rgba(74, 222, 128, 0.1)',
@@ -256,7 +256,7 @@ const FinanceView = ({ regNo, memberName }) => {
             )}
 
             {/* Submission Form */}
-            <div className="glass-panel" style={{ padding: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+            <div className="glass-card-premium" style={{ padding: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
                     <div style={{ padding: '0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '8px' }}>
                         <Wallet size={20} />
@@ -288,7 +288,7 @@ const FinanceView = ({ regNo, memberName }) => {
                         <select
                             value={formData.month}
                             onChange={(e) => setFormData({ ...formData, month: e.target.value })}
-                            className="input-field"
+                            className="modern-input"
                             style={{ width: '100%', height: '45px', background: 'rgba(0,0,0,0.3)' }}
                         >
                             {months.map(m => <option key={m} value={m}>{m}</option>)}
@@ -302,7 +302,7 @@ const FinanceView = ({ regNo, memberName }) => {
                             placeholder="e.g. 100"
                             value={formData.amount}
                             onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                            className="input-field"
+                            className="modern-input"
                             style={{ width: '100%', height: '45px', background: 'rgba(0,0,0,0.3)' }}
                             required
                         />
@@ -314,7 +314,7 @@ const FinanceView = ({ regNo, memberName }) => {
                             placeholder="e.g. SGH45VBN78"
                             value={formData.mpesaCode}
                             onChange={(e) => setFormData({ ...formData, mpesaCode: e.target.value.toUpperCase().slice(0, 10) })}
-                            className="input-field"
+                            className="modern-input"
                             style={{ width: '100%', height: '45px', background: 'rgba(0,0,0,0.3)', letterSpacing: '2px', fontWeight: 900 }}
                             required
                         />
@@ -324,7 +324,7 @@ const FinanceView = ({ regNo, memberName }) => {
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="btn btn-primary"
+                            className="btn glass-btn-primary"
                             style={{ width: '100%', height: '50px', fontWeight: 900, letterSpacing: '1px' }}
                         >
                             {submitting ? 'SUBMITTING...' : 'NOTIFY TREASURER 🚀'}

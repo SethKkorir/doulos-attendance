@@ -1752,245 +1752,310 @@ const AdminDashboard = () => {
         const isActuallyLive = m.isActive && now >= mStart;
         const isMeetingOver = now > mEnd;
 
+        // Custom calendar badge formatting
+        const monthStr = mDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+        const dayStr = mDate.getDate();
+        const weekdayStr = mDate.toLocaleDateString('en-US', { weekday: 'short' });
+
         return (
             <div
                 key={m._id}
-                className="glass-panel meeting-card-hover"
+                className="glass-card-premium metric-card-glow"
                 style={{
-                    padding: '1.5rem',
-                    position: 'relative',
-                    transition: 'all 0.3s ease',
-                    border: isActuallyLive ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid var(--glass-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.25rem',
+                    border: isActuallyLive ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(29, 166, 217, 0.15)',
+                    boxShadow: isActuallyLive ? '0 0 25px rgba(34, 197, 94, 0.15)' : '0 10px 30px rgba(0, 0, 0, 0.2)',
                     cursor: 'pointer',
-                    boxShadow: isActuallyLive ? '0 0 20px rgba(74, 222, 128, 0.1)' : 'none'
+                    padding: '1.5rem',
+                    position: 'relative'
                 }}
                 onClick={() => setInsightMeeting(m)}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{m.name}</h3>
+                {/* Header Section */}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    {/* Calendar Badge */}
+                    <div style={{
+                        width: '55px',
+                        height: '60px',
+                        borderRadius: '0.75rem',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                        flexShrink: 0,
+                        border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                        <div style={{
+                            width: '100%',
+                            background: isActuallyLive ? 'linear-gradient(135deg, #22c55e, #15803d)' : 'linear-gradient(135deg, #1da6d9, #0a4d68)',
+                            color: 'white',
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            padding: '0.2rem 0',
+                            textAlign: 'center',
+                            letterSpacing: '1px'
+                        }}>
+                            {monthStr}
+                        </div>
+                        <div style={{
+                            flex: 1,
+                            width: '100%',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'white',
+                            fontSize: '1.3rem',
+                            fontWeight: 900,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1
+                        }}>
+                            {dayStr}
+                        </div>
+                    </div>
+
+                    {/* Name and Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {m.name}
+                            </h3>
                             {m.category === 'Training' && (
                                 <span style={{
-                                    fontSize: '0.6rem',
-                                    padding: '0.2rem 0.5rem',
+                                    fontSize: '0.55rem',
+                                    padding: '0.15rem 0.4rem',
                                     background: 'rgba(234, 179, 8, 0.2)',
                                     color: '#eab308',
-                                    borderRadius: '0.3rem',
+                                    borderRadius: '0.35rem',
                                     fontWeight: 900,
                                     textTransform: 'uppercase',
                                     border: '1px solid rgba(234, 179, 8, 0.3)'
                                 }}>Training</span>
                             )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                            <MapPin size={14} /> {m.campus}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
+                            <MapPin size={12} color="#1da6d9" />
+                            <span>{m.campus}</span>
+                            <span style={{ opacity: 0.3 }}>•</span>
+                            <span>{weekdayStr}</span>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                        {(() => {
-                            if (!m.isActive) return (
-                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
-                                    • COMPLETED
-                                </div>
-                            );
+                </div>
 
-                            const now = new Date();
-                            const mDate = new Date(m.date);
-                            const [h, min] = m.startTime.split(':').map(Number);
-                            const mStart = new Date(mDate);
-                            mStart.setHours(h, min, 0, 0);
+                {/* Status and Analytics Banner */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Clock size={12} color="rgba(255,255,255,0.4)" />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                            {m.startTime} - {m.endTime}
+                        </span>
+                    </div>
 
-                            const isFuture = now < mStart;
-                            const isToday = now.toDateString() === mDate.toDateString();
+                    {(() => {
+                        if (!m.isActive) return (
+                            <span className="status-pill-modern completed">
+                                Completed
+                            </span>
+                        );
+                        if (isActuallyLive) return (
+                            <span className="status-pill-modern live">
+                                <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 1.5s infinite' }}></span>
+                                Live Now
+                            </span>
+                        );
+                        return (
+                            <span className="status-pill-modern standby">
+                                Standby
+                            </span>
+                        );
+                    })()}
+                </div>
 
-                            if (isFuture) {
-                                return (
-                                    <div style={{
-                                        padding: '0.5rem 0.8rem',
-                                        background: isToday ? 'rgba(59, 130, 246, 0.1)' : 'rgba(124, 58, 237, 0.05)',
-                                        borderRadius: '2rem',
-                                        color: isToday ? '#3b82f6' : '#a78bfa',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        border: `1px solid ${isToday ? 'rgba(59, 130, 246, 0.2)' : 'rgba(124, 58, 237, 0.1)'}`
-                                    }}>
-                                        • {isToday ? 'STANDBY / UPCOMING' : 'SCHEDULED'}
-                                    </div>
-                                );
-                            }
+                {/* Inline Attendance Meter */}
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
+                        <span style={{ color: isActuallyLive ? '#22c55e' : '#1da6d9' }}>{m.attendees || 0} checked-in</span>
+                    </div>
+                    <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div style={{
+                            width: `${Math.min(100, ((m.attendees || 0) / 100) * 100)}%`,
+                            height: '100%',
+                            background: isActuallyLive ? 'linear-gradient(90deg, #22c55e, #4ade80)' : 'linear-gradient(90deg, #1da6d9, #0ea5e9)',
+                            borderRadius: '10px',
+                            transition: 'width 1s ease-in-out'
+                        }} />
+                    </div>
+                </div>
 
-                            return (
-                                <div style={{ padding: '0.5rem', background: 'rgba(74, 222, 128, 0.1)', borderRadius: '2rem', color: '#4ade80', fontSize: '0.7rem', fontWeight: 800 }}>
-                                    • LIVE NOW
-                                </div>
-                            );
-                        })()}
-                        {((m.isActive && !isMeetingOver) || ['developer', 'superadmin'].includes(userRole)) && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedMeeting(m);
-                                }}
-                                className="btn"
+                {/* Search / Manual Input Row */}
+                {((m.isActive && !isMeetingOver) || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                    <div 
+                        style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ position: 'relative', flex: 1 }}>
+                            <Search size={13} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                            <input
+                                className="input-field"
+                                placeholder="Search Name / Reg No"
+                                list="members-search"
                                 style={{
-                                    padding: '0.5rem 0.75rem',
-                                    background: 'rgba(59, 130, 246, 0.1)',
-                                    color: '#3b82f6',
                                     fontSize: '0.75rem',
-                                    fontWeight: 800,
+                                    padding: '0.45rem 0.75rem 0.45rem 2rem',
                                     borderRadius: '0.5rem',
-                                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                                    background: 'rgba(0,0,0,0.3)',
+                                    border: '1px solid rgba(255,255,255,0.05)'
                                 }}
-                                title="QR Code"
-                            >
-                                <QrIcon size={18} />
-                            </button>
-                        )}
+                                value={quickRegNo}
+                                onChange={e => setQuickRegNo(e.target.value)}
+                            />
+                        </div>
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setInsightMeeting(m);
-                            }}
                             className="btn"
                             style={{
-                                padding: '0.5rem 0.75rem',
-                                background: 'rgba(124, 58, 237, 0.1)',
-                                color: 'hsl(var(--color-primary))',
+                                padding: '0.45rem 0.75rem',
+                                background: 'rgba(255,255,255,0.05)',
+                                color: 'rgba(255,255,255,0.6)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                            onClick={() => handleLookupMemberInsights(quickRegNo)}
+                            title="Lookup Member History"
+                        >
+                            <Search size={14} />
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            style={{
+                                padding: '0.45rem 0.75rem',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                            }}
+                            onClick={() => handleQuickCheckIn(m._id)}
+                            disabled={quickCheckInLoading}
+                            title="Manual Check-In"
+                        >
+                            {quickCheckInLoading ? '...' : <Plus size={14} />}
+                        </button>
+                    </div>
+                )}
+
+                {/* Bottom Action Deck */}
+                <div 
+                    style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* QR Button */}
+                    {((m.isActive && !isMeetingOver) || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
+                        <button
+                            className="btn"
+                            style={{
+                                flex: 1,
+                                background: 'rgba(29, 166, 217, 0.1)',
+                                color: '#1da6d9',
+                                border: '1px solid rgba(29, 166, 217, 0.2)',
+                                padding: '0.55rem',
                                 fontSize: '0.75rem',
                                 fontWeight: 800,
                                 borderRadius: '0.5rem',
-                                border: '1px solid rgba(124, 58, 237, 0.2)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.4rem'
+                                justifyContent: 'center',
+                                gap: '0.35rem'
                             }}
-                        >
-                            <BarChart3 size={14} /> Insights
-                        </button>
-
-
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                        <Calendar size={14} /> {new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                        <Clock size={14} /> {m.startTime} - {m.endTime}
-                    </div>
-                </div>
-
-                {
-                    ((m.isActive || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && !isMeetingOver) && (
-                        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <div style={{ position: 'relative', flex: 1 }}>
-                                <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)', opacity: 0.5 }} />
-                                <input
-                                    className="input-field"
-                                    placeholder="Search Name / Reg No"
-                                    list="members-search"
-                                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem 0.4rem 2.2rem' }}
-                                    value={quickRegNo}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        setQuickRegNo(val);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                            </div>
-                            <button
-                                className="btn"
-                                style={{ padding: '0.4rem 0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', border: '1px solid var(--glass-border)' }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleLookupMemberInsights(quickRegNo);
-                                }}
-                                title="Lookup Member History"
-                            >
-                                <Search size={16} />
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                style={{ padding: '0.4rem 0.8rem', flexShrink: 0 }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleQuickCheckIn(m._id);
-                                }}
-                                disabled={quickCheckInLoading}
-                                title="Manual Check-In"
-                            >
-                                {quickCheckInLoading ? '...' : <Plus size={16} />}
-                            </button>
-                        </div>
-                    )
-                }
-
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    {((m.isActive || userRole) && !isMeetingOver) && (
-                        <button
-                            className="btn"
-                            style={{ flex: '1 1 60px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', padding: '0.5rem', fontSize: '0.8rem' }}
-                            onClick={(e) => {
-                                e.stopPropagation();
+                            onClick={() => {
                                 const now = new Date();
                                 const [startH, startM] = m.startTime.split(':').map(Number);
                                 const [endH, endM] = m.endTime.split(':').map(Number);
-
                                 const start = new Date(m.date);
                                 start.setHours(startH, startM, 0, 0);
-
                                 const end = new Date(m.date);
                                 end.setHours(endH, endM, 0, 0);
-
-                                // Use state 'userRole' which is initialized from localStorage
                                 const role = userRole || localStorage.getItem('role');
                                 const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
-
                                 const isWithinTime = now >= start && now <= end;
 
-                                // Anyone logged in is an "Admin" here. 
-                                // Relax restriction: Allow any admin to open it, but warn if time is wrong.
                                 if (isWithinTime) {
                                     setSelectedMeeting(m);
                                 } else {
-                                    // Admin Override
                                     if (window.confirm(`⚠️ TIME WARNING ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code for printing/testing?`)) {
                                         setSelectedMeeting(m);
                                     }
                                 }
                             }}
                         >
-                            <QrIcon size={16} style={{ marginRight: '0.3rem' }} /> QR
+                            <QrIcon size={14} /> QR
                         </button>
                     )}
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-primary" style={{ flex: 1, background: 'rgba(124, 58, 237, 0.1)', color: '#a78bfa', fontSize: '0.75rem', padding: '0.5rem', fontWeight: 800, border: '1px solid rgba(124, 58, 237, 0.2)' }}
-                            onClick={(e) => { e.stopPropagation(); setInsightMeeting(m); }}>
-                            <BarChart3 size={14} style={{ marginRight: '0.4rem' }} /> {m.attendees || 0} Insights
-                        </button>
-                        <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleStatus(m);
+
+                    <button 
+                        className="btn" 
+                        style={{
+                            flex: 1,
+                            background: 'rgba(167, 139, 250, 0.1)',
+                            color: '#c084fc',
+                            border: '1px solid rgba(167, 139, 250, 0.2)',
+                            fontSize: '0.75rem',
+                            padding: '0.55rem',
+                            fontWeight: 800,
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
+                        }}
+                        onClick={() => setInsightMeeting(m)}
+                    >
+                        <BarChart3 size={14} /> Insights
+                    </button>
+
+                    <button 
+                        className="btn" 
+                        style={{
+                            width: '36px',
+                            height: '36px',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'rgba(255,255,255,0.5)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        onClick={() => toggleStatus(m)}
+                    >
+                        {m.isActive ? <X size={14} title="Close Meeting" /> : <RotateCcw size={14} title="Reopen Meeting" />}
+                    </button>
+
+                    {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
+                        <button
+                            className="btn"
+                            style={{
+                                width: '36px',
+                                height: '36px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}
+                            onClick={() => handleDeleteMeeting(m._id, m.name)}
                         >
-                            {m.isActive ? <X size={16} title="Close Meeting" /> : <RotateCcw size={16} title="Reopen Meeting" />}
+                            <Trash2 size={14} />
                         </button>
-                        {['developer', 'superadmin'].includes(userRole) && (
-                            <button
-                                className="btn"
-                                style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteMeeting(m._id, m.name);
-                                }}
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        )}
-                    </div>
+                    )}
                 </div>
             </div>
         );
@@ -2010,137 +2075,239 @@ const AdminDashboard = () => {
         const isActuallyLive = t.isActive && now >= tStart;
         const isOver = now > tEnd;
 
+        // Custom calendar badge formatting
+        const monthStr = tDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+        const dayStr = tDate.getDate();
+        const weekdayStr = tDate.toLocaleDateString('en-US', { weekday: 'short' });
+
         return (
             <div
                 key={t._id}
-                className="glass-panel meeting-card-hover"
+                className="glass-card-premium metric-card-glow"
                 style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.25rem',
+                    border: isActuallyLive ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(29, 166, 217, 0.15)',
+                    boxShadow: isActuallyLive ? '0 0 25px rgba(52, 211, 153, 0.15)' : '0 10px 30px rgba(0, 0, 0, 0.2)',
+                    cursor: 'pointer',
                     padding: '1.5rem',
-                    position: 'relative',
-                    transition: 'all 0.3s ease',
-                    border: isActuallyLive ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid var(--glass-border)',
-                    boxShadow: isActuallyLive ? '0 0 20px rgba(52, 211, 153, 0.1)' : 'none'
+                    position: 'relative'
                 }}
+                onClick={() => setInsightMeeting(t)}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{t.name}</h3>
+                {/* Header Section */}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    {/* Calendar Badge */}
+                    <div style={{
+                        width: '55px',
+                        height: '60px',
+                        borderRadius: '0.75rem',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                        flexShrink: 0,
+                        border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                        <div style={{
+                            width: '100%',
+                            background: isActuallyLive ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #1da6d9, #0a4d68)',
+                            color: 'white',
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            padding: '0.2rem 0',
+                            textAlign: 'center',
+                            letterSpacing: '1px'
+                        }}>
+                            {monthStr}
+                        </div>
+                        <div style={{
+                            flex: 1,
+                            width: '100%',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'white',
+                            fontSize: '1.3rem',
+                            fontWeight: 900,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1
+                        }}>
+                            {dayStr}
+                        </div>
+                    </div>
+
+                    {/* Name and Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {t.name}
+                            </h3>
                             <span style={{
-                                fontSize: '0.6rem',
-                                padding: '0.2rem 0.5rem',
+                                fontSize: '0.55rem',
+                                padding: '0.15rem 0.4rem',
                                 background: 'rgba(52, 211, 153, 0.2)',
                                 color: '#34d399',
-                                borderRadius: '0.3rem',
+                                borderRadius: '0.35rem',
                                 fontWeight: 900,
                                 textTransform: 'uppercase',
                                 border: '1px solid rgba(52, 211, 153, 0.3)'
                             }}>Training</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-                            <MapPin size={14} /> {t.campus}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
+                            <MapPin size={12} color="#1da6d9" />
+                            <span>{t.campus}</span>
+                            <span style={{ opacity: 0.3 }}>•</span>
+                            <span>{weekdayStr}</span>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                        {(() => {
-                            if (!t.isActive) return (
-                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
-                                    • ARCHIVED
-                                </div>
-                            );
+                </div>
 
-                            if (isOver) return (
-                                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '2rem', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>
-                                    • COMPLETED
-                                </div>
-                            );
+                {/* Status and Analytics Banner */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Clock size={12} color="rgba(255,255,255,0.4)" />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                            {t.startTime} - {t.endTime}
+                        </span>
+                    </div>
 
-                            if (now < tStart) {
-                                const isToday = now.toDateString() === tDate.toDateString();
-                                return (
-                                    <div style={{
-                                        padding: '0.5rem 0.8rem',
-                                        background: isToday ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                                        borderRadius: '2rem',
-                                        color: isToday ? '#34d399' : 'var(--color-text-dim)',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        border: `1px solid ${isToday ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255, 255, 255, 0.1)'}`
-                                    }}>
-                                        • {isToday ? 'STANDBY' : 'SCHEDULED'}
-                                    </div>
-                                );
-                            }
+                    {(() => {
+                        if (!t.isActive) return (
+                            <span className="status-pill-modern completed">
+                                Archived
+                            </span>
+                        );
+                        if (isOver) return (
+                            <span className="status-pill-modern completed">
+                                Completed
+                            </span>
+                        );
+                        if (isActuallyLive) return (
+                            <span className="status-pill-modern live" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', borderColor: 'rgba(52, 211, 153, 0.25)' }}>
+                                <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', animation: 'pulse 1.5s infinite' }}></span>
+                                Live Now
+                            </span>
+                        );
+                        return (
+                            <span className="status-pill-modern standby" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', borderColor: 'rgba(52, 211, 153, 0.15)' }}>
+                                Scheduled
+                            </span>
+                        );
+                    })()}
+                </div>
 
-                            return (
-                                <div style={{ padding: '0.5rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '2rem', color: '#34d399', fontSize: '0.7rem', fontWeight: 800 }}>
-                                    • LIVE NOW
-                                </div>
-                            );
-                        })()}
-                        {(t.isActive && !isOver || ['developer', 'superadmin'].includes(userRole)) && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTraining(t);
-                                }}
-                                className="btn"
-                                style={{
-                                    padding: '0.5rem 0.75rem',
-                                    background: 'rgba(52, 211, 153, 0.1)',
-                                    color: '#34d399',
-                                    border: '1px solid rgba(52, 211, 153, 0.3)',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 800
-                                }}
-                            >
-                                <QrIcon size={16} />
-                            </button>
-                        )}
+                {/* Inline Attendance Meter */}
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
+                        <span style={{ color: '#34d399' }}>{t.attendanceCount || 0} checked-in</span>
+                    </div>
+                    <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div style={{
+                            width: `${Math.min(100, ((t.attendanceCount || 0) / 100) * 100)}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #34d399, #059669)',
+                            borderRadius: '10px',
+                            transition: 'width 1s ease-in-out'
+                        }} />
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '0.5rem' }}>
-                    <div style={{ fontSize: '0.8rem' }}>
-                        <div style={{ opacity: 0.5, fontSize: '0.65rem', textTransform: 'uppercase' }}>Date</div>
-                        <div style={{ fontWeight: 700 }}>{new Date(t.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
-                    </div>
-                    <div style={{ fontSize: '0.8rem' }}>
-                        <div style={{ opacity: 0.5, fontSize: '0.65rem', textTransform: 'uppercase' }}>Time</div>
-                        <div style={{ fontWeight: 700 }}>{t.startTime}</div>
-                    </div>
-                </div>
+                {/* Bottom Action Deck */}
+                <div 
+                    style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* QR Button */}
+                    {((t.isActive && !isOver) || ['developer', 'superadmin'].includes(userRole)) && (
+                        <button
+                            className="btn"
+                            style={{
+                                flex: 1,
+                                background: 'rgba(52, 211, 153, 0.1)',
+                                color: '#34d399',
+                                border: '1px solid rgba(52, 211, 153, 0.2)',
+                                padding: '0.55rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.35rem'
+                            }}
+                            onClick={() => setSelectedTraining(t)}
+                        >
+                            <QrIcon size={14} /> QR
+                        </button>
+                    )}
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-primary" style={{ flex: 1, background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', fontSize: '0.75rem', padding: '0.5rem', fontWeight: 800, border: '1px solid rgba(52, 211, 153, 0.2)' }}
-                        onClick={(e) => { e.stopPropagation(); setInsightMeeting(t); }}>
-                        <BarChart3 size={14} style={{ marginRight: '0.4rem' }} /> {t.attendanceCount || 0} Insights
-                    </button>
-                    <button className="btn" style={{ flex: '0 0 40px', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', padding: '0.5rem' }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleTrainingStatus(t._id, t.isActive);
+                    <button 
+                        className="btn" 
+                        style={{
+                            flex: 1,
+                            background: 'rgba(167, 139, 250, 0.1)',
+                            color: '#c084fc',
+                            border: '1px solid rgba(167, 139, 250, 0.2)',
+                            fontSize: '0.75rem',
+                            padding: '0.55rem',
+                            fontWeight: 800,
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
                         }}
+                        onClick={() => setInsightMeeting(t)}
                     >
-                        {t.isActive ? <X size={16} title="Close Training" /> : <RotateCcw size={16} title="Reopen Training" />}
+                        <BarChart3 size={14} /> Insights
                     </button>
+
+                    <button 
+                        className="btn" 
+                        style={{
+                            width: '36px',
+                            height: '36px',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'rgba(255,255,255,0.5)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        onClick={() => handleToggleTrainingStatus(t._id, t.isActive)}
+                    >
+                        {t.isActive ? <X size={14} title="Close Training" /> : <RotateCcw size={14} title="Reopen Training" />}
+                    </button>
+
                     {['developer', 'superadmin'].includes(userRole) && (
                         <button
                             className="btn"
-                            style={{ flex: '0 0 40px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', padding: '0.5rem' }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTraining(t._id, t.name);
+                            style={{
+                                width: '36px',
+                                height: '36px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}
+                            onClick={() => handleDeleteTraining(t._id, t.name)}
                         >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                         </button>
                     )}
                 </div>
             </div>
         );
-    };
+    };;
 
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
@@ -2254,13 +2421,220 @@ const AdminDashboard = () => {
                 <style>{`
                     .glass-panel { background: rgba(9, 29, 46, 0.6); backdrop-filter: blur(16px); border-radius: 1rem; border: 1px solid var(--glass-border-light); }
                     .light-mode .glass-panel { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0, 0, 0, 0.1); }
-                    .btn { cursor: pointer; border: none; transition: transform 0.2s; }
+                    .btn { cursor: pointer; border: none; transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s; }
                     .btn:active { transform: scale(0.95); }
-                    .btn-primary { background: linear-gradient(135deg, var(--primary-electric) 0%, #0a4d68 100%); color: white; box-shadow: 0 4px 15px rgba(29, 166, 217, 0.2); }
-                    .btn-primary:hover { box-shadow: 0 0 25px rgba(29, 166, 217, 0.4); transform: translateY(-1px); }
+                    .btn-primary, .glass-btn-primary { background: linear-gradient(135deg, #1da6d9 0%, #0a4d68 100%); color: white; border-radius: 0.6rem; box-shadow: 0 4px 15px rgba(29, 166, 217, 0.25); border: 1px solid rgba(29,166,217,0.3); font-weight: 700; letter-spacing: 0.5px; }
+                    .btn-primary:hover, .glass-btn-primary:hover { box-shadow: 0 0 28px rgba(29, 166, 217, 0.5); transform: translateY(-2px); }
                     .btn-danger { background: #ef4444; color: white; }
-                    .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; }
+                    .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+                    .input-field:focus { border-color: #1da6d9; box-shadow: 0 0 10px rgba(29, 166, 217, 0.2); }
                     .light-mode .input-field { background: white; border-color: #ddd; color: black; }
+                    .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; padding: 0.4rem; cursor: pointer; color: var(--color-text-dim); transition: all 0.2s; }
+                    .btn-icon:hover { background: rgba(29,166,217,0.1); color: #1da6d9; border-color: rgba(29,166,217,0.3); }
+                    .setting-card { background: linear-gradient(135deg, rgba(9,29,46,0.8) 0%, rgba(2,21,37,0.9) 100%); backdrop-filter: blur(20px); border-radius: 1.25rem; border: 1px solid rgba(29,166,217,0.15); padding: 1.75rem; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+                    .setting-card:hover { border-color: rgba(29,166,217,0.3); box-shadow: 0 8px 24px rgba(29,166,217,0.08); }
+                    .feedback-card { background: rgba(9,29,46,0.55); backdrop-filter: blur(16px); border-radius: 1rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.06); transition: all 0.25s; }
+                    .feedback-card:hover { border-color: rgba(29,166,217,0.2); transform: translateY(-1px); }
+                    
+                    /* Modern Glass Redesign Tokens */
+                    .glass-card-premium {
+                        background: linear-gradient(135deg, rgba(9, 29, 46, 0.75) 0%, rgba(2, 21, 37, 0.85) 100%);
+                        backdrop-filter: blur(20px);
+                        border-radius: 1.25rem;
+                        border: 1px solid rgba(29, 166, 217, 0.15);
+                        padding: 1.5rem;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    }
+                    .glass-card-premium:hover {
+                        border-color: rgba(29, 166, 217, 0.35);
+                        box-shadow: 0 15px 35px rgba(29, 166, 217, 0.1);
+                        transform: translateY(-2px);
+                    }
+                    .light-mode .glass-card-premium {
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 247, 250, 0.95) 100%);
+                        border-color: rgba(0, 0, 0, 0.08);
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+                        color: #1e293b;
+                    }
+                    .light-mode .glass-card-premium:hover {
+                        border-color: rgba(0, 0, 0, 0.15);
+                        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+                    }
+                    .metric-card-glow {
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .metric-card-glow::before {
+                        content: '';
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        background: radial-gradient(circle at top right, rgba(29, 166, 217, 0.1), transparent 70%);
+                        pointer-events: none;
+                        transition: opacity 0.3s ease;
+                        opacity: 0.5;
+                    }
+                    .metric-card-glow:hover::before {
+                        opacity: 1;
+                    }
+                    
+                    /* Form elements */
+                    .form-group-premium {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                    }
+                    .form-group-premium label {
+                        font-size: 0.75rem;
+                        font-weight: 800;
+                        color: rgba(255, 255, 255, 0.5);
+                        letter-spacing: 0.5px;
+                        text-transform: uppercase;
+                    }
+                    .light-mode .form-group-premium label {
+                        color: #64748b;
+                    }
+                    
+                    /* Modern Inputs */
+                    .modern-input {
+                        background: rgba(2, 21, 37, 0.4);
+                        border: 1px solid rgba(255, 255, 255, 0.08);
+                        color: white;
+                        padding: 0.8rem 1rem;
+                        border-radius: 0.75rem;
+                        outline: none;
+                        font-size: 0.9rem;
+                        font-weight: 600;
+                        transition: all 0.25s ease;
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+                    .modern-input:focus {
+                        border-color: #1da6d9;
+                        box-shadow: 0 0 12px rgba(29, 166, 217, 0.3);
+                        background: rgba(2, 21, 37, 0.6);
+                    }
+                    .light-mode .modern-input {
+                        background: #f8fafc;
+                        border-color: #cbd5e1;
+                        color: #0f172a;
+                    }
+                    .light-mode .modern-input:focus {
+                        background: white;
+                        border-color: #3b82f6;
+                        box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+                    }
+                    
+                    /* Table styling */
+                    .glass-table-premium {
+                        width: 100%;
+                        border-collapse: separate;
+                        border-spacing: 0 0.5rem;
+                    }
+                    .glass-table-premium th {
+                        padding: 1rem;
+                        font-size: 0.75rem;
+                        font-weight: 800;
+                        color: rgba(255, 255, 255, 0.4);
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        text-align: left;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                    }
+                    .light-mode .glass-table-premium th {
+                        color: #64748b;
+                        border-bottom-color: rgba(0, 0, 0, 0.08);
+                    }
+                    .glass-table-premium td {
+                        padding: 1.25rem 1rem;
+                        background: rgba(9, 29, 46, 0.3);
+                        border-top: 1px solid rgba(255, 255, 255, 0.03);
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+                        color: white;
+                        font-size: 0.9rem;
+                        font-weight: 600;
+                        transition: all 0.25s ease;
+                    }
+                    .glass-table-premium td:first-child {
+                        border-left: 1px solid rgba(255, 255, 255, 0.03);
+                        border-top-left-radius: 0.75rem;
+                        border-bottom-left-radius: 0.75rem;
+                    }
+                    .glass-table-premium td:last-child {
+                        border-right: 1px solid rgba(255, 255, 255, 0.03);
+                        border-top-right-radius: 0.75rem;
+                        border-bottom-right-radius: 0.75rem;
+                    }
+                    .glass-table-premium tr:hover td {
+                        background: rgba(29, 166, 217, 0.06);
+                        border-color: rgba(29, 166, 217, 0.2);
+                    }
+                    
+                    .light-mode .glass-table-premium td {
+                        background: rgba(248, 250, 252, 0.8);
+                        border-color: rgba(0, 0, 0, 0.03);
+                        color: #1e293b;
+                    }
+                    .light-mode .glass-table-premium tr:hover td {
+                        background: rgba(59, 130, 246, 0.04);
+                        border-color: rgba(59, 130, 246, 0.15);
+                    }
+                    
+                    /* Modern Badges & Pills */
+                    .status-pill-modern {
+                        padding: 0.35rem 0.75rem;
+                        border-radius: 2rem;
+                        font-size: 0.7rem;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.35rem;
+                        border: 1px solid transparent;
+                    }
+                    .status-pill-modern.live {
+                        background: rgba(34, 197, 94, 0.15);
+                        color: #22c55e;
+                        border-color: rgba(34, 197, 94, 0.25);
+                        box-shadow: 0 0 10px rgba(34, 197, 94, 0.1);
+                    }
+                    .status-pill-modern.standby {
+                        background: rgba(59, 130, 246, 0.15);
+                        color: #3b82f6;
+                        border-color: rgba(59, 130, 246, 0.25);
+                    }
+                    .status-pill-modern.completed {
+                        background: rgba(255, 255, 255, 0.05);
+                        color: rgba(255, 255, 255, 0.5);
+                        border-color: rgba(255, 255, 255, 0.1);
+                    }
+                    
+                    /* Styled Lists */
+                    .modern-list-item {
+                        background: rgba(9, 29, 46, 0.4);
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 1rem;
+                        padding: 1rem 1.25rem;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        transition: all 0.25s ease;
+                    }
+                    .modern-list-item:hover {
+                        background: rgba(29, 166, 217, 0.05);
+                        border-color: rgba(29, 166, 217, 0.2);
+                        transform: translateX(4px);
+                    }
+                    .light-mode .modern-list-item {
+                        background: #f8fafc;
+                        border-color: #e2e8f0;
+                        color: #0f172a;
+                    }
+                    .light-mode .modern-list-item:hover {
+                        background: #f1f5f9;
+                        border-color: #cbd5e1;
+                    }
                     
                     .admin-sidebar {
                         width: 260px;
@@ -2752,68 +3126,118 @@ const AdminDashboard = () => {
 
                         {/* Create Training Form */}
                         {showCreateTraining && (
-                            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
+                            <div className="glass-card-premium" style={{ marginBottom: '2rem', maxWidth: '800px', position: 'relative', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h3 style={{ margin: 0 }}>Create Training Session</h3>
-                                    <button onClick={() => setShowCreateTraining(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
-                                        <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#34d399', fontWeight: 800 }}>
+                                        <GraduationCap size={22} style={{ color: '#34d399' }} /> Create Training Session
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowCreateTraining(false)} 
+                                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', transition: 'background-color 0.2s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                    >
+                                        <X size={20} />
                                     </button>
                                 </div>
-                                <form onSubmit={handleCreateTraining} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Training Configuration</span>
+                                <form onSubmit={handleCreateTraining} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+                                    
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <SettingsIcon size={14} /> Training Setup
+                                        </span>
                                     </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
+                                    
+                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
                                         <label>Training Name</label>
-                                        <input className="input-field" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} required />
+                                        <input className="modern-input" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} placeholder="e.g. Leadership Foundations" required />
                                     </div>
-                                    <div>
-                                        <label>Date</label>
-                                        <input type="date" className="input-field" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
+                                        <input type="date" className="modern-input" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label>Campus</label>
-                                        <select className="input-field" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
+                                        <select className="modern-input" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
                                             <option value="Athi River">Athi River</option>
                                             <option value="Valley Road">Valley Road</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label>Start Time</label>
-                                        <input type="time" className="input-field" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> Start Time</label>
+                                        <input type="time" className="modern-input" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label>End Time</label>
-                                        <input type="time" className="input-field" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
+                                        <input type="time" className="modern-input" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label>Venue Name *</label>
-                                        <input className="input-field" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
-                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
-                                    </div>
-                                    <div>
-                                        <label>Geofence Radius (m)</label>
-                                        <input type="number" className="input-field" value={trainingFormData.location.radius}
-                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} />
-                                    </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <label>Question of the Day (optional)</label>
-                                        <input className="input-field" placeholder="What is your takeaway?" value={trainingFormData.questionOfDay}
+                                    
+                                    <div className="form-group-premium" style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day (optional)</label>
+                                        <input className="modern-input" placeholder="e.g. What is your takeaway?" value={trainingFormData.questionOfDay}
                                             onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })} />
                                     </div>
-                                    <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                        <button type="button" className="btn" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem' }}
+
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <MapPin size={14} /> Venue & Geofencing
+                                        </span>
+                                    </div>
+
+                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
+                                        <label>Venue Name *</label>
+                                        <input className="modern-input" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
+                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
+                                    </div>
+                                    
+                                    <div className="form-group-premium">
+                                        <label>Geofence Radius (meters)</label>
+                                        <input type="number" className="modern-input" value={trainingFormData.location.radius}
+                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} placeholder="200" />
+                                    </div>
+
+                                    <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(52, 211, 153, 0.05)', border: '1px solid rgba(52, 211, 153, 0.15)', borderRadius: '1rem', padding: '1.25rem', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <MapPin size={16} /> GPS Geofence Link
+                                            </span>
+                                            {trainingFormData.location.latitude && trainingFormData.location.longitude ? (
+                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                                                    ✓ Coordinates captured: {trainingFormData.location.latitude.toFixed(5)}, {trainingFormData.location.longitude.toFixed(5)}
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                                                    Capture the current coordinates for device check-in verification.
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            className="btn" 
+                                            style={{ background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', fontWeight: 700 }}
                                             onClick={() => {
                                                 navigator.geolocation.getCurrentPosition(pos => {
                                                     setTrainingFormData(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
                                                     setMsg({ type: 'success', text: `GPS captured!` });
                                                 }, () => setMsg({ type: 'error', text: 'GPS failed.' }));
-                                            }}>
+                                            }}
+                                        >
                                             <MapPin size={16} /> Capture GPS
                                         </button>
-                                        {trainingFormData.location.latitude && <span style={{ color: '#34d399', fontSize: '0.8rem', fontWeight: 700 }}>✓ GPS Linked</span>}
-                                        <button type="submit" className="btn btn-primary" disabled={importLoading} style={{ background: '#34d399', marginLeft: 'auto', padding: '0.75rem 2rem', color: 'black', fontWeight: 800 }}>
-                                            {importLoading ? 'Creating...' : 'Create Training Session'}
+                                    </div>
+
+                                    <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                        <button 
+                                            type="submit" 
+                                            className="btn btn-primary" 
+                                            disabled={importLoading} 
+                                            style={{ background: '#34d399', padding: '1rem 2.5rem', color: 'black', fontWeight: 800, borderRadius: '0.75rem', width: '100%', letterSpacing: '0.5px' }}
+                                        >
+                                            {importLoading ? 'CREATING...' : 'CREATE TRAINING SESSION'}
                                         </button>
                                     </div>
                                 </form>
@@ -2959,56 +3383,78 @@ const AdminDashboard = () => {
 
                         {/* Create Form */}
                         {showCreate && (
-                            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', maxWidth: '800px', position: 'relative' }}>
+                            <div className="glass-card-premium" style={{ marginBottom: '2rem', maxWidth: '800px', position: 'relative' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h3 style={{ margin: 0 }}>Create Meeting</h3>
+                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#1da6d9', fontWeight: 800 }}>
+                                        <Plus size={22} style={{ color: '#1da6d9' }} /> Create Meeting Session
+                                    </h3>
                                     <button
                                         onClick={() => setShowCreate(false)}
-                                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}
+                                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', transition: 'background-color 0.2s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                                     >
-                                        <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                        <X size={20} />
                                     </button>
                                 </div>
-                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '1px' }}>Meeting Configuration</span>
+                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+                                    
+                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <SettingsIcon size={14} /> Session Details
+                                        </span>
                                     </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
+                                    
+                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
                                         <label>Meeting Name</label>
-                                        <input className="input-field" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                                        <input className="modern-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Wednesday Chapel" required />
                                     </div>
-                                    <div>
-                                        <label>Date</label>
-                                        <input type="date" className="input-field" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
+                                        <input type="date" className="modern-input" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label>Campus</label>
-                                        <select className="input-field" value={formData.campus} onChange={e => setFormData({ ...formData, campus: e.target.value })}>
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
+                                        <select className="modern-input" value={formData.campus} onChange={e => setFormData({ ...formData, campus: e.target.value })}>
                                             <option value="Athi River">Athi River</option>
                                             <option value="Valley Road">Valley Road</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label>Start Time</label>
-                                        <input type="time" className="input-field" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> Start Time</label>
+                                        <input type="time" className="modern-input" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label>End Time</label>
-                                        <input type="time" className="input-field" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
+                                        <input type="time" className="modern-input" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label>Reporting Semester</label>
-                                        <select className="input-field" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}>
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><ClipboardCheck size={14} /> Reporting Semester</label>
+                                        <select className="modern-input" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}>
                                             <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                             <option value="MAY-AUG 2026">MAY-AUG 2026</option>
                                             <option value="SEP-DEC 2026">SEP-DEC 2026</option>
                                         </select>
                                     </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <label>Question of the Day</label>
+                                    
+                                    <div className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><ListChecks size={14} /> Category</label>
+                                        <select className="modern-input" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                                            <option value="Meeting">Standard Meeting</option>
+                                            <option value="Training">Doulos Training</option>
+                                        </select>
+                                    </div>
+
+                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day</label>
                                         <textarea
-                                            className="input-field"
-                                            style={{ width: '100%', minHeight: '60px' }}
+                                            className="modern-input"
+                                            style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
                                             value={formData.questionOfDay}
                                             onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
                                             placeholder="e.g. What are you most grateful for this week?"
@@ -3016,46 +3462,46 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '1px' }}>Meeting Type & Training</span>
-                                    </div>
-                                    <div>
-                                        <label>Category</label>
-                                        <select className="input-field" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                                            <option value="Meeting">Standard Meeting</option>
-                                            <option value="Training">Doulos Training</option>
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-                                        <input
-                                            type="checkbox"
-                                            id="create-manual"
-                                            checked={formData.allowManualOverride}
-                                            onChange={e => setFormData({ ...formData, allowManualOverride: e.target.checked })}
-                                            style={{ width: '20px', height: '20px' }}
-                                        />
-                                        <label htmlFor="create-manual" style={{ margin: 0, cursor: 'pointer' }}>
-                                            Admin-Only Check-in (Internet/Remote Mode)
-                                        </label>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <MapPin size={14} /> Location & Geofencing
+                                        </span>
                                     </div>
 
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '1px' }}>Location Settings</span>
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
                                         <label>Location Name</label>
-                                        <input className="input-field" value={formData.location.name} onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })} placeholder="e.g. Daystar University, Athi River Chapel" required />
+                                        <input className="modern-input" value={formData.location.name} onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })} placeholder="e.g. Daystar University, Athi River Chapel" required />
                                     </div>
 
-                                    <div style={{ position: 'relative' }}>
+                                    <div className="form-group-premium">
                                         <label>Latitude</label>
-                                        <input type="number" step="any" className="input-field" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.2345" />
+                                        <input type="number" step="any" className="modern-input" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.448" />
                                     </div>
-                                    <div>
+                                    
+                                    <div className="form-group-premium">
                                         <label>Longitude</label>
-                                        <input type="number" step="any" className="input-field" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="36.7890" />
+                                        <input type="number" step="any" className="modern-input" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="37.015" />
                                     </div>
-                                    <div style={{ gridColumn: '1 / -1' }}>
+
+                                    <div className="form-group-premium">
+                                        <label>Geofence Radius (meters)</label>
+                                        <input type="number" className="modern-input" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} placeholder="200" />
+                                    </div>
+
+                                    <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(29, 166, 217, 0.05)', border: '1px solid rgba(29, 166, 217, 0.15)', borderRadius: '1rem', padding: '1.25rem', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <MapPin size={16} /> GPS Geofence Link
+                                            </span>
+                                            {formData.location.latitude && formData.location.longitude ? (
+                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                                                    ✓ Coordinates captured: {formData.location.latitude.toFixed(5)}, {formData.location.longitude.toFixed(5)}
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                                                    Capture the current coordinates for device check-in verification.
+                                                </span>
+                                            )}
+                                        </div>
                                         <button
                                             type="button"
                                             className="btn"
@@ -3073,21 +3519,27 @@ const AdminDashboard = () => {
                                                     });
                                                 }
                                             }}
-                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                            style={{ background: 'linear-gradient(135deg, rgba(29, 166, 217, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', border: '1px solid rgba(29, 166, 217, 0.3)', borderRadius: '0.75rem', padding: '0.6rem 1.25rem', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
                                         >
-                                            <MapPin size={16} style={{ marginRight: '8px' }} /> Use Current GPS Position
+                                            <MapPin size={16} /> Use Current GPS Position
                                         </button>
                                     </div>
 
-                                    <div>
-                                        <label>Geofence Radius (meters)</label>
-                                        <input type="number" className="input-field" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', gridColumn: '1 / -1' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="create-manual"
+                                            checked={formData.allowManualOverride}
+                                            onChange={e => setFormData({ ...formData, allowManualOverride: e.target.checked })}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#1da6d9' }}
+                                        />
+                                        <label htmlFor="create-manual" style={{ margin: 0, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+                                            Enable Admin-Only Manual Check-in (Remote/Internet Mode)
+                                        </label>
                                     </div>
 
-
-
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '1rem' }}>
-                                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>Create Meeting</button>
+                                    <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '0.75rem', fontWeight: 800, letterSpacing: '0.5px' }}>CREATE MEETING SESSION</button>
                                     </div>
                                 </form>
                             </div>
@@ -3192,20 +3644,22 @@ const AdminDashboard = () => {
                 ) : activeTab === 'finance' ? (
                     <AdminFinanceView isGuest={isGuest} />
                 ) : activeTab === 'members' ? (
-                    <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+                    <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
                         {/* Registry Header & Toolbar */}
-                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(2, 21, 37, 0.4)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Members Registry</h2>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginTop: '0.25rem' }}>
+                                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Users size={24} /> Members Registry
+                                    </h2>
+                                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem', fontWeight: 600 }}>
                                         {members.length} members registered in the system
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                                     <button
                                         className="btn"
-                                        style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.85rem', padding: '0.6rem 1rem', border: '1px solid rgba(37,170,225,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.85rem', padding: '0.6rem 1.2rem', border: '1px solid rgba(29,166,217,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
                                         onClick={downloadRegistryCSV}
                                         title="Export full registry to CSV"
                                     >
@@ -3214,25 +3668,25 @@ const AdminDashboard = () => {
                                     <div style={{ position: 'relative' }}>
                                         <button
                                             className="btn btn-primary"
-                                            style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                            style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 800 }}
                                             onClick={() => setShowAddMenu(!showAddMenu)}
                                         >
                                             <Plus size={18} /> Add Member <ChevronDown size={14} />
                                         </button>
                                         {showAddMenu && (
-                                            <div className="glass-panel" style={{
+                                            <div className="glass-card-premium" style={{
                                                 position: 'absolute', top: '115%', right: 0, zIndex: 100,
-                                                background: 'hsl(var(--color-bg))', border: '1px solid var(--glass-border)',
-                                                borderRadius: '0.5rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
-                                                gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)'
+                                                background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
+                                                borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
+                                                gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
                                             }}>
-                                                <button className="btn" style={{ justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'var(--color-text)' }}
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%' }}
                                                     onClick={() => { setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' }); setShowAddMenu(false); }}>
-                                                    <Users size={16} style={{ marginRight: '0.75rem', opacity: 0.7 }} /> Single Entry
+                                                    <Users size={16} style={{ marginRight: '0.75rem', opacity: 0.7, color: '#1da6d9' }} /> Single Entry
                                                 </button>
-                                                <button className="btn" style={{ justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'var(--color-text)' }}
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%' }}
                                                     onClick={() => { document.getElementById('import-file-input').click(); setShowAddMenu(false); }}>
-                                                    <FileSpreadsheet size={16} style={{ marginRight: '0.75rem', opacity: 0.7 }} /> Import Excel / CSV
+                                                    <FileSpreadsheet size={16} style={{ marginRight: '0.75rem', opacity: 0.7, color: '#34d399' }} /> Import Excel / CSV
                                                 </button>
                                             </div>
                                         )}
@@ -3244,74 +3698,74 @@ const AdminDashboard = () => {
                             {/* Toolbar: Search & Filters */}
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <div style={{ position: 'relative', flex: '1 1 300px' }}>
-                                    <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)' }} />
+                                    <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
                                     <input
                                         placeholder="Search by name or admission number..."
-                                        className="input-field"
+                                        className="modern-input"
                                         style={{ paddingLeft: '3rem', width: '100%' }}
                                         value={memberSearch}
                                         onChange={e => setMemberSearch(e.target.value)}
                                     />
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                                <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                     {['All', 'Athi River', 'Valley Road'].map(c => (
                                         <button key={c} onClick={() => setMemberCampusFilter(c)}
                                             style={{
-                                                padding: '0.5rem 1rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
-                                                background: memberCampusFilter === c ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
-                                                color: memberCampusFilter === c ? '#25AAE1' : 'var(--color-text-dim)',
-                                                fontSize: '0.8rem', fontWeight: 600
+                                                padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                                background: memberCampusFilter === c ? 'rgba(29, 166, 217, 0.2)' : 'transparent',
+                                                color: memberCampusFilter === c ? '#1da6d9' : 'rgba(255,255,255,0.6)',
+                                                fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
                                             }}
                                         >{c === 'Valley Road' ? 'Nairobi' : c}</button>
                                     ))}
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                                <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                     {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
                                         <button key={t} onClick={() => setMemberTypeFilter(t)}
                                             style={{
-                                                padding: '0.5rem 1rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
+                                                padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
                                                 background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
-                                                color: memberTypeFilter === t ? '#a78bfa' : 'var(--color-text-dim)',
-                                                fontSize: '0.8rem', fontWeight: 600
+                                                color: memberTypeFilter === t ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                                                fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
                                             }}
                                         >{t}</button>
                                     ))}
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                                <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                     <button onClick={() => setActiveSemesterFilter(!activeSemesterFilter)}
                                         style={{
-                                            padding: '0.5rem 1rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
-                                            background: activeSemesterFilter ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-                                            color: activeSemesterFilter ? '#10b981' : 'var(--color-text-dim)',
-                                            fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem'
+                                            padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                            background: activeSemesterFilter ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
+                                            color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.6)',
+                                            fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s'
                                         }}
                                     >
-                                        <CheckCircle size={14} style={{ opacity: activeSemesterFilter ? 1 : 0.5 }} /> Active This Sem
+                                        <CheckCircle size={14} style={{ color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Active This Sem
                                     </button>
                                 </div>
 
-                                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                    <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleBulkEnroll} title="Enroll everyone who has attended a meeting this semester">
-                                        <CheckCircle size={14} style={{ marginRight: '0.4rem' }} /> Bulk Enroll
+                                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <button className="btn" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '0.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={handleBulkEnroll} title="Enroll everyone who has attended a meeting this semester">
+                                        <CheckCircle size={14} /> Bulk Enroll
                                     </button>
-                                    <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', padding: '0.5rem 1rem' }} onClick={handleSyncRegistry}>
-                                        <RotateCcw size={14} style={{ marginRight: '0.4rem' }} /> Sync
+                                    <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={handleSyncRegistry}>
+                                        <RotateCcw size={14} /> Sync
                                     </button>
                                     {memberTypeFilter === 'Recruit' && (
                                         <>
-                                            <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(234,179,8,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
                                                 onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
                                                 <GraduationCap size={16} /> Graduate All
                                             </button>
-                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
                                                 onClick={handleArchiveAllRecruits} title="Archive all members who are currently Recruits">
                                                 <Archive size={16} /> Archive Remaining
                                             </button>
                                             {selectedMemberIds.length > 0 && (
-                                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '0.5rem', fontWeight: 800 }}
                                                     onClick={handleBulkGraduate}>
                                                     <GraduationCap size={16} /> Graduate Selected ({selectedMemberIds.length})
                                                 </button>
@@ -3319,22 +3773,22 @@ const AdminDashboard = () => {
                                         </>
                                     )}
                                     {memberTypeFilter === 'Douloid' && (
-                                        <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                        <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
                                             onClick={handleUndoGraduation} title="Undo recently graduated recruits (revert to Recruit)">
                                             <RotateCcw size={16} /> Undo Graduation
                                         </button>
                                     )}
                                     {['developer', 'superadmin'].includes(userRole) && (
                                         <>
-                                            <button className="btn" style={{ background: 'hsl(var(--color-primary) / 0.1)', color: 'hsl(var(--color-primary))', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            <button className="btn" style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
                                                 onClick={() => setShowBulkListTool(true)} title="Graduate or Archive members by pasting a list of registration numbers">
                                                 <ListChecks size={16} /> Bulk List Actions
                                             </button>
-                                            <button className="btn" style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                                            <button className="btn" style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
                                                 onClick={handleSetupTestAccount} title="Designate a student as a permanent tester">
                                                 Setup Tester
                                             </button>
-                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
                                                 onClick={handleResetAllPoints} title="Reset all points to 0">
                                                 <Trash2 size={14} /> Reset Points
                                             </button>
@@ -3344,14 +3798,14 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <div style={{ overflowY: 'auto', flex: 1, padding: '1rem 1.5rem' }}>
+                            <table className="glass-table-premium">
                                 <thead>
-                                    <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                        <th style={{ padding: '1rem', width: '40px' }}>
+                                    <tr>
+                                        <th style={{ width: '40px', textAlign: 'center' }}>
                                             <input
                                                 type="checkbox"
+                                                style={{ width: '16px', height: '16px', accentColor: '#1da6d9', cursor: 'pointer' }}
                                                 onChange={(e) => {
                                                     const filtered = members.filter(m => {
                                                         const matchesSearch =
@@ -3377,16 +3831,16 @@ const AdminDashboard = () => {
                                                 }).length}
                                             />
                                         </th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Member Details</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Points</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Campus</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Category</th>
-                                        <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500 }}>Actions</th>
+                                        <th>Member Details</th>
+                                        <th>Points</th>
+                                        <th>Campus</th>
+                                        <th>Category</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {loadingMembers ? (
-                                        <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center' }}>Loading directory...</td></tr>
+                                        <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Loading directory...</td></tr>
                                     ) : (
                                         (() => {
                                             const filtered = members.filter(m => {
@@ -3407,12 +3861,12 @@ const AdminDashboard = () => {
                                                 return (
                                                     <tr>
                                                         <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
-                                                            <div style={{ color: 'var(--color-text-dim)', marginBottom: '1.5rem' }}>
-                                                                <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto' }} />
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
+                                                                <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto', color: '#1da6d9' }} />
                                                                 <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
                                                             </div>
                                                             {!memberSearch && memberCampusFilter === 'All' && (
-                                                                <button className="btn btn-primary" onClick={handleSyncRegistry}>
+                                                                <button className="btn btn-primary" onClick={handleSyncRegistry} style={{ borderRadius: '0.75rem', fontWeight: 800 }}>
                                                                     Sync Registry from History
                                                                 </button>
                                                             )}
@@ -3422,10 +3876,11 @@ const AdminDashboard = () => {
                                             }
 
                                             return filtered.map((m, i) => (
-                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
-                                                    <td style={{ padding: '1rem', width: '40px' }} onClick={(e) => e.stopPropagation()}>
+                                                <tr key={i} style={{ cursor: 'pointer' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
+                                                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                                                         <input
                                                             type="checkbox"
+                                                            style={{ width: '16px', height: '16px', accentColor: '#1da6d9', cursor: 'pointer' }}
                                                             checked={selectedMemberIds.includes(m._id)}
                                                             onChange={(e) => {
                                                                 if (e.target.checked) {
@@ -3436,51 +3891,55 @@ const AdminDashboard = () => {
                                                             }}
                                                         />
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <div style={{ fontWeight: 600 }}>{m.name}</div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{m.studentRegNo}</div>
+                                                    <td>
+                                                        <div style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>{m.name}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem', fontWeight: 600 }}>{m.studentRegNo}</div>
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFD700', fontWeight: 800 }}>
-                                                            <Trophy size={14} /> {m.totalPoints || 0}
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFD700', fontWeight: 800, background: 'rgba(255, 215, 0, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', width: 'fit-content' }}>
+                                                            <Trophy size={13} style={{ color: '#FFD700' }} /> {m.totalPoints || 0}
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                                        {m.campus}
+                                                    <td style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+                                                        {m.campus === 'Valley Road' ? 'Nairobi' : m.campus}
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <span style={{
-                                                            padding: '0.2rem 0.5rem',
+                                                    <td>
+                                                        <span className="status-pill-modern" style={{
                                                             background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.1)' :
-                                                                m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.1)' :
-                                                                    m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' :
+                                                                        m.memberType === 'Recruit' ? 'rgba(29, 166, 217, 0.1)' :
+                                                                        m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' :
                                                                         'rgba(255, 255, 255, 0.05)',
                                                             color: m.memberType === 'Douloid' ? '#FFD700' :
-                                                                m.memberType === 'Recruit' ? '#25AAE1' :
-                                                                    m.memberType === 'Exempted' ? '#f87171' :
-                                                                        'var(--color-text-dim)',
-                                                            borderRadius: '4px',
+                                                                   m.memberType === 'Recruit' ? '#1da6d9' :
+                                                                   m.memberType === 'Exempted' ? '#f87171' :
+                                                                   'rgba(255,255,255,0.6)',
+                                                            borderColor: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.2)' :
+                                                                         m.memberType === 'Recruit' ? 'rgba(29, 166, 217, 0.2)' :
+                                                                         m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.2)' :
+                                                                         'rgba(255, 255, 255, 0.1)',
                                                             fontSize: '0.7rem',
+                                                            padding: '0.25rem 0.6rem',
+                                                            borderRadius: '2rem',
                                                             fontWeight: 'bold',
                                                             textTransform: 'uppercase'
                                                         }}>
                                                             {m.memberType}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <td>
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
                                                             <button
                                                                 className="btn"
-                                                                style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa' }}
-                                                                onClick={(e) => { e.stopPropagation(); setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
+                                                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.15)', borderRadius: '0.5rem', fontWeight: 700 }}
+                                                                onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
                                                             >
                                                                 Insights
                                                             </button>
                                                             {['developer', 'superadmin'].includes(userRole) && (
                                                                 <button
                                                                     className="btn"
-                                                                    style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}
-                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteMember(m._id, m.name); }}
+                                                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                                    onClick={() => handleDeleteMember(m._id, m.name)}
                                                                 >
                                                                     <Trash2 size={12} />
                                                                 </button>
@@ -4373,7 +4832,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '0.75rem' }}>
                         <select
-                            className="input-field"
+                            className="modern-input"
                             style={{
                                 padding: '0.5rem 2rem 0.5rem 1rem',
                                 width: 'auto',
@@ -4392,7 +4851,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                             ))}
                         </select>
                         <select
-                            className="input-field"
+                            className="modern-input"
                             style={{
                                 padding: '0.5rem 2rem 0.5rem 1rem',
                                 width: 'auto',
@@ -4412,7 +4871,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '4rem' }}>
-                    <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, rgba(37, 170, 225, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                    <div className="glass-card-premium metric-card-glow" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, rgba(37, 170, 225, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#25AAE1', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
                             <Activity size={18} /> Accumulative Reach
                         </div>
@@ -4423,7 +4882,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                         </div>
                     </div>
 
-                    <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(167, 139, 250, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(167, 139, 250, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                    <div className="glass-card-premium metric-card-glow" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(167, 139, 250, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(167, 139, 250, 0.2)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#a78bfa', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
                             <Calendar size={18} /> Total Events
                         </div>
@@ -4434,7 +4893,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                         </div>
                     </div>
 
-                    <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(250, 204, 21, 0.1) 0%, rgba(250, 204, 21, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(250, 204, 21, 0.2)', position: 'relative', overflow: 'hidden' }}>
+                    <div className="glass-card-premium metric-card-glow" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(250, 204, 21, 0.1) 0%, rgba(250, 204, 21, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(250, 204, 21, 0.2)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#facc15', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
                             <Users size={18} /> Mean Attendance
                         </div>
@@ -4522,7 +4981,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
 
                     {reportType === 'summary' ? (
                         <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <table className="glass-table-premium" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
                                     <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
                                         <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Meeting Name</th>
@@ -4568,7 +5027,7 @@ const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownlo
                         </div>
                     ) : (
                         <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <table className="glass-table-premium" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
                                     <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
                                         <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Subject Name</th>
@@ -4808,134 +5267,142 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
     const userRole = localStorage.getItem('role')?.toLowerCase();
     const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
 
+    const roleColors = {
+        developer: { bg: 'rgba(124,58,237,0.15)', color: '#a78bfa', border: 'rgba(124,58,237,0.3)' },
+        superadmin: { bg: 'rgba(239,68,68,0.12)', color: '#f87171', border: 'rgba(239,68,68,0.25)' },
+        admin: { bg: 'rgba(37,170,225,0.12)', color: '#25AAE1', border: 'rgba(37,170,225,0.25)' },
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
-            {canManageAdmins && (
-                <div className="glass-panel" style={{ padding: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                        <div>
-                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>System Administrators</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>Manage access levels for the dashboard.</p>
+
+            {/* Header Banner */}
+            <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(29,166,217,0.08) 0%, rgba(2,21,37,0.9) 100%)', border: '1px solid rgba(29,166,217,0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(29,166,217,0.15)', borderRadius: '1rem', border: '1px solid rgba(29,166,217,0.25)' }}>
+                            <Users size={28} color="#1da6d9" />
                         </div>
-                        <button className="btn btn-primary" onClick={onRegister} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#1da6d9', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>STAFF REGISTRY</div>
+                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>System Administrators</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Manage access levels and admin roles for the dashboard</p>
+                        </div>
+                    </div>
+                    {canManageAdmins && (
+                        <button className="btn glass-btn-primary" onClick={onRegister} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
                             <Plus size={18} /> Register Admin
                         </button>
-                    </div>
+                    )}
+                </div>
+            </div>
 
-                    <div className="table-responsive">
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Username</th>
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Role</th>
-                                    <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan="3" style={{ padding: '2rem', textAlign: 'center', opacity: 0.5 }}>Loading staff registry...</td></tr>
-                                ) : (
-                                    admins.map(a => (
-                                        <tr key={a._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                                            <td style={{ padding: '1rem', fontWeight: 600 }}>{a.username}</td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <span style={{
-                                                    padding: '0.25rem 0.6rem',
-                                                    borderRadius: '1rem',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 700,
-                                                    background: a.role === 'developer' ? 'rgba(124, 58, 237, 0.1)' : 'rgba(37, 170, 225, 0.1)',
-                                                    color: a.role === 'developer' ? '#8b5cf6' : '#25AAE1',
-                                                    textTransform: 'uppercase'
-                                                }}>
+            {/* Admin Table */}
+            {canManageAdmins && (
+                <div className="glass-card-premium" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(29,166,217,0.12)' }}>
+                    <div style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} total</span>
+                    </div>
+                    <table className="glass-table-premium" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                <th style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Username</th>
+                                <th style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Role</th>
+                                <th style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'right' }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan="3" style={{ padding: '3rem', textAlign: 'center', opacity: 0.4, fontSize: '0.9rem' }}>Syncing staff registry...</td></tr>
+                            ) : admins.length === 0 ? (
+                                <tr><td colSpan="3" style={{ padding: '3rem', textAlign: 'center', opacity: 0.4, fontSize: '0.9rem' }}>No administrators registered yet.</td></tr>
+                            ) : (
+                                admins.map(a => {
+                                    const rc = roleColors[a.role] || roleColors.admin;
+                                    return (
+                                        <tr key={a._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(29,166,217,0.04)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                            <td style={{ padding: '1.1rem 1.5rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(29,166,217,0.15)', border: '1px solid rgba(29,166,217,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 900, color: '#1da6d9' }}>
+                                                        {a.username?.charAt(0)?.toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{a.username}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{a.campus || 'All Campuses'}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1.1rem 1.5rem' }}>
+                                                <span style={{ padding: '0.3rem 0.8rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 800, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                     {a.role}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                            <td style={{ padding: '1.1rem 1.5rem', textAlign: 'right' }}>
                                                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                    <button className="btn-icon" onClick={() => onEdit(a)}><Pencil size={18} /></button>
-                                                    <button className="btn-icon" style={{ color: '#ef4444' }} onClick={() => onDelete(a._id)}><Trash2 size={18} /></button>
+                                                    <button className="btn-icon" onClick={() => onEdit(a)} title="Edit admin"><Pencil size={16} /></button>
+                                                    <button className="btn-icon" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.2)' }} onClick={() => onDelete(a._id)} title="Delete admin"><Trash2 size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-
-
-            {canManageAdmins && (
-                <div className="glass-panel" style={{ padding: '2rem', borderLeft: '4px solid #facc15' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'rgba(250, 204, 21, 0.1)', color: '#facc15', borderRadius: '0.75rem' }}>
-                                <ShieldAlert size={24} />
-                            </div>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Guest & Feedback Access</h3>
-                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                    Control visibility of public guest links and the feedback system.
-                                </p>
-                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: guestFeaturesEnabled ? '#4ade80' : '#ef4444', fontWeight: 700 }}>
-                                    CURRENT STATUS: {guestFeaturesEnabled ? 'ACTIVE • Visible to public' : 'DISABLED • Hidden from interface'}
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            className="btn"
-                            onClick={() => onUpdateSetting('guest_features', !guestFeaturesEnabled)}
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                background: guestFeaturesEnabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(74, 222, 128, 0.1)',
-                                color: guestFeaturesEnabled ? '#ef4444' : '#4ade80',
-                                border: `1px solid ${guestFeaturesEnabled ? 'rgba(239, 68, 68, 0.2)' : 'rgba(74, 222, 128, 0.2)'}`,
-                                fontWeight: 800,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                            }}
-                        >
-                            {guestFeaturesEnabled ? (
-                                <>Turn OFF Features <X size={18} /></>
-                            ) : (
-                                <>Turn ON Features <Check size={18} /></>
+                                    );
+                                })
                             )}
-                        </button>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
             )}
 
+            {/* Settings Cards Row */}
             {canManageAdmins && (
-                <div className="glass-panel" style={{ padding: '2rem', borderLeft: '4px solid #25AAE1', marginTop: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '0.75rem' }}>
-                                <Calendar size={24} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+
+                    {/* Guest Access Toggle */}
+                    <div className="setting-card" style={{ borderLeft: `4px solid ${guestFeaturesEnabled ? '#4ade80' : '#f87171'}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div style={{ padding: '0.75rem', background: guestFeaturesEnabled ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)', borderRadius: '0.75rem' }}>
+                                <ShieldAlert size={22} color={guestFeaturesEnabled ? '#4ade80' : '#f87171'} />
                             </div>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Active Semester</h3>
-                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                    Define the current academic period for enrollment and activity tracking.
-                                </p>
-                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#25AAE1', fontWeight: 700 }}>
-                                    CURRENT: {currentSemester}
-                                </p>
+                                <div style={{ fontWeight: 800, fontSize: '1rem' }}>Guest & Feedback Access</div>
+                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem' }}>Control public guest link visibility</div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <input
-                                className="input-field"
-                                style={{ width: '200px', fontSize: '0.9rem' }}
-                                value={currentSemester}
-                                onChange={(e) => onUpdateSetting('current_semester', e.target.value)}
-                                placeholder="e.g. MAY-AUG 2026"
-                            />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: guestFeaturesEnabled ? '#4ade80' : '#f87171' }}>
+                                {guestFeaturesEnabled ? '● ACTIVE' : '● DISABLED'}
+                            </span>
+                            <button
+                                className="btn"
+                                onClick={() => onUpdateSetting('guest_features', !guestFeaturesEnabled)}
+                                style={{ padding: '0.6rem 1.2rem', background: guestFeaturesEnabled ? 'rgba(248,113,113,0.1)' : 'rgba(74,222,128,0.1)', color: guestFeaturesEnabled ? '#f87171' : '#4ade80', border: `1px solid ${guestFeaturesEnabled ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)'}`, fontWeight: 800, borderRadius: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                {guestFeaturesEnabled ? <><X size={16} /> Turn OFF</> : <><Check size={16} /> Turn ON</>}
+                            </button>
                         </div>
                     </div>
+
+                    {/* Active Semester */}
+                    <div className="setting-card" style={{ borderLeft: '4px solid #1da6d9' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div style={{ padding: '0.75rem', background: 'rgba(29,166,217,0.12)', borderRadius: '0.75rem' }}>
+                                <Calendar size={22} color="#1da6d9" />
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: 800, fontSize: '1rem' }}>Active Semester</div>
+                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem' }}>Current academic tracking period</div>
+                            </div>
+                        </div>
+                        <input
+                            className="modern-input"
+                            style={{ width: '100%', marginBottom: '0', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.6rem', color: 'white', outline: 'none' }}
+                            value={currentSemester}
+                            onChange={(e) => onUpdateSetting('current_semester', e.target.value)}
+                            placeholder="e.g. MAY-AUG 2026"
+                        />
+                    </div>
+
                 </div>
             )}
         </div>
@@ -4945,7 +5412,7 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
 const FeedbackView = ({ isGuest }) => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // all, new, read, resolved
+    const [filter, setFilter] = useState('all');
 
     const fetchFeedbacks = async () => {
         setLoading(true);
@@ -4974,14 +5441,12 @@ const FeedbackView = ({ isGuest }) => {
     const handleStatusUpdate = async (id, newStatus) => {
         if (isGuest) return alert('Action disabled in Guest Mode');
         const originalFeedbacks = [...feedbacks];
-        // Optimistic update
         setFeedbacks(prev => prev.map(f => f._id === id ? { ...f, status: newStatus } : f));
-
         try {
             await api.patch(`/feedback/${id}`, { status: newStatus });
         } catch (err) {
             alert('Failed to update status');
-            setFeedbacks(originalFeedbacks); // Revert
+            setFeedbacks(originalFeedbacks);
         }
     };
 
@@ -4998,83 +5463,111 @@ const FeedbackView = ({ isGuest }) => {
 
     const filteredFeedbacks = feedbacks.filter(f => filter === 'all' || f.status === filter);
 
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading feedback...</div>;
+    const statusMeta = {
+        new: { color: '#facc15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.25)', label: 'NEW' },
+        read: { color: '#94a3b8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.15)', label: 'READ' },
+        resolved: { color: '#4ade80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', label: 'RESOLVED' }
+    };
+
+    if (loading) return <div style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Loading feedback...</div>;
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s' }}>
-            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>User Feedback</h2>
-                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)' }}>Manage suggestions and issues reported by users.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.5s' }}>
+
+            {/* Header */}
+            <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(250,204,21,0.07) 0%, rgba(2,21,37,0.9) 100%)', border: '1px solid rgba(250,204,21,0.15)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(250,204,21,0.12)', borderRadius: '1rem', border: '1px solid rgba(250,204,21,0.2)' }}>
+                            <Lightbulb size={26} color="#facc15" />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#facc15', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>COMMUNITY VOICE</div>
+                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900 }}>User Feedback</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>{feedbacks.length} total · {feedbacks.filter(f => f.status === 'new').length} unread</p>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '0.5rem' }}>
-                        {['all', 'new', 'read', 'resolved'].map(s => (
-                            <button
-                                key={s}
-                                onClick={() => setFilter(s)}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    background: filter === s ? 'hsl(var(--color-primary))' : 'transparent',
-                                    color: filter === s ? 'white' : 'var(--color-text-dim)',
-                                    border: 'none', borderRadius: '0.4rem', cursor: 'pointer',
-                                    fontWeight: 600, textTransform: 'capitalize'
-                                }}
-                            >
-                                {s}
-                            </button>
-                        ))}
+                    {/* Filter Pills */}
+                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem', flexWrap: 'wrap' }}>
+                        {['all', 'new', 'read', 'resolved'].map(s => {
+                            const isActive = filter === s;
+                            const sm = statusMeta[s] || { color: '#1da6d9', bg: 'rgba(29,166,217,0.1)' };
+                            return (
+                                <button
+                                    key={s}
+                                    onClick={() => setFilter(s)}
+                                    style={{
+                                        padding: '0.5rem 1rem', border: 'none', borderRadius: '0.5rem', cursor: 'pointer',
+                                        background: isActive ? (s === 'all' ? 'rgba(29,166,217,0.15)' : sm.bg) : 'transparent',
+                                        color: isActive ? (s === 'all' ? '#1da6d9' : sm.color) : 'rgba(255,255,255,0.4)',
+                                        fontWeight: 700, fontSize: '0.8rem', textTransform: 'capitalize', transition: 'all 0.2s'
+                                    }}
+                                >{s}</button>
+                            );
+                        })}
                     </div>
                 </div>
+            </div>
 
-                {filteredFeedbacks.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>No feedback found.</div>
-                ) : (
-                    <div style={{ display: 'grid', gap: '1rem' }}>
-                        {filteredFeedbacks.map(f => (
-                            <div key={f._id} style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                borderRadius: '1rem',
-                                padding: '1.5rem',
-                                borderLeft: `4px solid ${f.status === 'new' ? '#facc15' : f.status === 'resolved' ? '#4ade80' : '#94a3b8'}`,
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem'
-                            }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{f.name || 'Anonymous'}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{new Date(f.createdAt).toLocaleDateString()}</span>
-                                        <span style={{
-                                            fontSize: '0.65rem', padding: '0.2rem 0.5rem', borderRadius: '1rem',
-                                            background: 'rgba(255,255,255,0.1)', color: 'var(--color-text-dim)', textTransform: 'uppercase'
-                                        }}>
-                                            {f.category}
-                                        </span>
+            {/* Feedback Cards */}
+            {filteredFeedbacks.length === 0 ? (
+                <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', opacity: 0.5 }}>
+                    <Lightbulb size={40} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                    <div style={{ fontSize: '1rem', fontWeight: 600 }}>No feedback found.</div>
+                    <div style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.7 }}>Try a different filter or check back later.</div>
+                </div>
+            ) : (
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                    {filteredFeedbacks.map(f => {
+                        const sm = statusMeta[f.status] || statusMeta.read;
+                        return (
+                            <div key={f._id} className="feedback-card" style={{ borderLeft: `3px solid ${sm.color}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: sm.bg, border: `1px solid ${sm.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900, color: sm.color }}>
+                                                {(f.name || 'A').charAt(0).toUpperCase()}
+                                            </div>
+                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{f.name || 'Anonymous'}</span>
+                                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                {f.category?.replace('_', ' ')}
+                                            </span>
+                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem', borderRadius: '1rem', background: sm.bg, color: sm.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', border: `1px solid ${sm.border}` }}>
+                                                {sm.label}
+                                            </span>
+                                        </div>
+                                        <p style={{ margin: 0, lineHeight: 1.65, fontSize: '0.92rem', color: 'rgba(255,255,255,0.85)' }}>{f.message}</p>
                                     </div>
-                                    <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.95rem' }}>{f.message}</p>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', minWidth: '120px' }}>
-                                    <select
-                                        value={f.status}
-                                        onChange={(e) => handleStatusUpdate(f._id, e.target.value)}
-                                        className="input-field"
-                                        style={{ width: '100%', padding: '0.3rem', fontSize: '0.8rem' }}
-                                    >
-                                        <option value="new">New</option>
-                                        <option value="read">Read</option>
-                                        <option value="resolved">Resolved</option>
-                                    </select>
-                                    <button
-                                        onClick={() => handleDelete(f._id)}
-                                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                                    >
-                                        <Trash2 size={14} /> Delete
-                                    </button>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', minWidth: '130px' }}>
+                                        <select
+                                            value={f.status}
+                                            onChange={(e) => handleStatusUpdate(f._id, e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.78rem', fontWeight: 700,
+                                                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '0.5rem', color: 'white', outline: 'none', cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="new">New</option>
+                                            <option value="read">Read</option>
+                                            <option value="resolved">Resolved</option>
+                                        </select>
+                                        <button
+                                            onClick={() => handleDelete(f._id)}
+                                            style={{ background: 'transparent', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.75rem', borderRadius: '0.4rem', transition: 'all 0.2s' }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.1)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                        >
+                                            <Trash2 size={13} /> Delete
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 };
@@ -5084,6 +5577,7 @@ const SystemView = ({ onUpdateSetting, isGuest }) => {
     const [guestAccess, setGuestAccess] = useState('true');
     const [waLink, setWaLink] = useState('');
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState({});
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -5106,57 +5600,118 @@ const SystemView = ({ onUpdateSetting, isGuest }) => {
         fetchSettings();
     }, []);
 
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading System Configurations...</div>;
+    const handleSave = async (key, value) => {
+        setSaving(prev => ({ ...prev, [key]: true }));
+        await onUpdateSetting(key, value);
+        setTimeout(() => setSaving(prev => ({ ...prev, [key]: false })), 1200);
+    };
+
+    if (loading) return (
+        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <SettingsIcon size={36} style={{ opacity: 0.3, animation: 'spin 2s linear infinite' }} />
+            <div>Loading System Configurations...</div>
+        </div>
+    );
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                    <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', borderRadius: '1rem' }}>
-                        <SettingsIcon size={32} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
+
+            {/* Header */}
+            <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(29,166,217,0.08) 0%, rgba(2,21,37,0.92) 100%)', border: '1px solid rgba(29,166,217,0.18)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(29,166,217,0.15)', borderRadius: '1rem', border: '1px solid rgba(29,166,217,0.25)' }}>
+                        <SettingsIcon size={28} color="#1da6d9" />
                     </div>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Global Settings</h2>
-                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)' }}>Configure system-wide parameters and access controls.</p>
-                    </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                    {/* Active Semester */}
-                    <div className="input-group">
-                        <label>Active Tracking Semester</label>
-                        <input
-                            className="input-field"
-                            value={semester}
-                            onChange={(e) => setSemester(e.target.value)}
-                            placeholder="MAY-AUG 2026"
-                        />
-                        <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('current_semester', semester)}>Update Semester</button>
-                    </div>
-
-                    {/* WhatsApp Support Link */}
-                    <div className="input-group">
-                        <label>G9 Group/Support Link</label>
-                        <input
-                            className="input-field"
-                            value={waLink}
-                            onChange={(e) => setWaLink(e.target.value)}
-                            placeholder="https://chat.whatsapp.com/..."
-                        />
-                        <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('whatsapp_link', waLink)}>Update Link</button>
-                    </div>
-
-                    {/* Guest Mode */}
-                    <div className="input-group">
-                        <label>Public Guest Access</label>
-                        <select className="input-field" value={guestAccess} onChange={(e) => setGuestAccess(e.target.value)}>
-                            <option value="true">Enabled (Allow Guest Link on Login)</option>
-                            <option value="false">Disabled (Private Only)</option>
-                        </select>
-                        <button className="btn btn-primary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => onUpdateSetting('guest_features', guestAccess)}>Update Policy</button>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#1da6d9', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>CONTROL PANEL</div>
+                        <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900 }}>Global Settings</h2>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>Configure system-wide parameters and access controls</p>
                     </div>
                 </div>
             </div>
+
+            {/* Settings Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+
+                {/* Active Semester Card */}
+                <div className="setting-card" style={{ borderLeft: '4px solid #1da6d9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                        <div style={{ padding: '0.7rem', background: 'rgba(29,166,217,0.12)', borderRadius: '0.75rem' }}>
+                            <Calendar size={20} color="#1da6d9" />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Active Tracking Semester</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Academic period for enrollment & attendance</div>
+                        </div>
+                    </div>
+                    <input
+                        style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.6rem', color: 'white', outline: 'none', fontSize: '0.9rem', marginBottom: '1rem', boxSizing: 'border-box' }}
+                        value={semester}
+                        onChange={(e) => setSemester(e.target.value)}
+                        placeholder="MAY-AUG 2026"
+                    />
+                    <button className="btn glass-btn-primary" style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => handleSave('current_semester', semester)}>
+                        {saving.current_semester ? <><RotateCcw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><CheckCircle size={15} /> Update Semester</>}
+                    </button>
+                </div>
+
+                {/* WhatsApp Link Card */}
+                <div className="setting-card" style={{ borderLeft: '4px solid #4ade80' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                        <div style={{ padding: '0.7rem', background: 'rgba(74,222,128,0.1)', borderRadius: '0.75rem' }}>
+                            <LinkIcon size={20} color="#4ade80" />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>G9 Group / Support Link</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>WhatsApp community or support URL</div>
+                        </div>
+                    </div>
+                    <input
+                        style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '0.6rem', color: 'white', outline: 'none', fontSize: '0.85rem', marginBottom: '1rem', boxSizing: 'border-box' }}
+                        value={waLink}
+                        onChange={(e) => setWaLink(e.target.value)}
+                        placeholder="https://chat.whatsapp.com/..."
+                    />
+                    <button
+                        className="btn"
+                        style={{ width: '100%', padding: '0.7rem', background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)', borderRadius: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        onClick={() => handleSave('whatsapp_link', waLink)}
+                    >
+                        {saving.whatsapp_link ? <><RotateCcw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><CheckCircle size={15} /> Update Link</>}
+                    </button>
+                </div>
+
+                {/* Guest Access Card */}
+                <div className="setting-card" style={{ borderLeft: `4px solid ${guestAccess === 'true' ? '#4ade80' : '#f87171'}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                        <div style={{ padding: '0.7rem', background: guestAccess === 'true' ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', borderRadius: '0.75rem' }}>
+                            <ShieldAlert size={20} color={guestAccess === 'true' ? '#4ade80' : '#f87171'} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Public Guest Access</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Show guest login link on public pages</div>
+                        </div>
+                    </div>
+                    <select
+                        style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`, borderRadius: '0.6rem', color: 'white', outline: 'none', fontSize: '0.88rem', marginBottom: '1rem' }}
+                        value={guestAccess}
+                        onChange={(e) => setGuestAccess(e.target.value)}
+                    >
+                        <option value="true">Enabled (Allow Guest Link on Login)</option>
+                        <option value="false">Disabled (Private Only)</option>
+                    </select>
+                    <button
+                        className="btn"
+                        style={{ width: '100%', padding: '0.7rem', background: guestAccess === 'true' ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)', color: guestAccess === 'true' ? '#4ade80' : '#f87171', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.2)'}`, borderRadius: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        onClick={() => handleSave('guest_features', guestAccess)}
+                    >
+                        {saving.guest_features ? <><RotateCcw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><CheckCircle size={15} /> Update Policy</>}
+                    </button>
+                </div>
+
+            </div>
+
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 };

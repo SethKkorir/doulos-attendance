@@ -168,7 +168,7 @@ const AdminFinanceView = ({ isGuest }) => {
 
             {/* Summary Cards */}
             <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(74, 222, 128, 0.1)' }}>
+                <div className="glass-card-premium metric-card-glow" style={{ padding: '1.25rem', border: '1px solid rgba(74, 222, 128, 0.15)', background: 'linear-gradient(135deg, rgba(74,222,128,0.08) 0%, rgba(2,21,37,0.85) 100%)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 800 }}>TOTAL COLLECTED</p>
@@ -177,7 +177,7 @@ const AdminFinanceView = ({ isGuest }) => {
                         <TrendingUp size={24} style={{ opacity: 0.3 }} />
                     </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
+                <div className="glass-card-premium metric-card-glow" style={{ padding: '1.25rem', border: '1px solid rgba(251, 191, 36, 0.15)', background: 'linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(2,21,37,0.85) 100%)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 800 }}>AWAITING APPROVAL</p>
@@ -186,7 +186,7 @@ const AdminFinanceView = ({ isGuest }) => {
                         <Clock size={24} style={{ opacity: 0.3 }} />
                     </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(37, 170, 225, 0.1)' }}>
+                <div className="glass-card-premium metric-card-glow" style={{ padding: '1.25rem', border: '1px solid rgba(37, 170, 225, 0.15)', background: 'linear-gradient(135deg, rgba(37,170,225,0.08) 0%, rgba(2,21,37,0.85) 100%)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 800 }}>THIS MONTH'S GAIN</p>
@@ -238,7 +238,7 @@ const AdminFinanceView = ({ isGuest }) => {
             </div>
 
             {/* Dynamic Content Sections */}
-            <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '500px' }}>
+            <div className="glass-card-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '500px' }}>
 
                 {/* 1. Approvals Queue */}
                 {activeTab === 'approvals' && (
@@ -420,7 +420,7 @@ const AdminFinanceView = ({ isGuest }) => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
 
                             {/* Monthly Trend */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', height: '350px' }}>
+                            <div className="glass-card-premium" style={{ padding: '1.5rem', height: '350px' }}>
                                 <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <TrendingUp size={18} color="#25AAE1" /> Collection Trend (Ksh)
                                 </h4>
@@ -439,7 +439,7 @@ const AdminFinanceView = ({ isGuest }) => {
                             </div>
 
                             {/* Payment Modes */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', height: '350px' }}>
+                            <div className="glass-card-premium" style={{ padding: '1.5rem', height: '350px' }}>
                                 <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <PieIcon size={18} color="#4ade80" /> Payment Methods
                                 </h4>
@@ -497,7 +497,7 @@ const AdminFinanceView = ({ isGuest }) => {
                                     <input type="number" placeholder="200" className="input-field" value={cashData.amount} onChange={e => setCashData({ ...cashData, amount: e.target.value })} required />
                                 </div>
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ height: '50px', fontWeight: 900, marginTop: '1rem' }}>
+                            <button type="submit" className="btn glass-btn-primary" style={{ height: '50px', fontWeight: 900, marginTop: '1rem' }}>
                                 CONFIRM CASH PAYMENT
                             </button>
                         </form>
