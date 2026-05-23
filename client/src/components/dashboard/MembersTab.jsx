@@ -640,123 +640,161 @@ const MembersTab = ({
             </div>
 
             {/* Registry Grid */}
-            <div style={{ overflowY: 'auto', flex: 1, padding: '1rem 1.5rem' }}>
-                <table className="glass-table-premium">
-                    <thead>
-                        <tr>
-                            <th style={{ width: '40px', textAlign: 'center' }}>
-                                <input
-                                    type="checkbox"
-                                    style={{ width: '16px', height: '16px', accentColor: '#1da6d9', cursor: 'pointer' }}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setSelectedMemberIds(filteredMembers.map(m => m._id));
-                                        } else {
-                                            setSelectedMemberIds([]);
-                                        }
-                                    }}
-                                    checked={selectedMemberIds.length > 0 && selectedMemberIds.length === filteredMembers.length}
-                                />
-                            </th>
-                            <th>Member Details</th>
-                            <th>Points</th>
-                            <th>Campus</th>
-                            <th>Category</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loadingMembers ? (
-                            <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Loading directory...</td></tr>
-                        ) : filteredMembers.length === 0 ? (
-                            <tr>
-                                <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
-                                    <div style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
-                                        <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto', color: '#1da6d9' }} />
-                                        <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
-                                    </div>
-                                    {!memberSearch && memberCampusFilter === 'All' && (
-                                        <button className="btn btn-primary" onClick={handleSyncRegistry} style={{ borderRadius: '0.75rem', fontWeight: 800 }}>
-                                            Sync Registry from History
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ) : filteredMembers.map((m, i) => (
-                            <tr key={i} data-reg={m.studentRegNo} style={{ cursor: 'pointer' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
-                                <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                    <input
-                                        type="checkbox"
-                                        style={{ width: '16px', height: '16px', accentColor: '#1da6d9', cursor: 'pointer' }}
-                                        checked={selectedMemberIds.includes(m._id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedMemberIds([...selectedMemberIds, m._id]);
-                                            } else {
-                                                setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
-                                            }
+            <div style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
+                {loadingMembers ? (
+                    <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                        <div className="loading-spinner-small" style={{ margin: '0 auto 1rem', width: '32px', height: '32px', borderTopColor: '#25AAE1' }}></div>
+                        Loading directory...
+                    </div>
+                ) : filteredMembers.length === 0 ? (
+                    <div style={{ padding: '4rem', textAlign: 'center' }}>
+                        <div style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
+                            <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto', color: '#25AAE1' }} />
+                            <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
+                        </div>
+                        {!memberSearch && memberCampusFilter === 'All' && (
+                            <button className="btn btn-primary" onClick={handleSyncRegistry} style={{ borderRadius: '0.75rem', fontWeight: 800 }}>
+                                Sync Registry from History
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* Select All Filtered Controls */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
+                            <input
+                                id="select-all-registry"
+                                type="checkbox"
+                                style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        setSelectedMemberIds(filteredMembers.map(m => m._id));
+                                    } else {
+                                        setSelectedMemberIds([]);
+                                    }
+                                }}
+                                checked={selectedMemberIds.length > 0 && selectedMemberIds.length === filteredMembers.length}
+                            />
+                            <label htmlFor="select-all-registry" style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}>
+                                Select All Filtered ({filteredMembers.length} members)
+                            </label>
+                        </div>
+
+                        {/* Modern Responsive Card Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                            {filteredMembers.map((m, i) => {
+                                const isSelected = selectedMemberIds.includes(m._id);
+                                return (
+                                    <div
+                                        key={i}
+                                        className="glass-card-premium interactive"
+                                        style={{
+                                            padding: '1.25rem',
+                                            border: isSelected ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.04)',
+                                            background: isSelected ? 'rgba(37, 170, 225, 0.05)' : '#0d111b',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '1rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.25s ease'
                                         }}
-                                    />
-                                </td>
-                                <td>
-                                    <div style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>{m.name}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem', fontWeight: 600 }}>{m.studentRegNo}</div>
-                                </td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFD700', fontWeight: 800, background: 'rgba(255, 215, 0, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', width: 'fit-content' }}>
-                                        <Trophy size={13} style={{ color: '#FFD700' }} /> {m.totalPoints || 0}
-                                    </div>
-                                </td>
-                                <td style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
-                                    {m.campus === 'Valley Road' ? 'Nairobi' : m.campus}
-                                </td>
-                                <td>
-                                    <span className="status-pill-modern" style={{
-                                        background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.1)' :
-                                                    m.memberType === 'Recruit' ? 'rgba(29, 166, 217, 0.1)' :
-                                                    m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' :
-                                                    'rgba(255, 255, 255, 0.05)',
-                                        color: m.memberType === 'Douloid' ? '#FFD700' :
-                                               m.memberType === 'Recruit' ? '#1da6d9' :
-                                               m.memberType === 'Exempted' ? '#f87171' :
-                                               'rgba(255,255,255,0.6)',
-                                        borderColor: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.2)' :
-                                                     m.memberType === 'Recruit' ? 'rgba(29, 166, 217, 0.2)' :
-                                                     m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.2)' :
-                                                     'rgba(255, 255, 255, 0.1)',
-                                        fontSize: '0.7rem',
-                                        padding: '0.25rem 0.6rem',
-                                        borderRadius: '2rem',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase'
-                                    }}>
-                                        {m.memberType}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            className="btn"
-                                            style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.15)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                            onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
-                                        >
-                                            Insights
-                                        </button>
-                                        {['developer', 'superadmin'].includes(userRole) && (
+                                        onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
+                                    >
+                                        {/* Card Selection Checkbox & Category Tag */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedMemberIds([...selectedMemberIds, m._id]);
+                                                    } else {
+                                                        setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
+                                                    }
+                                                }}
+                                            />
+                                            <span className="status-pill-modern" style={{
+                                                background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
+                                                            m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
+                                                            m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
+                                                            'rgba(255, 255, 255, 0.04)',
+                                                color: m.memberType === 'Douloid' ? '#FFD700' :
+                                                       m.memberType === 'Recruit' ? '#25AAE1' :
+                                                       m.memberType === 'Exempted' ? '#f87171' :
+                                                       'rgba(255,255,255,0.5)',
+                                                border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
+                                                             m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
+                                                             m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
+                                                             '1px solid rgba(255, 255, 255, 0.05)',
+                                                fontSize: '0.62rem',
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: '1rem',
+                                                fontWeight: 800,
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
+                                            }}>
+                                                {m.memberType}
+                                            </span>
+                                        </div>
+
+                                        {/* Avatar & Profile Details */}
+                                        <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+                                            <div style={{
+                                                width: '42px', height: '42px', borderRadius: '50%',
+                                                background: 'rgba(255, 255, 255, 0.02)',
+                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '1rem', fontWeight: 900, color: '#94a3b8', flexShrink: 0
+                                            }}>
+                                                {(m.name || 'U').charAt(0).toUpperCase()}
+                                            </div>
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ fontWeight: 800, color: 'white', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {m.name}
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem', fontWeight: 600 }}>
+                                                    {m.studentRegNo}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Campus Info & Trophy Points Badge */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem', fontWeight: 700 }}>
+                                                <MapPin size={12} color="#25AAE1" />
+                                                <span>{m.campus === 'Valley Road' ? 'Nairobi' : m.campus}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#fbbf24', fontWeight: 900, background: 'rgba(251, 191, 36, 0.08)', padding: '0.2rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.78rem', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
+                                                <Trophy size={11} style={{ color: '#fbbf24', fill: '#fbbf24' }} /> {m.totalPoints || 0} pts
+                                            </div>
+                                        </div>
+
+                                        {/* Actions Footer */}
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
                                             <button
                                                 className="btn"
-                                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                onClick={() => handleDeleteMember(m._id, m.name)}
+                                                style={{ flex: 1, fontSize: '0.75rem', padding: '0.45rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.15)', borderRadius: '0.5rem', fontWeight: 700 }}
+                                                onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
                                             >
-                                                <Trash2 size={12} />
+                                                Insights
                                             </button>
-                                        )}
+                                            {['developer', 'superadmin'].includes(userRole) && (
+                                                <button
+                                                    className="btn btn-sign-out"
+                                                    style={{ width: '34px', height: '34px', padding: 0, borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    onClick={() => handleDeleteMember(m._id, m.name)}
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Member Profile/Insights Modal */}
