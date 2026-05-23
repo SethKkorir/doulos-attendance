@@ -6,7 +6,7 @@ import {
     ShieldAlert, RotateCcw, ChevronDown, Check, X,
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
-    GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet
+    GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
