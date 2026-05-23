@@ -591,27 +591,34 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, currentSeme
     const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
 
     const roleColors = {
-        developer: { bg: 'rgba(124,58,237,0.15)', color: '#a78bfa', border: 'rgba(124,58,237,0.3)' },
-        superadmin: { bg: 'rgba(239,68,68,0.12)', color: '#f87171', border: 'rgba(239,68,68,0.25)' },
-        admin: { bg: 'rgba(37,170,225,0.12)', color: '#25AAE1', border: 'rgba(37,170,225,0.25)' },
+        developer: { bg: 'rgba(167, 139, 250, 0.12)', color: '#a78bfa', border: 'rgba(167, 139, 250, 0.2)' },
+        superadmin: { bg: 'rgba(248, 113, 113, 0.12)', color: '#f87171', border: 'rgba(248, 113, 113, 0.2)' },
+        admin: { bg: 'rgba(37, 170, 225, 0.12)', color: '#25AAE1', border: 'rgba(37, 170, 225, 0.2)' },
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
-            <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(29,166,217,0.08) 0%, rgba(2,21,37,0.9) 100%)', border: '1px solid rgba(29,166,217,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
+            
+            {/* Header Card */}
+            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(29,166,217,0.15)', borderRadius: '1rem', border: '1px solid rgba(29,166,217,0.25)' }}>
-                            <Users size={28} color="#1da6d9" />
+                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                            <Users size={28} color="#25AAE1" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#1da6d9', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>STAFF REGISTRY</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>STAFF REGISTRY</div>
                             <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>System Administrators</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Manage access levels and admin roles for the dashboard</p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>Manage access privileges, credentials, and roles for Doulos</p>
                         </div>
                     </div>
                     {canManageAdmins && (
-                        <button className="btn glass-btn-primary" onClick={onRegister} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
+                        <button className="btn btn-primary" onClick={onRegister} style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem',
+                            background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
+                            color: 'white', border: '1px solid rgba(37, 170, 225, 0.3) !important', borderRadius: '0.6rem',
+                            fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important'
+                        }}>
                             <Plus size={18} /> Register Admin
                         </button>
                     )}
@@ -619,64 +626,76 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, currentSeme
             </div>
 
             {canManageAdmins ? (
-                <div className="glass-card-premium" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(29,166,217,0.12)' }}>
-                    <div style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} total</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ padding: '0.5rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} accounts</span>
                     </div>
-                    <table className="glass-table-premium" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                                <th style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Username</th>
-                                <th style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Role</th>
-                                <th style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'right' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan="3" style={{ padding: '3rem', textAlign: 'center', opacity: 0.4, fontSize: '0.9rem' }}>Syncing staff registry...</td></tr>
-                            ) : admins.length === 0 ? (
-                                <tr><td colSpan="3" style={{ padding: '3rem', textAlign: 'center', opacity: 0.4, fontSize: '0.9rem' }}>No administrators registered yet.</td></tr>
-                            ) : (
-                                admins.map(a => {
-                                    const rc = roleColors[a.role] || roleColors.admin;
-                                    return (
-                                        <tr key={a._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(29,166,217,0.04)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                            <td style={{ padding: '1.1rem 1.5rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(29,166,217,0.15)', border: '1px solid rgba(29,166,217,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 900, color: '#1da6d9' }}>
-                                                        {a.username?.charAt(0)?.toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{a.username}</div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{a.campus || 'All Campuses'}</div>
-                                                    </div>
+
+                    {loading ? (
+                        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Syncing staff registry...</div>
+                    ) : admins.length === 0 ? (
+                        <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                            No administrators registered yet.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                            {admins.map(a => {
+                                const rc = roleColors[a.role] || roleColors.admin;
+                                return (
+                                    <div key={a._id} className="glass-card-premium" style={{
+                                        background: '#0d111b',
+                                        borderLeft: `4px solid ${rc.color}`,
+                                        padding: '1.5rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '1.25rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                        onMouseEnter={el => { el.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                        onMouseLeave={el => { el.currentTarget.style.transform = 'translateY(0)'; }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: rc.bg, border: `1px solid ${rc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 900, color: rc.color }}>
+                                                    {a.username?.charAt(0)?.toUpperCase()}
                                                 </div>
-                                            </td>
-                                            <td style={{ padding: '1.1rem 1.5rem' }}>
-                                                <span style={{ padding: '0.3rem 0.8rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 800, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                    {a.role}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '1.1rem 1.5rem', textAlign: 'right' }}>
-                                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                    <button className="btn-icon" onClick={() => onEdit(a)} title="Edit admin"><Pencil size={16} /></button>
-                                                    <button className="btn-icon" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.2)' }} onClick={() => onDelete(a._id)} title="Delete admin"><Trash2 size={16} /></button>
+                                                <div>
+                                                    <div style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{a.username}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, marginTop: '2px' }}>{a.campus || 'All Campuses'}</div>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                            </div>
+                                            <span style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                {a.role}
+                                            </span>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.25rem' }}>
+                                            <button className="btn" onClick={() => onEdit(a)} style={{
+                                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                                                padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', color: 'white',
+                                                border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', cursor: 'pointer'
+                                            }}>
+                                                <Pencil size={13} /> Edit Profile
+                                            </button>
+                                            <button className="btn" onClick={() => onDelete(a._id)} style={{
+                                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                                                padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(239, 68, 68, 0.05)', color: '#f87171',
+                                                border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem', cursor: 'pointer'
+                                            }}>
+                                                <Trash2 size={13} /> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             ) : (
-                <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', opacity: 0.5 }}>
-                    <ShieldAlert size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <h3>Access Restricted</h3>
-                    <p style={{ fontSize: '0.85rem' }}>Only Developers and SuperAdmins are authorized to manage administrative system accounts.</p>
+                <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <ShieldAlert size={40} style={{ color: '#f87171', opacity: 0.3 }} />
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Access Restricted</h3>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', maxWidth: '400px', lineHeight: 1.5 }}>Only Developers and SuperAdmins are authorized to manage administrative system accounts.</p>
                 </div>
             )}
         </div>
@@ -712,17 +731,26 @@ const ReportsView = ({ meetings, members, onDownloadCSV, onDownloadCumulativeCSV
     const averageAttendance = filteredMeetings.length > 0 ? (totalAttendance / filteredMeetings.length).toFixed(1) : 0;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--glass-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Reports & Analytics</h2>
-                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Real-time attendance tracking and insights</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s ease-out' }}>
+            
+            {/* Header Card */}
+            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                            <FileSpreadsheet size={28} color="#25AAE1" />
+                        </div>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>Reports & Analytics</h2>
+                            <p style={{ margin: 0, color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem' }}>Compile, view, and export cumulative attendance statistics</p>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '0.75rem' }}>
+                    
+                    {/* Filters dropdowns */}
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,0,0,0.2)', padding: '0.35rem', borderRadius: '0.75rem' }}>
                         <select
                             className="modern-input"
-                            style={{ padding: '0.5rem 2rem 0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', fontWeight: 600 }}
+                            style={{ padding: '0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.03)', fontSize: '0.8rem', fontWeight: 700 }}
                             value={filterSemester}
                             onChange={(e) => setFilterSemester(e.target.value)}
                         >
@@ -734,11 +762,11 @@ const ReportsView = ({ meetings, members, onDownloadCSV, onDownloadCumulativeCSV
                         </select>
                         <select
                             className="modern-input"
-                            style={{ padding: '0.5rem 2rem 0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', fontWeight: 600 }}
+                            style={{ padding: '0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.03)', fontSize: '0.8rem', fontWeight: 700 }}
                             value={filterCampus}
                             onChange={(e) => setFilterCampus(e.target.value)}
                         >
-                            <option value="All">Global (All)</option>
+                            <option value="All">All Campuses</option>
                             <option value="Athi River">Athi River</option>
                             <option value="Valley Road">Valley Road</option>
                         </select>
@@ -746,57 +774,87 @@ const ReportsView = ({ meetings, members, onDownloadCSV, onDownloadCumulativeCSV
                 </div>
 
                 {/* Sub Tab Controls */}
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                    <button onClick={() => setReportType('summary')} style={{ padding: '0.5rem 1.25rem', border: 'none', background: reportType === 'summary' ? 'rgba(29, 166, 217, 0.15)' : 'transparent', color: reportType === 'summary' ? '#1da6d9' : 'var(--color-text-dim)', fontSize: '0.82rem', fontWeight: 700, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <FileText size={16} /> Sessions Summary
+                <div style={{ display: 'flex', gap: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
+                    <button
+                        onClick={() => setReportType('summary')}
+                        style={{
+                            padding: '0.5rem 1.25rem',
+                            background: reportType === 'summary' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
+                            color: reportType === 'summary' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
+                            border: reportType === 'summary' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
+                            fontSize: '0.78rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s'
+                        }}
+                    >
+                        <FileText size={15} /> Sessions Summary
                     </button>
-                    <button onClick={() => setReportType('cumulative')} style={{ padding: '0.5rem 1.25rem', border: 'none', background: reportType === 'cumulative' ? 'rgba(29, 166, 217, 0.15)' : 'transparent', color: reportType === 'cumulative' ? '#1da6d9' : 'var(--color-text-dim)', fontSize: '0.82rem', fontWeight: 700, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Users size={16} /> Cumulative Rosters
+                    <button
+                        onClick={() => setReportType('cumulative')}
+                        style={{
+                            padding: '0.5rem 1.25rem',
+                            background: reportType === 'cumulative' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
+                            color: reportType === 'cumulative' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
+                            border: reportType === 'cumulative' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
+                            fontSize: '0.78rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s'
+                        }}
+                    >
+                        <Users size={15} /> Cumulative Rosters
                     </button>
                 </div>
+            </div>
 
-                {reportType === 'summary' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.4rem' }}>TOTAL ATTENDED</div>
-                                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1da6d9' }}>{totalAttendance}</div>
-                            </div>
-                            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.4rem' }}>SESSIONS COUNT</div>
-                                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1da6d9' }}>{filteredMeetings.length}</div>
-                            </div>
-                            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.4rem' }}>AVERAGE PARTICIPATION</div>
-                                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80' }}>{averageAttendance}</div>
-                            </div>
+            {reportType === 'summary' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                    
+                    {/* Stat Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#0d111b' }}>
+                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>TOTAL ATTENDED</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>{totalAttendance}</div>
                         </div>
+                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #a78bfa', background: '#0d111b' }}>
+                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>SESSIONS COUNT</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>{filteredMeetings.length}</div>
+                        </div>
+                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#0d111b' }}>
+                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>AVERAGE PARTICIPATION</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80', marginTop: '0.5rem' }}>{averageAttendance}</div>
+                        </div>
+                    </div>
 
-                        <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-                            <table className="glass-table-premium" style={{ width: '100%' }}>
+                    {/* Table View */}
+                    <div className="glass-card-premium" style={{ padding: '1.5rem', background: '#0d111b' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Session Title</th>
-                                        <th>Campus</th>
-                                        <th>Attendance</th>
-                                        <th style={{ textAlign: 'right' }}>Actions</th>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Date</th>
+                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Session Title</th>
+                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
+                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Attendance</th>
+                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'right' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredMeetings.length === 0 ? (
-                                        <tr><td colSpan="5" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No reports available for the specified range.</td></tr>
+                                        <tr>
+                                            <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
+                                                No reports available for the specified range.
+                                            </td>
+                                        </tr>
                                     ) : (
                                         filteredMeetings.map(m => (
-                                            <tr key={m._id} style={{ transition: 'background 0.2s' }}>
-                                                <td style={{ fontWeight: 700 }}>{new Date(m.date).toLocaleDateString()}</td>
-                                                <td>{m.name}</td>
-                                                <td>{m.campus}</td>
-                                                <td>
-                                                    <span style={{ color: '#1da6d9', fontWeight: 800, background: 'rgba(29,166,217,0.1)', padding: '0.2rem 0.6rem', borderRadius: '0.4rem' }}>{m.attendees || 0}</span>
+                                            <tr key={m._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <td style={{ padding: '1rem', fontWeight: 700, fontSize: '0.85rem' }}>{new Date(m.date).toLocaleDateString()}</td>
+                                                <td style={{ padding: '1rem', fontSize: '0.88rem', fontWeight: 600 }}>{m.name}</td>
+                                                <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>{m.campus}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <span style={{ color: '#25AAE1', fontWeight: 900, background: 'rgba(37,170,225,0.1)', border: '1px solid rgba(37,170,225,0.15)', padding: '0.25rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.8rem' }}>{m.attendees || 0}</span>
                                                 </td>
-                                                <td style={{ textAlign: 'right' }}>
-                                                    <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.4rem', fontWeight: 700 }}>
+                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                    <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: 'rgba(255,255,255,0.03)', color: 'white', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', fontWeight: 800, cursor: 'pointer' }}>
                                                         Download CSV
                                                     </button>
                                                 </td>
@@ -807,34 +865,37 @@ const ReportsView = ({ meetings, members, onDownloadCSV, onDownloadCumulativeCSV
                             </table>
                         </div>
                     </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center', padding: '2rem 1rem' }}>
-                        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-                            <FileSpreadsheet size={48} style={{ color: '#4ade80', opacity: 0.3, marginBottom: '1.25rem' }} />
-                            <h3 style={{ fontSize: '1.2rem', margin: '0 0 0.5rem' }}>Cumulative Term Report</h3>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', lineHeight: 1.5, marginBottom: '2rem' }}>
-                                Compile all meetings attendance for the selected filters into a single term spreadsheet, useful to track student growth and points.
-                            </p>
-                            <button
-                                className="btn btn-primary"
-                                style={{ background: '#4ade80', color: 'black', fontWeight: 800, padding: '0.75rem 2rem', width: '100%', borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                                onClick={() => {
-                                    // Compile a simple cumulative data
-                                    const studentMap = {};
-                                    filteredMeetings.forEach(m => {
-                                        // Count attendees
-                                        // Since we do this inside dashboard, we mock it or fetch cumulative lists
-                                    });
-                                    // Let G9 download directly
-                                    onDownloadCumulativeCSV(members, filterSemester === 'Current' ? currentSemester : filterSemester);
-                                }}
-                            >
-                                <Download size={16} /> Compile & Export Cumulative Report
-                            </button>
+                </div>
+            ) : (
+                <div className="glass-card-premium" style={{ background: '#0d111b', padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.15)', borderRadius: '50%', color: '#4ade80' }}>
+                            <FileSpreadsheet size={40} />
                         </div>
+                        <div>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>Cumulative Term Report</h3>
+                            <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginTop: '0.5rem' }}>
+                                Compile all meeting attendance logs for the selected filters into a unified spreadsheet. Ideal for calculating student growth, term-end points, and honors.
+                            </p>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            style={{
+                                background: 'linear-gradient(135deg, #4ade80 0%, #15803d 100%) !important',
+                                color: 'white', fontWeight: 800, padding: '0.85rem 2rem', width: '100%', borderRadius: '0.6rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                border: '1px solid rgba(74, 222, 128, 0.3) !important',
+                                boxShadow: '0 8px 25px rgba(74, 222, 128, 0.15) !important'
+                            }}
+                            onClick={() => {
+                                onDownloadCumulativeCSV(members, filterSemester === 'Current' ? currentSemester : filterSemester);
+                            }}
+                        >
+                            <Download size={16} /> Compile & Export Cumulative Report
+                        </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -894,42 +955,54 @@ const FeedbackView = ({ isGuest }) => {
     const filteredFeedbacks = feedbacks.filter(f => filter === 'all' || f.status === filter);
 
     const statusMeta = {
-        new: { color: '#facc15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.25)', label: 'NEW' },
+        new: { color: '#facc15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', label: 'NEW' },
         read: { color: '#94a3b8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.15)', label: 'READ' },
         resolved: { color: '#4ade80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', label: 'RESOLVED' }
     };
 
-    if (loading) return <div style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Loading feedback...</div>;
+    if (loading) return (
+        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#facc15', borderRadius: '50%' }} />
+            <div>Syncing Feedback Cloud...</div>
+        </div>
+    );
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.5s' }}>
-            <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(250,204,21,0.07) 0%, rgba(2,21,37,0.9) 100%)', border: '1px solid rgba(250,204,21,0.15)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
+            
+            {/* Header Card */}
+            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(250,204,21,0.12)', borderRadius: '1rem', border: '1px solid rgba(250,204,21,0.2)' }}>
-                            <Lightbulb size={26} color="#facc15" />
+                        <div style={{ padding: '1rem', background: 'rgba(250, 204, 21, 0.12)', borderRadius: '1rem', border: '1px solid rgba(250, 204, 21, 0.2)' }}>
+                            <Lightbulb size={28} color="#facc15" />
                         </div>
                         <div>
                             <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#facc15', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>COMMUNITY VOICE</div>
-                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900 }}>User Feedback</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>{feedbacks.length} total · {feedbacks.filter(f => f.status === 'new').length} unread</p>
+                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>User Feedback</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>{feedbacks.length} total submissions · {feedbacks.filter(f => f.status === 'new').length} unread</p>
                         </div>
                     </div>
+                    
+                    {/* Status capsule filters */}
                     <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem', flexWrap: 'wrap' }}>
                         {['all', 'new', 'read', 'resolved'].map(s => {
                             const isActive = filter === s;
-                            const sm = statusMeta[s] || { color: '#1da6d9', bg: 'rgba(29,166,217,0.1)' };
+                            const sm = statusMeta[s] || { color: '#25AAE1', bg: 'rgba(37, 170, 225, 0.12)' };
                             return (
                                 <button
                                     key={s}
                                     onClick={() => setFilter(s)}
                                     style={{
-                                        padding: '0.5rem 1rem', border: 'none', borderRadius: '0.5rem', cursor: 'pointer',
-                                        background: isActive ? (s === 'all' ? 'rgba(29,166,217,0.15)' : sm.bg) : 'transparent',
-                                        color: isActive ? (s === 'all' ? '#1da6d9' : sm.color) : 'rgba(255,255,255,0.4)',
-                                        fontWeight: 700, fontSize: '0.8rem', textTransform: 'capitalize', transition: 'all 0.2s'
+                                        padding: '0.5rem 1.1rem', borderRadius: '0.5rem', cursor: 'pointer',
+                                        background: isActive ? (s === 'all' ? 'rgba(37, 170, 225, 0.12)' : sm.bg) : 'transparent',
+                                        color: isActive ? (s === 'all' ? '#25AAE1' : sm.color) : 'rgba(255,255,255,0.4)',
+                                        border: isActive ? `1px solid ${s === 'all' ? 'rgba(37, 170, 225, 0.2)' : sm.border}` : '1px solid transparent',
+                                        fontWeight: 800, fontSize: '0.78rem', textTransform: 'capitalize', transition: 'all 0.2s'
                                     }}
-                                >{s}</button>
+                                >
+                                    {s}
+                                </button>
                             );
                         })}
                     </div>
@@ -937,53 +1010,73 @@ const FeedbackView = ({ isGuest }) => {
             </div>
 
             {filteredFeedbacks.length === 0 ? (
-                <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', opacity: 0.5 }}>
-                    <Lightbulb size={40} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                    <div style={{ fontSize: '1rem', fontWeight: 600 }}>No feedback found.</div>
-                    <div style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.7 }}>Try a different filter or check back later.</div>
+                <div className="glass-card-premium" style={{ padding: '5rem 2rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '50%', color: 'rgba(255,255,255,0.15)' }}>
+                        <Lightbulb size={40} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>No Feedback Found</div>
+                        <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>There are no messages matching the selected status filters.</div>
+                    </div>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {filteredFeedbacks.map(f => {
                         const sm = statusMeta[f.status] || statusMeta.read;
                         return (
-                            <div key={f._id} className="feedback-card" style={{ borderLeft: `3px solid ${sm.color}`, background: 'rgba(9, 29, 46, 0.4)', padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
+                            <div key={f._id} className="glass-card-premium" style={{
+                                borderLeft: `4px solid ${sm.color}`,
+                                background: '#0d111b',
+                                padding: '1.5rem',
+                                transition: 'all 0.2s',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                                onMouseEnter={el => { el.currentTarget.style.boxShadow = `0 12px 25px ${sm.bg}`; }}
+                                onMouseLeave={el => { el.currentTarget.style.boxShadow = 'none'; }}
+                            >
+                                <div style={{ position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', background: `radial-gradient(circle, ${sm.bg} 0%, transparent 70%)`, opacity: 0.5, pointerEvents: 'none' }} />
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', flexWrap: 'wrap', position: 'relative' }}>
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: sm.bg, border: `1px solid ${sm.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900, color: sm.color }}>
                                                 {(f.name || 'A').charAt(0).toUpperCase()}
                                             </div>
-                                            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{f.name || 'Anonymous'}</span>
-                                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>{new Date(f.createdAt).toLocaleDateString()}</span>
-                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'white' }}>{f.name || 'Anonymous Member'}</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.65rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.06)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                 {f.category?.replace('_', ' ')}
                                             </span>
-                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem', borderRadius: '1rem', background: sm.bg, color: sm.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', border: `1px solid ${sm.border}` }}>
+                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.65rem', borderRadius: '1rem', background: sm.bg, color: sm.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', border: `1px solid ${sm.border}` }}>
                                                 {sm.label}
                                             </span>
                                         </div>
-                                        <p style={{ margin: 0, lineHeight: 1.65, fontSize: '0.92rem', color: 'rgba(255,255,255,0.85)' }}>{f.message}</p>
+                                        <p style={{ margin: 0, lineHeight: 1.6, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{f.message}</p>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', minWidth: '130px' }}>
+                                    
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', minWidth: '220px', justifyContent: 'flex-end' }}>
                                         <select
                                             value={f.status}
                                             onChange={(e) => handleStatusUpdate(f._id, e.target.value)}
+                                            className="modern-input"
                                             style={{
-                                                width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.78rem', fontWeight: 700,
-                                                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '0.5rem', color: 'white', outline: 'none', cursor: 'pointer'
+                                                padding: '0.45rem 1rem', fontSize: '0.75rem', fontWeight: 800, width: '120px', border: '1px solid rgba(255,255,255,0.06)'
                                             }}
                                         >
-                                            <option value="new">New</option>
-                                            <option value="read">Read</option>
-                                            <option value="resolved">Resolved</option>
+                                            <option value="new">Mark New</option>
+                                            <option value="read">Mark Read</option>
+                                            <option value="resolved">Mark Resolved</option>
                                         </select>
                                         <button
                                             onClick={() => handleDelete(f._id)}
-                                            style={{ background: 'transparent', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.75rem', borderRadius: '0.4rem', transition: 'all 0.2s' }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.1)'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                            className="btn"
+                                            style={{
+                                                background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', color: '#f87171',
+                                                cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem', borderRadius: '0.5rem', transition: 'all 0.2s', fontWeight: 800
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248, 113, 113, 0.15)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; }}
                                         >
                                             <Trash2 size={13} /> Delete
                                         </button>

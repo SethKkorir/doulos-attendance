@@ -801,9 +801,9 @@ const MembersTab = ({
             {editingMember && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
+                    background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', zIndex: 110, padding: '2rem 1rem', overflowY: 'auto'
                 }} onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', padding: '2.5rem 2rem', background: '#0d111b' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
@@ -1112,15 +1112,14 @@ const MembersTab = ({
             {showBulkListTool && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110,
-                    backdropFilter: 'blur(10px)'
-                }}>
+                    background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', zIndex: 110,
+                    backdropFilter: 'blur(10px)', padding: '2rem 1rem', overflowY: 'auto'
+                }} onClick={() => setShowBulkListTool(false)}>
                     <div className="glass-panel" style={{
-                        width: '90%', maxWidth: '500px', padding: '2rem',
-                        background: '#0c1a29', borderRadius: '1.5rem',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        width: '100%', maxWidth: '500px', padding: '2.5rem 2rem',
+                        background: '#0d111b', borderRadius: '1.5rem',
                         animation: 'slideUp 0.3s ease-out'
-                    }}>
+                    }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                                 <ListChecks size={24} color="#1da6d9" />

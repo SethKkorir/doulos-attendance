@@ -605,37 +605,52 @@ const TrainingsTab = ({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
                 <h3 style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Training History</h3>
-                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem' }}>
                     <button onClick={() => setTrainingSemesterFilter('Current')}
-                        style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === 'Current' ? '#34d399' : 'transparent', color: trainingSemesterFilter === 'Current' ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
-                        Current
-                    </button>
+                        style={{
+                            padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                            background: trainingSemesterFilter === 'Current' ? 'rgba(52, 211, 153, 0.12)' : 'transparent',
+                            color: trainingSemesterFilter === 'Current' ? '#34d399' : 'rgba(255,255,255,0.4)',
+                            border: trainingSemesterFilter === 'Current' ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid transparent',
+                            fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
+                        }}
+                    >Current</button>
                     {semesters.filter(s => s !== currentSem).map(s => (
                         <button key={s} onClick={() => setTrainingSemesterFilter(s)}
-                            style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === s ? '#34d399' : 'transparent', color: trainingSemesterFilter === s ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
-                            {s}
-                        </button>
+                            style={{
+                                padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                                background: trainingSemesterFilter === s ? 'rgba(52, 211, 153, 0.12)' : 'transparent',
+                                color: trainingSemesterFilter === s ? '#34d399' : 'rgba(255,255,255,0.4)',
+                                border: trainingSemesterFilter === s ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid transparent',
+                                fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                        >{s}</button>
                     ))}
                     <button onClick={() => setTrainingSemesterFilter('All')}
-                        style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === 'All' ? '#34d399' : 'transparent', color: trainingSemesterFilter === 'All' ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
-                        All Time
-                    </button>
+                        style={{
+                            padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                            background: trainingSemesterFilter === 'All' ? 'rgba(52, 211, 153, 0.12)' : 'transparent',
+                            color: trainingSemesterFilter === 'All' ? '#34d399' : 'rgba(255,255,255,0.4)',
+                            border: trainingSemesterFilter === 'All' ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid transparent',
+                            fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
+                        }}
+                    >All Time</button>
                 </div>
             </div>
 
             {filteredHistory.length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No archived trainings.</div>
             ) : (
-                <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
                     {filteredHistory.map(t => renderTrainingCard(t))}
                 </div>
             )}
 
             {/* QR Modal for Training */}
             {selectedTraining && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '3rem 1rem' }}
                     onClick={() => setSelectedTraining(null)}>
-                    <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
+                    <div className="glass-card-premium" style={{ padding: '2.5rem 2rem', textAlign: 'center', maxWidth: '400px', width: '100%', background: '#0d111b' }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ marginBottom: '0.5rem' }}>Scan Training QR</h3>
 
                         <div className="training-qr-container" style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '1rem' }}>
@@ -662,7 +677,7 @@ const TrainingsTab = ({
                             </button>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                style={{ background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
                                 onClick={() => {
                                     const link = `${window.location.origin}/check-in/${selectedTraining.code}`;
                                     navigator.clipboard.writeText(link);
@@ -690,8 +705,8 @@ const TrainingsTab = ({
 
             {/* Insights Modal */}
             {insightMeeting && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setInsightMeeting(null)}>
-                    <div style={{ width: '100%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
+                    <div style={{ width: '100%', maxWidth: '1000px' }} onClick={e => e.stopPropagation()}>
                         <MeetingInsights 
                             meeting={insightMeeting} 
                             onClose={() => setInsightMeeting(null)} 

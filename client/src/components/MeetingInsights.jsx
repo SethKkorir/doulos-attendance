@@ -80,10 +80,9 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
     });
 
     return (
-        <div className="glass-panel" style={{
+        <div className="glass-card-premium" style={{
             padding: '2.5rem',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-            border: '1px solid rgba(124, 58, 237, 0.5)',
+            background: '#0d111b',
             animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
         }}>
@@ -206,7 +205,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '2rem', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                <div className="glass-panel" style={{ background: '#090c14', padding: '2rem', borderRadius: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Ghost size={20} color="#f87171" />
@@ -222,13 +221,14 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                             </div>
                         ) : filteredAbsent.map(m => (
                             <div key={m._id} style={{
-                                padding: '1.25rem',
-                                background: 'rgba(239, 68, 68, 0.04)',
-                                border: '1px solid rgba(239, 68, 68, 0.1)',
-                                borderRadius: '1.25rem',
+                                padding: '1rem 1.25rem',
+                                background: 'rgba(239, 68, 68, 0.02)',
+                                border: '1px solid rgba(239, 68, 68, 0.08)',
+                                borderRadius: '12px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                transition: 'all 0.2s'
                             }}>
                                 <div>
                                     <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{m.name}</div>
@@ -266,7 +266,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                     </div>
                 </div>
 
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '2rem', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                <div className="glass-panel" style={{ background: '#090c14', padding: '2rem', borderRadius: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Users size={20} color="#4ade80" />
@@ -282,13 +282,14 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                             </div>
                         ) : filteredPresent.map(a => (
                             <div key={a._id} style={{
-                                padding: '1.25rem',
-                                background: 'rgba(74, 222, 128, 0.04)',
-                                border: '1px solid rgba(74, 222, 128, 0.1)',
-                                borderRadius: '1.25rem',
+                                padding: '1rem 1.25rem',
+                                background: 'rgba(74, 222, 128, 0.02)',
+                                border: '1px solid rgba(74, 222, 128, 0.08)',
+                                borderRadius: '12px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                transition: 'all 0.2s'
                             }}>
                                 <div>
                                     <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{a.responses?.studentName || 'Member'}</div>
