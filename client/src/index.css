@@ -918,4 +918,36 @@ table td {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(37, 170, 225, 0.45);
-}
+}
+
+/* System Observability Custom Animations */
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(15px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.slide-in-activity {
+  animation: slideInFromBottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.slide-out-activity {
+  animation: slideOutToRight 0.45s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+}
+

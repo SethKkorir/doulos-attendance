@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { 
     Users, FileSpreadsheet, ChevronDown, Plus, Search, RotateCcw, 
     CheckCircle, Archive, GraduationCap, Trash2, ListChecks, X, Trophy, 
-    Calendar, MapPin, Lightbulb, Settings as SettingsIcon
+    Calendar, MapPin, Lightbulb, Settings as SettingsIcon,
+    Unlock, Award, Activity, ShieldAlert, Clock, User
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
@@ -825,44 +826,100 @@ const MembersTab = ({
                 }} onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }}>
                     <div className="glass-panel" style={{ 
                         width: '100%', 
-                        maxWidth: '700px', 
+                        maxWidth: '850px', 
                         maxHeight: '90vh',
                         overflowY: 'auto',
-                        padding: '2.5rem 2rem', 
+                        padding: '2rem', 
                         background: '#090d16',
                         borderRadius: '1.25rem',
                         border: '1px solid rgba(29, 166, 217, 0.2)',
                         boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
                         animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                     }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
-                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                                    <p style={{ color: 'var(--color-text-dim)', margin: 0 }}>{editingMember.studentRegNo} • {editingMember.campus}</p>
-                                    {memberInsights?.history?.[0] && !loadingInsights && (
-                                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', color: 'var(--color-text-dim)' }}>
-                                            Last seen: {new Date(memberInsights.history[0].date).toLocaleDateString()}
-                                        </span>
-                                    )}
+                        
+                        {/* High-End Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            {editingMember._id === 'NEW' ? (
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#1da6d9', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Plus size={24} /> Register New Member
+                                    </h2>
+                                    <p style={{ color: 'rgba(255,255,255,0.4)', margin: '0.25rem 0 0 0', fontSize: '0.85rem', fontWeight: 600 }}>Create a new member profile in the registry</p>
                                 </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    {/* Glowing Ring Avatar */}
+                                    <div style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontWeight: 900,
+                                        fontSize: '1.35rem',
+                                        color: 'white',
+                                        flexShrink: 0,
+                                        background: editingMember.memberType === 'Douloid' ? 'linear-gradient(135deg, #b45309, #d97706, #fbbf24)' :
+                                                    editingMember.memberType === 'Recruit' ? 'linear-gradient(135deg, #0369a1, #0284c7, #38bdf8)' :
+                                                    editingMember.memberType === 'Exempted' ? 'linear-gradient(135deg, #be123c, #e11d48, #fb7185)' :
+                                                    'linear-gradient(135deg, #475569, #64748b, #cbd5e1)',
+                                        boxShadow: editingMember.memberType === 'Douloid' ? '0 0 15px rgba(251, 191, 36, 0.3)' :
+                                                   editingMember.memberType === 'Recruit' ? '0 0 15px rgba(56, 189, 248, 0.3)' :
+                                                   editingMember.memberType === 'Exempted' ? '0 0 15px rgba(251, 113, 133, 0.3)' :
+                                                   '0 0 15px rgba(203, 213, 225, 0.1)',
+                                        border: editingMember.memberType === 'Douloid' ? '2px solid #fbbf24' :
+                                                editingMember.memberType === 'Recruit' ? '2px solid #38bdf8' :
+                                                editingMember.memberType === 'Exempted' ? '2px solid #fb7185' :
+                                                '2px solid #cbd5e1'
+                                    }}>
+                                        {(editingMember.name || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>{editingMember.name}</h2>
+                                        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{editingMember.studentRegNo} • {editingMember.campus === 'Valley Road' ? 'Nairobi' : editingMember.campus}</span>
+                                            {memberInsights?.history?.[0] && !loadingInsights && (
+                                                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '1rem', color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700 }}>
+                                                    <Clock size={11} /> Seen {new Date(memberInsights.history[0].date).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginLeft: 'auto' }}>
                                 {['developer', 'superadmin', 'admin', 'Admin'].includes(userRole) && editingMember._id !== 'NEW' && (
                                     <button
                                         className="btn"
                                         onClick={() => setIsEditingMemberProfile(!isEditingMemberProfile)}
                                         style={{
                                             padding: '0.5rem 1rem',
-                                            background: isEditingMemberProfile ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.05)',
-                                            color: isEditingMemberProfile ? 'white' : 'var(--color-text-dim)',
-                                            fontWeight: 700, borderRadius: '0.5rem'
+                                            background: isEditingMemberProfile ? 'rgba(29, 166, 217, 0.2)' : 'rgba(255,255,255,0.05)',
+                                            color: isEditingMemberProfile ? '#1da6d9' : 'rgba(255,255,255,0.6)',
+                                            border: isEditingMemberProfile ? '1px solid rgba(29,166,217,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                                            fontWeight: 800, borderRadius: '0.6rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s'
                                         }}
                                     >
+                                        {isEditingMemberProfile ? <Activity size={14} /> : <User size={14} />}
                                         {isEditingMemberProfile ? 'View Insights' : 'Edit Profile'}
                                     </button>
                                 )}
-                                <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }} style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem' }}>Close</button>
+                                <button className="btn" 
+                                    onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }} 
+                                    style={{ 
+                                        padding: '0.5rem 1rem', 
+                                        borderRadius: '0.6rem', 
+                                        background: 'rgba(239, 68, 68, 0.1)', 
+                                        color: '#f87171', 
+                                        border: '1px solid rgba(239,68,68,0.15)',
+                                        fontWeight: 800,
+                                        fontSize: '0.82rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Close
+                                </button>
                             </div>
                         </div>
 
@@ -979,160 +1036,333 @@ const MembersTab = ({
                         ) : (
                             <div>
                                 {loadingInsights ? (
-                                    <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>Analyzing attendance data...</div>
+                                    <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                                        <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '36px', height: '36px', borderTopColor: '#25AAE1' }}></div>
+                                        Analyzing student fellowship analytics...
+                                    </div>
                                 ) : memberInsights ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                        {/* Stats Cards */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-                                            <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Points</div>
-                                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFD700' }}>{editingMember.totalPoints || 0}</div>
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+                                        gap: '2rem',
+                                        alignItems: 'start'
+                                    }}>
+                                        {/* Left Column: Stats & Administrative Actions */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                            
+                                            {/* Subtitle */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1da6d9', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                <Activity size={14} /> Performance Dashboard
                                             </div>
-                                            <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Attended</div>
-                                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.physicalAttended}{memberInsights.stats.exemptedCount > 0 ? ` + ${memberInsights.stats.exemptedCount}E` : ''} / {memberInsights.stats.totalMeetings}</div>
+
+                                            {/* Stats Cards Row */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                                                {/* Points Card */}
+                                                <div className="glass-card-premium" style={{ padding: '0.85rem 0.5rem', textAlign: 'center', background: 'rgba(251, 191, 36, 0.03)', border: '1px solid rgba(251, 191, 36, 0.12)', borderRadius: '0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ color: 'rgba(251, 191, 36, 0.7)', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', marginBottom: '0.25rem' }}>
+                                                        <Trophy size={11} /> Points
+                                                    </div>
+                                                    <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24', letterSpacing: '-0.5px' }}>{editingMember.totalPoints || 0}</div>
+                                                </div>
+
+                                                {/* Attended Card */}
+                                                <div className="glass-card-premium" style={{ padding: '0.85rem 0.5rem', textAlign: 'center', background: 'rgba(37, 170, 225, 0.03)', border: '1px solid rgba(37, 170, 225, 0.12)', borderRadius: '0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ color: 'rgba(37, 170, 225, 0.7)', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', marginBottom: '0.25rem' }}>
+                                                        <ListChecks size={11} /> Attended
+                                                    </div>
+                                                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '-0.5px' }}>
+                                                        {memberInsights.stats.physicalAttended}
+                                                        {memberInsights.stats.exemptedCount > 0 && <span style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 700 }}>+{memberInsights.stats.exemptedCount}E</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.15rem', fontWeight: 700 }}>of {memberInsights.stats.totalMeetings} meetings</div>
+                                                </div>
+
+                                                {/* Consistency Card */}
+                                                <div className="glass-card-premium" style={{ padding: '0.85rem 0.5rem', textAlign: 'center', background: memberInsights.stats.percentage > 75 ? 'rgba(74, 222, 128, 0.03)' : 'rgba(234, 179, 8, 0.03)', border: memberInsights.stats.percentage > 75 ? '1px solid rgba(74, 222, 128, 0.12)' : '1px solid rgba(234, 179, 8, 0.12)', borderRadius: '0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ color: memberInsights.stats.percentage > 75 ? 'rgba(74, 222, 128, 0.7)' : 'rgba(234, 179, 8, 0.7)', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', marginBottom: '0.25rem' }}>
+                                                        <Award size={11} /> Ratio
+                                                    </div>
+                                                    <div style={{ fontSize: '1.4rem', fontWeight: 900, color: memberInsights.stats.percentage > 75 ? '#4ade80' : memberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444', letterSpacing: '-0.5px' }}>
+                                                        {memberInsights.stats.percentage}%
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
-                                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: memberInsights.stats.percentage > 75 ? '#4ade80' : '#facc15' }}>{memberInsights.stats.percentage}%</div>
-                                                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '0.5rem', overflow: 'hidden' }}>
+
+                                            {/* Micro-Progress Bar for Ratio */}
+                                            <div className="glass-card-premium" style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '0.75rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.35rem' }}>
+                                                    <span>CONSISTENCY INDEX</span>
+                                                    <span style={{ color: memberInsights.stats.percentage > 75 ? '#4ade80' : memberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444' }}>
+                                                        {memberInsights.stats.percentage > 75 ? 'EXCELLENT' : memberInsights.stats.percentage > 45 ? 'MODERATE' : 'CRITICAL'}
+                                                    </span>
+                                                </div>
+                                                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)' }}>
                                                     <div style={{
                                                         width: `${Math.min(memberInsights.stats.percentage, 100)}%`,
                                                         height: '100%',
-                                                        background: memberInsights.stats.percentage > 75 ? '#4ade80' : memberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444',
-                                                        transition: 'width 0.5s ease'
+                                                        borderRadius: '4px',
+                                                        background: memberInsights.stats.percentage > 75 ? 'linear-gradient(90deg, #22c55e, #4ade80)' : 
+                                                                    memberInsights.stats.percentage > 40 ? 'linear-gradient(90deg, #eab308, #facc15)' : 
+                                                                    'linear-gradient(90deg, #dc2626, #ef4444)',
+                                                        transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
                                                     }}></div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* Attendance Trend */}
-                                        <div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                                <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Attendance Trend (Last 20)</h4>
-                                                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        <div style={{ width: '8px', height: '8px', background: '#25AAE1', borderRadius: '2px' }}></div> Present
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        <div style={{ width: '8px', height: '8px', background: '#FFD700', borderRadius: '2px' }}></div> Exempt
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        <div style={{ width: '8px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}></div> Absent
-                                                    </div>
+                                            {/* Category Indicator Card */}
+                                            <div className="glass-card-premium" style={{ padding: '0.85rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.75rem' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Profile Category</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'white', fontWeight: 800, marginTop: '0.15rem' }}>Doulos Membership Level</div>
+                                                </div>
+                                                <span style={{
+                                                    padding: '0.35rem 0.85rem',
+                                                    borderRadius: '1rem',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 900,
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px',
+                                                    background: editingMember.memberType === 'Douloid' ? 'rgba(251, 191, 36, 0.08)' :
+                                                                editingMember.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
+                                                                editingMember.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
+                                                                'rgba(255,255,255,0.04)',
+                                                    color: editingMember.memberType === 'Douloid' ? '#FFD700' :
+                                                           editingMember.memberType === 'Recruit' ? '#25AAE1' :
+                                                           editingMember.memberType === 'Exempted' ? '#f87171' :
+                                                           'rgba(255,255,255,0.5)',
+                                                    border: editingMember.memberType === 'Douloid' ? '1px solid rgba(251, 191, 36, 0.15)' :
+                                                            editingMember.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
+                                                            editingMember.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
+                                                            '1px solid rgba(255,255,255,0.08)'
+                                                }}>
+                                                    {editingMember.memberType}
+                                                </span>
+                                            </div>
+
+                                            {/* Administrative Actions Panel */}
+                                            <div className="glass-card-premium" style={{ 
+                                                padding: '1.25rem', 
+                                                background: 'rgba(2, 10, 20, 0.6)', 
+                                                border: '1px solid rgba(29, 166, 217, 0.12)', 
+                                                borderRadius: '0.9rem',
+                                                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.02)'
+                                            }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#1da6d9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1rem' }}>
+                                                    <ShieldAlert size={13} /> Admin Actions Console
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                                    
+                                                    {/* Reset Device / Unlock */}
+                                                    <button
+                                                        className="btn"
+                                                        style={{
+                                                            width: '100%', 
+                                                            background: 'rgba(37, 170, 225, 0.08)', 
+                                                            color: '#25AAE1',
+                                                            border: '1px solid rgba(37, 170, 225, 0.15)', 
+                                                            padding: '0.65rem',
+                                                            borderRadius: '0.6rem', 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            justifyContent: 'center', 
+                                                            gap: '0.5rem', 
+                                                            fontWeight: 800,
+                                                            fontSize: '0.8rem',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onClick={() => handleResetDevice(editingMember._id)}
+                                                    >
+                                                        <Unlock size={14} /> Unlock Device Link
+                                                    </button>
+
+                                                    {/* Graduate Recruit */}
+                                                    {editingMember.memberType === 'Recruit' && (
+                                                        <button
+                                                            className="btn"
+                                                            style={{
+                                                                width: '100%', 
+                                                                background: 'rgba(167, 139, 250, 0.08)', 
+                                                                color: '#a78bfa',
+                                                                border: '1px solid rgba(167, 139, 250, 0.15)', 
+                                                                padding: '0.65rem',
+                                                                borderRadius: '0.6rem', 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                justifyContent: 'center', 
+                                                                gap: '0.5rem', 
+                                                                fontWeight: 800,
+                                                                fontSize: '0.8rem',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                            onClick={() => handleGraduateMember(editingMember._id)}
+                                                        >
+                                                            <GraduationCap size={14} /> Graduate to Douloid
+                                                        </button>
+                                                    )}
+
+                                                    {/* Reset Points */}
+                                                    {['developer', 'superadmin'].includes(userRole) && (
+                                                        <button
+                                                            className="btn"
+                                                            style={{
+                                                                width: '100%', 
+                                                                background: 'rgba(234, 179, 8, 0.08)', 
+                                                                color: '#eab308',
+                                                                border: '1px solid rgba(234, 179, 8, 0.15)', 
+                                                                padding: '0.65rem',
+                                                                borderRadius: '0.6rem', 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                justifyContent: 'center', 
+                                                                gap: '0.5rem', 
+                                                                fontWeight: 800,
+                                                                fontSize: '0.8rem',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                            onClick={() => handleResetMemberPoints(editingMember._id)}
+                                                        >
+                                                            <RotateCcw size={14} /> Reset Points Balance
+                                                        </button>
+                                                    )}
+
+                                                    {/* Delete Member */}
+                                                    {['developer', 'superadmin'].includes(userRole) && (
+                                                        <button
+                                                            className="btn"
+                                                            style={{
+                                                                width: '100%', 
+                                                                background: 'rgba(239, 68, 68, 0.08)', 
+                                                                color: '#ef4444',
+                                                                border: '1px solid rgba(239, 68, 68, 0.15)', 
+                                                                padding: '0.65rem',
+                                                                borderRadius: '0.6rem', 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                justifyContent: 'center', 
+                                                                gap: '0.5rem', 
+                                                                fontWeight: 800,
+                                                                fontSize: '0.8rem',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                            onClick={() => handleDeleteMember(editingMember._id, editingMember.name)}
+                                                        >
+                                                            <Trash2 size={14} /> Delete Profile Permanently
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '100px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
-                                                {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.isExempted ? 'Exempted' : h.attended ? 'Present' : 'Absent'}`}
-                                                        style={{
-                                                            flex: 1,
-                                                            height: (h.attended || h.isExempted) ? '100%' : '15%',
-                                                            background: h.isExempted ? '#FFD700' : h.attended ? '#25AAE1' : 'rgba(255,255,255,0.1)',
-                                                            borderRadius: '2px',
-                                                            transition: 'all 0.3s ease',
-                                                            opacity: (h.attended || h.isExempted) ? 1 : 0.3
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
+
                                         </div>
 
-                                        {/* Category Display */}
-                                        <div className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Profile Category</h4>
+                                        {/* Right Column: Attendance Trends & History Bounded Panel */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                            
+                                            {/* Subtitle */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#a78bfa', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                <Calendar size={14} /> Activity Metrics
                                             </div>
-                                            <span style={{
-                                                padding: '0.4rem 1rem',
-                                                borderRadius: '2rem',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 700,
-                                                background: editingMember.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(167, 139, 250, 0.1)',
-                                                color: editingMember.memberType === 'Exempted' ? '#f87171' : '#a78bfa',
-                                                border: editingMember.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(167, 139, 250, 0.2)'
-                                            }}>
-                                                {editingMember.memberType.toUpperCase()}
-                                            </span>
-                                        </div>
 
-                                        {/* History List */}
-                                        <div>
-                                            <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Meeting History</h4>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                {memberInsights.history.slice(0, 10).map((h, idx) => (
-                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
-                                                        <span>{h.name}</span>
-                                                        <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-                                                            {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
-                                                        </span>
+                                            {/* Attendance Trend Chart Card */}
+                                            <div className="glass-card-premium" style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.9rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                    <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)' }}>ATTENDANCE TREND (LAST 20)</h4>
+                                                    <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.65rem', fontWeight: 700 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#25AAE1' }}>
+                                                            <div style={{ width: '6px', height: '6px', background: '#25AAE1', borderRadius: '50%' }}></div> Present
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#fbbf24' }}>
+                                                            <div style={{ width: '6px', height: '6px', background: '#fbbf24', borderRadius: '50%' }}></div> Exempt
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: 'rgba(255,255,255,0.3)' }}>
+                                                            <div style={{ width: '6px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div> Absent
+                                                        </div>
                                                     </div>
-                                                ))}
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '90px', background: 'rgba(2, 10, 20, 0.4)', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid rgba(255,255,255,0.02)' }}>
+                                                    {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.isExempted ? 'Exempted' : h.attended ? 'Present' : 'Absent'}`}
+                                                            style={{
+                                                                flex: 1,
+                                                                height: (h.attended || h.isExempted) ? '100%' : '15%',
+                                                                background: h.isExempted ? 'linear-gradient(0deg, #d97706, #fbbf24)' : 
+                                                                            h.attended ? 'linear-gradient(0deg, #0284c7, #25AAE1)' : 
+                                                                            'rgba(255,255,255,0.06)',
+                                                                borderRadius: '3px',
+                                                                transition: 'all 0.3s ease',
+                                                                opacity: (h.attended || h.isExempted) ? 1 : 0.4,
+                                                                boxShadow: h.attended ? '0 0 6px rgba(37,170,225,0.2)' : h.isExempted ? '0 0 6px rgba(251,191,36,0.2)' : 'none'
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
                                             </div>
+
+                                            {/* Meeting History Bounded Card */}
+                                            <div className="glass-card-premium" style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.9rem' }}>
+                                                <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>MEETING ATTENDANCE TIMELINE</h4>
+                                                
+                                                <div 
+                                                    className="custom-scrollbar"
+                                                    style={{ 
+                                                        display: 'flex', 
+                                                        flexDirection: 'column', 
+                                                        gap: '0.5rem',
+                                                        maxHeight: '260px',
+                                                        overflowY: 'auto',
+                                                        paddingRight: '0.4rem'
+                                                    }}
+                                                >
+                                                    {memberInsights.history.length === 0 ? (
+                                                        <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', fontWeight: 600 }}>
+                                                            No meetings recorded in history.
+                                                        </div>
+                                                    ) : (
+                                                        memberInsights.history.map((h, idx) => (
+                                                            <div 
+                                                                key={idx} 
+                                                                style={{ 
+                                                                    display: 'flex', 
+                                                                    justifyContent: 'space-between', 
+                                                                    alignItems: 'center',
+                                                                    padding: '0.65rem 0.85rem', 
+                                                                    background: 'rgba(2, 10, 20, 0.3)', 
+                                                                    borderRadius: '0.5rem', 
+                                                                    fontSize: '0.82rem',
+                                                                    border: '1px solid rgba(255,255,255,0.02)',
+                                                                    borderLeft: h.isExempted ? '3px solid #fbbf24' : h.attended ? '3px solid #22c55e' : '3px solid #ef4444',
+                                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                                                    <span style={{ fontWeight: 800, color: 'white' }}>{h.name}</span>
+                                                                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{new Date(h.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                                </div>
+                                                                <span style={{ 
+                                                                    fontSize: '0.65rem',
+                                                                    fontWeight: 900,
+                                                                    letterSpacing: '0.5px',
+                                                                    padding: '0.15rem 0.45rem',
+                                                                    borderRadius: '0.25rem',
+                                                                    background: h.isExempted ? 'rgba(251, 191, 36, 0.08)' : h.attended ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                                                    color: h.isExempted ? '#fbbf24' : h.attended ? '#4ade80' : '#f87171',
+                                                                    border: h.isExempted ? '1px solid rgba(251, 191, 36, 0.12)' : h.attended ? '1px solid rgba(34, 197, 94, 0.12)' : '1px solid rgba(239, 68, 68, 0.12)'
+                                                                }}>
+                                                                    {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
+                                                                </span>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
                                 ) : (
                                     <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
                                 )}
-                                
-                                {/* Action Buttons */}
-                                <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    <button
-                                        className="btn"
-                                        style={{
-                                            width: '100%', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1',
-                                            border: '1px solid rgba(37, 170, 225, 0.2)', padding: '0.75rem',
-                                            borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 700
-                                        }}
-                                        onClick={() => handleResetDevice(editingMember._id)}
-                                    >
-                                        <RotateCcw size={16} /> Unlock Device / Reset Link
-                                    </button>
-
-                                    {editingMember.memberType === 'Recruit' && (
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                width: '100%', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa',
-                                                border: '1px solid rgba(167, 139, 250, 0.2)', padding: '0.75rem',
-                                                borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 700
-                                            }}
-                                            onClick={() => handleGraduateMember(editingMember._id)}
-                                        >
-                                            <GraduationCap size={16} /> Graduate / Promote
-                                        </button>
-                                    )}
-
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                width: '100%', background: 'rgba(234, 179, 8, 0.1)', color: '#eab308',
-                                                border: '1px solid rgba(234, 179, 8, 0.2)', padding: '0.75rem',
-                                                borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 700
-                                            }}
-                                            onClick={() => handleResetMemberPoints(editingMember._id)}
-                                        >
-                                            <RotateCcw size={16} /> Reset Points (Set to 0)
-                                        </button>
-                                    )}
-
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                                                border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.75rem',
-                                                borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 700
-                                            }}
-                                            onClick={() => handleDeleteMember(editingMember._id, editingMember.name)}
-                                        >
-                                            <Trash2 size={16} /> Delete Member Permanently
-                                        </button>
-                                    )}
-                                </div>
                             </div>
                         )}
                     </div>

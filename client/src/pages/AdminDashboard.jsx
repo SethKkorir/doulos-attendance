@@ -6,7 +6,8 @@ import {
     ShieldAlert, RotateCcw, ChevronDown, Check, X,
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
-    GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star
+    GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star,
+    Activity
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
@@ -18,6 +19,7 @@ import MeetingsTab from '../components/dashboard/MeetingsTab';
 import TrainingsTab from '../components/dashboard/TrainingsTab';
 import MembersTab from '../components/dashboard/MembersTab';
 import SystemSettingsTab from '../components/dashboard/SystemSettingsTab';
+import SystemObservabilityTab from '../components/dashboard/SystemObservabilityTab';
 
 const AdminDashboard = () => {
     const location = useLocation();
@@ -397,6 +399,16 @@ const AdminDashboard = () => {
                                 {t.label}
                             </button>
                         ))}
+                        {['superadmin', 'developer'].includes(userRole?.toLowerCase()) && (
+                            <button
+                                onClick={() => setActiveTab('observability')}
+                                className={`sidebar-nav-btn ${activeTab === 'observability' ? 'active' : ''}`}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === 'observability' ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                            >
+                                <Activity size={17} />
+                                System Observability
+                            </button>
+                        )}
                     </nav>
 
                     {/* Glowing CTA Upgrade Card like mockup */}
@@ -445,7 +457,8 @@ const AdminDashboard = () => {
                                  activeTab === 'events' ? 'Events Scheduler' : 
                                  activeTab === 'feedback' ? 'Community Feedback' : 
                                  activeTab === 'admins' ? 'Staff Administrators' : 
-                                 activeTab === 'system' ? 'System Configurations' : 'Management Suite'}
+                                 activeTab === 'system' ? 'System Configurations' : 
+                                 activeTab === 'observability' ? 'System Observability' : 'Management Suite'}
                             </h1>
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -531,6 +544,14 @@ const AdminDashboard = () => {
                             onDownload={null}
                             onDownloadCSV={downloadCSV}
                             onDownloadCumulativeCSV={downloadCumulativeCSV}
+                        />
+                    ) : activeTab === 'observability' ? (
+                        <SystemObservabilityTab
+                            members={members}
+                            api={api}
+                            setMsg={setMsg}
+                            currentSemester={currentSemester}
+                            isGuest={isGuest}
                         />
                     ) : null}
                 </main>
