@@ -639,24 +639,19 @@ const MeetingsTab = ({
                             <X size={20} />
                         </button>
                     </div>
-                    <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
-                        <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
+                    <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1rem' }}>
+                        <div style={{ gridColumn: 'span 12', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.25rem', marginBottom: '0.25rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <SettingsIcon size={14} /> Session Details
                             </span>
                         </div>
                         
-                        <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
+                        <div style={{ gridColumn: 'span 8' }} className="form-group-premium">
                             <label>Meeting Name</label>
                             <input className="modern-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Wednesday Chapel" required />
                         </div>
                         
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
-                            <input type="date" className="modern-input" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
-                        </div>
-                        
-                        <div className="form-group-premium">
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
                             <select className="modern-input" value={formData.campus} onChange={e => setFormData({ ...formData, campus: e.target.value })}>
                                 <option value="Athi River">Athi River</option>
@@ -664,84 +659,59 @@ const MeetingsTab = ({
                             </select>
                         </div>
                         
-                        <div className="form-group-premium">
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
+                            <input type="date" className="modern-input" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
+                        </div>
+                        
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> Start Time</label>
                             <input type="time" className="modern-input" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
                         </div>
                         
-                        <div className="form-group-premium">
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
                             <input type="time" className="modern-input" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
                         </div>
-                        
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><ClipboardCheck size={14} /> Reporting Semester</label>
-                            <select className="modern-input" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}>
-                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
-                                <option value="SEP-DEC 2026">SEP-DEC 2026</option>
-                            </select>
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><ListChecks size={14} /> Category</label>
-                            <select className="modern-input" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                                <option value="Meeting">Standard Meeting</option>
-                                <option value="Training">Doulos Training</option>
-                            </select>
-                        </div>
 
-                        <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
+                        <div style={{ gridColumn: 'span 12' }} className="form-group-premium">
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day</label>
                             <textarea
                                 className="modern-input"
-                                style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
+                                style={{ width: '100%', minHeight: '44px', height: '44px', resize: 'vertical' }}
                                 value={formData.questionOfDay}
                                 onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
                                 placeholder="e.g. What are you most grateful for this week?"
                             />
                         </div>
 
-                        <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
+                        <div style={{ gridColumn: 'span 12', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.25rem', marginTop: '0.25rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <MapPin size={14} /> Location & Geofencing
                             </span>
                         </div>
 
-                        <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
+                        <div style={{ gridColumn: 'span 8' }} className="form-group-premium">
                             <label>Location Name</label>
                             <input className="modern-input" value={formData.location.name} onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })} placeholder="e.g. Daystar University, Athi River Chapel" required />
                         </div>
 
-                        <div className="form-group-premium">
-                            <label>Latitude</label>
-                            <input type="number" step="any" className="modern-input" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.448" />
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label>Longitude</label>
-                            <input type="number" step="any" className="modern-input" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="37.015" />
-                        </div>
-
-                        <div className="form-group-premium">
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
                             <label>Geofence Radius (meters)</label>
                             <input type="number" className="modern-input" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} placeholder="200" />
                         </div>
 
-                        <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(29, 166, 217, 0.05)', border: '1px solid rgba(29, 166, 217, 0.15)', borderRadius: '1rem', padding: '1.25rem', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <MapPin size={16} /> GPS Geofence Link
-                                </span>
-                                {formData.location.latitude && formData.location.longitude ? (
-                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                                        ✓ Coordinates captured: {formData.location.latitude.toFixed(5)}, {formData.location.longitude.toFixed(5)}
-                                    </span>
-                                ) : (
-                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
-                                        Capture the current coordinates for device check-in verification.
-                                    </span>
-                                )}
-                            </div>
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
+                            <label>Latitude</label>
+                            <input type="number" step="any" className="modern-input" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.448" />
+                        </div>
+                        
+                        <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
+                            <label>Longitude</label>
+                            <input type="number" step="any" className="modern-input" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="37.015" />
+                        </div>
+
+                        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: '2px' }}>
                             <button
                                 type="button"
                                 className="btn"
@@ -760,27 +730,33 @@ const MeetingsTab = ({
                                         }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
                                     }
                                 }}
-                                style={{ background: 'linear-gradient(135deg, rgba(29, 166, 217, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', border: '1px solid rgba(29, 166, 217, 0.3)', borderRadius: '0.75rem', padding: '0.6rem 1.25rem', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+                                style={{ 
+                                    background: 'linear-gradient(135deg, rgba(29, 166, 217, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', 
+                                    border: '1px solid rgba(29, 166, 217, 0.3)', 
+                                    borderRadius: '0.75rem', 
+                                    height: '46px',
+                                    color: 'white', 
+                                    fontWeight: 700, 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    gap: '0.5rem', 
+                                    transition: 'all 0.2s',
+                                    width: '100%'
+                                }}
                             >
-                                <MapPin size={16} /> Use Current GPS Position
+                                <MapPin size={16} /> Capture GPS
                             </button>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', gridColumn: '1 / -1' }}>
-                            <input
-                                type="checkbox"
-                                id="create-manual"
-                                checked={formData.allowManualOverride}
-                                onChange={e => setFormData({ ...formData, allowManualOverride: e.target.checked })}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#1da6d9' }}
-                            />
-                            <label htmlFor="create-manual" style={{ margin: 0, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
-                                Enable Admin-Only Manual Check-in (Remote/Internet Mode)
-                            </label>
-                        </div>
+                        {formData.location.latitude && formData.location.longitude && (
+                            <div style={{ gridColumn: 'span 12', fontSize: '0.72rem', color: '#1da6d9', fontWeight: 600, marginTop: '-0.25rem', paddingLeft: '0.25rem' }}>
+                                ✓ Coordinates captured: {formData.location.latitude.toFixed(5)}, {formData.location.longitude.toFixed(5)}
+                            </div>
+                        )}
 
-                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '0.75rem', fontWeight: 800, letterSpacing: '0.5px' }} disabled={importLoading}>
+                        <div style={{ gridColumn: 'span 12', marginTop: '0.5rem' }}>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.85rem', borderRadius: '0.75rem', fontWeight: 800, letterSpacing: '0.5px' }} disabled={importLoading}>
                                 {importLoading ? 'CREATING...' : 'CREATE MEETING SESSION'}
                             </button>
                         </div>
