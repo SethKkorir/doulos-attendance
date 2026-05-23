@@ -194,6 +194,20 @@ const CSS = `
     @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes popScale { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .sp-toast {
+        position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%);
+        padding: 0.7rem 1.4rem; border-radius: 2rem; font-size: 0.82rem; font-weight: 800;
+        display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        z-index: 9999; animation: toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4); pointer-events: none;
+        max-width: calc(100vw - 2rem);
+    }
+    .sp-toast.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); color: #4ade80; }
+    .sp-toast.error   { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
+    .sp-toast.info    { background: rgba(37,170,225,0.12); border: 1px solid rgba(37,170,225,0.3); color: #25AAE1; }
+    @media (min-width: 769px) { .sp-toast { bottom: 2rem; } }
     @media (max-width: 1100px) {
         .sp-right { display: none; }
     }
@@ -291,8 +305,14 @@ const StudentPortal = () => {
     const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
     const [newMemberType, setNewMemberType] = useState('Douloid');
     const [showRolloverWelcome, setShowRolloverWelcome] = useState(false);
+    const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'info' }
     const navigate = useNavigate();
     const tabContentRef = useRef(null);
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
 
     useEffect(() => {
         if (data) {
@@ -396,12 +416,12 @@ const StudentPortal = () => {
     const handleEnroll = async () => {
         setLoading(true);
         try {
-            await api.post('/members/enroll', { studentRegNo: data.studentRegNo, semester: data.currentSemester });
-            setData(prev => ({ ...prev, lastActiveSemester: data.currentSemester, alerts: prev.alerts.filter(a => a.type !== 'semester') }));
+            await api.post('/members/enroll', { studentRegNo: data.studentRegNo, semester: data.currentSemester, isActiveThisSemester: true });
+            setData(prev => ({ ...prev, lastActiveSemester: data.currentSemester, status: 'Active', alerts: prev.alerts.filter(a => a.type !== 'semester') }));
             setShowRolloverWelcome(false);
-            alert(`Great! You are now active for ${data.currentSemester}. 🌿`);
+            showToast(`Welcome to ${data.currentSemester}! You are now enrolled. 🌿`, 'success');
         } catch (err) { 
-            alert('Enrollment failed. Please try again or see an admin.'); 
+            showToast('Enrollment failed. Please try again or see an admin.', 'error');
         } finally { 
             setLoading(false); 
         }
@@ -415,8 +435,8 @@ const StudentPortal = () => {
         try {
             await api.post('/activities/log', { studentRegNo: data.studentRegNo, type, notes: `Verification Code: ${code}` });
             handleLogin();
-            alert(`${type} recorded successfully! 🌿`);
-        } catch (err) { alert(err.response?.data?.message || 'Failed to log activity. Check the code and try again.'); }
+            showToast(`${type} recorded successfully! 🌿`, 'success');
+        } catch (err) { showToast(err.response?.data?.message || 'Failed to log activity. Check the code and try again.', 'error'); }
         finally { setLoading(false); }
     };
 
@@ -634,6 +654,13 @@ const StudentPortal = () => {
             <style>{CSS}</style>
             <BackgroundGallery />
             <ValentineRain />
+
+            {/* ══ TOAST NOTIFICATION ══ */}
+            {toast && (
+                <div className={`sp-toast ${toast.type}`}>
+                    {toast.type === 'success' ? '✅' : toast.type === 'error' ? '⚠️' : 'ℹ️'} {toast.message}
+                </div>
+            )}
 
             {/* Coming Soon Modal */}
             {comingSoon && (
