@@ -212,7 +212,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                             <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>MISSED MEMBERS ({filteredAbsent.length})</h4>
                         </div>
                     </div>
-                    <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
                         {filteredAbsent.length === 0 ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '🏆'}</div>
@@ -273,7 +273,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                             <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>PARTICIPANTS ({filteredPresent.length})</h4>
                         </div>
                     </div>
-                    <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
                         {filteredPresent.length === 0 ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '⏳'}</div>

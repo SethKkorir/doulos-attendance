@@ -3,7 +3,7 @@ import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, 
     BarChart3, Trash2, Search, Link as LinkIcon, 
     ExternalLink, RotateCcw, X, Settings as SettingsIcon, Lightbulb, 
-    ClipboardCheck, ListChecks 
+    ClipboardCheck, ListChecks, Users 
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import MeetingInsights from '../MeetingInsights';
