@@ -3,6 +3,8 @@ import Meeting from '../models/Meeting.js';
 import Training from '../models/Training.js';
 import Member from '../models/Member.js';
 import ActivityLog from '../models/ActivityLog.js';
+import Attendance from '../models/Attendance.js';
+import mongoose from 'mongoose';
 
 export const getSetting = async (req, res) => {
     try {
@@ -81,6 +83,97 @@ export const rolloverSemester = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const getObservabilityTelemetry = async (req, res) => {
+    try {
+        // 1. System Telemetry
+        const heapUsed = process.memoryUsage().heapUsed / 1024 / 1024;
+        const uptime = process.uptime(); // in seconds
+        
+        // 2. Dashboard Database Stats
+        const totalMembers = await Member.countDocuments({ isTestAccount: { $ne: true } });
+        const totalAttendance = await Attendance.countDocuments();
+        const activeMeetingsList = await Meeting.find({ isActive: true }).select('_id name campus').lean();
+        const activeTrainingsList = await Training.find({ isActive: true }).select('_id name campus').lean();
+        const activeSessions = activeMeetingsList.length + activeTrainingsList.length;
+
+
+        // 3. Real Recent Successful Check-Ins (Join Member with Attendance)
+        const recentCheckins = await Attendance.aggregate([
+            { $sort: { timestamp: -1 } },
+            { $limit: 10 },
+            {
+                $lookup: {
+                    from: "members",
+                    localField: "studentRegNo",
+                    foreignField: "studentRegNo",
+                    as: "memberInfo"
+                }
+            },
+            {
+                $project: {
+                    studentRegNo: 1,
+                    campus: 1,
+                    meetingName: 1,
+                    timestamp: 1,
+                    isExempted: 1,
+                    memberType: 1,
+                    studentName: { $arrayElemAt: ["$memberInfo.name", 0] }
+                }
+            }
+        ]);
+
+        // 4. Real Recent Check-In Failures (Join Member with scanerrors)
+        let scanErrors = [];
+        if (mongoose.connection.readyState === 1) {
+            scanErrors = await mongoose.connection.db.collection('scanerrors')
+                .aggregate([
+                    { $sort: { timestamp: -1 } },
+                    { $limit: 10 },
+                    {
+                        $lookup: {
+                            from: "members",
+                            localField: "studentRegNo",
+                            foreignField: "studentRegNo",
+                            as: "memberInfo"
+                        }
+                    },
+                    {
+                        $project: {
+                            studentRegNo: 1,
+                            campus: 1,
+                            error: 1,
+                            desc: 1,
+                            timestamp: 1,
+                            studentName: { $arrayElemAt: ["$memberInfo.name", 0] },
+                            studentId: { $arrayElemAt: ["$memberInfo._id", 0] }
+                        }
+                    }
+                ]).toArray();
+        }
+
+        res.json({
+            system: {
+                memoryHeap: parseFloat(heapUsed.toFixed(1)),
+                uptimeSeconds: Math.floor(uptime),
+                dbConnected: mongoose.connection.readyState === 1
+            },
+            stats: {
+                totalMembers,
+                totalAttendance,
+                activeSessions,
+                activeMeetings: activeMeetingsList,
+                activeTrainings: activeTrainingsList
+            },
+
+            recentCheckins,
+            recentErrors: scanErrors
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to aggregate system telemetry.', error: error.message });
     }
 };
 

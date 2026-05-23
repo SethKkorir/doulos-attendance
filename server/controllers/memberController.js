@@ -3,6 +3,7 @@ import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import Settings from '../models/Settings.js';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 export const importMembers = async (req, res) => {
     const { members } = req.body; // Expecting array of { studentRegNo, name, memberType, campus }
@@ -411,12 +412,16 @@ export const deleteMemberWithPassword = async (req, res) => {
 
 export const resetDeviceLock = async (req, res) => {
     try {
-        await Member.findByIdAndUpdate(req.params.id, { linkedDeviceId: null });
+        const member = await Member.findByIdAndUpdate(req.params.id, { linkedDeviceId: null });
+        if (member && mongoose.connection.readyState === 1) {
+            await mongoose.connection.db.collection('scanerrors').deleteMany({ studentRegNo: member.studentRegNo });
+        }
         res.json({ message: 'Device link reset successfully. The student can now use a new phone.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 export const bulkGraduateMembers = async (req, res) => {
     const { memberIds } = req.body; // Array of IDs

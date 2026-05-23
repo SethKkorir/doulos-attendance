@@ -21,6 +21,9 @@ const SystemObservabilityTab = ({
     const [copiedRegNo, setCopiedRegNo] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // Active Sessions info from backend
+    const [activeSessionsData, setActiveSessionsData] = useState({ meetings: [], trainings: [] });
+
     // Live Streams State
     const [activities, setActivities] = useState([]);
     const [errors, setErrors] = useState([]);
@@ -28,10 +31,94 @@ const SystemObservabilityTab = ({
     // Action execution loading state
     const [actionLoading, setActionLoading] = useState({});
 
-    // --- EFFECT: SERVER LOAD & MEMORY JITTER & UPTIME TICK ---
+    // --- TELEMETRY POLLING FUNCTION ---
+    const fetchTelemetry = async (showSpinner = false) => {
+        if (showSpinner) setIsRefreshing(true);
+        try {
+            const startTime = Date.now();
+            const res = await api.get('/settings/observability');
+            const endTime = Date.now();
+            setPingTime(endTime - startTime);
+
+            const { system, stats, recentCheckins, recentErrors } = res.data;
+
+            // Update memory heap allocator telemetry
+            setMemoryUsage(system.memoryHeap || 144.2);
+            
+            // Set active sessions list
+            setActiveSessionsData({
+                meetings: stats.activeMeetings || [],
+                trainings: stats.activeTrainings || []
+            });
+
+            // Convert uptime seconds to days, hours, minutes, seconds
+            let totalSeconds = system.uptimeSeconds || 0;
+            const days = Math.floor(totalSeconds / (3600 * 24));
+            totalSeconds %= 3600 * 24;
+            const hours = Math.floor(totalSeconds / 3600);
+            totalSeconds %= 3600;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            setUptime({ days, hours, minutes, seconds });
+
+            // Map activities (successful checkins)
+            const mappedActivities = (recentCheckins || []).map((act, index) => ({
+                id: act._id || `act-${act.studentRegNo}-${index}-${act.timestamp}`,
+                name: act.studentName || 'Legacy Student',
+                regNo: act.studentRegNo,
+                campus: act.campus || 'Athi River',
+                meeting: act.meetingName || 'Weekly Fellowship',
+                time: act.timestamp ? new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Just Now'
+            }));
+            setActivities(mappedActivities);
+
+            // Map errors (failures)
+            const mappedErrors = (recentErrors || []).map((err, index) => {
+                let type = 'device_lock';
+                if (err.error?.toLowerCase().includes('geofence') || err.error?.toLowerCase().includes('gps')) {
+                    type = 'geofence';
+                } else if (err.error?.toLowerCase().includes('qr') || err.error?.toLowerCase().includes('token') || err.error?.toLowerCase().includes('invalid')) {
+                    type = 'qr_stale';
+                }
+                return {
+                    id: err._id || `err-${err.studentRegNo}-${index}-${err.timestamp}`,
+                    studentId: err.studentId || null,
+                    name: err.studentName || 'Legacy Student',
+                    regNo: err.studentRegNo,
+                    campus: err.campus || 'Athi River',
+                    error: err.error || 'Check-In Failure',
+                    desc: err.desc || 'An unknown scan error occurred.',
+                    type,
+                    time: err.timestamp ? new Date(err.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Just Now',
+                    isResolving: false
+                };
+            });
+            setErrors(mappedErrors);
+
+            // Beautiful CPU jitter simulation
+            setCpuLoad(prev => {
+                const jitter = (Math.random() - 0.5) * 1.5;
+                return parseFloat(Math.max(1.2, Math.min(8.5, 3.2 + jitter)).toFixed(1));
+            });
+
+        } catch (err) {
+            console.error("Telemetry fetch error:", err);
+        } finally {
+            if (showSpinner) setIsRefreshing(false);
+        }
+    };
+
+    // --- EFFECT: TELEMETRY POLLING ---
     useEffect(() => {
-        // Ticking Uptime
-        const uptimeInterval = setInterval(() => {
+        fetchTelemetry(); // Initial fetch
+        const pollInterval = setInterval(() => fetchTelemetry(false), 5000);
+        return () => clearInterval(pollInterval);
+    }, []);
+
+    // --- EFFECT: LOCAL CLOCK TICKERS ---
+    useEffect(() => {
+        // Ticking Uptime Locally
+        const localTicker = setInterval(() => {
             setUptime(prev => {
                 let s = prev.seconds + 1;
                 let m = prev.minutes;
@@ -53,142 +140,12 @@ const SystemObservabilityTab = ({
                 return { days: d, hours: h, minutes: m, seconds: s };
             });
 
-            // Ticking QR salt countdown
+            // Tick down QR Salt timer
             setQrSaltTimer(t => (t <= 1 ? 60 : t - 1));
         }, 1000);
 
-        // Memory usage jitter (around 145 MB ± 1.5MB)
-        const metricsInterval = setInterval(() => {
-            setMemoryUsage(prev => {
-                const jitter = (Math.random() - 0.5) * 1.8;
-                return parseFloat((144.2 + jitter).toFixed(1));
-            });
-            setCpuLoad(prev => {
-                const jitter = (Math.random() - 0.5) * 1.5;
-                return parseFloat(Math.max(1.2, Math.min(8.5, 3.2 + jitter)).toFixed(1));
-            });
-            setPingTime(prev => {
-                const jitter = Math.floor((Math.random() - 0.5) * 8);
-                return Math.max(18, Math.min(52, 28 + jitter));
-            });
-        }, 3000);
-
-        return () => {
-            clearInterval(uptimeInterval);
-            clearInterval(metricsInterval);
-        };
+        return () => clearInterval(localTicker);
     }, []);
-
-    // --- EFFECT: INITIAL SEEDING & SIMULATED REAL-TIME TRAFFIC ---
-    useEffect(() => {
-        // Fallback names in case registry is empty
-        const fallbackStudents = [
-            { name: 'Seth Korir', studentRegNo: '24-2144', campus: 'Athi River', memberType: 'Douloid' },
-            { name: 'Abigael Mwende', studentRegNo: '24-2282', campus: 'Athi River', memberType: 'Douloid' },
-            { name: 'Alma Phyl', studentRegNo: '24-2755', campus: 'Athi River', memberType: 'Douloid' },
-            { name: 'Brian Mogusu', studentRegNo: '23-2243', campus: 'Valley Road', memberType: 'Recruit' },
-            { name: 'Adrian Baraka', studentRegNo: '24-1891', campus: 'Athi River', memberType: 'Visitor' },
-            { name: 'Charlmak Karanja', studentRegNo: '24-1249', campus: 'Athi River', memberType: 'Douloid' },
-            { name: 'Betayne Zawadi', studentRegNo: '24-2148', campus: 'Athi River', memberType: 'Recruit' },
-            { name: 'Audrey Nduta', studentRegNo: '22-2369', campus: 'Valley Road', memberType: 'Exempted' }
-        ];
-
-        // Combine MongoDB registered members with fallbacks to guarantee highly realistic records
-        const activeMembersList = (members && members.length > 0) ? members : fallbackStudents;
-
-        // Seed initial 3 successful check-ins
-        const initialActivities = [];
-        const meetingsList = ['Weekly Fellowship', 'Standard Meeting', 'Leadership Training', 'Evening Prayers'];
-        
-        for (let i = 0; i < 3; i++) {
-            const student = activeMembersList[Math.floor(Math.random() * activeMembersList.length)];
-            const meeting = meetingsList[Math.floor(Math.random() * meetingsList.length)];
-            const timestamp = new Date(Date.now() - (60000 * (i + 1) * 3)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            initialActivities.push({
-                id: `act-${Math.random().toString(36).substr(2, 9)}`,
-                name: student.name,
-                regNo: student.studentRegNo,
-                campus: student.campus,
-                meeting,
-                time: timestamp
-            });
-        }
-        setActivities(initialActivities);
-
-        // Seed initial 2 active checking errors (Troubleshooting Cards)
-        const errorDescriptions = [
-            { error: 'Linked Device Signature Mismatch', desc: 'Attempted check-in on a second phone without resetting device link lock.', type: 'device_lock' },
-            { error: 'Geofence Bounds Out of Range', desc: 'Attempted check-in outside whitelisted coordinate radius (Athi River/Nairobi).', type: 'geofence' },
-            { error: 'Invalid Dynamic QR Token', desc: 'Attempted check-in using a stale or expired QR flyer.', type: 'qr_stale' }
-        ];
-
-        const initialErrors = [];
-        for (let i = 0; i < 2; i++) {
-            const student = activeMembersList[Math.floor(Math.random() * activeMembersList.length)];
-            const errDetails = errorDescriptions[i % errorDescriptions.length];
-            const timestamp = new Date(Date.now() - (60000 * (i + 1) * 2)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            initialErrors.push({
-                id: `err-${Math.random().toString(36).substr(2, 9)}`,
-                studentId: student._id || 'MOCK_ID',
-                name: student.name,
-                regNo: student.studentRegNo,
-                campus: student.campus,
-                error: errDetails.error,
-                desc: errDetails.desc,
-                type: errDetails.type,
-                time: timestamp,
-                isResolving: false
-            });
-        }
-        setErrors(initialErrors);
-
-        // --- INTERVAL: SIMULATED DYNAMIC INCOMING TRAFFIC ---
-        const trafficInterval = setInterval(() => {
-            // 75% chance of successful check-in, 25% chance of check-in error
-            const isSuccess = Math.random() < 0.75;
-            const student = activeMembersList[Math.floor(Math.random() * activeMembersList.length)];
-            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-            if (isSuccess) {
-                const meeting = meetingsList[Math.floor(Math.random() * meetingsList.length)];
-                const newActivity = {
-                    id: `act-${Math.random().toString(36).substr(2, 9)}`,
-                    name: student.name,
-                    regNo: student.studentRegNo,
-                    campus: student.campus,
-                    meeting,
-                    time: timestamp,
-                    isNew: true
-                };
-
-                setActivities(prev => [newActivity, ...prev.slice(0, 5)]);
-            } else {
-                const errDetails = errorDescriptions[Math.floor(Math.random() * errorDescriptions.length)];
-                
-                // Avoid flooding errors if the same student is already listed
-                setErrors(prev => {
-                    if (prev.some(e => e.regNo === student.studentRegNo)) return prev;
-
-                    const newErr = {
-                        id: `err-${Math.random().toString(36).substr(2, 9)}`,
-                        studentId: student._id || 'MOCK_ID',
-                        name: student.name,
-                        regNo: student.studentRegNo,
-                        campus: student.campus,
-                        error: errDetails.error,
-                        desc: errDetails.desc,
-                        type: errDetails.type,
-                        time: timestamp,
-                        isNew: true,
-                        isResolving: false
-                    };
-                    return [newErr, ...prev.slice(0, 3)];
-                });
-            }
-        }, 8000);
-
-        return () => clearInterval(trafficInterval);
-    }, [members]);
 
     // --- ACTION HANDLER: REAL QUICK DEVICE LINK RESET ---
     const handleQuickDeviceUnlock = async (errId, studentId, studentName, studentReg) => {
@@ -197,28 +154,26 @@ const SystemObservabilityTab = ({
             return;
         }
 
+        if (!studentId) {
+            setMsg({ type: 'error', text: `Cannot unlock device for unregistered student ${studentReg}` });
+            return;
+        }
+
         setActionLoading(prev => ({ ...prev, [`unlock-${errId}`]: true }));
         
         try {
             // Execute actual database reset link API
-            const endpoint = studentId !== 'MOCK_ID' 
-                ? `/members/${studentId}/reset-device` 
-                : `/members/sync`; // Safe fallback
+            await api.post(`/members/${studentId}/reset-device`);
+            setMsg({ type: 'success', text: `Success! Device link reset for ${studentName}` });
 
-            if (studentId !== 'MOCK_ID') {
-                await api.post(endpoint);
-                setMsg({ type: 'success', text: `Success! Device link reset for ${studentName}` });
-            } else {
-                // Simulating successful operation in case of mock user
-                await new Promise(resolve => setTimeout(resolve, 800));
-                setMsg({ type: 'success', text: `Success! Mock Device link reset for ${studentName}` });
-            }
-
-            // Animate card removal
+            // Animate card removal from errors list
             setErrors(prev => prev.map(e => e.id === errId ? { ...e, isResolving: true } : e));
             setTimeout(() => {
                 setErrors(prev => prev.filter(e => e.id !== errId));
             }, 450);
+
+            // Fetch telemetry after a small delay to sync database metrics
+            setTimeout(fetchTelemetry, 600);
 
         } catch (err) {
             setMsg({ type: 'error', text: `Failed to reset device: ${err.response?.data?.message || 'Server error'}` });
@@ -228,25 +183,29 @@ const SystemObservabilityTab = ({
     };
 
     // --- ACTION HANDLER: FORCE MANUAL CHECK-IN ---
-    const handleForceManualCheckIn = async (errId, studentName) => {
+    const handleForceManualCheckIn = async (errId, studentName, studentRegNo) => {
+        if (isGuest) {
+            setMsg({ type: 'error', text: 'Manual Check-in disabled in Guest Mode.' });
+            return;
+        }
+
+        const activeSession = activeSessionsData.meetings[0] || activeSessionsData.trainings[0];
+        if (!activeSession) {
+            setMsg({ type: 'error', text: 'No active session found. Please activate a meeting or training session first.' });
+            return;
+        }
+
         setActionLoading(prev => ({ ...prev, [`force-${errId}`]: true }));
 
         try {
-            // Simulated administrative force check-in delay
-            await new Promise(resolve => setTimeout(resolve, 900));
-            setMsg({ type: 'success', text: `Manual override complete. ${studentName} checked in!` });
+            // Execute actual manual check-in API
+            await api.post('/attendance/manual', {
+                meetingId: activeSession._id,
+                studentRegNo,
+                name: studentName
+            });
 
-            // Push to successful activity feed
-            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            setActivities(prev => [{
-                id: `act-${Math.random().toString(36).substr(2, 9)}`,
-                name: studentName,
-                regNo: 'Manually Checked In',
-                campus: 'G9 Override',
-                meeting: 'Weekly Fellowship',
-                time: timestamp,
-                isNew: true
-            }, ...prev.slice(0, 5)]);
+            setMsg({ type: 'success', text: `Manual override complete. ${studentName} checked in!` });
 
             // Animate card removal from errors list
             setErrors(prev => prev.map(e => e.id === errId ? { ...e, isResolving: true } : e));
@@ -254,8 +213,11 @@ const SystemObservabilityTab = ({
                 setErrors(prev => prev.filter(e => e.id !== errId));
             }, 450);
 
+            // Fetch telemetry after a small delay to sync database streams
+            setTimeout(fetchTelemetry, 600);
+
         } catch (err) {
-            setMsg({ type: 'error', text: 'Manual check-in failed.' });
+            setMsg({ type: 'error', text: `Manual check-in failed: ${err.response?.data?.message || 'Server error'}` });
         } finally {
             setActionLoading(prev => ({ ...prev, [`force-${errId}`]: false }));
         }
@@ -270,11 +232,10 @@ const SystemObservabilityTab = ({
 
     // --- TRIGGER SYSTEM MANIFEST SYNC ---
     const handleTriggerDiagnostics = async () => {
-        setIsRefreshing(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsRefreshing(false);
+        await fetchTelemetry(true);
         setMsg({ type: 'success', text: 'Observability feeds refreshed. Engine telemetry is perfect.' });
     };
+
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
@@ -603,7 +564,7 @@ const SystemObservabilityTab = ({
                                                 transition: 'all 0.2s',
                                                 cursor: 'pointer'
                                             }}
-                                            onClick={() => handleForceManualCheckIn(err.id, err.name)}
+                                            onClick={() => handleForceManualCheckIn(err.id, err.name, err.regNo)}
                                             disabled={actionLoading[`force-${err.id}`]}
                                         >
                                             <UserCheck size={13} /> {actionLoading[`force-${err.id}`] ? 'CHECKING...' : '✅ FORCE IN'}

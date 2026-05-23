@@ -8,6 +8,22 @@ import mongoose from 'mongoose';
 import { checkCampusTime } from '../utils/timeCheck.js';
 import { getKenyanTime } from '../utils/kenyanTime.js';
 
+const logScanError = async (studentRegNo, errorType, desc, campus) => {
+    try {
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.db.collection('scanerrors').insertOne({
+                studentRegNo: studentRegNo ? String(studentRegNo).trim().toUpperCase() : 'UNKNOWN',
+                error: errorType,
+                desc: desc,
+                campus: campus || 'Athi River',
+                timestamp: new Date()
+            });
+        }
+    } catch (err) {
+        console.error("Failed to log scan error in MongoDB:", err);
+    }
+};
+
 export const submitAttendance = async (req, res) => {
     const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong } = req.body;
 
@@ -19,7 +35,10 @@ export const submitAttendance = async (req, res) => {
         if (!meeting) {
             // Check Training collection
             const training = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
-            if (!training) return res.status(404).json({ message: 'Invalid Meeting/Training Code' });
+            if (!training) {
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Code', `Attempted check-in with invalid meeting code: ${meetingCode}`, 'Athi River');
+                return res.status(404).json({ message: 'Invalid Meeting/Training Code' });
+            }
             // Wrap training as a meeting-like object so downstream logic works
             meeting = training;
             isTrainingSession = true;
@@ -30,6 +49,7 @@ export const submitAttendance = async (req, res) => {
 
         // 3. Activity Check (Bypass for SuperUser or Test Meetings)
         if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
+            await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Session Closed', `Attempted check-in to closed session: ${meeting.name}`, meeting.campus);
             return res.status(400).json({ message: 'Meeting is closed' });
         }
 
@@ -58,6 +78,7 @@ export const submitAttendance = async (req, res) => {
         if (!isTrainingSession && !isSuperUser && !meeting.isTestMeeting) {
             // 1. Future Day Block
             if (todayStr < meetingStr) {
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Early scan attempted for scheduled meeting: ${meeting.name}`, meeting.campus);
                 return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}.` });
             }
 
@@ -65,11 +86,13 @@ export const submitAttendance = async (req, res) => {
             if (todayStr === meetingStr) {
                 // Grace period: 60 mins before start
                 if (currentMinutes < (startTotalMinutes - 60)) {
+                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Early scan window locked for meeting: ${meeting.name}`, meeting.campus);
                     return res.status(403).json({ message: `This meeting has not yet started. It starts at ${meeting.startTime} EAT.` });
                 }
 
                 // End period: 30 mins after end (to allow for final scans)
                 if (currentMinutes > (endTotalMinutes + 30)) {
+                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Late scan attempted. Session closed for meeting: ${meeting.name}`, meeting.campus);
                     return res.status(403).json({ message: `This meeting has already ended. It ended at ${meeting.endTime} EAT.` });
                 }
             }
@@ -80,6 +103,7 @@ export const submitAttendance = async (req, res) => {
                 meetingEnd.setHours(endHours, endMinutes, 0, 0);
                 const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
                 if (hoursSinceEnd > 24) {
+                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Stale scan attempted more than 24h after end of ${meeting.name}`, meeting.campus);
                     return res.status(403).json({ message: 'Attendance window closed.' });
                 }
             }
@@ -88,6 +112,7 @@ export const submitAttendance = async (req, res) => {
         // 5. Location Check (Geofence)
         if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !meeting.isTestAccount) {
             if (!userLat || !userLong) {
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'GPS Required', `Location disabled for geofenced meeting: ${meeting.name}`, meeting.campus);
                 return res.status(400).json({ message: 'GPS data is required for this meeting. Please enable location.' });
             }
 
@@ -104,6 +129,7 @@ export const submitAttendance = async (req, res) => {
             const distance = R * c;
 
             if (distance > (meeting.location.radius || 200)) {
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Geofence Violation', `Outside range for ${meeting.location.name} (${Math.round(distance)}m). Required: <${meeting.location.radius || 200}m`, meeting.campus);
                 return res.status(403).json({
                     message: `Location Mismatch: You are too far from ${meeting.location.name}. Please ensure you are at the correct venue.`
                 });
@@ -133,15 +159,12 @@ export const submitAttendance = async (req, res) => {
             if (!member.linkedDeviceId && deviceId) {
                 member.linkedDeviceId = deviceId;
                 await member.save();
+            } else if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser) {
+                await logScanError(studentRegNo, 'Device Signature Mismatch', `Attempted check-in on a second phone without resetting device link lock. Device ID: ${deviceId}`, meeting.campus);
+                return res.status(403).json({ message: 'Device Lock Error: This account is linked to another device. Please request a device reset from a G9 administrator.' });
             }
-            // TEMPORARILY DISABLED: iPhones aggressive LocalStorage clearing and In-App browsers (WhatsApp)
-            // cause legitimate users to lose their deviceId frequently. Relying strictly on Step 8 instead.
-            // else if (member.linkedDeviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !member.isTestAccount) {
-            //     return res.status(403).json({
-            //         message: "Device Mismatch. This Admission Number is linked to a different phone. Please contact G9s if you have a new phone."
-            //     });
-            // }
         }
+
 
         // 8. Anti-Proxy Check (One check-in per device per session)
         if (deviceId && !isSuperUser) {
@@ -150,6 +173,7 @@ export const submitAttendance = async (req, res) => {
                 : { meeting: meeting._id, deviceId };
             const deviceUsed = await Attendance.findOne(deviceQuery);
             if (deviceUsed) {
+                await logScanError(studentRegNo, 'Anti-Proxy Block', `Device already used to scan another attendee in this session (${meeting.name})`, meeting.campus);
                 return res.status(403).json({ message: 'This device has already been used for a check-in for this session.' });
             }
         }
@@ -160,6 +184,7 @@ export const submitAttendance = async (req, res) => {
             : { meeting: meeting._id, studentRegNo };
         const existing = await Attendance.findOne(dupQuery);
         if (existing) {
+            await logScanError(studentRegNo, 'Duplicate Check-In', `Attempted duplicate scan for session: ${meeting.name}`, meeting.campus);
             return res.status(409).json({ message: 'You have already signed in for this session.' });
         }
 
@@ -189,6 +214,7 @@ export const submitAttendance = async (req, res) => {
                 }).populate('meeting');
 
                 if (attendedOther) {
+                    await logScanError(studentRegNo, 'Weekly Restriction', `Duplicate weekly attendance: Already signed in to ${attendedOther.meeting.name} (${attendedOther.meeting.campus})`, meeting.campus);
                     return res.status(403).json({
                         message: `Thank you for attending, but you already checked in to the ${attendedOther.meeting.name} (${attendedOther.meeting.campus}) meeting this week.`
                     });
@@ -215,6 +241,7 @@ export const submitAttendance = async (req, res) => {
                 await member.save();
                 console.log(`[RECOVERY AUTO-REGISTER] New student created: ${studentRegNo} (${registrationData.name})`);
             } else {
+                await logScanError(studentRegNo, 'Registry Mismatch', `Admission Number not found in MongoDB registry. Recovery: ${isRecovery}`, meeting.campus);
                 return res.status(403).json({
                     message: isRecovery 
                         ? "Access Denied: Your Admission Number is not in our records yet. Please fill in your name and campus to register."
@@ -237,6 +264,13 @@ export const submitAttendance = async (req, res) => {
                 deviceId
             });
             await attendance.save();
+
+            // Clear database scan errors for this student since check-in was successful
+            if (mongoose.connection.readyState === 1) {
+                await mongoose.connection.db.collection('scanerrors').deleteMany({
+                    studentRegNo: studentRegNo.trim().toUpperCase()
+                });
+            }
         }
 
         // 12. Award Points
