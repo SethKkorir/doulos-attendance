@@ -29,6 +29,11 @@ const CheckIn = () => {
         memberType: 'Douloid'
     });
     const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [currentSemester, setCurrentSemester] = useState('');
+    const [lastActiveSemester, setLastActiveSemester] = useState('');
+    const [semesterTheme, setSemesterTheme] = useState('');
+    const [semesterVerse, setSemesterVerse] = useState('');
 
     useEffect(() => {
         let timer;
@@ -144,6 +149,12 @@ const CheckIn = () => {
                 const name = res.data.memberName || 'Member';
                 setMemberInfo({ name, type: res.data.memberType });
 
+                // Store semester info for welcome check
+                setCurrentSemester(res.data.currentSemester || '');
+                setLastActiveSemester(res.data.lastActiveSemester || '');
+                setSemesterTheme(res.data.semesterTheme || '');
+                setSemesterVerse(res.data.semesterVerse || '');
+
                 // Pre-fill all name-related fields in responses using functional update to avoid staled state
                 setResponses(prev => {
                     const updated = { ...prev };
@@ -172,8 +183,41 @@ const CheckIn = () => {
 
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
 
+        // 1. Intercept for Semester Rollover Welcome Modal
+        if (memberInfo && lastActiveSemester !== currentSemester && currentSemester && !showWelcomeModal) {
+            setShowWelcomeModal(true);
+            return;
+        }
+
+        await submitAttendanceRecord();
+    };
+
+    const handleWelcomeChoice = async (isActive) => {
+        setShowWelcomeModal(false);
+        setStatus('submitting');
+        try {
+            // 1. Silent Enrollment
+            await api.post('/members/enroll', {
+                studentRegNo: responses.studentRegNo || memberInfo?.studentRegNo,
+                semester: currentSemester,
+                isActiveThisSemester: isActive
+            });
+
+            // Update local state so we don't trigger the modal again
+            setLastActiveSemester(currentSemester);
+
+            // 2. Submit Attendance silently
+            await submitAttendanceRecord();
+        } catch (err) {
+            console.error("Welcome flow enrollment failed:", err);
+            // Fallback: try to submit attendance anyway so the student isn't blocked
+            await submitAttendanceRecord();
+        }
+    };
+
+    const submitAttendanceRecord = async () => {
         let userLocation = { lat: null, long: null };
 
         // Check if meeting requires location
@@ -1043,6 +1087,169 @@ const CheckIn = () => {
                     </div>
                 )
             }
+
+            {/* Semester Rollover Welcome Modal */}
+            {showWelcomeModal && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 3000,
+                    background: 'rgba(2, 21, 37, 0.85)',
+                    backdropFilter: 'blur(12px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1.5rem',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div className="glass-panel" style={{
+                        maxWidth: '450px',
+                        width: '100%',
+                        background: 'linear-gradient(135deg, rgba(9, 29, 46, 0.95) 0%, rgba(2, 21, 37, 0.98) 100%)',
+                        border: '2px solid rgba(37, 170, 225, 0.35)',
+                        borderRadius: '1.5rem',
+                        padding: '2.5rem 2rem',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+                        textAlign: 'center',
+                        animation: 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <div style={{
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.2) 0%, rgba(37, 170, 225, 0.05) 100%)',
+                            border: '1px solid rgba(37, 170, 225, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem',
+                            color: '#25AAE1',
+                            boxShadow: '0 0 30px rgba(37, 170, 225, 0.15)',
+                            animation: 'bounce 2.5s infinite'
+                        }}>
+                            <BookOpen size={36} />
+                        </div>
+
+                        <h2 style={{
+                            fontSize: '1.8rem',
+                            fontWeight: 900,
+                            color: 'white',
+                            letterSpacing: '-0.02em',
+                            margin: '0 0 0.5rem'
+                        }}>
+                            Welcome to the New Semester!
+                        </h2>
+                        <div style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            color: '#25AAE1',
+                            letterSpacing: '2px',
+                            textTransform: 'uppercase',
+                            marginBottom: '1.5rem'
+                        }}>
+                            {currentSemester}
+                        </div>
+
+                        {semesterTheme && (
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.06)',
+                                borderRadius: '1rem',
+                                padding: '1.25rem',
+                                marginBottom: '1.75rem'
+                            }}>
+                                <div style={{
+                                    fontSize: '0.62rem',
+                                    fontWeight: 900,
+                                    color: 'rgba(255, 255, 255, 0.4)',
+                                    letterSpacing: '1.5px',
+                                    textTransform: 'uppercase',
+                                    marginBottom: '0.5rem'
+                                }}>
+                                    Our Theme For This Term
+                                </div>
+                                <h3 style={{
+                                    fontSize: '1.3rem',
+                                    fontWeight: 900,
+                                    color: '#4ade80',
+                                    margin: '0 0 0.4rem',
+                                    letterSpacing: '-0.01em'
+                                }}>
+                                    "{semesterTheme}"
+                                </h3>
+                                {semesterVerse && (
+                                    <p style={{
+                                        fontSize: '0.82rem',
+                                        color: 'rgba(255, 255, 255, 0.7)',
+                                        fontStyle: 'italic',
+                                        lineHeight: 1.4,
+                                        margin: 0
+                                    }}>
+                                        — {semesterVerse}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        <p style={{
+                            fontSize: '0.9rem',
+                            lineHeight: 1.6,
+                            color: 'rgba(255, 255, 255, 0.75)',
+                            marginBottom: '2rem'
+                        }}>
+                            Are you active in Doulos this semester?
+                            <br />
+                            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.4)' }}>
+                                (If yes, we will track your points and semester requirements. Everyone is welcome to attend!)
+                            </span>
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                onClick={() => handleWelcomeChoice(true)}
+                                className="btn btn-primary"
+                                style={{
+                                    width: '100%',
+                                    height: '48px',
+                                    borderRadius: '0.75rem',
+                                    fontSize: '0.88rem',
+                                    fontWeight: 900,
+                                    letterSpacing: '1px',
+                                    textTransform: 'uppercase',
+                                    background: 'linear-gradient(135deg, #25AAE1 0%, #0a4d68 100%)',
+                                    boxShadow: '0 8px 20px rgba(37, 170, 225, 0.25)',
+                                    border: 'none',
+                                    color: 'white',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Yes, I am active! 👍
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleWelcomeChoice(false)}
+                                style={{
+                                    width: '100%',
+                                    height: '48px',
+                                    borderRadius: '0.75rem',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 800,
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    color: 'rgba(255, 255, 255, 0.75)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
+                            >
+                                No, just attending today 😊
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <p style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
                 Doulos Attendance System &bull; &copy; {new Date().getFullYear()}

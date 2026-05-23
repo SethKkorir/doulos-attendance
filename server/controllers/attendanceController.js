@@ -415,19 +415,15 @@ export const getStudentPortalData = async (req, res) => {
         // 8. Reminder Logic
         const alerts = [];
 
-        // Semester Alert
+        // Semester Alert Settings Fetch
         const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
         const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
+        const themeSetting = await mongoose.model('Settings').findOne({ key: 'semester_theme' });
+        const verseSetting = await mongoose.model('Settings').findOne({ key: 'semester_verse' });
+        const semesterTheme = themeSetting ? themeSetting.value : '';
+        const semesterVerse = verseSetting ? verseSetting.value : '';
 
-        if (member.lastActiveSemester !== currentSemester) {
-            alerts.push({
-                type: 'semester',
-                priority: 'high',
-                title: `Welcome to ${currentSemester}!`,
-                message: "Please click here to enroll in the new semester and activate your tracking.",
-                action: 'ENROLL'
-            });
-        }
+        // Legacy enrollment alerts are removed as per requirements since we use a warm pop-up wizard instead
 
         // Watering Alert
         const todayDay = new Date().toLocaleString('default', { weekday: 'long' });
@@ -473,6 +469,8 @@ export const getStudentPortalData = async (req, res) => {
             totalPoints: member.totalPoints || 0,
             lastActiveSemester: member.lastActiveSemester,
             currentSemester,
+            semesterTheme,
+            semesterVerse,
             needsGraduationCongrats: member.needsGraduationCongrats || false,
             stats: {
                 totalMeetings,

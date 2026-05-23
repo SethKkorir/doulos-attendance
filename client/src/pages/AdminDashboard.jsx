@@ -1,326 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
-import QRCode from 'react-qr-code';
 import {
-    Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, Users,
-    BarChart3, Activity, Trash2, Search, Link as LinkIcon, ExternalLink,
-    ShieldAlert as Ghost, ShieldAlert, Sun, Moon, Pencil, Trophy, GraduationCap, RotateCcw,
-    FileSpreadsheet, ChevronDown, UploadCloud, CreditCard, Wallet, Filter, Check, X,
-    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, Archive, LayoutDashboard, ClipboardCheck, Lightbulb
+    Users, BarChart3, Sun, Moon, Link as LinkIcon, ExternalLink,
+    ShieldAlert, RotateCcw, ChevronDown, Check, X,
+    FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
+    Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
+    GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 import AdminFinanceView from '../components/AdminFinanceView';
 import EventsManager from '../components/EventsManager';
-import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, BarChart, Bar, Legend
-} from 'recharts';
 
-const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [insightSearch, setInsightSearch] = useState('');
-
-    useEffect(() => {
-        const fetchInsights = async () => {
-            setLoading(true);
-            try {
-                // Fetch attendance for this meeting
-                const attRes = await api.get(`/attendance/${meeting._id}`);
-                const attendance = attRes.data;
-
-                // Fetch all members for this campus
-                const memRes = await api.get(`/members?campus=${meeting.campus}`);
-                const allMembers = memRes.data;
-
-                // present reg nos (Normalized)
-                const presentRegNos = new Set(attendance.map(a => String(a.studentRegNo).trim().toUpperCase()));
-
-                // absent members (Normalized Check)
-                const absent = allMembers.filter(m => !presentRegNos.has(String(m.studentRegNo).trim().toUpperCase()));
-
-                // breakdown
-                const breakdown = attendance.reduce((acc, curr) => {
-                    acc[curr.memberType] = (acc[curr.memberType] || 0) + 1;
-                    return acc;
-                }, {});
-
-                // Recruits (First timers) in this meeting
-                const recruitsCount = attendance.filter(a => a.memberType === 'Recruit').length;
-
-                setStats({
-                    presentCount: attendance.length,
-                    absentCount: absent.length,
-                    absentList: absent,
-                    presentList: attendance,
-                    breakdown,
-                    recruitsCount,
-                    totalEligible: allMembers.length
-                });
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchInsights();
-    }, [meeting, api]);
-
-    if (loading) return (
-        <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '50px', height: '50px', borderTopColor: 'hsl(var(--color-primary))' }}></div>
-            <p style={{ fontWeight: 800, letterSpacing: '2px', color: 'hsl(var(--color-primary))', fontSize: '0.8rem' }}>DECODING ATTENDANCE PATTERNS...</p>
-        </div>
-    );
-
-    if (!stats) return null;
-
-    const rate = Math.round((stats.presentCount / stats.totalEligible) * 100) || 0;
-
-    const filteredAbsent = stats.absentList.filter(m => {
-        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
-    });
-
-    const filteredPresent = stats.presentList.filter(a => {
-        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = (a.responses?.studentName || 'Member').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanReg = a.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
-    });
-
-    return (
-        <div className="glass-panel" style={{
-            padding: '1.25rem',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-            border: '1px solid rgba(124, 58, 237, 0.5)',
-            animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', gap: '1rem', flexWrap: 'wrap' }}>
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                        <div style={{ padding: '0.5rem', background: 'rgba(124, 58, 237, 0.15)', borderRadius: '0.75rem' }}>
-                            <BarChart3 size={20} color="hsl(var(--color-primary))" />
-                        </div>
-                        <div>
-                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.5px', color: 'white' }}>Meeting Insights</h2>
-                            <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 600, fontSize: '0.75rem' }}>
-                                {meeting.name} • {new Date(meeting.date).toLocaleDateString()}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <button
-                    onClick={onClose}
-                    className="btn"
-                    style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.75rem',
-                        cursor: 'pointer',
-                        fontWeight: 800,
-                        fontSize: '0.7rem',
-                        letterSpacing: '1px'
-                    }}
-                >
-                    ✕ CLOSE
-                </button>
-            </div>
-
-            {/* Smart Search Bar */}
-            <div style={{ marginBottom: '1rem' }}>
-                <div style={{ position: 'relative' }}>
-                    <Search
-                        size={14}
-                        style={{
-                            position: 'absolute',
-                            left: '1rem',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            color: 'rgba(255,255,255,0.3)'
-                        }}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Filter by name or admission number..."
-                        value={insightSearch}
-                        onChange={e => setInsightSearch(e.target.value)}
-                        style={{
-                            width: '100%',
-                            background: 'rgba(0,0,0,0.3)',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            padding: '0.65rem 2.5rem 0.65rem 2.5rem',
-                            borderRadius: '0.75rem',
-                            color: 'white',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            outline: 'none',
-                        }}
-                    />
-                    {insightSearch && (
-                        <button
-                            onClick={() => setInsightSearch('')}
-                            style={{
-                                position: 'absolute',
-                                right: '0.75rem',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'rgba(255,255,255,0.3)',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <X size={14} />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.5rem' }}>PRESENT</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-                        <div style={{ fontSize: '2rem', fontWeight: 900, color: '#25AAE1', lineHeight: 1 }}>{stats.presentCount}</div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.4, fontWeight: 700 }}>/ {stats.totalEligible}</div>
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: 'rgba(37, 170, 225, 0.8)', marginTop: '0.4rem', fontWeight: 600 }}>{stats.recruitsCount} Recruits</div>
-                </div>
-
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.5rem' }}>RATE</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80', lineHeight: 1 }}>{rate}%</div>
-                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', marginTop: '0.6rem', overflow: 'hidden' }}>
-                        <div style={{ width: `${rate}%`, height: '100%', background: '#4ade80', borderRadius: '4px', transition: 'width 1s ease-out' }}></div>
-                    </div>
-                </div>
-
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.5rem' }}>ABSENT</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: '#f87171', lineHeight: 1 }}>{stats.absentCount}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'rgba(248, 113, 113, 0.8)', marginTop: '0.4rem', fontWeight: 600 }}>Not attended</div>
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Ghost size={16} color="#f87171" />
-                            <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>MISSED ({filteredAbsent.length})</h4>
-                        </div>
-                    </div>
-                    <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {filteredAbsent.length === 0 ? (
-                            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '🏆'}</div>
-                                <h3 style={{ margin: 0, color: insightSearch ? 'white' : '#4ade80' }}>{insightSearch ? 'No matches found' : '100% Attendance!'}</h3>
-                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in the missed list.` : 'Every registered member shows up. Outstanding!'}</p>
-                            </div>
-                        ) : filteredAbsent.map(m => (
-                            <div key={m._id} style={{
-                                padding: '1.25rem',
-                                background: 'rgba(239, 68, 68, 0.04)',
-                                border: '1px solid rgba(239, 68, 68, 0.1)',
-                                borderRadius: '1.25rem',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                                <div>
-                                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white' }}>{m.name}</div>
-                                    <div style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 600 }}>{m.studentRegNo}</div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{
-                                        fontSize: '0.6rem',
-                                        padding: '0.25rem 0.5rem',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        borderRadius: '2rem',
-                                        fontWeight: 900,
-                                        color: '#f87171',
-                                        border: '1px solid rgba(248, 113, 113, 0.2)'
-                                    }}>{m.memberType.toUpperCase()}</div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onQuickCheckIn(meeting._id, m.studentRegNo);
-                                        }}
-                                        className="btn"
-                                        style={{
-                                            padding: '0.3rem 0.6rem',
-                                            background: 'rgba(74, 222, 128, 0.1)',
-                                            color: '#4ade80',
-                                            fontSize: '0.65rem',
-                                            fontWeight: 900,
-                                            borderRadius: '0.4rem',
-                                            border: '1px solid rgba(74, 222, 128, 0.2)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.25rem'
-                                        }}
-                                    >
-                                        <CheckCircle size={12} /> CHECK IN
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Users size={16} color="#4ade80" />
-                            <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>ATTENDED ({filteredPresent.length})</h4>
-                        </div>
-                    </div>
-                    <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {filteredPresent.length === 0 ? (
-                            <div style={{ padding: '2rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{insightSearch ? '🔍' : '⏳'}</div>
-                                <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'white' }}>{insightSearch ? 'No matches' : 'No check-ins yet'}</h3>
-                            </div>
-                        ) : filteredPresent.map(a => (
-                            <div key={a._id} style={{
-                                padding: '0.6rem 0.75rem',
-                                background: 'rgba(74, 222, 128, 0.04)',
-                                border: '1px solid rgba(74, 222, 128, 0.1)',
-                                borderRadius: '0.75rem',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                                <div>
-                                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white' }}>{a.responses.studentName || 'Member'}</div>
-                                    <div style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 600 }}>{a.studentRegNo}</div>
-                                </div>
-                                <div style={{
-                                    fontSize: '0.6rem',
-                                    padding: '0.25rem 0.5rem',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    borderRadius: '2rem',
-                                    fontWeight: 900,
-                                    color: '#4ade80',
-                                    border: '1px solid rgba(74, 222, 128, 0.2)'
-                                }}>{a.memberType.toUpperCase()}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+import MeetingsTab from '../components/dashboard/MeetingsTab';
+import TrainingsTab from '../components/dashboard/TrainingsTab';
+import MembersTab from '../components/dashboard/MembersTab';
+import SystemSettingsTab from '../components/dashboard/SystemSettingsTab';
 
 const AdminDashboard = () => {
     const location = useLocation();
@@ -333,90 +30,20 @@ const AdminDashboard = () => {
     }, [location.state]);
 
     const [meetings, setMeetings] = useState([]);
-    const [showCreate, setShowCreate] = useState(false);
-    const [selectedMeeting, setSelectedMeeting] = useState(null); // For QR Modal
-    const [insightMeeting, setInsightMeeting] = useState(null); // For detailed insights
-    const [editingMeeting, setEditingMeeting] = useState(null); // For Edit Modal
-    const [formData, setFormData] = useState({
-        name: 'Weekly Doulos',
-        date: new Date().toISOString().split('T')[0],
-        campus: 'Athi River',
-        startTime: '20:30',
-        endTime: '23:00',
-        semester: 'MAY-AUG 2026',
-        category: 'Meeting',
-        allowManualOverride: false,
-        requiredFields: [
-            { label: 'Full Name', key: 'studentName', required: true },
-            { label: 'Admission Number', key: 'studentRegNo', required: true }
-        ],
-        questionOfDay: '',
-        location: {
-            name: '',
-            latitude: null,
-            longitude: null,
-            radius: 200
-        }
-    });
+    const [trainings, setTrainings] = useState([]);
+    const [members, setMembers] = useState([]);
+    const [admins, setAdmins] = useState([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
+    const [loadingAdmins, setLoadingAdmins] = useState(false);
+    const [editingAdmin, setEditingAdmin] = useState(null);
     const [msg, setMsg] = useState(null);
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
-    const [viewingAttendance, setViewingAttendance] = useState(null); // Meeting object
-    const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'trainings', 'members', 'finance', or 'reports'
-    const [financeTab, setFinanceTab] = useState('pending'); // 'pending' or 'log-cash'
+    const [activeTab, setActiveTab] = useState('meetings'); 
     const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'admin');
-    const [members, setMembers] = useState([]);
-    const [loadingMembers, setLoadingMembers] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [quickRegNo, setQuickRegNo] = useState('');
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
-    const [memberSearch, setMemberSearch] = useState('');
-    const [importLoading, setImportLoading] = useState(false);
-    const [memberCampusFilter, setMemberCampusFilter] = useState('All');
-    const [memberTypeFilter, setMemberTypeFilter] = useState('All');
-    const [activeSemesterFilter, setActiveSemesterFilter] = useState(false);
-    const [editingMember, setEditingMember] = useState(null);
-    const [memberInsights, setMemberInsights] = useState(null);
-    const [loadingInsights, setLoadingInsights] = useState(false);
-    const [showAddMenu, setShowAddMenu] = useState(false);
-    const [meetingSemesterFilter, setMeetingSemesterFilter] = useState('Current');
-    const [trainingSemesterFilter, setTrainingSemesterFilter] = useState('Current');
-    const [admins, setAdmins] = useState([]);
-    const [loadingAdmins, setLoadingAdmins] = useState(false);
-    const [editingAdmin, setEditingAdmin] = useState(null);
-    const [selectedMemberIds, setSelectedMemberIds] = useState([]);
-    const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
-    const [locationSource, setLocationSource] = useState(null); // 'gps' or 'default'
     const [currentSemester, setCurrentSemester] = useState('MAY-AUG 2026');
-    const [showBulkListTool, setShowBulkListTool] = useState(false);
-    const [bulkListType, setBulkListType] = useState('graduate'); // 'graduate' or 'archive'
-    const [bulkListInput, setBulkListInput] = useState('');
-    // --- TRAINING STATE ---
-    const [trainings, setTrainings] = useState([]);
-    const [showCreateTraining, setShowCreateTraining] = useState(false);
-    const [trainingFormData, setTrainingFormData] = useState({
-        name: 'Doulos Training',
-        date: new Date().toISOString().split('T')[0],
-        campus: 'Athi River',
-        startTime: '14:00',
-        endTime: '17:00',
-        semester: 'MAY-AUG 2026',
-        requiredFields: [
-            { label: 'Full Name', key: 'studentName', required: true },
-            { label: 'Admission Number', key: 'studentRegNo', required: true }
-        ],
-        questionOfDay: '',
-        location: { name: '', latitude: null, longitude: null, radius: 200 }
-    });
-    const [selectedTraining, setSelectedTraining] = useState(null); // for QR modal
-    const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
-    const [showQuickRegModal, setShowQuickRegModal] = useState(false);
-    const [quickRegData, setQuickRegData] = useState({
-        studentRegNo: '',
-        name: '',
-        campus: 'Athi River',
-        memberType: 'Douloid'
-    });
-    const [pendingMeetingId, setPendingMeetingId] = useState(null);
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -457,23 +84,16 @@ const AdminDashboard = () => {
     // --- IDLE TIMER (AUTO LOCK) ---
     useEffect(() => {
         let timeout;
-
         const resetTimer = () => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                // Auto lock after 5 minutes of inactivity
                 localStorage.clear();
                 window.location.href = '/admin';
-            }, 5 * 60 * 1000); // 5 minutes
+            }, 5 * 60 * 1000); 
         };
-
-        // Events to listen for activity
         const events = ['mousemove', 'keydown', 'click', 'scroll'];
         events.forEach(event => window.addEventListener(event, resetTimer));
-
-        // Start timer initially
         resetTimer();
-
         return () => {
             clearTimeout(timeout);
             events.forEach(event => window.removeEventListener(event, resetTimer));
@@ -489,10 +109,8 @@ const AdminDashboard = () => {
             ]);
             return;
         }
-
         try {
             const res = await api.get('/meetings');
-            // Sort: Active first, then Date descending
             const sorted = res.data.sort((a, b) => {
                 if (a.isActive === b.isActive) {
                     return new Date(b.date) - new Date(a.date);
@@ -501,43 +119,27 @@ const AdminDashboard = () => {
             });
             setMeetings(sorted);
         } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to sync with server' });
+            setMsg({ type: 'error', text: 'Failed to sync meetings with server' });
         }
     };
 
-    const addField = () => {
-        setFormData({
-            ...formData,
-            requiredFields: [...formData.requiredFields, { label: '', key: '', required: true }]
-        });
-    };
-
-    const updateField = (index, field, value) => {
-        const newFields = [...formData.requiredFields];
-        newFields[index][field] = value;
-        // Auto-generate key from label if key is empty
-        if (field === 'label' && !newFields[index].key) {
-            newFields[index].key = value.toLowerCase().replace(/\s+/g, '_');
+    const fetchTrainings = async () => {
+        if (isGuest) {
+            setTrainings([
+                { _id: '1', name: 'Leadership Foundations', date: new Date().toISOString(), isActive: true, campus: 'Valley Road', attendanceCount: 15 },
+                { _id: '2', name: 'The Art of Mentorship', date: new Date(Date.now() - 86400000 * 7).toISOString(), isActive: false, campus: 'Athi River', attendanceCount: 38 }
+            ]);
+            return;
         }
-        setFormData({ ...formData, requiredFields: newFields });
-    };
-
-    const removeField = (index) => {
-        if (formData.requiredFields.length > 1) {
-            const newFields = formData.requiredFields.filter((_, i) => i !== index);
-            setFormData({ ...formData, requiredFields: newFields });
+        try {
+            const res = await api.get('/trainings');
+            setTrainings(res.data);
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to sync trainings with server' });
         }
     };
 
-    useEffect(() => {
-        let timer;
-        if (msg) {
-            timer = setTimeout(() => setMsg(null), 4000);
-        }
-        return () => clearTimeout(timer);
-    }, [msg]);
-
-    const fetchMembers = async (forMembersTab = false) => {
+    const fetchMembers = async () => {
         setLoadingMembers(true);
         if (isGuest) {
             setMembers([
@@ -549,410 +151,79 @@ const AdminDashboard = () => {
             return;
         }
         try {
-            const res = await api.get('/members', {
-                params: {
-                    campus: memberCampusFilter,
-                    memberType: memberTypeFilter,
-                    activeThisSemester: activeSemesterFilter ? 'true' : undefined,
-                    // Only include archived members when on the members tab (for the Archived section)
-                    ...(forMembersTab && { includeArchived: 'true' })
-                }
-            });
+            const res = await api.get('/members');
             setMembers(res.data);
         } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to fetch members directory' });
+            setMsg({ type: 'error', text: 'Failed to fetch members registry' });
         } finally {
             setLoadingMembers(false);
+        }
+    };
+
+    const fetchSemesterSetting = async () => {
+        try {
+            const res = await api.get('/settings/current_semester');
+            if (res.data?.value) {
+                setCurrentSemester(res.data.value);
+            }
+        } catch (err) {
+            console.error("Failed to fetch current semester", err);
         }
     };
 
     useEffect(() => {
         fetchMeetings();
         fetchTrainings();
-        fetchMembers(); // Load members early for quick lookup
-        fetchSystemStatus();
+        fetchMembers();
+        fetchSemesterSetting();
     }, []);
 
-    const fetchSystemStatus = async () => {
-        try {
-            const { data } = await api.get('/auth/system-status');
-            setSystemStatus(data);
-        } catch (err) {
-            console.error('Failed to fetch system status', err);
-        }
-    };
-
-    const fetchTrainings = async () => {
-        try {
-            const res = await api.get('/trainings');
-            setTrainings(res.data);
-        } catch (err) {
-            console.error('Failed to fetch trainings', err);
-        }
-    };
-
-    const handleCreateTraining = async (e) => {
-        e.preventDefault();
-        if (isGuest) return setMsg({ type: 'error', text: 'Creation disabled in Guest Mode.' });
-        if (!trainingFormData.location.name) return setMsg({ type: 'error', text: 'Venue name is required.' });
-        setImportLoading(true);
-        try {
-            await api.post('/trainings', trainingFormData);
-            setMsg({ type: 'success', text: 'Training session created!' });
-            setShowCreateTraining(false);
-            fetchTrainings();
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create training' });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const handleDeleteTraining = async (id, name) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const password = window.prompt(`SECURITY CHECK: Enter admin password to DELETE "${name}":`);;
-        if (!password) return;
-        setImportLoading(true);
-        try {
-            const res = await api.post(`/trainings/${id}/delete-secure`, { confirmPassword: password });
-            setMsg({ type: 'success', text: res.data.message });
-            fetchTrainings();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const handleToggleTrainingStatus = async (id, currentStatus) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        try {
-            await api.patch(`/trainings/${id}`, { isActive: !currentStatus });
-            setMsg({ type: 'success', text: `Training ${!currentStatus ? 'opened' : 'closed'}.` });
-            fetchTrainings();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to update training status' });
-        }
-    };
-
     useEffect(() => {
-        if (activeTab === 'members') fetchMembers(true);
-    }, [activeTab, memberCampusFilter, memberTypeFilter, activeSemesterFilter]);
+        let timer;
+        if (msg) {
+            timer = setTimeout(() => setMsg(null), 4000);
+        }
+        return () => clearTimeout(timer);
+    }, [msg]);
 
-    const handleCSVUpload = async (e) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Import disabled in Guest Mode.' });
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setImportLoading(true);
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const text = event.target.result;
-            const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-            const data = lines.slice(1).map(line => {
-                const values = line.split(',');
-                if (values.length < headers.length) return null;
-                const obj = {};
-                headers.forEach((header, i) => {
-                    obj[header] = values[i]?.trim();
-                });
-                return obj;
-            }).filter(d => d && d.name && (d.studentregno || d.regno));
-
-            // Map keys to match our model
-            const members = data.map(d => ({
-                name: d.name,
-                studentRegNo: d.studentregno || d.regno,
-                memberType: d.type || d.membertype || 'Visitor',
-                campus: d.campus || 'Athi River'
-            }));
-
-            try {
-                await api.post('/members/import', { members });
-                setMsg({ type: 'success', text: `Imported ${members.length} members successfully!` });
-                fetchMembers();
-            } catch (err) {
-                setMsg({ type: 'error', text: 'Import failed: ' + (err.response?.data?.message || 'Check CSV format') });
-            } finally {
-                setImportLoading(false);
-            }
-        };
-        reader.readAsText(file);
-    };
-
-    const handleSyncRegistry = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('This will create registry profiles for everyone in your attendance history. Proceed?')) return;
-        setImportLoading(true);
+    const handleSaveSetting = async (key, value) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Settings updates disabled in Guest Mode.' });
         try {
-            const res = await api.post('/members/sync');
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
+            await api.patch(`/settings/${key}`, { value });
+            setMsg({ type: 'success', text: 'Setting updated!' });
+            if (key === 'current_semester') setCurrentSemester(value);
         } catch (err) {
-            setMsg({ type: 'error', text: 'Sync failed' });
-        } finally {
-            setImportLoading(false);
+            setMsg({ type: 'error', text: 'Failed to save system configurations.' });
         }
     };
 
-    const handleBulkEnroll = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm(`This will automatically ENROLL all members who checked into any meetings assigned to ${currentSem}. Continue?`)) return;
-
-        setImportLoading(true);
-        try {
-            const res = await api.post('/members/bulk-enroll');
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Bulk enrollment failed' });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-
-
-
-    const handleDeleteMember = async (id, name) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Deletion disabled in Guest Mode.' });
-        const password = window.prompt(`SECURITY CHECK: Please enter your admin password to CONFIRM DELETING ${name}:`);
-        if (!password) return;
-
-        setImportLoading(true);
-        try {
-            const res = await api.post(`/members/${id}/delete-secure`, { confirmPassword: password });
-            setMsg({ type: 'success', text: res.data.message });
-            setEditingMember(null);
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const handleDeleteMeeting = async (id, name) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const password = window.prompt(`SECURITY CHECK: Enter admin password to PERMANENTLY DELETE "${name}" and all its attendance records:`);
-        if (!password) return;
-
-        setImportLoading(true);
-        try {
-            const res = await api.post(`/meetings/${id}/delete-secure`, { confirmPassword: password });
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMeetings();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const handleSetupTestAccount = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const regNo = window.prompt('Enter student registration number to set as dedicated TESTER:', '00-0000');
-        if (!regNo) return;
-        setImportLoading(true);
-        try {
-            const res = await api.post('/members/setup-test-account', { regNo });
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Setup failed' });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const fetchMemberInsights = async (regNo) => {
-        setLoadingInsights(true);
-        if (isGuest) {
-            setMemberInsights({
-                member: { name: 'Guest Member', studentRegNo: regNo, totalPoints: 100 },
-                stats: { totalMeetings: 10, attendedCount: 8, percentage: 80, physicalAttended: 8, exemptedCount: 0 },
-                history: [
-                    { date: new Date().toISOString(), name: 'Sample Meeting 1', attended: true },
-                    { date: new Date(Date.now() - 86400000).toISOString(), name: 'Sample Meeting 2', attended: true },
-                ]
-            });
-            setLoadingInsights(false);
-            return;
-        }
-        try {
-            const res = await api.get(`/attendance/student/${regNo}`);
-            setMemberInsights(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoadingInsights(false);
-        }
-    };
-
-    const handleQuickCheckIn = async (meetingId, regNoOverride = null) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const reg = regNoOverride || quickRegNo;
-        if (!reg) return;
-
-        // Smart Lookup: Find member in registry (Normalize both sides for robust matching)
-        const normalize = (s) => s?.replace(/\D/g, '') || '';
-        const member = members.find(m => normalize(m.studentRegNo) === normalize(reg));
-        const meeting = meetings.find(m => m._id === meetingId);
-        let studentName = member ? member.name : null;
-
-        // 1. Weekly Duplicate Alert
-        if (member && member.lastSeen) {
-            const meetingDate = new Date(meeting.date);
-            const startOfWeek = new Date(meetingDate);
-            startOfWeek.setDate(meetingDate.getDate() - meetingDate.getDay());
-            startOfWeek.setHours(0, 0, 0, 0);
-
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-
-            const lastSeenDate = new Date(member.lastSeen);
-            if (lastSeenDate >= startOfWeek && lastSeenDate <= endOfWeek) {
-                const dayName = lastSeenDate.toLocaleDateString('en-US', { weekday: 'long' });
-                if (!window.confirm(`⚠️ DUPLICATE ALERT ⚠️\n\n${member.name} (${reg}) already checked in this week (on ${dayName}).\n\nDo you want to proceed with this manual entry anyway?`)) {
-                    return;
-                }
-            }
-        }
-
-        // 2. New Student Onboarding
-        if (!member) {
-            if (systemStatus.recoveryMode) {
-                setQuickRegData({
-                    ...quickRegData,
-                    studentRegNo: reg,
-                    campus: meeting.campus // Default to meeting campus
-                });
-                setPendingMeetingId(meetingId);
-                setShowQuickRegModal(true);
-                return;
-            } else {
-                alert(`⚠️ MEMBER NOT FOUND ⚠️\n\nThe Admission Number "${reg}" is NOT in the Doulos Registry. \n\nYou will need to enter their name to add them as a new member.`);
-                studentName = window.prompt(`Registrating New Member\n\nPlease enter the student's FULL NAME for ${reg}:`);
-                if (!studentName) return; // Cancel if no name provided
-            }
-        }
-
-        setQuickCheckInLoading(true);
-        try {
-            await api.post('/attendance/manual', {
-                meetingId,
-                studentRegNo: reg,
-                name: studentName // Pass the name (either found or prompted)
-            });
-
-            const displayName = studentName || reg;
-            setMsg({ type: 'success', text: `Success! ${displayName} has been checked in.` });
-            setQuickRegNo('');
-            fetchMeetings(); // Refresh stats
-            fetchMembers(); // Refresh registry to include new member
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Manual check-in failed' });
-        } finally {
-            setQuickCheckInLoading(false);
-        }
-    };
-
-    const handleCreate = async (e) => {
+    const handleSaveAdmin = async (e) => {
         e.preventDefault();
-        if (isGuest) return setMsg({ type: 'error', text: 'Creation disabled in Guest Mode.' });
-
-        // Basic validation for location name
-        if (!formData.location.name) {
-            return setMsg({ type: 'error', text: 'Location name is required.' });
-        }
-
-        setImportLoading(true);
+        if (isGuest) return setMsg({ type: 'error', text: 'Staff management disabled in Guest Mode.' });
         try {
-            await api.post('/meetings', formData);
-            setMsg({ type: 'success', text: 'Meeting created successfully!' });
-            setShowCreate(false);
-            fetchMeetings();
+            if (editingAdmin._id === 'NEW') {
+                await api.post('/auth/register', editingAdmin);
+                setMsg({ type: 'success', text: 'New Administrator registered!' });
+            } else {
+                await api.patch(`/auth/users/${editingAdmin._id}`, editingAdmin);
+                setMsg({ type: 'success', text: 'Admin profile updated!' });
+            }
+            setEditingAdmin(null);
+            fetchAdmins();
         } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create meeting' });
-        } finally {
-            setImportLoading(false);
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save admin account' });
         }
     };
 
-    const downloadReport = async (meetingId, meetingName) => {
+    const handleDeleteAdmin = async (id) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Staff deletion disabled in Guest Mode.' });
+        if (!window.confirm('Are you sure you want to permanently delete this administrator profile?')) return;
         try {
-            const res = await api.get(`/attendance/${meetingId}`);
-            const data = res.data;
-            if (data.length === 0) {
-                setMsg({ type: 'error', text: 'No attendance recorded yet.' });
-                return;
-            }
-
-            // Get all unique keys from responses
-            const allKeys = new Set();
-            data.forEach(r => {
-                const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
-                Object.keys(responses || {}).forEach(k => allKeys.add(k));
-            });
-            const headers = Array.from(allKeys);
-
-            const rows = data.map(r => {
-                const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
-                const timestamp = new Date(r.timestamp).toLocaleString();
-                const memberType = r.memberType || 'Visitor';
-                return `<tr><td>${timestamp}</td><td><strong>${memberType}</strong></td>${headers.map(h => `<td>${responses[h] || '-'}</td>`).join('')}</tr>`;
-            });
-
-            const headerCells = ['Time', 'Category', ...headers].map(h => `<th style="text-align: left; padding: 12px; border-bottom: 2px solid #032540; color: #032540;">${h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>`).join('');
-
-            const reportHtml = `
-                <html>
-                <head>
-                    <title>${meetingName} - Attendance Report</title>
-                    <style>
-                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; padding: 40px; }
-                        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1976d2; padding-bottom: 20px; margin-bottom: 30px; }
-                        .logo { height: 80px; }
-                        .title-section { text-align: right; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th { background-color: #f5f5f5; }
-                        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-                        .footer { margin-top: 50px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
-                        @media print { .no-print { display: none; } }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <img src="${window.location.origin}/logo.png" class="logo" />
-                        <div class="title-section">
-                            <h1 style="margin: 0; color: #032540;">Attendance Report</h1>
-                            <p style="margin: 5px 0; color: #666;">${meetingName}</p>
-                            <p style="margin: 0; font-size: 0.9em;">Generated on: ${new Date().toLocaleString()}</p>
-                        </div>
-                    </div>
-                    
-                    <button class="no-print" onclick="window.print()" style="margin-bottom: 20px; padding: 10px 20px; background: #25AAE1; color: white; border: none; border-radius: 5px; cursor: pointer;">Print to PDF</button>
-
-                    <table>
-                        <thead><tr>${headerCells}</tr></thead>
-                        <tbody>${rows.join('')}</tbody>
-                    </table>
-
-                    <div class="footer">
-                        Doulos Solidarity &bull; Daystar University &bull; Official Attendance Record
-                    </div>
-                </body>
-                </html>
-    `;
-
-            const win = window.open('', '_blank');
-            win.document.write(reportHtml);
-            win.document.close();
+            await api.delete(`/auth/users/${id}`);
+            setMsg({ type: 'success', text: 'Admin removed successfully.' });
+            fetchAdmins();
         } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to generate report' });
+            setMsg({ type: 'error', text: 'Failed to delete administrator' });
         }
     };
 
@@ -964,14 +235,12 @@ const AdminDashboard = () => {
                 setMsg({ type: 'error', text: 'No attendance recorded yet.' });
                 return;
             }
-
             const allKeys = new Set();
             data.forEach(r => {
                 const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
                 Object.keys(responses || {}).forEach(k => allKeys.add(k));
             });
             const headers = ['Timestamp', 'Category', ...Array.from(allKeys)];
-
             const csvContent = [
                 headers.join(','),
                 ...data.map(r => {
@@ -1026,4244 +295,259 @@ const AdminDashboard = () => {
         }
     };
 
-    const downloadRegistryCSV = () => {
-        try {
-            const headers = ['Name', 'Registration Number', 'Points', 'Campus', 'Category'];
-            const csvContent = [
-                headers.join(','),
-                ...members.map(m => [
-                    `"${m.name || 'Unknown'}"`,
-                    `"${m.studentRegNo}"`,
-                    m.totalPoints || 0,
-                    `"${m.campus}"`,
-                    `"${m.memberType || 'Visitor'}"`
-                ].join(','))
-            ].join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `Doulos_Member_Registry_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setMsg({ type: 'success', text: 'Registry Export Started' });
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to export registry' });
-        }
-    };
-
-    // --- SMART FILE IMPORT LOGIC ---
-    const handleFileImport = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setImportLoading(true);
-        const fileType = file.name.split('.').pop().toLowerCase();
-
-        try {
-            if (fileType === 'xlsx' || fileType === 'xls' || fileType === 'csv') {
-                handleExcelImport(file);
-            } else if (fileType === 'docx' || fileType === 'doc') {
-                const arrayBuffer = await file.arrayBuffer();
-                const result = await mammoth.extractRawText({ arrayBuffer });
-                processExtractedText(result.value);
-            } else if (fileType === 'pdf') {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = '';
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n';
-                }
-                processExtractedText(fullText);
-            } else {
-                setMsg({ type: 'error', text: 'Unsupported file format. Please use PDF, Word, or Excel files.' });
-                setImportLoading(false);
-            }
-        } catch (err) {
-            console.error(err);
-            setMsg({ type: 'error', text: 'Failed to process file: ' + (err.message || 'Unknown error') });
-            setImportLoading(false);
-        } finally {
-            e.target.value = '';
-        }
-    };
-
-    const handleExcelImport = (file) => {
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
-                processImportedData(data, 'excel');
-            } catch (err) {
-                setMsg({ type: 'error', text: 'Failed to parse Excel file' });
-                setImportLoading(false);
-            }
-        };
-        reader.readAsBinaryString(file);
-    };
-
-    const processExtractedText = (text) => {
-        const lines = text.split(/\r?\n/);
-        const membersFound = [];
-
-        // Regex for Admission Number (e.g., 22-1234, 221234, 22 1234)
-        const regNoRegex = /(\d{2})[- ]?(\d{4})/g;
-
-        lines.forEach(line => {
-            let match;
-            while ((match = regNoRegex.exec(line)) !== null) {
-                const stdRegNo = `${match[1]}-${match[2]}`;
-                const lowerLine = line.toLowerCase();
-
-                // Campus heuristics
-                let campus = 'Athi River';
-                if (lowerLine.includes('valley') || lowerLine.includes('nairobi')) campus = 'Valley Road';
-
-                // Member type heuristics
-                let memberType = 'Visitor';
-                if (lowerLine.includes('douloid')) memberType = 'Douloid';
-                else if (lowerLine.includes('recruit')) memberType = 'Recruit';
-                else if (lowerLine.includes('exempt')) memberType = 'Exempted';
-
-                // Name extraction (remove reg no and keywords, assume rest is name)
-                let nameCandidate = line.replace(match[0], '')
-                    .replace(/athi river|valley road|douloid|recruit|visitor|exempted/gi, '')
-                    .replace(/[,\t|-]/g, ' ')
-                    .trim()
-                    .replace(/\s+/g, ' ');
-
-                if (nameCandidate.length > 2) {
-                    membersFound.push({
-                        name: nameCandidate,
-                        studentRegNo: stdRegNo,
-                        campus,
-                        memberType
-                    });
-                }
-            }
-        });
-
-        processImportedData(membersFound, 'text');
-    };
-
-    const processImportedData = async (data, source) => {
-        let formattedMembers = [];
-
-        if (source === 'excel') {
-            formattedMembers = data.map(row => {
-                const getVal = (possibleKeys) => {
-                    const key = Object.keys(row).find(k => possibleKeys.includes(k.toLowerCase().trim()));
-                    return key ? row[key] : null;
-                };
-
-                const name = getVal(['name', 'full name', 'student name', 'fullname']);
-                const rawReg = getVal(['adm', 'adm no', 'admission', 'admission number', 'reg', 'reg no', 'registration', 'registration number']);
-
-                if (!name || !rawReg) return null;
-
-                let studentRegNo = '';
-                let clean = String(rawReg).replace(/[^0-9]/g, '');
-                if (clean.length > 2) studentRegNo = clean.slice(0, 2) + '-' + clean.slice(2);
-                else studentRegNo = clean;
-
-                let type = getVal(['category', 'type', 'member type', 'role']) || 'Visitor';
-                if (type.toLowerCase().includes('douloid')) type = 'Douloid';
-                else if (type.toLowerCase().includes('recruit')) type = 'Recruit';
-                else if (type.toLowerCase().includes('visitor')) type = 'Visitor';
-
-                const campus = getVal(['campus', 'location']) || 'Athi River';
-
-                return { name, studentRegNo, memberType: type, campus };
-            }).filter(m => m !== null);
-        } else {
-            formattedMembers = data;
-        }
-
-        if (formattedMembers.length === 0) {
-            setMsg({ type: 'error', text: 'No valid members found in file.' });
-            setImportLoading(false);
-            return;
-        }
-
-        try {
-            await api.post('/members/import', { members: formattedMembers });
-            setMsg({ type: 'success', text: `Imported ${formattedMembers.length} members successfully!` });
-            fetchMembers();
-            setShowAddMenu(false);
-        } catch (error) {
-            setMsg({ type: 'error', text: 'Import failed: ' + (error.response?.data?.message || error.message) });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const handlePrintQR = () => {
-        const meeting = selectedMeeting || selectedTraining;
-        if (!meeting) return;
-
-        // Find the QR code SVG. 
-        // Note: The on-screen version is blurred, but the SVG data itself is valid.
-        // We will print it cleanly without the blur styles.
-        const qrSvg = document.querySelector('.qr-modal-content svg') || document.querySelector('.training-qr-container svg');
-        if (!qrSvg) return;
-
-        // Create a clean version of the SVG for printing (removing parent filters if any)
-        const qrDataUrl = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(qrSvg));
-
-        const printHtml = `
-            <html>
-                <head>
-                    <title>Doulos QR - ${meeting.name}</title>
-                    <style>
-                        @page {
-                            size: A4;
-                            margin: 0;
-                        }
-                        body { 
-                            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-                            margin: 0;
-                            padding: 0;
-                            background: white; /* Print background - Changed to white */
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                        }
-                        .page {
-                            width: 210mm;
-                            height: 297mm;
-                            position: relative;
-                            background: white; /* Changed to white */
-                            color: black; /* Changed to black */
-                            overflow: hidden;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            text-align: center;
-                        }
-
-                        .content {
-                            position: relative;
-                            z-index: 10;
-                            width: 100%;
-                            height: 100%;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: space-between; /* Space out header, QR, footer */
-                            padding: 25mm;
-                            box-sizing: border-box;
-                        }
-
-                        .header {
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            gap: 15px;
-                        }
-                        
-                        .logo-img {
-                            width: 120px;
-                            height: 120px;
-                            object-fit: contain;
-                            margin-bottom: 0.5rem;
-                        }
-
-                        .meeting-title {
-                            font-size: 2.2rem;
-                            font-weight: 900;
-                            line-height: 1.1;
-                            color: #0c1a29;
-                            margin: 10px 0;
-                            max-width: 90%;
-                        }
-
-                        .meeting-meta {
-                            font-size: 1.8rem;
-                            color: #4b5563;
-                            margin-top: 10px;
-                            font-weight: 700;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                        }
-
-                        .qr-outer-container {
-                            position: relative;
-                            padding: 15px;
-                            background: white;
-                            border-radius: 40px;
-                            border: 4px solid #0c1a29;
-                        }
-
-                        .qr-inner-wrapper {
-                            padding: 30px;
-                            background: white;
-                            border-radius: 30px;
-                        }
-
-                        /* "Scan Me" Badge */
-                        .scan-badge {
-                            position: absolute;
-                            top: -25px;
-                            right: -25px;
-                            background: #ef4444;
-                            color: white;
-                            font-weight: 900;
-                            padding: 12px 25px;
-                            border-radius: 50px;
-                            transform: rotate(12deg);
-                            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-                            font-size: 1.4rem;
-                            border: 3px solid white;
-                        }
-
-                        .semester-badge {
-                            position: absolute;
-                            bottom: -20px;
-                            left: 50%;
-                            transform: translateX(-50%);
-                            background: #3b82f6;
-                            color: white;
-                            font-weight: 900;
-                            padding: 8px 30px;
-                            border-radius: 50px;
-                            font-size: 1.1rem;
-                            text-transform: uppercase;
-                            letter-spacing: 2px;
-                            border: 3px solid white;
-                            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                        }
-
-                        .footer {
-                            width: 100%;
-                            border-top: 2px solid #f3f4f6;
-                            padding-top: 25px;
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: flex-end;
-                        }
-
-                        .instruction {
-                            text-align: left;
-                        }
-                        .instruction h3 {
-                            font-size: 1.6rem;
-                            color: #3b82f6;
-                            margin: 0 0 5px 0;
-                            text-transform: uppercase;
-                            font-weight: 900;
-                        }
-                        .instruction p {
-                            font-size: 1.1rem;
-                            color: #6b7280;
-                            margin: 0;
-                            max-width: 400px;
-                        }
-
-                        .theme-section {
-                            margin: 20px 0;
-                            padding: 20px;
-                            border: 1px dashed #3b82f6;
-                            border-radius: 15px;
-                            max-width: 85%;
-                        }
-
-                        .theme-title {
-                            font-size: 1.5rem;
-                            font-weight: 900;
-                            color: #032540;
-                            margin-bottom: 5px;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                        }
-
-                        .theme-text {
-                            font-size: 1.8rem;
-                            font-weight: 800;
-                            color: #3b82f6;
-                            font-style: italic;
-                            margin: 10px 0;
-                        }
-
-                        .theme-verse {
-                            font-size: 1rem;
-                            color: #4b5563;
-                            font-weight: 600;
-                            line-height: 1.4;
-                            margin-top: 10px;
-                        }
-
-                        .meta {
-                            text-align: right;
-                            font-size: 1.1rem;
-                            color: #9ca3af;
-                            font-weight: 600;
-                        }
-
-                        @media print {
-                            body { background: none; }
-                            .page { box-shadow: none; margin: 0; width: 100%; height: 100%; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="page">
-                        <div class="content">
-                            <div class="header">
-                                <img src="/logo.png" class="logo-img" alt="Logo" />
-                                <h1 class="meeting-title">${meeting.name}</h1>
-                                <div class="meeting-meta">
-                                    <span>${meeting.campus.toUpperCase()} CAMPUS</span>
-                                    <span>•</span>
-                                    <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                                </div>
-                            </div>
-
-                            <div class="qr-outer-container">
-                                <div class="scan-badge">SCAN ME!</div>
-                                <div class="qr-inner-wrapper">
-                                    ${new XMLSerializer().serializeToString(qrSvg)}
-                                </div>
-                            </div>
-
-                            <div class="theme-section">
-                                <div class="theme-title">Semester Theme</div>
-                                <div class="theme-text">"Trust the designer He knows the journey"</div>
-                                <div class="theme-verse">
-                                    <strong>Proverbs 3:5-6</strong><br/>
-                                    "Trust the Lord with all your heart and lean not on your own understanding; in all your ways submit to Him and He will make your paths straight"
-                                </div>
-                            </div>
-
-                            <div class="footer">
-                                <div class="instruction">
-                                    <h3>Quick Check-In</h3>
-                                    <p>Open your camera or QR scanner to mark your attendance instantly.</p>
-                                </div>
-                                <div class="meta">
-                                    ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
-                                    Leaders In Service System
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <script>
-                        window.onload = () => {
-                            setTimeout(() => {
-                                window.print();
-                                // window.onafterprint = () => window.close(); // Optional: Close after print
-                            }, 500); 
-                        };
-                    </script>
-                </body>
-            </html>
-        `;
-
-        const win = window.open('', '_blank');
-        win.document.write(printHtml);
-        win.document.close();
-    };
-
-    const logout = () => {
+    const handleLogout = () => {
         localStorage.clear();
         window.location.href = '/admin';
     };
 
-    const toggleStatus = async (meeting) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(userRole);
-
-        if (!meeting.isActive && !isSuperUser) {
-            setMsg({ type: 'error', text: 'Finalized meetings can only be reopened by a SuperAdmin.' });
-            return;
-        }
-
-        const action = meeting.isActive ? 'CLOSE' : 'REOPEN';
-        const confirmMsg = meeting.isActive
-            ? 'Are you sure you want to CLOSE this meeting? This will finalize it.'
-            : 'Are you sure you want to REOPEN this meeting? This will enable the QR code and student access again.';
-
-        if (!window.confirm(confirmMsg)) return;
-
-        try {
-            await api.patch(`/meetings/${meeting._id}`, { isActive: !meeting.isActive });
-            fetchMeetings();
-            setMsg({ type: 'success', text: `Meeting ${meeting.isActive ? 'finalized' : 'reopened'} successfully!` });
-        } catch (err) {
-            setMsg({ type: 'error', text: `Failed to ${action.toLowerCase()} meeting` });
-        }
-    };
-
-    const saveMember = async (e) => {
-        e.preventDefault();
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-
-        try {
-            if (editingMember._id === 'NEW') {
-                await api.post('/members', editingMember);
-                const firstName = editingMember.name.split(' ')[0];
-                setMsg({ type: 'success', text: `Success! ${firstName} has been added! Ready for next.` });
-                // Reset form for next entry, keeping campus
-                setEditingMember(prev => ({
-                    ...prev,
-                    name: '',
-                    studentRegNo: '',
-                    memberType: 'Visitor',
-                    status: 'Active',
-                    lastActiveSemester: '',
-                    wateringDays: []
-                }));
-            } else {
-                await api.patch(`/members/${editingMember._id}`, editingMember);
-                setMsg({ type: 'success', text: 'Member profile updated!' });
-                setEditingMember(null);
-            }
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save member' });
-        }
-    };
-
-    const handleResetAllPoints = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('Are you sure you want to reset ALL points for ALL members? This cannot be undone.')) return;
-        try {
-            await api.post('/members/reset-all-points');
-            setMsg({ type: 'success', text: 'All points have been reset.' });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to reset points' });
-        }
-    };
-
-    const handleGraduateAll = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('Are you sure you want to graduate all Recruits to Douloids?')) return;
-        const pwd = prompt('Enter admin password to confirm:');
-        if (!pwd) return;
-        try {
-            await api.post('/members/graduate-all', { confirmPassword: pwd });
-            setMsg({ type: 'success', text: 'All recruits graduated!' });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to graduate recruits' });
-        }
-    };
-
-    const handleArchiveAllRecruits = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('⚠️ ARCHIVE ALL RECRUITS ⚠️\n\nThis will archive ALL members currently marked as Recruits. They will no longer be able to log in but their data will remain. Proceed?')) return;
-
-        const pwd = prompt('Enter admin password to confirm archival:');
-        if (!pwd) return;
-
-        try {
-            const res = await api.post('/members/archive-all-recruits', { confirmPassword: pwd });
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to archive recruits' });
-        }
-    };
-
-    const handleUndoGraduation = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('⚠️ UNDO GRADUATION ⚠️\n\nThis will revert all recently graduated members back to Recruits. Do you want to proceed?')) return;
-
-        const pwd = prompt('Enter admin password to confirm undo:');
-        if (!pwd) return;
-
-        try {
-            const res = await api.post('/members/undo-graduation', { confirmPassword: pwd });
-            setMsg({ type: 'success', text: res.data.message });
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to undo graduation' });
-        }
-    };
-
-    const handleGraduateMember = async (memberId) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('Graduate this member to Douloid status?')) return;
-        try {
-            await api.post(`/members/${memberId}/graduate`);
-            setMsg({ type: 'success', text: 'Member graduated!' });
-            fetchMemberInsights(editingMember.studentRegNo); // Refresh insights
-            fetchMembers(); // Refresh list
-            if (editingMember) setEditingMember(prev => ({ ...prev, memberType: 'Douloid' }));
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to graduate member' });
-        }
-    };
-
-    // Reset points for INDIVIDUAL member (requested for testing in insights)
-    const handleResetMemberPoints = async (memberId) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('Reset this member\'s points to 0?')) return;
-        try {
-            await api.post(`/members/${memberId}/reset-points`);
-            setMsg({ type: 'success', text: 'Points reset.' });
-            fetchMemberInsights(editingMember.studentRegNo); // Refresh insights
-            fetchMembers();
-            if (editingMember) setEditingMember(prev => ({ ...prev, totalPoints: 0 }));
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to reset points' });
-        }
-    };
-
-    const handleResetDevice = async (memberId) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('Are you sure you want to reset this student\'s device link? They will be able to check in with a new phone.')) return;
-        try {
-            await api.post(`/members/${memberId}/reset-device`);
-            setMsg({ type: 'success', text: 'Device link reset successfully!' });
-            fetchMembers();
-            setEditingMember(null);
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to reset device' });
-        }
-    };
-
-    const handleSaveAdmin = async (e) => {
-        e.preventDefault();
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        try {
-            if (editingAdmin._id === 'NEW') {
-                await api.post('/auth/register', editingAdmin);
-                setMsg({ type: 'success', text: 'New admin registered successfully!' });
-            } else {
-                await api.patch(`/auth/users/${editingAdmin._id}`, editingAdmin);
-                setMsg({ type: 'success', text: 'Admin profile updated!' });
-            }
-            setEditingAdmin(null);
-            fetchAdmins();
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save admin' });
-        }
-    };
-
-    const handleDeleteAdmin = async (id, name) => {
-        if (!window.confirm(`Are you sure you want to delete admin "${name}"? This cannot be undone.`)) return;
-        try {
-            await api.delete(`/auth/users/${id}`);
-            setMsg({ type: 'success', text: 'Admin deleted successfully.' });
-            fetchAdmins();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to delete admin' });
-        }
-    };
-
-    const handleBulkGraduate = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (selectedMemberIds.length === 0) return;
-        if (!window.confirm(`Graduate ${selectedMemberIds.length} selected recruits to Douloid status? They will see the celebratory graduation screen when they next login.`)) return;
-        try {
-            await api.post('/members/bulk-graduate', { memberIds: selectedMemberIds });
-            setMsg({ type: 'success', text: `Successfully graduated ${selectedMemberIds.length} members!` });
-            setSelectedMemberIds([]);
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to graduate members' });
-        }
-    };
-
-    const handleBulkListAction = async () => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const regNos = bulkListInput.split('\n').map(r => r.trim()).filter(r => r);
-        if (regNos.length === 0) return;
-
-        try {
-            setImportLoading(true);
-            const endpoint = bulkListType === 'graduate' ? '/members/graduate-by-regnos' : '/members/archive-by-regnos';
-            const res = await api.post(endpoint, { regNos });
-            setMsg({ type: 'success', text: res.data.message });
-            setShowBulkListTool(false);
-            setBulkListInput('');
-            fetchMembers();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Action failed: ' + (err.response?.data?.message || 'Server error') });
-        } finally {
-            setImportLoading(false);
-        }
-    };
-
-    const fetchSettings = async () => {
-        try {
-            const guestRes = await api.get('/settings/guest_features');
-            setGuestFeaturesEnabled(guestRes.data?.value !== 'false');
-
-            const semRes = await api.get('/settings/current_semester');
-            if (semRes.data?.value) {
-                setCurrentSemester(semRes.data.value);
-            }
-
-
-        } catch (err) {
-            console.error('Failed to fetch settings', err);
-        }
-    };
-
-    const handleSaveSetting = async (key, value) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        try {
-            await api.patch(`/settings/${key}`, { value: String(value) });
-            setMsg({ type: 'success', text: 'Setting updated successfully.' });
-            fetchSettings();
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to update setting' });
-        }
-    };
-
-    // Automatic Defaults
-    useEffect(() => {
-        if (!showCreate) return;
-
-        // Set Date to Today
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0];
-
-        setFormData(prev => ({
-            ...prev,
-            date: dateStr
-        }));
-    }, [showCreate]);
-
-    const totalAttendanceCount = meetings.reduce((acc, current) => acc + (current.attendanceCount || 0), 0);
-    const activeMeetingsCount = meetings.filter(m => m.isActive).length;
-
-    const renderMeetingCard = (m) => {
-        const now = new Date();
-        const mDate = new Date(m.date);
-        const [h, min] = m.startTime.split(':').map(Number);
-        const mStart = new Date(mDate);
-        mStart.setHours(h, min, 0, 0);
-
-        const [endH, endMin] = m.endTime.split(':').map(Number);
-        const mEnd = new Date(mDate);
-        mEnd.setHours(endH, endMin, 0, 0);
-
-        const isActuallyLive = m.isActive && now >= mStart;
-        const isMeetingOver = now > mEnd;
-
-        // Custom calendar badge formatting
-        const monthStr = mDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-        const dayStr = mDate.getDate();
-        const weekdayStr = mDate.toLocaleDateString('en-US', { weekday: 'short' });
-
-        return (
-            <div
-                key={m._id}
-                className="glass-card-premium metric-card-glow"
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1.25rem',
-                    border: isActuallyLive ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(29, 166, 217, 0.15)',
-                    boxShadow: isActuallyLive ? '0 0 25px rgba(34, 197, 94, 0.15)' : '0 10px 30px rgba(0, 0, 0, 0.2)',
-                    cursor: 'pointer',
-                    padding: '1.5rem',
-                    position: 'relative'
-                }}
-                onClick={() => setInsightMeeting(m)}
-            >
-                {/* Header Section */}
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    {/* Calendar Badge */}
-                    <div style={{
-                        width: '55px',
-                        height: '60px',
-                        borderRadius: '0.75rem',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-                        flexShrink: 0,
-                        border: '1px solid rgba(255,255,255,0.05)'
-                    }}>
-                        <div style={{
-                            width: '100%',
-                            background: isActuallyLive ? 'linear-gradient(135deg, #22c55e, #15803d)' : 'linear-gradient(135deg, #1da6d9, #0a4d68)',
-                            color: 'white',
-                            fontSize: '0.65rem',
-                            fontWeight: 900,
-                            padding: '0.2rem 0',
-                            textAlign: 'center',
-                            letterSpacing: '1px'
-                        }}>
-                            {monthStr}
-                        </div>
-                        <div style={{
-                            flex: 1,
-                            width: '100%',
-                            background: 'rgba(255,255,255,0.03)',
-                            color: 'white',
-                            fontSize: '1.3rem',
-                            fontWeight: 900,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            lineHeight: 1
-                        }}>
-                            {dayStr}
-                        </div>
-                    </div>
-
-                    {/* Name and Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {m.name}
-                            </h3>
-                            {m.category === 'Training' && (
-                                <span style={{
-                                    fontSize: '0.55rem',
-                                    padding: '0.15rem 0.4rem',
-                                    background: 'rgba(234, 179, 8, 0.2)',
-                                    color: '#eab308',
-                                    borderRadius: '0.35rem',
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    border: '1px solid rgba(234, 179, 8, 0.3)'
-                                }}>Training</span>
-                            )}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
-                            <MapPin size={12} color="#1da6d9" />
-                            <span>{m.campus}</span>
-                            <span style={{ opacity: 0.3 }}>•</span>
-                            <span>{weekdayStr}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Status and Analytics Banner */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Clock size={12} color="rgba(255,255,255,0.4)" />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
-                            {m.startTime} - {m.endTime}
-                        </span>
-                    </div>
-
-                    {(() => {
-                        if (!m.isActive) return (
-                            <span className="status-pill-modern completed">
-                                Completed
-                            </span>
-                        );
-                        if (isActuallyLive) return (
-                            <span className="status-pill-modern live">
-                                <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 1.5s infinite' }}></span>
-                                Live Now
-                            </span>
-                        );
-                        return (
-                            <span className="status-pill-modern standby">
-                                Standby
-                            </span>
-                        );
-                    })()}
-                </div>
-
-                {/* Inline Attendance Meter */}
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
-                        <span style={{ color: isActuallyLive ? '#22c55e' : '#1da6d9' }}>{m.attendees || 0} checked-in</span>
-                    </div>
-                    <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                        <div style={{
-                            width: `${Math.min(100, ((m.attendees || 0) / 100) * 100)}%`,
-                            height: '100%',
-                            background: isActuallyLive ? 'linear-gradient(90deg, #22c55e, #4ade80)' : 'linear-gradient(90deg, #1da6d9, #0ea5e9)',
-                            borderRadius: '10px',
-                            transition: 'width 1s ease-in-out'
-                        }} />
-                    </div>
-                </div>
-
-                {/* Search / Manual Input Row */}
-                {((m.isActive && !isMeetingOver) || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
-                    <div 
-                        style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div style={{ position: 'relative', flex: 1 }}>
-                            <Search size={13} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                            <input
-                                className="input-field"
-                                placeholder="Search Name / Reg No"
-                                list="members-search"
-                                style={{
-                                    fontSize: '0.75rem',
-                                    padding: '0.45rem 0.75rem 0.45rem 2rem',
-                                    borderRadius: '0.5rem',
-                                    background: 'rgba(0,0,0,0.3)',
-                                    border: '1px solid rgba(255,255,255,0.05)'
-                                }}
-                                value={quickRegNo}
-                                onChange={e => setQuickRegNo(e.target.value)}
-                            />
-                        </div>
-                        <button
-                            className="btn"
-                            style={{
-                                padding: '0.45rem 0.75rem',
-                                background: 'rgba(255,255,255,0.05)',
-                                color: 'rgba(255,255,255,0.6)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                            onClick={() => handleLookupMemberInsights(quickRegNo)}
-                            title="Lookup Member History"
-                        >
-                            <Search size={14} />
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            style={{
-                                padding: '0.45rem 0.75rem',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0
-                            }}
-                            onClick={() => handleQuickCheckIn(m._id)}
-                            disabled={quickCheckInLoading}
-                            title="Manual Check-In"
-                        >
-                            {quickCheckInLoading ? '...' : <Plus size={14} />}
-                        </button>
-                    </div>
-                )}
-
-                {/* Bottom Action Deck */}
-                <div 
-                    style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}
-                    onClick={e => e.stopPropagation()}
-                >
-                    {/* QR Button */}
-                    {((m.isActive && !isMeetingOver) || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
-                        <button
-                            className="btn"
-                            style={{
-                                flex: 1,
-                                background: 'rgba(29, 166, 217, 0.1)',
-                                color: '#1da6d9',
-                                border: '1px solid rgba(29, 166, 217, 0.2)',
-                                padding: '0.55rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.35rem'
-                            }}
-                            onClick={() => {
-                                const now = new Date();
-                                const [startH, startM] = m.startTime.split(':').map(Number);
-                                const [endH, endM] = m.endTime.split(':').map(Number);
-                                const start = new Date(m.date);
-                                start.setHours(startH, startM, 0, 0);
-                                const end = new Date(m.date);
-                                end.setHours(endH, endM, 0, 0);
-                                const role = userRole || localStorage.getItem('role');
-                                const isSuperUser = ['developer', 'superadmin', 'SuperAdmin'].includes(role);
-                                const isWithinTime = now >= start && now <= end;
-
-                                if (isWithinTime) {
-                                    setSelectedMeeting(m);
-                                } else {
-                                    if (window.confirm(`⚠️ TIME WARNING ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code for printing/testing?`)) {
-                                        setSelectedMeeting(m);
-                                    }
-                                }
-                            }}
-                        >
-                            <QrIcon size={14} /> QR
-                        </button>
-                    )}
-
-                    <button 
-                        className="btn" 
-                        style={{
-                            flex: 1,
-                            background: 'rgba(167, 139, 250, 0.1)',
-                            color: '#c084fc',
-                            border: '1px solid rgba(167, 139, 250, 0.2)',
-                            fontSize: '0.75rem',
-                            padding: '0.55rem',
-                            fontWeight: 800,
-                            borderRadius: '0.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.35rem'
-                        }}
-                        onClick={() => setInsightMeeting(m)}
-                    >
-                        <BarChart3 size={14} /> Insights
-                    </button>
-
-                    <button 
-                        className="btn" 
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            background: 'rgba(255,255,255,0.03)',
-                            color: 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: '0.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                        onClick={() => toggleStatus(m)}
-                    >
-                        {m.isActive ? <X size={14} title="Close Meeting" /> : <RotateCcw size={14} title="Reopen Meeting" />}
-                    </button>
-
-                    {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
-                        <button
-                            className="btn"
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                            onClick={() => handleDeleteMeeting(m._id, m.name)}
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    const renderTrainingCard = (t) => {
-        const now = new Date();
-        const tDate = new Date(t.date);
-        const [h, min] = t.startTime.split(':').map(Number);
-        const tStart = new Date(tDate);
-        tStart.setHours(h, min, 0, 0);
-
-        const [endH, endMin] = t.endTime.split(':').map(Number);
-        const tEnd = new Date(tDate);
-        tEnd.setHours(endH, endMin, 0, 0);
-
-        const isActuallyLive = t.isActive && now >= tStart;
-        const isOver = now > tEnd;
-
-        // Custom calendar badge formatting
-        const monthStr = tDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-        const dayStr = tDate.getDate();
-        const weekdayStr = tDate.toLocaleDateString('en-US', { weekday: 'short' });
-
-        return (
-            <div
-                key={t._id}
-                className="glass-card-premium metric-card-glow"
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1.25rem',
-                    border: isActuallyLive ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(29, 166, 217, 0.15)',
-                    boxShadow: isActuallyLive ? '0 0 25px rgba(52, 211, 153, 0.15)' : '0 10px 30px rgba(0, 0, 0, 0.2)',
-                    cursor: 'pointer',
-                    padding: '1.5rem',
-                    position: 'relative'
-                }}
-                onClick={() => setInsightMeeting(t)}
-            >
-                {/* Header Section */}
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    {/* Calendar Badge */}
-                    <div style={{
-                        width: '55px',
-                        height: '60px',
-                        borderRadius: '0.75rem',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-                        flexShrink: 0,
-                        border: '1px solid rgba(255,255,255,0.05)'
-                    }}>
-                        <div style={{
-                            width: '100%',
-                            background: isActuallyLive ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #1da6d9, #0a4d68)',
-                            color: 'white',
-                            fontSize: '0.65rem',
-                            fontWeight: 900,
-                            padding: '0.2rem 0',
-                            textAlign: 'center',
-                            letterSpacing: '1px'
-                        }}>
-                            {monthStr}
-                        </div>
-                        <div style={{
-                            flex: 1,
-                            width: '100%',
-                            background: 'rgba(255,255,255,0.03)',
-                            color: 'white',
-                            fontSize: '1.3rem',
-                            fontWeight: 900,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            lineHeight: 1
-                        }}>
-                            {dayStr}
-                        </div>
-                    </div>
-
-                    {/* Name and Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {t.name}
-                            </h3>
-                            <span style={{
-                                fontSize: '0.55rem',
-                                padding: '0.15rem 0.4rem',
-                                background: 'rgba(52, 211, 153, 0.2)',
-                                color: '#34d399',
-                                borderRadius: '0.35rem',
-                                fontWeight: 900,
-                                textTransform: 'uppercase',
-                                border: '1px solid rgba(52, 211, 153, 0.3)'
-                            }}>Training</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
-                            <MapPin size={12} color="#1da6d9" />
-                            <span>{t.campus}</span>
-                            <span style={{ opacity: 0.3 }}>•</span>
-                            <span>{weekdayStr}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Status and Analytics Banner */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Clock size={12} color="rgba(255,255,255,0.4)" />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
-                            {t.startTime} - {t.endTime}
-                        </span>
-                    </div>
-
-                    {(() => {
-                        if (!t.isActive) return (
-                            <span className="status-pill-modern completed">
-                                Archived
-                            </span>
-                        );
-                        if (isOver) return (
-                            <span className="status-pill-modern completed">
-                                Completed
-                            </span>
-                        );
-                        if (isActuallyLive) return (
-                            <span className="status-pill-modern live" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', borderColor: 'rgba(52, 211, 153, 0.25)' }}>
-                                <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', animation: 'pulse 1.5s infinite' }}></span>
-                                Live Now
-                            </span>
-                        );
-                        return (
-                            <span className="status-pill-modern standby" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', borderColor: 'rgba(52, 211, 153, 0.15)' }}>
-                                Scheduled
-                            </span>
-                        );
-                    })()}
-                </div>
-
-                {/* Inline Attendance Meter */}
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
-                        <span style={{ color: '#34d399' }}>{t.attendanceCount || 0} checked-in</span>
-                    </div>
-                    <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                        <div style={{
-                            width: `${Math.min(100, ((t.attendanceCount || 0) / 100) * 100)}%`,
-                            height: '100%',
-                            background: 'linear-gradient(90deg, #34d399, #059669)',
-                            borderRadius: '10px',
-                            transition: 'width 1s ease-in-out'
-                        }} />
-                    </div>
-                </div>
-
-                {/* Bottom Action Deck */}
-                <div 
-                    style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}
-                    onClick={e => e.stopPropagation()}
-                >
-                    {/* QR Button */}
-                    {((t.isActive && !isOver) || ['developer', 'superadmin'].includes(userRole)) && (
-                        <button
-                            className="btn"
-                            style={{
-                                flex: 1,
-                                background: 'rgba(52, 211, 153, 0.1)',
-                                color: '#34d399',
-                                border: '1px solid rgba(52, 211, 153, 0.2)',
-                                padding: '0.55rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.35rem'
-                            }}
-                            onClick={() => setSelectedTraining(t)}
-                        >
-                            <QrIcon size={14} /> QR
-                        </button>
-                    )}
-
-                    <button 
-                        className="btn" 
-                        style={{
-                            flex: 1,
-                            background: 'rgba(167, 139, 250, 0.1)',
-                            color: '#c084fc',
-                            border: '1px solid rgba(167, 139, 250, 0.2)',
-                            fontSize: '0.75rem',
-                            padding: '0.55rem',
-                            fontWeight: 800,
-                            borderRadius: '0.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.35rem'
-                        }}
-                        onClick={() => setInsightMeeting(t)}
-                    >
-                        <BarChart3 size={14} /> Insights
-                    </button>
-
-                    <button 
-                        className="btn" 
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            background: 'rgba(255,255,255,0.03)',
-                            color: 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: '0.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                        onClick={() => handleToggleTrainingStatus(t._id, t.isActive)}
-                    >
-                        {t.isActive ? <X size={14} title="Close Training" /> : <RotateCcw size={14} title="Reopen Training" />}
-                    </button>
-
-                    {['developer', 'superadmin'].includes(userRole) && (
-                        <button
-                            className="btn"
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                            onClick={() => handleDeleteTraining(t._id, t.name)}
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    };;
-
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
-            {/* Quick Registration Modal for Recovery Mode */}
-            {showQuickRegModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-                    zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '1.5rem', animation: 'fadeIn 0.3s ease'
-                }}>
-                    <div className="glass-panel" style={{
-                        width: '100%', maxWidth: '450px', padding: '2rem',
-                        background: '#0f172a', border: '1px solid rgba(124, 58, 237, 0.5)',
-                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                        animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ padding: '0.6rem', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '0.75rem' }}>
-                                    <Plus size={24} color="#a78bfa" />
-                                </div>
-                                <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900 }}>Recovery Registration</h2>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>Quickly onboard {quickRegData.studentRegNo}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowQuickRegModal(false)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20} /></button>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem', letterSpacing: '1px' }}>FULL NAME</label>
-                                <input 
-                                    className="input-field"
-                                    placeholder="Enter student name"
-                                    value={quickRegData.name}
-                                    onChange={e => setQuickRegData({...quickRegData, name: e.target.value})}
-                                    autoFocus
-                                />
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem', letterSpacing: '1px' }}>CAMPUS</label>
-                                    <select 
-                                        className="input-field"
-                                        value={quickRegData.campus}
-                                        onChange={e => setQuickRegData({...quickRegData, campus: e.target.value})}
-                                        style={{ height: '45px' }}
-                                    >
-                                        <option value="Athi River">Athi River</option>
-                                        <option value="Valley Road">Valley Road</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem', letterSpacing: '1px' }}>CATEGORY</label>
-                                    <select 
-                                        className="input-field"
-                                        value={quickRegData.memberType}
-                                        onChange={e => setQuickRegData({...quickRegData, memberType: e.target.value})}
-                                        style={{ height: '45px' }}
-                                    >
-                                        <option value="Douloid">Douloid</option>
-                                        <option value="Recruit">Recruit</option>
-                                        <option value="Visitor">Visitor</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <button
-                                className="btn btn-primary"
-                                style={{ height: '50px', marginTop: '1rem', fontWeight: 900, borderRadius: '0.75rem' }}
-                                onClick={async () => {
-                                    if (!quickRegData.name) return setMsg({ type: 'error', text: 'Name is required' });
-                                    setQuickCheckInLoading(true);
-                                    try {
-                                        await api.post('/attendance/manual', {
-                                            meetingId: pendingMeetingId,
-                                            studentRegNo: quickRegData.studentRegNo,
-                                            name: quickRegData.name,
-                                            isNewMember: true,
-                                            registrationData: {
-                                                name: quickRegData.name,
-                                                campus: quickRegData.campus,
-                                                memberType: quickRegData.memberType
-                                            }
-                                        });
-                                        setMsg({ type: 'success', text: `Success! ${quickRegData.name} registered and checked in.` });
-                                        setShowQuickRegModal(false);
-                                        setQuickRegData({ studentRegNo: '', name: '', campus: 'Athi River', memberType: 'Douloid' });
-                                        fetchMeetings();
-                                        fetchMembers();
-                                    } catch (err) {
-                                        setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to register student' });
-                                    } finally {
-                                        setQuickCheckInLoading(false);
-                                    }
-                                }}
-                                disabled={quickCheckInLoading}
-                            >
-                                {quickCheckInLoading ? 'PROCESSING...' : 'COMPLETE REGISTRATION'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
             <BackgroundGallery />
             <ValentineRain />
-            <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'row', width: '100%' }}>
-                <style>{`
-                    .glass-panel { background: rgba(9, 29, 46, 0.6); backdrop-filter: blur(16px); border-radius: 1rem; border: 1px solid var(--glass-border-light); }
-                    .light-mode .glass-panel { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0, 0, 0, 0.1); }
-                    .btn { cursor: pointer; border: none; transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s; }
-                    .btn:active { transform: scale(0.95); }
-                    .btn-primary, .glass-btn-primary { background: linear-gradient(135deg, #1da6d9 0%, #0a4d68 100%); color: white; border-radius: 0.6rem; box-shadow: 0 4px 15px rgba(29, 166, 217, 0.25); border: 1px solid rgba(29,166,217,0.3); font-weight: 700; letter-spacing: 0.5px; }
-                    .btn-primary:hover, .glass-btn-primary:hover { box-shadow: 0 0 28px rgba(29, 166, 217, 0.5); transform: translateY(-2px); }
-                    .btn-danger { background: #ef4444; color: white; }
-                    .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
-                    .input-field:focus { border-color: #1da6d9; box-shadow: 0 0 10px rgba(29, 166, 217, 0.2); }
-                    .light-mode .input-field { background: white; border-color: #ddd; color: black; }
-                    .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; padding: 0.4rem; cursor: pointer; color: var(--color-text-dim); transition: all 0.2s; }
-                    .btn-icon:hover { background: rgba(29,166,217,0.1); color: #1da6d9; border-color: rgba(29,166,217,0.3); }
-                    .setting-card { background: linear-gradient(135deg, rgba(9,29,46,0.8) 0%, rgba(2,21,37,0.9) 100%); backdrop-filter: blur(20px); border-radius: 1.25rem; border: 1px solid rgba(29,166,217,0.15); padding: 1.75rem; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
-                    .setting-card:hover { border-color: rgba(29,166,217,0.3); box-shadow: 0 8px 24px rgba(29,166,217,0.08); }
-                    .feedback-card { background: rgba(9,29,46,0.55); backdrop-filter: blur(16px); border-radius: 1rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.06); transition: all 0.25s; }
-                    .feedback-card:hover { border-color: rgba(29,166,217,0.2); transform: translateY(-1px); }
-                    
-                    /* Modern Glass Redesign Tokens */
-                    .glass-card-premium {
-                        background: linear-gradient(135deg, rgba(9, 29, 46, 0.75) 0%, rgba(2, 21, 37, 0.85) 100%);
-                        backdrop-filter: blur(20px);
-                        border-radius: 1.25rem;
-                        border: 1px solid rgba(29, 166, 217, 0.15);
-                        padding: 1.5rem;
-                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-                    }
-                    .glass-card-premium:hover {
-                        border-color: rgba(29, 166, 217, 0.35);
-                        box-shadow: 0 15px 35px rgba(29, 166, 217, 0.1);
-                        transform: translateY(-2px);
-                    }
-                    .light-mode .glass-card-premium {
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 247, 250, 0.95) 100%);
-                        border-color: rgba(0, 0, 0, 0.08);
-                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-                        color: #1e293b;
-                    }
-                    .light-mode .glass-card-premium:hover {
-                        border-color: rgba(0, 0, 0, 0.15);
-                        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-                    }
-                    .metric-card-glow {
-                        position: relative;
-                        overflow: hidden;
-                    }
-                    .metric-card-glow::before {
-                        content: '';
-                        position: absolute;
-                        top: 0; left: 0; right: 0; bottom: 0;
-                        background: radial-gradient(circle at top right, rgba(29, 166, 217, 0.1), transparent 70%);
-                        pointer-events: none;
-                        transition: opacity 0.3s ease;
-                        opacity: 0.5;
-                    }
-                    .metric-card-glow:hover::before {
-                        opacity: 1;
-                    }
-                    
-                    /* Form elements */
-                    .form-group-premium {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 0.5rem;
-                    }
-                    .form-group-premium label {
-                        font-size: 0.75rem;
-                        font-weight: 800;
-                        color: rgba(255, 255, 255, 0.5);
-                        letter-spacing: 0.5px;
-                        text-transform: uppercase;
-                    }
-                    .light-mode .form-group-premium label {
-                        color: #64748b;
-                    }
-                    
-                    /* Modern Inputs */
-                    .modern-input {
-                        background: rgba(2, 21, 37, 0.4);
-                        border: 1px solid rgba(255, 255, 255, 0.08);
-                        color: white;
-                        padding: 0.8rem 1rem;
-                        border-radius: 0.75rem;
-                        outline: none;
-                        font-size: 0.9rem;
-                        font-weight: 600;
-                        transition: all 0.25s ease;
-                        width: 100%;
-                        box-sizing: border-box;
-                    }
-                    .modern-input:focus {
-                        border-color: #1da6d9;
-                        box-shadow: 0 0 12px rgba(29, 166, 217, 0.3);
-                        background: rgba(2, 21, 37, 0.6);
-                    }
-                    .light-mode .modern-input {
-                        background: #f8fafc;
-                        border-color: #cbd5e1;
-                        color: #0f172a;
-                    }
-                    .light-mode .modern-input:focus {
-                        background: white;
-                        border-color: #3b82f6;
-                        box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
-                    }
-                    
-                    /* Table styling */
-                    .glass-table-premium {
-                        width: 100%;
-                        border-collapse: separate;
-                        border-spacing: 0 0.5rem;
-                    }
-                    .glass-table-premium th {
-                        padding: 1rem;
-                        font-size: 0.75rem;
-                        font-weight: 800;
-                        color: rgba(255, 255, 255, 0.4);
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        text-align: left;
-                        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                    }
-                    .light-mode .glass-table-premium th {
-                        color: #64748b;
-                        border-bottom-color: rgba(0, 0, 0, 0.08);
-                    }
-                    .glass-table-premium td {
-                        padding: 1.25rem 1rem;
-                        background: rgba(9, 29, 46, 0.3);
-                        border-top: 1px solid rgba(255, 255, 255, 0.03);
-                        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-                        color: white;
-                        font-size: 0.9rem;
-                        font-weight: 600;
-                        transition: all 0.25s ease;
-                    }
-                    .glass-table-premium td:first-child {
-                        border-left: 1px solid rgba(255, 255, 255, 0.03);
-                        border-top-left-radius: 0.75rem;
-                        border-bottom-left-radius: 0.75rem;
-                    }
-                    .glass-table-premium td:last-child {
-                        border-right: 1px solid rgba(255, 255, 255, 0.03);
-                        border-top-right-radius: 0.75rem;
-                        border-bottom-right-radius: 0.75rem;
-                    }
-                    .glass-table-premium tr:hover td {
-                        background: rgba(29, 166, 217, 0.06);
-                        border-color: rgba(29, 166, 217, 0.2);
-                    }
-                    
-                    .light-mode .glass-table-premium td {
-                        background: rgba(248, 250, 252, 0.8);
-                        border-color: rgba(0, 0, 0, 0.03);
-                        color: #1e293b;
-                    }
-                    .light-mode .glass-table-premium tr:hover td {
-                        background: rgba(59, 130, 246, 0.04);
-                        border-color: rgba(59, 130, 246, 0.15);
-                    }
-                    
-                    /* Modern Badges & Pills */
-                    .status-pill-modern {
-                        padding: 0.35rem 0.75rem;
-                        border-radius: 2rem;
-                        font-size: 0.7rem;
-                        font-weight: 800;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 0.35rem;
-                        border: 1px solid transparent;
-                    }
-                    .status-pill-modern.live {
-                        background: rgba(34, 197, 94, 0.15);
-                        color: #22c55e;
-                        border-color: rgba(34, 197, 94, 0.25);
-                        box-shadow: 0 0 10px rgba(34, 197, 94, 0.1);
-                    }
-                    .status-pill-modern.standby {
-                        background: rgba(59, 130, 246, 0.15);
-                        color: #3b82f6;
-                        border-color: rgba(59, 130, 246, 0.25);
-                    }
-                    .status-pill-modern.completed {
-                        background: rgba(255, 255, 255, 0.05);
-                        color: rgba(255, 255, 255, 0.5);
-                        border-color: rgba(255, 255, 255, 0.1);
-                    }
-                    
-                    /* Styled Lists */
-                    .modern-list-item {
-                        background: rgba(9, 29, 46, 0.4);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 1rem;
-                        padding: 1rem 1.25rem;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        transition: all 0.25s ease;
-                    }
-                    .modern-list-item:hover {
-                        background: rgba(29, 166, 217, 0.05);
-                        border-color: rgba(29, 166, 217, 0.2);
-                        transform: translateX(4px);
-                    }
-                    .light-mode .modern-list-item {
-                        background: #f8fafc;
-                        border-color: #e2e8f0;
-                        color: #0f172a;
-                    }
-                    .light-mode .modern-list-item:hover {
-                        background: #f1f5f9;
-                        border-color: #cbd5e1;
-                    }
-                    
-                    .admin-sidebar {
-                        width: 260px;
-                        position: fixed;
-                        left: 0;
-                        top: 0;
-                        bottom: 0;
-                        background: #021525;
-                        border-right: 1px solid rgba(255, 255, 255, 0.06);
-                        padding: 2.25rem 1.25rem 1.5rem 1.25rem;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: space-between;
-                        z-index: 100;
-                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3);
-                    }
-                    .admin-main {
-                        margin-left: 260px;
-                        flex: 1;
-                        padding: 3rem 2rem;
-                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                        position: relative;
-                        width: calc(100% - 260px);
-                        box-sizing: border-box;
-                    }
-                    .sidebar-nav-btn {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.75rem;
-                        padding: 0.85rem 1rem;
-                        border-radius: 0.5rem;
-                        border: none;
-                        cursor: pointer;
-                        background: transparent;
-                        color: #7f92b0;
-                        font-size: 0.9rem;
-                        font-weight: 600;
-                        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-                        border-right: 3px solid transparent;
-                        text-align: left;
-                        width: 100%;
-                        position: relative;
-                        overflow: hidden;
-                    }
-                    .sidebar-nav-btn svg {
-                        color: #7f92b0;
-                        transition: color 0.25s ease, transform 0.25s ease;
-                        flex-shrink: 0;
-                    }
-                    .sidebar-nav-btn:hover {
-                        background: rgba(255, 255, 255, 0.02);
-                        color: #ffffff;
-                        transform: translateX(4px);
-                    }
-                    .sidebar-nav-btn:hover svg {
-                        color: #ffffff;
-                        transform: scale(1.05);
-                    }
-                    .sidebar-nav-btn.active {
-                        background: rgba(29, 166, 217, 0.08);
-                        color: #1da6d9;
-                        border-right: 3px solid #1da6d9;
-                        font-weight: 700;
-                    }
-                    .sidebar-nav-btn.active svg {
-                        color: #1da6d9;
-                    }
-                    .new-session-btn {
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 0.5rem;
-                        padding: 0.85rem 1rem;
-                        border-radius: 0.75rem;
-                        background: linear-gradient(135deg, var(--primary-electric) 0%, #0a4d68 100%);
-                        color: white;
-                        font-weight: 800;
-                        font-size: 0.85rem;
-                        letter-spacing: 0.5px;
-                        border: none;
-                        cursor: pointer;
-                        box-shadow: 0 4px 15px rgba(29, 166, 217, 0.25);
-                        width: 100%;
-                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    }
-                    .new-session-btn:hover {
-                        box-shadow: 0 6px 20px rgba(29, 166, 217, 0.45);
-                        transform: translateY(-2px);
-                        background: linear-gradient(135deg, #24bbf0 0%, #0c5c7d 100%);
-                    }
-                    .new-session-btn:active {
-                        transform: scale(0.96);
-                    }
-                    @media (max-width: 1024px) {
-                        .admin-sidebar {
-                            width: 80px;
-                            padding: 2rem 0.5rem;
-                            align-items: center;
-                        }
-                        .admin-sidebar .sidebar-text {
-                            display: none !important;
-                        }
-                        .admin-sidebar .sidebar-logo-text {
-                            display: none !important;
-                        }
-                        .sidebar-nav-btn {
-                            justify-content: center;
-                            padding: 0.85rem;
-                            border-right: none !important;
-                            border-left: none !important;
-                        }
-                        .sidebar-nav-btn.active {
-                            border-left: 3px solid #1da6d9 !important;
-                        }
-                        .new-session-btn {
-                            padding: 0.85rem;
-                            border-radius: 50%;
-                            width: 42px;
-                            height: 42px;
-                            justify-content: center;
-                        }
-                        .new-session-btn .sidebar-text {
-                            display: none !important;
-                        }
-                        .admin-main {
-                            margin-left: 80px;
-                            width: calc(100% - 80px);
-                            padding: 2rem 1.5rem;
-                        }
-                    }
-                    @media (max-width: 768px) {
-                        .admin-sidebar {
-                            width: 100%;
-                            height: auto;
-                            position: relative;
-                            border-right: none;
-                            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-                            flex-direction: column;
-                            padding: 1.25rem 1rem;
-                            align-items: stretch;
-                            gap: 1rem;
-                        }
-                        .admin-sidebar .sidebar-logo-text {
-                            display: block !important;
-                        }
-                        .admin-sidebar nav {
-                            flex-direction: row !important;
-                            overflow-x: auto;
-                            width: 100%;
-                            gap: 0.35rem;
-                            padding: 0.25rem 0;
-                            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                            padding-bottom: 0.75rem;
-                        }
-                        .sidebar-nav-btn {
-                            padding: 0.6rem 0.85rem !important;
-                            white-space: nowrap;
-                            width: auto !important;
-                            border-right: none !important;
-                            border-bottom: 2px solid transparent;
-                            border-left: none !important;
-                            border-radius: 0.35rem;
-                        }
-                        .sidebar-nav-btn.active {
-                            border-bottom: 2px solid #1da6d9 !important;
-                            background: rgba(29, 166, 217, 0.08) !important;
-                        }
-                        .new-session-btn {
-                            width: auto !important;
-                            border-radius: 0.5rem;
-                            padding: 0.6rem 1rem;
-                        }
-                        .new-session-btn .sidebar-text {
-                            display: inline !important;
-                        }
-                        .admin-sidebar .sidebar-footer {
-                            display: none !important;
-                        }
-                        .admin-main {
-                            margin-left: 0;
-                            width: 100%;
-                            padding: 1.5rem 1rem;
-                        }
-                    }
-                `}</style>
 
+            {/* Premium Header/Banner */}
+            {msg && (
+                <div style={{
+                    position: 'fixed',
+                    top: '1.5rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 9999,
+                    background: msg.type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(34, 197, 94, 0.95)',
+                    color: 'white',
+                    padding: '0.85rem 1.75rem',
+                    borderRadius: '1rem',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    fontWeight: 700,
+                    animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    border: '1px solid rgba(255,255,255,0.15)'
+                }}>
+                    {msg.type === 'error' ? '⚠️' : '✅'} {msg.text}
+                </div>
+            )}
+
+            <div className="dashboard-layout" style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 10 }}>
                 {/* Sidebar Navigation */}
-                <aside className="admin-sidebar">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        {/* Branding Header */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.5rem', marginBottom: '0.5rem' }}>
-                            <h1 className="sidebar-logo-text" style={{ 
-                                margin: 0, 
-                                fontSize: '1.75rem', 
-                                fontWeight: 800, 
-                                letterSpacing: '-0.03em', 
-                                color: '#1da6d9',
-                                fontFamily: "'Hanken Grotesk', sans-serif"
-                            }}>Doulos</h1>
-                            <span className="sidebar-logo-text" style={{ 
-                                fontSize: '0.75rem', 
-                                fontWeight: 600, 
-                                color: '#7f92b0', 
-                                letterSpacing: '0.5px',
-                                textTransform: 'capitalize',
-                                display: 'block' 
-                            }}>University Admin</span>
+                <aside className="sidebar" style={{ width: '280px', flexShrink: 0, borderRight: '1px solid var(--glass-border)', padding: '1.75rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <div style={{ animation: 'rotateLogo 60s linear infinite' }}>
+                            <Logo size={42} showText={false} />
                         </div>
-
-                        {/* Navigation Items */}
-                        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            <button
-                                onClick={() => setActiveTab('meetings')}
-                                className={`sidebar-nav-btn ${activeTab === 'meetings' ? 'active' : ''}`}
-                            >
-                                <LayoutDashboard size={18} />
-                                <span className="sidebar-text">Meetings</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (systemStatus.recoveryMode) {
-                                        return setMsg({ type: 'error', text: 'Activities & Training Track are restricted in Recovery Mode.' });
-                                    }
-                                    setActiveTab('trainings');
-                                }}
-                                className={`sidebar-nav-btn ${activeTab === 'trainings' ? 'active' : ''}`}
-                                style={{ opacity: systemStatus.recoveryMode ? 0.35 : 1 }}
-                            >
-                                <GraduationCap size={18} />
-                                <span className="sidebar-text">Trainings</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('members')}
-                                className={`sidebar-nav-btn ${activeTab === 'members' ? 'active' : ''}`}
-                            >
-                                <Users size={18} />
-                                <span className="sidebar-text">Members</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('events')}
-                                className={`sidebar-nav-btn ${activeTab === 'events' ? 'active' : ''}`}
-                            >
-                                <Trophy size={18} />
-                                <span className="sidebar-text">Events</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (systemStatus.recoveryMode) {
-                                        return setMsg({ type: 'error', text: 'Historical Reports are restricted in Recovery Mode.' });
-                                    }
-                                    setActiveTab('reports');
-                                }}
-                                className={`sidebar-nav-btn ${activeTab === 'reports' ? 'active' : ''}`}
-                                style={{ opacity: systemStatus.recoveryMode ? 0.35 : 1 }}
-                            >
-                                <BarChart3 size={18} />
-                                <span className="sidebar-text">Reports</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (systemStatus.recoveryMode) {
-                                        return setMsg({ type: 'error', text: 'Finance module is restricted in Recovery Mode.' });
-                                    }
-                                    setActiveTab('finance');
-                                }}
-                                className={`sidebar-nav-btn ${activeTab === 'finance' ? 'active' : ''}`}
-                                style={{ opacity: systemStatus.recoveryMode ? 0.35 : 1 }}
-                            >
-                                <Wallet size={18} />
-                                <span className="sidebar-text">Finance</span>
-                            </button>
-                            {guestFeaturesEnabled && (
-                                <button
-                                    onClick={() => setActiveTab('feedback')}
-                                    className={`sidebar-nav-btn ${activeTab === 'feedback' ? 'active' : ''}`}
-                                >
-                                    <Lightbulb size={18} />
-                                    <span className="sidebar-text">Feedback</span>
-                                </button>
-                            )}
-                            {['developer', 'superadmin', 'SuperAdmin', 'admin', 'Admin'].includes(userRole) && (
-                                <button
-                                    onClick={() => setActiveTab('admins')}
-                                    className={`sidebar-nav-btn ${activeTab === 'admins' ? 'active' : ''}`}
-                                >
-                                    <ShieldAlert size={18} />
-                                    <span className="sidebar-text">Admins</span>
-                                </button>
-                            )}
-                            {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
-                                <button
-                                    onClick={() => setActiveTab('system')}
-                                    className={`sidebar-nav-btn ${activeTab === 'system' ? 'active' : ''}`}
-                                >
-                                    <SettingsIcon size={18} />
-                                    <span className="sidebar-text">System</span>
-                                </button>
-                            )}
-
-                            {/* New Session Button */}
-                            <div style={{ padding: '0 0.5rem', marginTop: '0.5rem' }}>
-                                <button
-                                    onClick={() => {
-                                        setActiveTab('meetings');
-                                        setShowCreate(true);
-                                    }}
-                                    className="new-session-btn"
-                                >
-                                    <Plus size={16} strokeWidth={3} />
-                                    <span className="sidebar-text">New Session</span>
-                                </button>
-                            </div>
-                        </nav>
+                        <div>
+                            <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.5px' }}>DOULOS</h1>
+                            <span style={{ fontSize: '0.62rem', color: '#1da6d9', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase' }}>G9 Control Panel</span>
+                        </div>
                     </div>
 
-                    {/* Guest Feedback Button */}
-                    {isGuest && (
-                        <button
-                            onClick={async () => {
-                                const message = window.prompt("💡 Share your thoughts on the Admin Dashboard:");
-                                if (message) {
-                                    try {
-                                        await api.post('/feedback', { message, category: 'admin_guest_feedback' });
-                                        alert("Thanks for your feedback!");
-                                    } catch (e) {
-                                        console.error(e);
-                                        alert("Failed to send feedback. Please try again.");
-                                    }
-                                }
-                            }}
-                            className="btn feedback-btn"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.85rem 1rem',
-                                borderRadius: '0.75rem',
-                                background: '#facc15',
-                                color: 'black',
-                                fontWeight: 800,
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                width: '100%',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s ease',
-                                boxShadow: '0 4px 12px rgba(250, 204, 21, 0.2)'
-                            }}
-                        >
-                            <Lightbulb size={16} /> <span className="sidebar-text">Give Feedback</span>
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', flex: 1 }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>REGISTRY CONTROL</div>
+                        {[
+                            { id: 'meetings', label: 'Meetings Tab', icon: LayoutDashboard },
+                            { id: 'trainings', label: 'Trainings Tab', icon: GraduationCap },
+                            { id: 'members', label: 'Members Registry', icon: Users },
+                            { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
+                            { id: 'finance', label: 'Financial Control', icon: Wallet },
+                            { id: 'events', label: 'Events Scheduler', icon: Calendar },
+                            { id: 'feedback', label: 'Community Feedback', icon: MessageCircle }
+                        ].map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => setActiveTab(t.id)}
+                                className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.88rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                            >
+                                <t.icon size={18} />
+                                {t.label}
+                            </button>
+                        ))}
+
+                        <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '1.75rem', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>SYSTEM CONFIG</div>
+                        {[
+                            { id: 'admins', label: 'Staff Admins', icon: ShieldAlert },
+                            { id: 'system', label: 'System Settings', icon: SettingsIcon }
+                        ].map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => setActiveTab(t.id)}
+                                className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.88rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                            >
+                                <t.icon size={18} />
+                                {t.label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    {/* Bottom User Card */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(29, 166, 217, 0.15)', border: '1px solid rgba(29,166,217,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.95rem', color: '#1da6d9' }}>
+                                A
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>Administrator</div>
+                                <span style={{ fontSize: '0.62rem', color: '#1da6d9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{userRole}</span>
+                            </div>
+                        </div>
+                        <button className="btn" style={{ padding: '0.6rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '0.6rem', fontWeight: 800, fontSize: '0.78rem', width: '100%', cursor: 'pointer' }} onClick={handleLogout}>
+                            SIGN OUT SYSTEM
                         </button>
-                    )}
-
-                    <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.02)' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-electric), #a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', color: '#ffffff', flexShrink: 0 }}>
-                                {userRole ? userRole[0].toUpperCase() : 'A'}
-                            </div>
-                            <div style={{ overflow: 'hidden' }} className="sidebar-text">
-                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{localStorage.getItem('username') || 'Administrator'}</div>
-                                <div style={{ fontSize: '0.65rem', color: '#7f92b0', fontWeight: 600, textTransform: 'uppercase' }}>{userRole}</div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                            <button
-                                className="btn"
-                                style={{
-                                    flex: 1,
-                                    padding: '0.5rem',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    color: isDarkMode ? '#facc15' : 'var(--color-bg)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: '0.4rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    justifyContent: 'center'
-                                }}
-                                onClick={() => setIsDarkMode(!isDarkMode)}
-                                title="Toggle Theme"
-                            >
-                                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-                            </button>
-                            <button
-                                className="btn"
-                                style={{
-                                    flex: 2,
-                                    background: 'rgba(239, 68, 68, 0.1)',
-                                    color: '#f87171',
-                                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                                    borderRadius: '0.4rem',
-                                    cursor: 'pointer',
-                                    fontWeight: 700,
-                                    fontSize: '0.8rem'
-                                }}
-                                onClick={logout}
-                            >
-                                Logout
-                            </button>
-                        </div>
                     </div>
                 </aside>
 
-                {/* Main Content Area */}
-                <main className="admin-main">
+                {/* Main panel */}
+                <main className="main-content" style={{ flex: 1, padding: '2rem 3rem', overflowY: 'auto' }}>
+                    {/* Header Controls */}
+                    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#1da6d9', letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Doulos Management Suite</div>
+                            <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.75px' }}>Welcome back, Leader!</h1>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <button className="btn-icon" onClick={() => setIsDarkMode(!isDarkMode)} title={isDarkMode ? "Toggle Light Theme" : "Toggle Dark Theme"}>
+                                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                            </button>
+                            <a href="/" className="btn" style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <ExternalLink size={14} /> Public Portal
+                            </a>
+                        </div>
+                    </header>
 
-                {msg && (
-                    <div style={{
-                        position: 'fixed',
-                        top: '1.5rem',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        zIndex: 2000,
-                        minWidth: '280px',
-                        maxWidth: 'calc(100vw - 2rem)',
-                        width: 'max-content',
-                        padding: '1rem 1.5rem',
-                        borderRadius: '0.75rem',
-                        background: msg.type === 'error' ? '#dc2626' : '#059669',
-                        color: 'white',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.75rem',
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        wordBreak: 'break-word',
-                        textAlign: 'center',
-                        animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}>
-                        {msg.type === 'error' ? '⚠️' : '✅'} {msg.text}
-                        <style>{`
-                            @keyframes slideDown {
-                                0% { opacity: 0; transform: translate(-50%, -20px); }
-                                100% { opacity: 1; transform: translate(-50%, 0); }
-                            }
-                        `}</style>
-                    </div>
-                )}
-
-                {/* New Meeting Insights Area */}
-                {insightMeeting && (activeTab === 'meetings' || activeTab === 'trainings') ? (
-                    <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.5s' }}>
-                        <MeetingInsights
-                            meeting={insightMeeting}
-                            onClose={() => setInsightMeeting(null)}
+                    {/* Tab Dispatcher */}
+                    {activeTab === 'meetings' ? (
+                        <MeetingsTab
+                            meetings={meetings}
+                            userRole={userRole}
+                            isGuest={isGuest}
+                            fetchMeetings={fetchMeetings}
+                            setMsg={setMsg}
+                            currentSemester={currentSemester}
                             api={api}
-                            onQuickCheckIn={handleQuickCheckIn}
+                            members={members}
+                            quickRegNo={quickRegNo}
+                            setQuickRegNo={setQuickRegNo}
+                            quickCheckInLoading={quickCheckInLoading}
+                            setQuickCheckInLoading={setQuickCheckInLoading}
+                            fetchMembers={fetchMembers}
                         />
-                    </div>
-                ) : (activeTab === 'meetings' || activeTab === 'trainings') && (
-                    <div
-                        className="glass-panel"
-                        style={{
-                            padding: '3rem',
-                            marginBottom: '3rem',
-                            textAlign: 'center',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '2px dashed rgba(255,255,255,0.1)',
-                            borderRadius: '2rem'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', opacity: 0.3 }}>
-                            <BarChart3 size={48} />
-                        </div>
-                        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: activeTab === 'trainings' ? '#34d399' : 'hsl(var(--color-primary))' }}>
-                            {activeTab === 'meetings' ? 'Meeting' : 'Training'} Attendance Intelligence
-                        </h3>
-                        <p style={{ marginTop: '0.75rem', opacity: 0.6, fontSize: '1rem', fontWeight: 500 }}>
-                            Select any {activeTab === 'meetings' ? 'meeting' : 'training'} card below to decode detailed participation insights, absent lists, and growth metrics.
-                        </p>
-                    </div>
-                )}
-
-                {/* ============================================================ */}
-                {/* TRAININGS TAB */}
-                {/* ============================================================ */}
-                {activeTab === 'trainings' ? (
-                    <>
-                        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <button className="btn btn-primary" onClick={() => setShowCreateTraining(!showCreateTraining)}
-                                style={{ background: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'black', fontWeight: 800 }}>
-                                <Plus size={20} /> New Training Session
-                            </button>
-                        </div>
-
-                        {/* Create Training Form */}
-                        {showCreateTraining && (
-                            <div className="glass-card-premium" style={{ marginBottom: '2rem', maxWidth: '800px', position: 'relative', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#34d399', fontWeight: 800 }}>
-                                        <GraduationCap size={22} style={{ color: '#34d399' }} /> Create Training Session
-                                    </h3>
-                                    <button 
-                                        onClick={() => setShowCreateTraining(false)} 
-                                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', transition: 'background-color 0.2s' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                </div>
-                                <form onSubmit={handleCreateTraining} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
-                                    
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <SettingsIcon size={14} /> Training Setup
-                                        </span>
-                                    </div>
-                                    
-                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                                        <label>Training Name</label>
-                                        <input className="modern-input" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} placeholder="e.g. Leadership Foundations" required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
-                                        <input type="date" className="modern-input" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
-                                        <select className="modern-input" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Valley Road">Valley Road</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> Start Time</label>
-                                        <input type="time" className="modern-input" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
-                                        <input type="time" className="modern-input" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium" style={{ gridColumn: '1 / -1' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day (optional)</label>
-                                        <input className="modern-input" placeholder="e.g. What is your takeaway?" value={trainingFormData.questionOfDay}
-                                            onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })} />
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <MapPin size={14} /> Venue & Geofencing
-                                        </span>
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                                        <label>Venue Name *</label>
-                                        <input className="modern-input" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
-                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label>Geofence Radius (meters)</label>
-                                        <input type="number" className="modern-input" value={trainingFormData.location.radius}
-                                            onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} placeholder="200" />
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(52, 211, 153, 0.05)', border: '1px solid rgba(52, 211, 153, 0.15)', borderRadius: '1rem', padding: '1.25rem', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <MapPin size={16} /> GPS Geofence Link
-                                            </span>
-                                            {trainingFormData.location.latitude && trainingFormData.location.longitude ? (
-                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                                                    ✓ Coordinates captured: {trainingFormData.location.latitude.toFixed(5)}, {trainingFormData.location.longitude.toFixed(5)}
-                                                </span>
-                                            ) : (
-                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
-                                                    Capture the current coordinates for device check-in verification.
-                                                </span>
-                                            )}
-                                        </div>
-                                        <button 
-                                            type="button" 
-                                            className="btn" 
-                                            style={{ background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', fontWeight: 700 }}
-                                            onClick={() => {
-                                                navigator.geolocation.getCurrentPosition(pos => {
-                                                    setTrainingFormData(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
-                                                    setMsg({ type: 'success', text: `GPS captured!` });
-                                                }, () => setMsg({ type: 'error', text: 'GPS failed.' }));
-                                            }}
-                                        >
-                                            <MapPin size={16} /> Capture GPS
-                                        </button>
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                        <button 
-                                            type="submit" 
-                                            className="btn btn-primary" 
-                                            disabled={importLoading} 
-                                            style={{ background: '#34d399', padding: '1rem 2.5rem', color: 'black', fontWeight: 800, borderRadius: '0.75rem', width: '100%', letterSpacing: '0.5px' }}
-                                        >
-                                            {importLoading ? 'CREATING...' : 'CREATE TRAINING SESSION'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        )}
-
-                        {/* QR Modal for Training */}
-                        {selectedTraining && (
-                            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                onClick={() => setSelectedTraining(null)}>
-                                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
-                                    <h3 style={{ marginBottom: '0.5rem' }}>Scan Training QR</h3>
-
-                                    <div className="training-qr-container" style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '1rem' }}>
-                                        <QRCode value={`${window.location.origin}/check-in/${selectedTraining.code}`} size={220} level="H" />
-                                    </div>
-
-                                    <div style={{ marginBottom: '1.5rem' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>TRAINING CODE</div>
-                                        <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#34d399', letterSpacing: '2px', lineHeight: 1 }}>
-                                            {selectedTraining.code.toUpperCase()}
-                                        </div>
-                                    </div>
-
-                                    <h4 style={{ margin: '0 0 0.25rem' }}>{selectedTraining.name}</h4>
-                                    <p style={{ opacity: 0.5, marginBottom: '1.5rem', fontSize: '0.85rem' }}>{selectedTraining.campus} | Training Session</p>
-
-                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                        <button
-                                            className="btn btn-primary"
-                                            style={{ background: '#34d399', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-                                            onClick={() => handlePrintQR()}
-                                        >
-                                            <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
-                                        </button>
-                                        <button
-                                            className="btn"
-                                            style={{ background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
-                                            onClick={() => {
-                                                const link = `${window.location.origin}/check-in/${selectedTraining.code}`;
-                                                navigator.clipboard.writeText(link);
-                                                setMsg({ type: 'success', text: 'Link copied!' });
-                                            }}
-                                        >
-                                            <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
-                                        </button>
-                                        {['developer', 'superadmin'].includes(userRole) && (
-                                            <a
-                                                href={`/check-in/${selectedTraining.code}`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="btn"
-                                                style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.5rem 1rem', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
-                                            >
-                                                <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
-                                            </a>
-                                        )}
-                                    </div>
-                                    <p style={{ marginTop: '1.5rem', opacity: 0.4, fontSize: '0.75rem' }}>Click anywhere outside to close</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Training Grid - Unified Layout */}
-                        {(() => {
-                            const getSem = (d) => {
-                                const date = new Date(d);
-                                const m = date.getMonth();
-                                const y = date.getFullYear();
-                                if (m <= 3) return `Jan Semester ${y}`;
-                                if (m <= 7) return `May Semester ${y}`;
-                                return `Sept Semester ${y}`;
-                            };
-
-                            const activeList = trainings.filter(t => t.isActive);
-                            const historyList = trainings.filter(t => !t.isActive);
-
-                            const semesters = Array.from(new Set(historyList.map(t => getSem(t.date))));
-                            const currentSem = getSem(new Date());
-
-                            const filteredHistory = historyList.filter(t => {
-                                if (trainingSemesterFilter === 'All') return true;
-                                const target = trainingSemesterFilter === 'Current' ? currentSem : trainingSemesterFilter;
-                                return getSem(t.date) === target;
-                            });
-
-                            return (
-                                <div>
-                                    <h3 style={{ margin: '0 0 1rem 0', opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid rgba(52,211,153,0.2)', paddingBottom: '0.5rem', color: '#34d399' }}>
-                                        Active & Upcoming Trainings
-                                    </h3>
-
-                                    {activeList.length === 0 ? (
-                                        <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(52,211,153,0.02)', borderRadius: '1rem', marginBottom: '2rem', border: '1px dashed rgba(52,211,153,0.1)' }}>
-                                            <p style={{ margin: 0, color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>No active training sessions.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                                            {activeList.map(t => renderTrainingCard(t))}
-                                        </div>
-                                    )}
-
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                                        <h3 style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Training History</h3>
-                                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
-                                            <button onClick={() => setTrainingSemesterFilter('Current')}
-                                                style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === 'Current' ? '#34d399' : 'transparent', color: trainingSemesterFilter === 'Current' ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>
-                                                Current
-                                            </button>
-                                            {semesters.filter(s => s !== currentSem).map(s => (
-                                                <button key={s} onClick={() => setTrainingSemesterFilter(s)}
-                                                    style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === s ? '#34d399' : 'transparent', color: trainingSemesterFilter === s ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>
-                                                    {s}
-                                                </button>
-                                            ))}
-                                            <button onClick={() => setTrainingSemesterFilter('All')}
-                                                style={{ padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', background: trainingSemesterFilter === 'All' ? '#34d399' : 'transparent', color: trainingSemesterFilter === 'All' ? 'black' : 'var(--color-text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>
-                                                All Time
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {filteredHistory.length === 0 ? (
-                                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No archived trainings.</div>
-                                    ) : (
-                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                                            {filteredHistory.map(t => renderTrainingCard(t))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })()}
-                    </>
-                ) : activeTab === 'meetings' ? (
-                    <>
-                        {/* Actions */}
-                        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-                                <Plus size={20} /> New Meeting Session
-                            </button>
-                        </div>
-
-                        {/* Create Form */}
-                        {showCreate && (
-                            <div className="glass-card-premium" style={{ marginBottom: '2rem', maxWidth: '800px', position: 'relative' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#1da6d9', fontWeight: 800 }}>
-                                        <Plus size={22} style={{ color: '#1da6d9' }} /> Create Meeting Session
-                                    </h3>
-                                    <button
-                                        onClick={() => setShowCreate(false)}
-                                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', transition: 'background-color 0.2s' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                </div>
-                                <form onSubmit={handleCreate} className="create-meeting-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
-                                    
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <SettingsIcon size={14} /> Session Details
-                                        </span>
-                                    </div>
-                                    
-                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                                        <label>Meeting Name</label>
-                                        <input className="modern-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Wednesday Chapel" required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
-                                        <input type="date" className="modern-input" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
-                                        <select className="modern-input" value={formData.campus} onChange={e => setFormData({ ...formData, campus: e.target.value })}>
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Valley Road">Valley Road</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> Start Time</label>
-                                        <input type="time" className="modern-input" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
-                                        <input type="time" className="modern-input" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><ClipboardCheck size={14} /> Reporting Semester</label>
-                                        <select className="modern-input" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}>
-                                            <option value="MAY-AUG 2026">MAY-AUG 2026</option>
-                                            <option value="MAY-AUG 2026">MAY-AUG 2026</option>
-                                            <option value="SEP-DEC 2026">SEP-DEC 2026</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><ListChecks size={14} /> Category</label>
-                                        <select className="modern-input" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                                            <option value="Meeting">Standard Meeting</option>
-                                            <option value="Training">Doulos Training</option>
-                                        </select>
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day</label>
-                                        <textarea
-                                            className="modern-input"
-                                            style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
-                                            value={formData.questionOfDay}
-                                            onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
-                                            placeholder="e.g. What are you most grateful for this week?"
-                                        />
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <MapPin size={14} /> Location & Geofencing
-                                        </span>
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                                        <label>Location Name</label>
-                                        <input className="modern-input" value={formData.location.name} onChange={e => setFormData({ ...formData, location: { ...formData.location, name: e.target.value } })} placeholder="e.g. Daystar University, Athi River Chapel" required />
-                                    </div>
-
-                                    <div className="form-group-premium">
-                                        <label>Latitude</label>
-                                        <input type="number" step="any" className="modern-input" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.448" />
-                                    </div>
-                                    
-                                    <div className="form-group-premium">
-                                        <label>Longitude</label>
-                                        <input type="number" step="any" className="modern-input" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="37.015" />
-                                    </div>
-
-                                    <div className="form-group-premium">
-                                        <label>Geofence Radius (meters)</label>
-                                        <input type="number" className="modern-input" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} placeholder="200" />
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(29, 166, 217, 0.05)', border: '1px solid rgba(29, 166, 217, 0.15)', borderRadius: '1rem', padding: '1.25rem', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <MapPin size={16} /> GPS Geofence Link
-                                            </span>
-                                            {formData.location.latitude && formData.location.longitude ? (
-                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                                                    ✓ Coordinates captured: {formData.location.latitude.toFixed(5)}, {formData.location.longitude.toFixed(5)}
-                                                </span>
-                                            ) : (
-                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
-                                                    Capture the current coordinates for device check-in verification.
-                                                </span>
-                                            )}
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="btn"
-                                            onClick={() => {
-                                                if (navigator.geolocation) {
-                                                    navigator.geolocation.getCurrentPosition(pos => {
-                                                        setFormData(prev => ({
-                                                            ...prev,
-                                                            location: {
-                                                                ...prev.location,
-                                                                latitude: pos.coords.latitude,
-                                                                longitude: pos.coords.longitude
-                                                            }
-                                                        }));
-                                                    });
-                                                }
-                                            }}
-                                            style={{ background: 'linear-gradient(135deg, rgba(29, 166, 217, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', border: '1px solid rgba(29, 166, 217, 0.3)', borderRadius: '0.75rem', padding: '0.6rem 1.25rem', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                                        >
-                                            <MapPin size={16} /> Use Current GPS Position
-                                        </button>
-                                    </div>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', gridColumn: '1 / -1' }}>
-                                        <input
-                                            type="checkbox"
-                                            id="create-manual"
-                                            checked={formData.allowManualOverride}
-                                            onChange={e => setFormData({ ...formData, allowManualOverride: e.target.checked })}
-                                            style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#1da6d9' }}
-                                        />
-                                        <label htmlFor="create-manual" style={{ margin: 0, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
-                                            Enable Admin-Only Manual Check-in (Remote/Internet Mode)
-                                        </label>
-                                    </div>
-
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '0.75rem', fontWeight: 800, letterSpacing: '0.5px' }}>CREATE MEETING SESSION</button>
-                                    </div>
-                                </form>
-                            </div>
-                        )}
-
-                        {/* Meetings List */}
-                        {/* Segregated Meetings View */}
-                        {(() => {
-                            const getSem = (d) => {
-                                const date = new Date(d);
-                                const m = date.getMonth();
-                                const y = date.getFullYear();
-                                if (m <= 3) return `Jan Semester ${y}`;
-                                if (m <= 7) return `May Semester ${y}`;
-                                return `Sept Semester ${y}`;
-                            };
-
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-
-                            const activeList = meetings.filter(m => m.isActive);
-                            const historyList = meetings.filter(m => !m.isActive);
-
-                            const semesters = Array.from(new Set(historyList.map(m => getSem(m.date))));
-                            const currentSem = getSem(new Date());
-
-                            const filteredHistory = historyList.filter(m => {
-                                if (meetingSemesterFilter === 'All') return true;
-                                const target = meetingSemesterFilter === 'Current' ? currentSem : meetingSemesterFilter;
-                                return getSem(m.date) === target;
-                            });
-
-                            return (
-                                <div>
-                                    {/* Active & Upcoming Section */}
-                                    <h3 style={{ margin: '0 0 1rem 0', opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid rgba(124,58,237,0.2)', paddingBottom: '0.5rem', color: 'hsl(var(--color-primary))' }}>
-                                        Active & Upcoming Meetings
-                                    </h3>
-
-                                    {activeList.length === 0 ? (
-                                        <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', marginBottom: '2rem', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                                            <p style={{ margin: 0, color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>No active or upcoming meetings scheduled.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                                            {activeList.map(m => renderMeetingCard(m))}
-                                        </div>
-                                    )}
-
-                                    {/* History Section */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                                        <h3 style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Archived History</h3>
-                                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
-                                            <button
-                                                onClick={() => setMeetingSemesterFilter('Current')}
-                                                style={{
-                                                    padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none',
-                                                    background: meetingSemesterFilter === 'Current' ? 'hsl(var(--color-primary))' : 'transparent',
-                                                    color: meetingSemesterFilter === 'Current' ? 'white' : 'var(--color-text-dim)',
-                                                    fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                                                }}
-                                            >Current</button>
-                                            {semesters.filter(s => s !== currentSem).map(s => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => setMeetingSemesterFilter(s)}
-                                                    style={{
-                                                        padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none',
-                                                        background: meetingSemesterFilter === s ? 'hsl(var(--color-primary))' : 'transparent',
-                                                        color: meetingSemesterFilter === s ? 'white' : 'var(--color-text-dim)',
-                                                        fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                                                    }}
-                                                >{s}</button>
-                                            ))}
-                                            <button
-                                                onClick={() => setMeetingSemesterFilter('All')}
-                                                style={{
-                                                    padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none',
-                                                    background: meetingSemesterFilter === 'All' ? 'hsl(var(--color-primary))' : 'transparent',
-                                                    color: meetingSemesterFilter === 'All' ? 'white' : 'var(--color-text-dim)',
-                                                    fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                                                }}
-                                            >All Time</button>
-                                        </div>
-                                    </div>
-
-                                    {filteredHistory.length === 0 ? (
-                                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No past meetings found in this period.</div>
-                                    ) : (
-                                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                                            {filteredHistory.map(m => renderMeetingCard(m))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })()}
-                    </>
-                ) : activeTab === 'feedback' ? (
-                    <FeedbackView isGuest={isGuest} />
-                ) : activeTab === 'events' ? (
-                    <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
-                ) : activeTab === 'finance' ? (
-                    <AdminFinanceView isGuest={isGuest} />
-                ) : activeTab === 'members' ? (
-                    <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
-                        {/* Registry Header & Toolbar */}
-                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(2, 21, 37, 0.4)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Users size={24} /> Members Registry
-                                    </h2>
-                                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem', fontWeight: 600 }}>
-                                        {members.length} members registered in the system
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                                    <button
-                                        className="btn"
-                                        style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.85rem', padding: '0.6rem 1.2rem', border: '1px solid rgba(29,166,217,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
-                                        onClick={downloadRegistryCSV}
-                                        title="Export full registry to CSV"
-                                    >
-                                        <FileSpreadsheet size={16} /> Export CSV
-                                    </button>
-                                    <div style={{ position: 'relative' }}>
-                                        <button
-                                            className="btn btn-primary"
-                                            style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 800 }}
-                                            onClick={() => setShowAddMenu(!showAddMenu)}
-                                        >
-                                            <Plus size={18} /> Add Member <ChevronDown size={14} />
-                                        </button>
-                                        {showAddMenu && (
-                                            <div className="glass-card-premium" style={{
-                                                position: 'absolute', top: '115%', right: 0, zIndex: 100,
-                                                background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
-                                                borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
-                                                gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
-                                            }}>
-                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%' }}
-                                                    onClick={() => { setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' }); setShowAddMenu(false); }}>
-                                                    <Users size={16} style={{ marginRight: '0.75rem', opacity: 0.7, color: '#1da6d9' }} /> Single Entry
-                                                </button>
-                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%' }}
-                                                    onClick={() => { document.getElementById('import-file-input').click(); setShowAddMenu(false); }}>
-                                                    <FileSpreadsheet size={16} style={{ marginRight: '0.75rem', opacity: 0.7, color: '#34d399' }} /> Import Excel / CSV
-                                                </button>
-                                            </div>
-                                        )}
-                                        <input type="file" id="import-file-input" hidden accept=".csv, .xlsx, .xls" onChange={handleFileImport} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Toolbar: Search & Filters */}
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <div style={{ position: 'relative', flex: '1 1 300px' }}>
-                                    <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
-                                    <input
-                                        placeholder="Search by name or admission number..."
-                                        className="modern-input"
-                                        style={{ paddingLeft: '3rem', width: '100%' }}
-                                        value={memberSearch}
-                                        onChange={e => setMemberSearch(e.target.value)}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    {['All', 'Athi River', 'Valley Road'].map(c => (
-                                        <button key={c} onClick={() => setMemberCampusFilter(c)}
-                                            style={{
-                                                padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                                background: memberCampusFilter === c ? 'rgba(29, 166, 217, 0.2)' : 'transparent',
-                                                color: memberCampusFilter === c ? '#1da6d9' : 'rgba(255,255,255,0.6)',
-                                                fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
-                                            }}
-                                        >{c === 'Valley Road' ? 'Nairobi' : c}</button>
-                                    ))}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
-                                        <button key={t} onClick={() => setMemberTypeFilter(t)}
-                                            style={{
-                                                padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                                background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
-                                                color: memberTypeFilter === t ? '#a78bfa' : 'rgba(255,255,255,0.6)',
-                                                fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
-                                            }}
-                                        >{t}</button>
-                                    ))}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <button onClick={() => setActiveSemesterFilter(!activeSemesterFilter)}
-                                        style={{
-                                            padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                            background: activeSemesterFilter ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-                                            color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.6)',
-                                            fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <CheckCircle size={14} style={{ color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Active This Sem
-                                    </button>
-                                </div>
-
-                                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                    <button className="btn" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '0.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={handleBulkEnroll} title="Enroll everyone who has attended a meeting this semester">
-                                        <CheckCircle size={14} /> Bulk Enroll
-                                    </button>
-                                    <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={handleSyncRegistry}>
-                                        <RotateCcw size={14} /> Sync
-                                    </button>
-                                    {memberTypeFilter === 'Recruit' && (
-                                        <>
-                                            <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(234,179,8,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
-                                                <GraduationCap size={16} /> Graduate All
-                                            </button>
-                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                onClick={handleArchiveAllRecruits} title="Archive all members who are currently Recruits">
-                                                <Archive size={16} /> Archive Remaining
-                                            </button>
-                                            {selectedMemberIds.length > 0 && (
-                                                <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '0.5rem', fontWeight: 800 }}
-                                                    onClick={handleBulkGraduate}>
-                                                    <GraduationCap size={16} /> Graduate Selected ({selectedMemberIds.length})
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                    {memberTypeFilter === 'Douloid' && (
-                                        <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                            onClick={handleUndoGraduation} title="Undo recently graduated recruits (revert to Recruit)">
-                                            <RotateCcw size={16} /> Undo Graduation
-                                        </button>
-                                    )}
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <>
-                                            <button className="btn" style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                onClick={() => setShowBulkListTool(true)} title="Graduate or Archive members by pasting a list of registration numbers">
-                                                <ListChecks size={16} /> Bulk List Actions
-                                            </button>
-                                            <button className="btn" style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                onClick={handleSetupTestAccount} title="Designate a student as a permanent tester">
-                                                Setup Tester
-                                            </button>
-                                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                onClick={handleResetAllPoints} title="Reset all points to 0">
-                                                <Trash2 size={14} /> Reset Points
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ overflowY: 'auto', flex: 1, padding: '1rem 1.5rem' }}>
-                            <table className="glass-table-premium">
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '40px', textAlign: 'center' }}>
-                                            <input
-                                                type="checkbox"
-                                                style={{ width: '16px', height: '16px', accentColor: '#1da6d9', cursor: 'pointer' }}
-                                                onChange={(e) => {
-                                                    const filtered = members.filter(m => {
-                                                        const matchesSearch =
-                                                            m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                                                            m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
-                                                        const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
-                                                        const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
-                                                        return matchesSearch && matchesCampus && matchesType;
-                                                    });
-                                                    if (e.target.checked) {
-                                                        setSelectedMemberIds(filtered.map(m => m._id));
-                                                    } else {
-                                                        setSelectedMemberIds([]);
-                                                    }
-                                                }}
-                                                checked={selectedMemberIds.length > 0 && selectedMemberIds.length === members.filter(m => {
-                                                    const matchesSearch =
-                                                        m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                                                        m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase());
-                                                    const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
-                                                    const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
-                                                    return matchesSearch && matchesCampus && matchesType;
-                                                }).length}
-                                            />
-                                        </th>
-                                        <th>Member Details</th>
-                                        <th>Points</th>
-                                        <th>Campus</th>
-                                        <th>Category</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loadingMembers ? (
-                                        <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Loading directory...</td></tr>
-                                    ) : (
-                                        (() => {
-                                            const filtered = members.filter(m => {
-                                                const cleanSearch = memberSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                                const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                                const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-                                                const matchesSearch = !memberSearch ||
-                                                    cleanName.includes(cleanSearch) ||
-                                                    cleanReg.includes(cleanSearch);
-
-                                                const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
-                                                const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
-                                                return matchesSearch && matchesCampus && matchesType;
-                                            });
-
-                                            if (filtered.length === 0) {
-                                                return (
-                                                    <tr>
-                                                        <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
-                                                            <div style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
-                                                                <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto', color: '#1da6d9' }} />
-                                                                <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
-                                                            </div>
-                                                            {!memberSearch && memberCampusFilter === 'All' && (
-                                                                <button className="btn btn-primary" onClick={handleSyncRegistry} style={{ borderRadius: '0.75rem', fontWeight: 800 }}>
-                                                                    Sync Registry from History
-                                                                </button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            }
-
-                                            return filtered.map((m, i) => (
-                                                <tr key={i} style={{ cursor: 'pointer' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
-                                                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                                        <input
-                                                            type="checkbox"
-                                                            style={{ width: '16px', height: '16px', accentColor: '#1da6d9', cursor: 'pointer' }}
-                                                            checked={selectedMemberIds.includes(m._id)}
-                                                            onChange={(e) => {
-                                                                if (e.target.checked) {
-                                                                    setSelectedMemberIds([...selectedMemberIds, m._id]);
-                                                                } else {
-                                                                    setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
-                                                                }
-                                                            }}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>{m.name}</div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem', fontWeight: 600 }}>{m.studentRegNo}</div>
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFD700', fontWeight: 800, background: 'rgba(255, 215, 0, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', width: 'fit-content' }}>
-                                                            <Trophy size={13} style={{ color: '#FFD700' }} /> {m.totalPoints || 0}
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
-                                                        {m.campus === 'Valley Road' ? 'Nairobi' : m.campus}
-                                                    </td>
-                                                    <td>
-                                                        <span className="status-pill-modern" style={{
-                                                            background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.1)' :
-                                                                        m.memberType === 'Recruit' ? 'rgba(29, 166, 217, 0.1)' :
-                                                                        m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' :
-                                                                        'rgba(255, 255, 255, 0.05)',
-                                                            color: m.memberType === 'Douloid' ? '#FFD700' :
-                                                                   m.memberType === 'Recruit' ? '#1da6d9' :
-                                                                   m.memberType === 'Exempted' ? '#f87171' :
-                                                                   'rgba(255,255,255,0.6)',
-                                                            borderColor: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.2)' :
-                                                                         m.memberType === 'Recruit' ? 'rgba(29, 166, 217, 0.2)' :
-                                                                         m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.2)' :
-                                                                         'rgba(255, 255, 255, 0.1)',
-                                                            fontSize: '0.7rem',
-                                                            padding: '0.25rem 0.6rem',
-                                                            borderRadius: '2rem',
-                                                            fontWeight: 'bold',
-                                                            textTransform: 'uppercase'
-                                                        }}>
-                                                            {m.memberType}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
-                                                            <button
-                                                                className="btn"
-                                                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.15)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                                onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
-                                                            >
-                                                                Insights
-                                                            </button>
-                                                            {['developer', 'superadmin'].includes(userRole) && (
-                                                                <button
-                                                                    className="btn"
-                                                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                                    onClick={() => handleDeleteMember(m._id, m.name)}
-                                                                >
-                                                                    <Trash2 size={12} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ));
-                                        })()
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ) : activeTab === 'admins' ? (
-                    <AdminsView
-                        admins={admins}
-                        loading={loadingAdmins}
-                        onEdit={setEditingAdmin}
-                        onDelete={handleDeleteAdmin}
-                        onRegister={() => setEditingAdmin({ _id: 'NEW', username: '', role: 'admin', campus: 'Athi River' })}
-                        guestFeaturesEnabled={guestFeaturesEnabled}
-                        currentSemester={currentSemester}
-                        onUpdateSetting={handleSaveSetting}
-                    />
-                ) : activeTab === 'system' ? (
-                    <SystemView onUpdateSetting={handleSaveSetting} isGuest={isGuest} />
-                ) : activeTab === 'reports' ? (
-                    <ReportsView
-                        meetings={meetings}
-                        members={members}
-                        onViewAttendance={setViewingAttendance}
-                        onDownload={downloadReport}
-                        onDownloadCSV={downloadCSV}
-                        onDownloadCumulativeCSV={downloadCumulativeCSV}
-                    />
-                ) : null}
-
-                {/* Member Insights & Profile Modal */}
-                {
-                    editingMember && (
-                        <div style={{
-                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                            background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
-                        }} onClick={() => { setEditingMember(null); setMemberInsights(null); }}>
-                            <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', background: 'hsl(var(--color-bg))' }} onClick={e => e.stopPropagation()}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                                    <div>
-                                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
-                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                                            <p style={{ color: 'var(--color-text-dim)', margin: 0 }}>{editingMember.studentRegNo} • {editingMember.campus}</p>
-                                            {memberInsights?.history?.[0] && !loadingInsights && (
-                                                <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', color: 'var(--color-text-dim)' }}>
-                                                    Last seen: {new Date(memberInsights.history[0].date).toLocaleDateString()}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                        {['developer', 'superadmin', 'admin', 'Admin'].includes(userRole) && editingMember._id !== 'NEW' && (
-                                            <button
-                                                className="btn"
-                                                onClick={() => setIsEditingMemberProfile(!isEditingMemberProfile)}
-                                                style={{
-                                                    padding: '0.5rem 1rem',
-                                                    background: isEditingMemberProfile ? 'hsl(var(--color-primary))' : 'rgba(255,255,255,0.05)',
-                                                    color: isEditingMemberProfile ? 'white' : 'var(--color-text-dim)'
-                                                }}
-                                            >
-                                                {isEditingMemberProfile ? 'View Insights' : 'Edit Profile'}
-                                            </button>
-                                        )}
-                                        <button className="btn" onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }} style={{ padding: '0.5rem 1rem' }}>Close</button>
-                                    </div>
-                                </div>
-
-                                {editingMember._id === 'NEW' || isEditingMemberProfile ? (
-                                    <form onSubmit={saveMember} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Full Name</label>
-                                                <input className="input-field" required value={editingMember.name} onChange={e => setEditingMember({ ...editingMember, name: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Admission Number</label>
-                                                <input
-                                                    className="input-field"
-                                                    required
-                                                    value={editingMember.studentRegNo}
-                                                    onChange={e => {
-                                                        let val = e.target.value.replace(/\D/g, '');
-                                                        if (val.length > 2) {
-                                                            val = val.slice(0, 2) + '-' + val.slice(2, 6);
-                                                        }
-                                                        setEditingMember({ ...editingMember, studentRegNo: val });
-                                                    }}
-                                                    placeholder="e.g. 22-0000"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Campus</label>
-                                                <select className="input-field" value={editingMember.campus} onChange={e => setEditingMember({ ...editingMember, campus: e.target.value })}>
-                                                    <option value="Athi River">Athi River</option>
-                                                    <option value="Valley Road">Valley Road</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Category</label>
-                                                <select className="input-field" value={editingMember.memberType} onChange={e => setEditingMember({ ...editingMember, memberType: e.target.value })}>
-                                                    <option value="Douloid">Douloid</option>
-                                                    <option value="Recruit">Recruit</option>
-                                                    <option value="Visitor">Visitor</option>
-                                                    <option value="Exempted">Exempted</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Membership Status</label>
-                                                <select className="input-field" value={editingMember.status || 'Active'} onChange={e => setEditingMember({ ...editingMember, status: e.target.value })}>
-                                                    <option value="Active">Active</option>
-                                                    <option value="Archived">Archived (Paused Access)</option>
-                                                    <option value="Graduated">Graduated</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Last Active Semester</label>
-                                                <input
-                                                    className="input-field"
-                                                    value={editingMember.lastActiveSemester || ''}
-                                                    onChange={e => setEditingMember({ ...editingMember, lastActiveSemester: e.target.value })}
-                                                    placeholder="e.g. MAY-AUG 2026"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="glass-panel" style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', display: 'block', marginBottom: '0.75rem' }}>Tree Watering Commitments (Weekly)</label>
-                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                                                    const isActive = (editingMember.wateringDays || []).includes(day);
-                                                    return (
-                                                        <button
-                                                            key={day}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const current = editingMember.wateringDays || [];
-                                                                const updated = isActive
-                                                                    ? current.filter(d => d !== day)
-                                                                    : [...current, day];
-                                                                setEditingMember({ ...editingMember, wateringDays: updated });
-                                                            }}
-                                                            style={{
-                                                                padding: '0.5rem 0.8rem',
-                                                                borderRadius: '0.5rem',
-                                                                border: '1px solid',
-                                                                borderColor: isActive ? '#4ade80' : 'rgba(255,255,255,0.1)',
-                                                                background: isActive ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)',
-                                                                color: isActive ? '#4ade80' : 'var(--color-text-dim)',
-                                                                fontSize: '0.75rem',
-                                                                fontWeight: 700,
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.2s'
-                                                            }}
-                                                        >
-                                                            {day.slice(0, 3).toUpperCase()}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-
-                                        {['developer', 'superadmin', 'Admin', 'superadmin'].includes(userRole) && (
-                                            <div>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>Total Points</label>
-                                                <input
-                                                    type="number"
-                                                    className="input-field"
-                                                    value={editingMember.totalPoints || 0}
-                                                    onChange={e => setEditingMember({ ...editingMember, totalPoints: parseInt(e.target.value) || 0 })}
-                                                />
-                                            </div>
-                                        )}
-                                        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', padding: '1rem' }}>Save Changes</button>
-                                        {isEditingMemberProfile && (
-                                            <button type="button" className="btn" onClick={() => setIsEditingMemberProfile(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }}>Cancel</button>
-                                        )}
-                                    </form>
-                                ) : (
-                                    <div>
-                                        {loadingInsights ? (
-                                            <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>Analyzing attendance data...</div>
-                                        ) : memberInsights ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                                {/* Stats Cards */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-                                                    <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Points</div>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFD700' }}>{editingMember.totalPoints || 0}</div>
-                                                    </div>
-                                                    <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Attended</div>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#25AAE1' }}>{memberInsights.stats.physicalAttended}{memberInsights.stats.exemptedCount > 0 ? ` + ${memberInsights.stats.exemptedCount}E` : ''} / {memberInsights.stats.totalMeetings}</div>
-                                                    </div>
-                                                    <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                        <div style={{ color: 'var(--color-text-dim)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>Consistency</div>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: memberInsights.stats.percentage > 75 ? '#4ade80' : '#facc15' }}>{memberInsights.stats.percentage}%</div>
-                                                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '0.5rem', overflow: 'hidden' }}>
-                                                            <div style={{
-                                                                width: `${Math.min(memberInsights.stats.percentage, 100)}%`,
-                                                                height: '100%',
-                                                                background: memberInsights.stats.percentage > 75 ? '#4ade80' : memberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444',
-                                                                transition: 'width 0.5s ease'
-                                                            }}></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Attendance Trend (Custom Chart) */}
-                                                <div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                                        <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Attendance Trend (Last 20)</h4>
-                                                        <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.7rem' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <div style={{ width: '8px', height: '8px', background: '#25AAE1', borderRadius: '2px' }}></div> Present
-                                                            </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <div style={{ width: '8px', height: '8px', background: '#FFD700', borderRadius: '2px' }}></div> Exempt
-                                                            </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <div style={{ width: '8px', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}></div> Absent
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '100px', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '0.5rem' }}>
-                                                        {memberInsights.history.slice(0, 20).reverse().map((h, idx) => (
-                                                            <div
-                                                                key={idx}
-                                                                title={`${h.name} (${new Date(h.date).toLocaleDateString()}): ${h.isExempted ? 'Exempted' : h.attended ? 'Present' : 'Absent'}`}
-                                                                style={{
-                                                                    flex: 1,
-                                                                    height: (h.attended || h.isExempted) ? '100%' : '15%',
-                                                                    background: h.isExempted ? '#FFD700' : h.attended ? '#25AAE1' : 'rgba(255,255,255,0.1)',
-                                                                    borderRadius: '2px',
-                                                                    transition: 'all 0.3s ease',
-                                                                    opacity: (h.attended || h.isExempted) ? 1 : 0.3
-                                                                }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Category Display */}
-                                                <div className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                                                    <div>
-                                                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>Profile Category</h4>
-                                                    </div>
-                                                    <span style={{
-                                                        padding: '0.4rem 1rem',
-                                                        borderRadius: '2rem',
-                                                        fontSize: '0.8rem',
-                                                        fontWeight: 700,
-                                                        background: editingMember.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(167, 139, 250, 0.1)',
-                                                        color: editingMember.memberType === 'Exempted' ? '#f87171' : '#a78bfa',
-                                                        border: editingMember.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(167, 139, 250, 0.2)'
-                                                    }}>
-                                                        {editingMember.memberType.toUpperCase()}
-                                                    </span>
-                                                </div>
-
-                                                {/* History List */}
-                                                <div>
-                                                    <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Meeting History</h4>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                        {memberInsights.history.slice(0, 10).map((h, idx) => (
-                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.4rem', fontSize: '0.85rem' }}>
-                                                                <span>{h.name}</span>
-                                                                <span style={{ color: h.isExempted ? '#FFD700' : h.attended ? '#4ade80' : '#f87171', fontWeight: 600 }}>
-                                                                    {h.isExempted ? 'EXEMPTED' : h.attended ? 'PRESENT' : 'ABSENT'}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div style={{ padding: '3rem', textAlign: 'center' }}>No attendance history found.</div>
-                                        )}
-                                        {/* Super Admin Actions */}
-                                        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            <button
-                                                className="btn"
-                                                style={{
-                                                    width: '100%',
-                                                    background: 'rgba(37, 170, 225, 0.1)',
-                                                    color: '#25AAE1',
-                                                    border: '1px solid rgba(37, 170, 225, 0.2)',
-                                                    padding: '0.75rem',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '0.5rem'
-                                                }}
-                                                onClick={() => handleResetDevice(editingMember._id)}
-                                            >
-                                                <RotateCcw size={16} /> Unlock Device / Reset Link
-                                            </button>
-
-                                            {editingMember.memberType === 'Recruit' && (
-                                                <button
-                                                    className="btn"
-                                                    style={{
-                                                        width: '100%',
-                                                        background: 'rgba(167, 139, 250, 0.1)',
-                                                        color: '#a78bfa',
-                                                        border: '1px solid rgba(167, 139, 250, 0.2)',
-                                                        padding: '0.75rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem'
-                                                    }}
-                                                    onClick={() => handleGraduateMember(editingMember._id)}
-                                                >
-                                                    <GraduationCap size={16} /> Graduate / Promote
-                                                </button>
-                                            )}
-
-                                            {['developer', 'superadmin'].includes(userRole) && (
-                                                <button
-                                                    className="btn"
-                                                    style={{
-                                                        width: '100%',
-                                                        background: 'rgba(234, 179, 8, 0.1)',
-                                                        color: '#eab308',
-                                                        border: '1px solid rgba(234, 179, 8, 0.2)',
-                                                        padding: '0.75rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem'
-                                                    }}
-                                                    onClick={() => handleResetMemberPoints(editingMember._id)}
-                                                >
-                                                    <RotateCcw size={16} /> Reset Points (Set to 0)
-                                                </button>
-                                            )}
-
-                                            {['developer', 'superadmin'].includes(userRole) && (
-                                                <button
-                                                    className="btn"
-                                                    style={{
-                                                        width: '100%',
-                                                        background: 'rgba(239, 68, 68, 0.1)',
-                                                        color: '#ef4444',
-                                                        border: '1px solid rgba(239, 68, 68, 0.2)',
-                                                        padding: '0.75rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem'
-                                                    }}
-                                                    onClick={() => handleDeleteMember(editingMember._id, editingMember.name)}
-                                                >
-                                                    <Trash2 size={16} /> Delete Member Permanentely
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )
-                }
-
-                {/* Bulk List Tool Modal */}
-                {showBulkListTool && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110,
-                        backdropFilter: 'blur(10px)'
-                    }}>
-                        <div className="glass-panel" style={{
-                            width: '90%', maxWidth: '500px', padding: '2rem',
-                            background: 'var(--color-bg-alt)', borderRadius: '1.5rem',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            animation: 'slideUp 0.3s ease-out'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                    <ListChecks size={24} color="hsl(var(--color-primary))" />
-                                    <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Master Bulk Tool</h3>
-                                </div>
-                                <button onClick={() => setShowBulkListTool(false)} className="btn" style={{ padding: '0.4rem', background: 'transparent' }}><X size={20} /></button>
-                            </div>
-
-                            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-dim)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                                Paste a list of Student Registration Numbers (one per line) from your master list to process them in bulk.
-                            </p>
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.6 }}>SELECT TARGET ACTION</label>
-                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem', borderRadius: '0.5rem' }}>
-                                    <button
-                                        onClick={() => setBulkListType('graduate')}
-                                        style={{
-                                            flex: 1, padding: '0.75rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                            background: bulkListType === 'graduate' ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
-                                            color: bulkListType === 'graduate' ? '#a78bfa' : 'var(--color-text-dim)',
-                                            fontWeight: 800, fontSize: '0.8rem'
-                                        }}
-                                    >GRADUATE PASS</button>
-                                    <button
-                                        onClick={() => setBulkListType('archive')}
-                                        style={{
-                                            flex: 1, padding: '0.75rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                                            background: bulkListType === 'archive' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                                            color: bulkListType === 'archive' ? '#f87171' : 'var(--color-text-dim)',
-                                            fontWeight: 800, fontSize: '0.8rem'
-                                        }}
-                                    >ARCHIVE / FAIL</button>
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: '2rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.6 }}>PASTE REGISTRATION NUMBERS</label>
-                                <textarea
-                                    className="textarea-field"
-                                    rows="8"
-                                    placeholder="PASTE LIST HERE...&#10;CIT-1-1234/2022&#10;CIT-1-5678/2022"
-                                    style={{ fontFamily: 'monospace', color: 'white' }}
-                                    value={bulkListInput}
-                                    onChange={(e) => setBulkListInput(e.target.value)}
-                                />
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', marginTop: '0.5rem', fontWeight: 600 }}>
-                                    Detected {bulkListInput.split('\n').filter(r => r.trim()).length} unique numbers.
-                                </div>
-                            </div>
-
-                            <button
-                                className="btn btn-primary"
-                                style={{ width: '100%', padding: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', fontSize: '0.9rem' }}
-                                onClick={handleBulkListAction}
-                                disabled={importLoading || !bulkListInput.trim()}
-                            >
-                                {importLoading ? 'PROCESSING LIST...' : `CONFIRM BULK ${bulkListType.toUpperCase()}`}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Attendance View Modal */}
-                {
-                    viewingAttendance && (
-                        <div style={{
-                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                            background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
-                        }}>
-                            <div className="glass-panel" style={{ width: '90%', maxWidth: '1000px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'hsl(var(--color-bg))', padding: 0, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-                                <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h3 style={{ margin: 0 }}>{viewingAttendance.name} - Attendance</h3>
-                                    <button className="btn" style={{ padding: '0.5rem 1rem' }} onClick={() => setViewingAttendance(null)}>Close</button>
-                                </div>
-                                <div style={{ overflow: 'auto', padding: '1rem', flex: 1 }}>
-                                    <AttendanceTable meeting={viewingAttendance} setMsg={setMsg} isGuest={isGuest} />
-                                </div>
-                            </div>
-                        </div>
-                    )
-                }
-
-                {
-                    selectedMeeting && (
-                        <div style={{
-                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                            background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
-                        }} onClick={() => setSelectedMeeting(null)}>
-                            <div className="glass-panel qr-modal-content" style={{ padding: '2rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                                <h3 style={{ marginBottom: '1rem' }}>Scan to Check In</h3>
-
-                                {/* 
-                                SECURITY FEATURE: Screen Blur
-                                We blur the QR code on screen so it cannot be scanned directly.
-                                It must be printed to be scanned cleanly.
-                            */}
-                                <div style={{
-                                    background: 'white',
-                                    padding: '1rem',
-                                    borderRadius: '0.5rem',
-                                    display: 'inline-block'
-                                }}>
-                                    <QRCode
-                                        value={`${window.location.origin}/check-in/${selectedMeeting.code}`}
-                                        size={256}
-                                        level="H"
-                                    />
-                                </div>
-
-
-                                <div style={{ margin: '1.5rem 0' }}>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>MANUAL CODE</div>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'hsl(var(--color-primary))', letterSpacing: '4px', lineHeight: 1 }}>
-                                        {selectedMeeting.code.toUpperCase()}
-                                    </div>
-                                </div>
-
-                                <p style={{ marginTop: '0', fontWeight: 'bold' }}>{selectedMeeting.name}</p>
-                                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>{selectedMeeting.campus} | {selectedMeeting.startTime} - {selectedMeeting.endTime}</p>
-
-                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-                                    <button
-                                        className="btn btn-primary"
-                                        style={{ padding: '0.5rem 1.5rem' }}
-                                        onClick={() => handlePrintQR(selectedMeeting)}
-                                    >
-                                        <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
-                                    </button>
-                                    <button
-                                        className="btn"
-                                        style={{ background: 'var(--glass-bg)', color: 'var(--color-text)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
-                                            navigator.clipboard.writeText(link);
-                                            setMsg({ type: 'success', text: 'Link copied to clipboard!' });
-                                        }}
-                                    >
-                                        <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
-                                    </button>
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <a
-                                            href={`/check-in/${selectedMeeting.code}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="btn"
-                                            style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dim)', fontSize: '0.8rem', padding: '0.5rem 1rem', textDecoration: 'none' }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <ExternalLink size={14} style={{ marginRight: '0.4rem' }} /> Test
-                                        </a >
-                                    )}
-                                </div >
-                                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', marginTop: '1.5rem', opacity: 0.7 }}>Click anywhere outside to close</p>
-                            </div>
-                        </div>
-                    )}
-
-
-
-                {/* Edit Admin Modal */}
-                {editingAdmin && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 120
-                    }}>
-                        <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem' }}>
-                            <h3 style={{ marginBottom: '1.5rem' }}>{editingAdmin._id === 'NEW' ? 'Register New Admin' : `Edit Admin: ${editingAdmin.username}`}</h3>
-                            <form onSubmit={handleSaveAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                <div>
-                                    <label>Username</label>
-                                    <input
-                                        className="input-field"
-                                        value={editingAdmin.username}
-                                        onChange={e => setEditingAdmin({ ...editingAdmin, username: e.target.value })}
-                                        required
-                                        placeholder="e.g. john_doe"
-                                    />
-                                </div>
-                                <div>
-                                    <label>{editingAdmin._id === 'NEW' ? 'Password' : 'New Password (leave blank to keep current)'}</label>
-                                    <input
-                                        type="password"
-                                        className="input-field"
-                                        value={editingAdmin.password || ''}
-                                        onChange={e => setEditingAdmin({ ...editingAdmin, password: e.target.value })}
-                                        required={editingAdmin._id === 'NEW'}
-                                        placeholder="••••••••"
-                                    />
-                                </div>
-                                <div>
-                                    <label>Role</label>
-                                    <select
-                                        className="input-field"
-                                        value={editingAdmin.role}
-                                        onChange={e => setEditingAdmin({ ...editingAdmin, role: e.target.value })}
-                                    >
-                                        <option value="admin">Admin (Standard)</option>
-                                        <option value="superadmin">Super Admin (Can manage others)</option>
-                                        <option value="developer">Developer (Full Control)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label>Primary Campus</label>
-                                    <select
-                                        className="input-field"
-                                        value={editingAdmin.campus}
-                                        onChange={e => setEditingAdmin({ ...editingAdmin, campus: e.target.value })}
-                                    >
-                                        <option value="Athi River">Athi River</option>
-                                        <option value="Valley Road">Valley Road</option>
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingAdmin._id === 'NEW' ? 'Create Admin' : 'Save Changes'}</button>
-                                    <button type="button" className="btn" onClick={() => setEditingAdmin(null)} style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                {/* Meeting Insights Modal */}
-                {insightMeeting && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem'
-                    }}>
-                        <div style={{ width: '100%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto' }}>
-                            <MeetingInsights
-                                meeting={insightMeeting}
-                                onClose={() => setInsightMeeting(null)}
-                                api={api}
-                                onQuickCheckIn={async (mid, reg) => {
-                                    await handleQuickCheckIn(mid, reg);
-                                    // Refresh insights after manual checkin
-                                    setInsightMeeting({ ...insightMeeting });
-                                }}
-                            />
-                        </div>
-                    </div>
-                )}
-                {/* Edit Meeting Modal */}
-                {
-                    editingMeeting && (
-                        <div style={{
-                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                            background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100
-                        }}>
-                            <div className="glass-panel" style={{ width: '90%', maxWidth: '600px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
-                                <h3 style={{ marginBottom: '1.5rem' }}>Edit Meeting Content</h3>
-                                <form onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    try {
-                                        // Format date and clean up
-                                        const updateData = {
-                                            ...editingMeeting,
-                                            date: new Date(editingMeeting.date).toISOString()
-                                        };
-                                        await api.patch(`/meetings/${editingMeeting._id}`, updateData);
-                                        setMsg({ type: 'success', text: 'Meeting updated!' });
-                                        setEditingMeeting(null);
-                                        fetchMeetings();
-                                    } catch (err) {
-                                        setMsg({ type: 'error', text: 'Failed to update: ' + (err.response?.data?.message || err.message) });
-                                    }
-                                }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)', pb: '1rem', marginBottom: '1rem' }}>
-                                        <div>
-                                            <label>Meeting Name</label>
-                                            <input
-                                                className="input-field"
-                                                value={editingMeeting.name || ''}
-                                                onChange={e => setEditingMeeting({ ...editingMeeting, name: e.target.value })}
-                                                placeholder="e.g. Weekly Doulos"
-                                            />
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label>Date</label>
-                                                <input
-                                                    type="date"
-                                                    className="input-field"
-                                                    value={editingMeeting.date ? new Date(editingMeeting.date).toISOString().split('T')[0] : ''}
-                                                    onChange={e => setEditingMeeting({ ...editingMeeting, date: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label>Campus</label>
-                                                <select
-                                                    className="input-field"
-                                                    value={editingMeeting.campus}
-                                                    onChange={e => setEditingMeeting({ ...editingMeeting, campus: e.target.value })}
-                                                >
-                                                    <option value="Athi River">Athi River</option>
-                                                    <option value="Valley Road">Valley Road</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label>Start Time</label>
-                                                <input
-                                                    type="time"
-                                                    className="input-field"
-                                                    value={editingMeeting.startTime || ''}
-                                                    onChange={e => setEditingMeeting({ ...editingMeeting, startTime: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label>End Time</label>
-                                                <input
-                                                    type="time"
-                                                    className="input-field"
-                                                    value={editingMeeting.endTime || ''}
-                                                    onChange={e => setEditingMeeting({ ...editingMeeting, endTime: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label>Reporting Semester</label>
-                                            <select className="input-field" value={editingMeeting.semester || 'MAY-AUG 2026'} onChange={e => setEditingMeeting({ ...editingMeeting, semester: e.target.value })}>
-                                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
-                                                <option value="MAY-AUG 2026">MAY-AUG 2026</option>
-                                                <option value="SEP-DEC 2026">SEP-DEC 2026</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label>Question of the Day</label>
-                                            <textarea
-                                                className="input-field"
-                                                rows="2"
-                                                value={editingMeeting.questionOfDay || ''}
-                                                onChange={e => setEditingMeeting({ ...editingMeeting, questionOfDay: e.target.value })}
-                                                placeholder="e.g. What are you grateful for?"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label>Location Name</label>
-                                            <input
-                                                className="input-field"
-                                                value={editingMeeting.location?.name || ''}
-                                                onChange={e => setEditingMeeting({
-                                                    ...editingMeeting,
-                                                    location: { ...(editingMeeting.location || {}), name: e.target.value }
-                                                })}
-                                                placeholder="Venue Name"
-                                            />
-                                        </div>
-
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label>Category</label>
-                                                <select
-                                                    className="input-field"
-                                                    value={editingMeeting.category || 'Meeting'}
-                                                    onChange={e => setEditingMeeting({ ...editingMeeting, category: e.target.value })}
-                                                >
-                                                    <option value="Meeting">Standard Meeting</option>
-                                                    <option value="Training">Doulos Training</option>
-                                                </select>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    id="edit-manual"
-                                                    checked={editingMeeting.allowManualOverride || false}
-                                                    onChange={e => setEditingMeeting({ ...editingMeeting, allowManualOverride: e.target.checked })}
-                                                    style={{ width: '20px', height: '20px' }}
-                                                />
-                                                <label htmlFor="edit-manual" style={{ margin: 0, cursor: 'pointer', fontSize: '0.8rem' }}>
-                                                    Admin-Only Mode
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <div>
-                                                <label>Latitude</label>
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    className="input-field"
-                                                    value={editingMeeting.location?.latitude || ''}
-                                                    onChange={e => setEditingMeeting({
-                                                        ...editingMeeting,
-                                                        location: { ...(editingMeeting.location || {}), latitude: parseFloat(e.target.value) }
-                                                    })}
-                                                    placeholder="-1.2345"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label>Longitude</label>
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    className="input-field"
-                                                    value={editingMeeting.location?.longitude || ''}
-                                                    onChange={e => setEditingMeeting({
-                                                        ...editingMeeting,
-                                                        location: { ...(editingMeeting.location || {}), longitude: parseFloat(e.target.value) }
-                                                    })}
-                                                    placeholder="36.7890"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label>Devotion (Topic / Verse)</label>
-                                        <textarea
-                                            className="input-field"
-                                            rows="3"
-                                            value={editingMeeting.devotion || ''}
-                                            onChange={e => setEditingMeeting({ ...editingMeeting, devotion: e.target.value })}
-                                            placeholder="e.g. John 3:16 - The Heart of Service"
-                                        ></textarea>
-                                    </div>
-
-                                    <div>
-                                        <label>Ice Breaker / Activity</label>
-                                        <textarea
-                                            className="input-field"
-                                            rows="2"
-                                            value={editingMeeting.iceBreaker || ''}
-                                            onChange={e => setEditingMeeting({ ...editingMeeting, iceBreaker: e.target.value })}
-                                            placeholder="e.g. Two Truths and a Lie"
-                                        ></textarea>
-                                    </div>
-
-                                    <div>
-                                        <label>Announcements</label>
-                                        <textarea
-                                            className="input-field"
-                                            rows="3"
-                                            value={editingMeeting.announcements || ''}
-                                            onChange={e => setEditingMeeting({ ...editingMeeting, announcements: e.target.value })}
-                                            placeholder="Check your emails for the retreat info!"
-                                        ></textarea>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
-                                        <button type="button" className="btn" onClick={() => setEditingMeeting(null)} style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}>Cancel</button>
-                                    </div>
-
-
-                                </form>
-                            </div>
-                        </div>
-                    )
-                }
-            </main>
-        </div>
-    </div>
-);
-};
-
-const ReportsView = ({ meetings, members, onViewAttendance, onDownload, onDownloadCSV, onDownloadCumulativeCSV }) => {
-    const [reportType, setReportType] = useState('summary'); // 'summary' or 'cumulative'
-    const [filterSemester, setFilterSemester] = useState('Current');
-    const [filterCampus, setFilterCampus] = useState('All');
-
-    const getSemester = (date) => {
-        const d = new Date(date);
-        const month = d.getMonth(); // 0-11
-        const year = d.getFullYear();
-        if (month <= 4) return `Jan Semester ${year}`;
-        if (month <= 7) return `May Semester ${year}`;
-        return `Sept Semester ${year}`;
-    };
-
-    const currentSemester = getSemester(new Date());
-    const semesters = Array.from(new Set(meetings.map(m => getSemester(m.date))));
-    if (!semesters.includes(currentSemester)) semesters.push(currentSemester);
-
-    const filteredMeetings = meetings.filter(m => {
-        const semesterMatch = filterSemester === 'All' ||
-            (filterSemester === 'Current' ? getSemester(m.date) === currentSemester : getSemester(m.date) === filterSemester);
-        const campusMatch = filterCampus === 'All' || m.campus === filterCampus;
-        return semesterMatch && campusMatch;
-    });
-
-    const totalAttendance = filteredMeetings.reduce((acc, m) => acc + (m.attendanceCount || 0), 0);
-    const averageAttendance = filteredMeetings.length > 0 ? (totalAttendance / filteredMeetings.length).toFixed(1) : 0;
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--glass-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Reports & Analytics</h2>
-                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Real-time attendance tracking and insights</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '0.75rem' }}>
-                        <select
-                            className="modern-input"
-                            style={{
-                                padding: '0.5rem 2rem 0.5rem 1rem',
-                                width: 'auto',
-                                border: 'none',
-                                background: 'rgba(255,255,255,0.05)',
-                                fontSize: '0.8rem',
-                                fontWeight: 600
-                            }}
-                            value={filterSemester}
-                            onChange={(e) => setFilterSemester(e.target.value)}
-                        >
-                            <option value="Current">This Semester</option>
-                            <option value="All">All Time</option>
-                            {semesters.filter(s => s !== currentSemester).map(s => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
-                        <select
-                            className="modern-input"
-                            style={{
-                                padding: '0.5rem 2rem 0.5rem 1rem',
-                                width: 'auto',
-                                border: 'none',
-                                background: 'rgba(255,255,255,0.05)',
-                                fontSize: '0.8rem',
-                                fontWeight: 600
-                            }}
-                            value={filterCampus}
-                            onChange={(e) => setFilterCampus(e.target.value)}
-                        >
-                            <option value="All">Global (All)</option>
-                            <option value="Athi River">Athi River</option>
-                            <option value="Valley Road">Valley Road</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '4rem' }}>
-                    <div className="glass-card-premium metric-card-glow" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, rgba(37, 170, 225, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(37, 170, 225, 0.2)', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#25AAE1', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
-                            <Activity size={18} /> Accumulative Reach
-                        </div>
-                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{totalAttendance}</div>
-                        <p style={{ margin: '1rem 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Aggregate check-ins recorded</p>
-                        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
-                            <Activity size={120} />
-                        </div>
-                    </div>
-
-                    <div className="glass-card-premium metric-card-glow" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(167, 139, 250, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(167, 139, 250, 0.2)', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#a78bfa', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
-                            <Calendar size={18} /> Total Events
-                        </div>
-                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{filteredMeetings.length}</div>
-                        <p style={{ margin: '1rem 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Sessions captured in repository</p>
-                        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
-                            <Calendar size={120} />
-                        </div>
-                    </div>
-
-                    <div className="glass-card-premium metric-card-glow" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, rgba(250, 204, 21, 0.1) 0%, rgba(250, 204, 21, 0.05) 100%)', borderRadius: '2rem', border: '1px solid rgba(250, 204, 21, 0.2)', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#facc15', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1rem' }}>
-                            <Users size={18} /> Mean Attendance
-                        </div>
-                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{averageAttendance}</div>
-                        <p style={{ margin: '1rem 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Average members per session</p>
-                        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
-                            <Users size={120} />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Visual Analytics */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                    <div className="glass-panel" style={{ padding: '2rem', height: '350px', background: 'rgba(0,0,0,0.2)' }}>
-                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1.5rem', color: '#25AAE1' }}>Frequency Analysis</h3>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <LineChart data={[...filteredMeetings].reverse().map(m => ({ name: new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: m.attendanceCount || 0 }))}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                                <XAxis dataKey="name" stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis stroke="var(--color-text-dim)" fontSize={10} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}
-                                    itemStyle={{ color: 'hsl(var(--color-text))', fontWeight: 700 }}
-                                />
-                                <Line type="monotone" dataKey="count" stroke="#25AAE1" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 6, fill: '#25AAE1', stroke: 'hsl(var(--color-bg))', strokeWidth: 2 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div className="glass-panel" style={{ padding: '2rem', height: '350px', background: 'var(--glass-bg)' }}>
-                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1.5rem', color: '#a78bfa' }}>Segment Integrity</h3>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <PieChart>
-                                <Pie
-                                    data={[
-                                        { name: 'Douloids', value: members.filter(m => m.memberType === 'Douloid' && (filterCampus === 'All' || m.campus === filterCampus)).length },
-                                        { name: 'Recruits', value: members.filter(m => m.memberType === 'Recruit' && (filterCampus === 'All' || m.campus === filterCampus)).length },
-                                        { name: 'Visitors', value: members.filter(m => (m.memberType === 'Visitor' || !m.memberType) && (filterCampus === 'All' || m.campus === filterCampus)).length },
-                                    ]}
-                                    innerRadius={70}
-                                    outerRadius={100}
-                                    paddingAngle={8}
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    <Cell fill="#FFD700" />
-                                    <Cell fill="#a78bfa" />
-                                    <Cell fill="#25AAE1" />
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}
-                                />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="glass-panel" style={{ background: 'var(--glass-bg)', borderRadius: '1rem', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--color-text-dim)' }}>Archived Logs</div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '0.5rem' }}>
-                                <button
-                                    onClick={() => setReportType('summary')}
-                                    style={{
-                                        padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
-                                        background: reportType === 'summary' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
-                                        color: reportType === 'summary' ? '#25AAE1' : 'var(--color-text-dim)',
-                                        fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
-                                    }}
-                                >Logs</button>
-                                <button
-                                    onClick={() => setReportType('cumulative')}
-                                    style={{
-                                        padding: '0.4rem 0.8rem', borderRadius: '0.3rem', border: 'none', cursor: 'pointer',
-                                        background: reportType === 'cumulative' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
-                                        color: reportType === 'cumulative' ? '#25AAE1' : 'var(--color-text-dim)',
-                                        fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
-                                    }}
-                                >Cumulative</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {reportType === 'summary' ? (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="glass-table-premium" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead>
-                                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Meeting Name</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Date</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Campus</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Attendance</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', textAlign: 'center' }}>Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredMeetings.map((m, i) => (
-                                        <tr key={i} className="hover-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'all 0.2s' }}>
-                                            <td style={{ padding: '1.25rem', fontWeight: 600, color: 'white' }}>{m.name}</td>
-                                            <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.6 }}>{new Date(m.date).toLocaleDateString('en-GB')}</td>
-                                            <td style={{ padding: '1.25rem' }}>
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#facc15', background: 'rgba(250, 204, 21, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
-                                                    {m.campus.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '1.25rem', fontWeight: 800, color: '#25AAE1', fontSize: '1.1rem' }}>{m.attendanceCount || 0}</td>
-                                            <td style={{ padding: '1.25rem', textAlign: 'center' }}>
-                                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                                    <button
-                                                        onClick={() => onViewAttendance(m)}
-                                                        className="btn-icon"
-                                                        style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1' }}
-                                                    >
-                                                        <Users size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => onDownloadCSV(m._id, m.name)}
-                                                        className="btn-icon"
-                                                        style={{ background: 'rgba(250, 204, 21, 0.1)', color: '#facc15' }}
-                                                    >
-                                                        <FileSpreadsheet size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="glass-table-premium" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead>
-                                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Subject Name</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>ID Hash</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Classification</th>
-                                        <th style={{ padding: '1.25rem', color: 'var(--color-text-dim)', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' }}>Aggregated Units</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {members
-                                        .filter(m => filterCampus === 'All' || m.campus === filterCampus)
-                                        .map((m, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                <td style={{ padding: '1.25rem', fontWeight: 600, color: 'white' }}>{m.name || 'Unknown'}</td>
-                                                <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.6, fontFamily: 'monospace' }}>{m.studentRegNo}</td>
-                                                <td style={{ padding: '1.25rem' }}>
-                                                    <span style={{
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 800,
-                                                        color: m.memberType === 'Douloid' ? '#FFD700' : '#25AAE1',
-                                                        border: `1px solid ${m.memberType === 'Douloid' ? 'rgba(255,215,0,0.3)' : 'rgba(37,170,225,0.3)'}`,
-                                                        padding: '0.2rem 0.6rem',
-                                                        borderRadius: '20px'
-                                                    }}>
-                                                        {m.memberType.toUpperCase() || 'VISITOR'}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '1.25rem', fontWeight: 800, fontSize: '1.1rem', color: '#4ade80' }}>{m.totalAttended}</td>
-                                            </tr>
-                                        ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const AttendanceTable = ({ meeting, setMsg, isGuest }) => {
-    const [records, setRecords] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const userRole = localStorage.getItem('role') || 'admin';
-
-    const deleteRecord = async (id) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('Delete this attendance record?')) return;
-        try {
-            await api.delete(`/attendance/${id}`);
-            setRecords(records.filter(r => r._id !== id));
-            setMsg({ type: 'success', text: 'Record deleted.' });
-        } catch (err) {
-            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to delete' });
-        }
-    };
-
-    const toggleExemption = async (id) => {
-        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        try {
-            const res = await api.patch(`/attendance/${id}/exemption`);
-            setRecords(records.map(r => r._id === id ? { ...r, isExempted: res.data.isExempted } : r));
-            setMsg({ type: 'success', text: `Status updated to ${res.data.isExempted ? 'Exempted' : 'Present'}` });
-        } catch (err) {
-            setMsg({ type: 'error', text: 'Failed to update exemption status' });
-        }
-    };
-
-
-    useEffect(() => {
-        const fetchAttendance = async () => {
-            if (isGuest) {
-                setRecords([
-                    { _id: '1', timestamp: new Date().toISOString(), memberType: 'Douloid', studentRegNo: 'GM-001', responses: { name: 'Guest User 1' }, isExempted: false },
-                    { _id: '2', timestamp: new Date().toISOString(), memberType: 'Visitor', studentRegNo: 'GM-002', responses: { name: 'Guest User 2' }, isExempted: true },
-                ]);
-                setLoading(false);
-                return;
-            }
-            try {
-                const res = await api.get(`/attendance/${meeting._id}`);
-                setRecords(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchAttendance();
-    }, [meeting._id]);
-
-    if (loading) return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading records...</div>;
-
-    // Determine headers
-    const allKeys = new Set();
-    let sampleQuestion = '';
-
-    records.forEach(r => {
-        const responses = r.responses || {};
-        Object.keys(responses).forEach(k => {
-            if (k !== 'dailyQuestionAnswer') allKeys.add(k);
-        });
-        if (r.questionOfDay && !sampleQuestion) sampleQuestion = r.questionOfDay;
-    });
-
-    const hasDailyQuestion = records.some(r => r.questionOfDay);
-
-    const headers = Array.from(allKeys);
-
-
-    // Filtering logic
-    const filteredRecords = records.filter(r => {
-        const cleanSearch = searchTerm.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const responses = Object.values(r.responses || {}).join(' ').toLowerCase();
-        const searchPool = [
-            responses,
-            r.memberType.toLowerCase(),
-            r.studentRegNo.toLowerCase()
-        ].join(' ').replace(/[^a-z0-9]/g, '');
-
-        return searchPool.includes(cleanSearch);
-    });
-
-    return (
-        <div>
-            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dim)' }} />
-                <input
-                    placeholder="Search by name, reg no, or any field..."
-                    className="input-field"
-                    style={{ paddingLeft: '3rem' }}
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
+                    ) : activeTab === 'trainings' ? (
+                        <TrainingsTab
+                            trainings={trainings}
+                            userRole={userRole}
+                            isGuest={isGuest}
+                            fetchTrainings={fetchTrainings}
+                            setMsg={setMsg}
+                            currentSemester={currentSemester}
+                            api={api}
+                            members={members}
+                            quickRegNo={quickRegNo}
+                            setQuickRegNo={setQuickRegNo}
+                            quickCheckInLoading={quickCheckInLoading}
+                            setQuickCheckInLoading={setQuickCheckInLoading}
+                            fetchMembers={fetchMembers}
+                        />
+                    ) : activeTab === 'members' ? (
+                        <MembersTab
+                            members={members}
+                            loadingMembers={loadingMembers}
+                            userRole={userRole}
+                            isGuest={isGuest}
+                            fetchMembers={fetchMembers}
+                            setMsg={setMsg}
+                            currentSemester={currentSemester}
+                            api={api}
+                        />
+                    ) : activeTab === 'feedback' ? (
+                        <FeedbackView isGuest={isGuest} />
+                    ) : activeTab === 'events' ? (
+                        <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
+                    ) : activeTab === 'finance' ? (
+                        <AdminFinanceView isGuest={isGuest} />
+                    ) : activeTab === 'admins' ? (
+                        <AdminsView
+                            admins={admins}
+                            loading={loadingAdmins}
+                            onEdit={setEditingAdmin}
+                            onDelete={handleDeleteAdmin}
+                            onRegister={() => setEditingAdmin({ _id: 'NEW', username: '', role: 'admin', campus: 'Athi River' })}
+                            guestFeaturesEnabled={guestFeaturesEnabled}
+                            currentSemester={currentSemester}
+                            onUpdateSetting={handleSaveSetting}
+                        />
+                    ) : activeTab === 'system' ? (
+                        <SystemSettingsTab
+                            onUpdateSetting={handleSaveSetting}
+                            isGuest={isGuest}
+                            setMsg={setMsg}
+                            api={api}
+                        />
+                    ) : activeTab === 'reports' ? (
+                        <ReportsView
+                            meetings={meetings}
+                            members={members}
+                            onViewAttendance={null}
+                            onDownload={null}
+                            onDownloadCSV={downloadCSV}
+                            onDownloadCumulativeCSV={downloadCumulativeCSV}
+                        />
+                    ) : null}
+                </main>
             </div>
 
-            <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--color-text-dim)', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Found {filteredRecords.length} records</span>
-                {searchTerm && <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer' }}>Clear search</button>}
-            </div>
-
-            {filteredRecords.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--color-primary-glow)', borderRadius: '1rem' }}>
-                    No students match your search.
-                </div>
-            ) : (
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                        <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                                <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>Time</th>
-                                <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>Category</th>
-                                {headers.map(h => (
-                                    <th key={h} style={{ padding: '1rem', textTransform: 'capitalize', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>
-                                        {h.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                                    </th>
-                                ))}
-
-                                {hasDailyQuestion && (
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)', minWidth: '200px' }}>
-                                        Question of the Day
-                                        <div style={{ fontSize: '0.7rem', fontWeight: 'normal', fontStyle: 'italic', marginTop: '4px' }}>
-                                            "{meeting.questionOfDay || sampleQuestion || 'Daily Question'}"
-                                        </div>
-                                    </th>
-                                )}
-                                <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>Status</th>
-                                {['developer', 'superadmin'].includes(userRole) && (
-                                    <th style={{ padding: '1rem', color: 'var(--color-text-dim)', fontWeight: 500, borderBottom: '1px solid var(--glass-border)' }}>Action</th>
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredRecords.map((r, i) => {
-                                const responses = r.responses || {};
-                                return (
-                                    <tr key={i} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }}>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim)' }}>
-                                            {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </td>
-                                        <td style={{ padding: '1rem', fontSize: '1rem' }}>
-                                            {r.memberType === 'Douloid' ? '🦁' : r.memberType === 'Recruit' ? '⚔️' : '👋'} {r.memberType}
-                                        </td>
-                                        {headers.map(h => (
-                                            <td key={h} style={{ padding: '1rem', fontSize: '0.9rem' }}>
-                                                {responses[h] || '-'}
-                                            </td>
-                                        ))}
-
-                                        {hasDailyQuestion && (
-                                            <td style={{ padding: '1rem', fontSize: '0.9rem', color: '#a78bfa', maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                                {r.questionOfDay || r.responses?.dailyQuestionAnswer || '-'}
-                                            </td>
-                                        )}
-                                        <td style={{ padding: '1rem' }}>
-                                            <button
-                                                onClick={() => toggleExemption(r._id)}
-                                                style={{
-                                                    padding: '0.3rem 0.6rem',
-                                                    borderRadius: '2rem',
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 800,
-                                                    background: r.isExempted ? 'rgba(250, 204, 21, 0.1)' : 'rgba(37, 170, 225, 0.1)',
-                                                    color: r.isExempted ? '#facc15' : '#25AAE1',
-                                                    border: r.isExempted ? '1px solid rgba(250, 204, 21, 0.2)' : '1px solid rgba(37, 170, 225, 0.2)',
-                                                    letterSpacing: '0.5px',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                {r.isExempted ? 'EXEMPTED' : 'PRESENT'}
-                                            </button>
-                                        </td>
-                                        {['developer', 'superadmin'].includes(userRole) && (
-                                            <td style={{ padding: '0.5rem 1rem' }}>
-                                                <button
-                                                    onClick={() => deleteRecord(r._id)}
-                                                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                    title="Delete Record"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
-                                        )}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+            {/* Add/Edit Admin Modal */}
+            {editingAdmin && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setEditingAdmin(null)}>
+                    <div className="glass-panel" style={{ padding: '2.5rem 2rem', maxWidth: '400px', width: '100%', background: '#0f172a' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{editingAdmin._id === 'NEW' ? 'Register New Staff' : 'Edit Staff Account'}</h3>
+                            <button onClick={() => setEditingAdmin(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'rgba(255,255,255,0.4)', padding: '0.4rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div className="form-group-premium">
+                                <label>Username</label>
+                                <input className="modern-input" value={editingAdmin.username || ''} onChange={e => setEditingAdmin({ ...editingAdmin, username: e.target.value })} required disabled={editingAdmin._id !== 'NEW'} />
+                            </div>
+                            {editingAdmin._id === 'NEW' && (
+                                <div className="form-group-premium">
+                                    <label>Password</label>
+                                    <input className="modern-input" type="password" value={editingAdmin.password || ''} onChange={e => setEditingAdmin({ ...editingAdmin, password: e.target.value })} required />
+                                </div>
+                            )}
+                            <div className="form-group-premium">
+                                <label>Campus Jurisdiction</label>
+                                <select className="modern-input" value={editingAdmin.campus || 'Athi River'} onChange={e => setEditingAdmin({ ...editingAdmin, campus: e.target.value })}>
+                                    <option value="Athi River">Athi River</option>
+                                    <option value="Valley Road">Valley Road</option>
+                                    <option value="All">All Campuses (Global)</option>
+                                </select>
+                            </div>
+                            <div className="form-group-premium">
+                                <label>System Role</label>
+                                <select className="modern-input" value={editingAdmin.role || 'admin'} onChange={e => setEditingAdmin({ ...editingAdmin, role: e.target.value })}>
+                                    <option value="admin">Admin</option>
+                                    <option value="superadmin">SuperAdmin</option>
+                                    <option value="developer">Developer</option>
+                                </select>
+                            </div>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '45px', marginTop: '0.5rem', borderRadius: '0.5rem', fontWeight: 800 }}>
+                                {editingAdmin._id === 'NEW' ? 'Register Account' : 'Save Profiles'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>
     );
 };
 
-const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeaturesEnabled, currentSemester, onUpdateSetting }) => {
+/* --- BOTTOM HELPER VIEWS --- */
+
+const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, currentSemester }) => {
     const userRole = localStorage.getItem('role')?.toLowerCase();
     const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
 
@@ -5275,8 +559,6 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s' }}>
-
-            {/* Header Banner */}
             <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(29,166,217,0.08) 0%, rgba(2,21,37,0.9) 100%)', border: '1px solid rgba(29,166,217,0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
@@ -5297,8 +579,7 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
                 </div>
             </div>
 
-            {/* Admin Table */}
-            {canManageAdmins && (
+            {canManageAdmins ? (
                 <div className="glass-card-premium" style={{ padding: 0, overflow: 'hidden', border: '1px solid rgba(29,166,217,0.12)' }}>
                     <div style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} total</span>
@@ -5352,59 +633,169 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, guestFeatur
                         </tbody>
                     </table>
                 </div>
+            ) : (
+                <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', opacity: 0.5 }}>
+                    <ShieldAlert size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                    <h3>Access Restricted</h3>
+                    <p style={{ fontSize: '0.85rem' }}>Only Developers and SuperAdmins are authorized to manage administrative system accounts.</p>
+                </div>
             )}
+        </div>
+    );
+};
 
-            {/* Settings Cards Row */}
-            {canManageAdmins && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+const ReportsView = ({ meetings, members, onDownloadCSV, onDownloadCumulativeCSV }) => {
+    const [reportType, setReportType] = useState('summary'); 
+    const [filterSemester, setFilterSemester] = useState('Current');
+    const [filterCampus, setFilterCampus] = useState('All');
 
-                    {/* Guest Access Toggle */}
-                    <div className="setting-card" style={{ borderLeft: `4px solid ${guestFeaturesEnabled ? '#4ade80' : '#f87171'}` }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <div style={{ padding: '0.75rem', background: guestFeaturesEnabled ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)', borderRadius: '0.75rem' }}>
-                                <ShieldAlert size={22} color={guestFeaturesEnabled ? '#4ade80' : '#f87171'} />
+    const getSemester = (date) => {
+        const d = new Date(date);
+        const month = d.getMonth(); 
+        const year = d.getFullYear();
+        if (month <= 4) return `Jan Semester ${year}`;
+        if (month <= 7) return `May Semester ${year}`;
+        return `Sept Semester ${year}`;
+    };
+
+    const currentSemester = getSemester(new Date());
+    const semesters = Array.from(new Set(meetings.map(m => getSemester(m.date))));
+    if (!semesters.includes(currentSemester)) semesters.push(currentSemester);
+
+    const filteredMeetings = meetings.filter(m => {
+        const semesterMatch = filterSemester === 'All' ||
+            (filterSemester === 'Current' ? getSemester(m.date) === currentSemester : getSemester(m.date) === filterSemester);
+        const campusMatch = filterCampus === 'All' || m.campus === filterCampus;
+        return semesterMatch && campusMatch;
+    });
+
+    const totalAttendance = filteredMeetings.reduce((acc, m) => acc + (m.attendees || 0), 0);
+    const averageAttendance = filteredMeetings.length > 0 ? (totalAttendance / filteredMeetings.length).toFixed(1) : 0;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Reports & Analytics</h2>
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Real-time attendance tracking and insights</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '0.75rem' }}>
+                        <select
+                            className="modern-input"
+                            style={{ padding: '0.5rem 2rem 0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', fontWeight: 600 }}
+                            value={filterSemester}
+                            onChange={(e) => setFilterSemester(e.target.value)}
+                        >
+                            <option value="Current">This Semester</option>
+                            <option value="All">All Time</option>
+                            {semesters.filter(s => s !== currentSemester).map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                        <select
+                            className="modern-input"
+                            style={{ padding: '0.5rem 2rem 0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', fontWeight: 600 }}
+                            value={filterCampus}
+                            onChange={(e) => setFilterCampus(e.target.value)}
+                        >
+                            <option value="All">Global (All)</option>
+                            <option value="Athi River">Athi River</option>
+                            <option value="Valley Road">Valley Road</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Sub Tab Controls */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                    <button onClick={() => setReportType('summary')} style={{ padding: '0.5rem 1.25rem', border: 'none', background: reportType === 'summary' ? 'rgba(29, 166, 217, 0.15)' : 'transparent', color: reportType === 'summary' ? '#1da6d9' : 'var(--color-text-dim)', fontSize: '0.82rem', fontWeight: 700, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <FileText size={16} /> Sessions Summary
+                    </button>
+                    <button onClick={() => setReportType('cumulative')} style={{ padding: '0.5rem 1.25rem', border: 'none', background: reportType === 'cumulative' ? 'rgba(29, 166, 217, 0.15)' : 'transparent', color: reportType === 'cumulative' ? '#1da6d9' : 'var(--color-text-dim)', fontSize: '0.82rem', fontWeight: 700, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Users size={16} /> Cumulative Rosters
+                    </button>
+                </div>
+
+                {reportType === 'summary' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.4rem' }}>TOTAL ATTENDED</div>
+                                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1da6d9' }}>{totalAttendance}</div>
                             </div>
-                            <div>
-                                <div style={{ fontWeight: 800, fontSize: '1rem' }}>Guest & Feedback Access</div>
-                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem' }}>Control public guest link visibility</div>
+                            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.4rem' }}>SESSIONS COUNT</div>
+                                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1da6d9' }}>{filteredMeetings.length}</div>
+                            </div>
+                            <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', marginBottom: '0.4rem' }}>AVERAGE PARTICIPATION</div>
+                                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80' }}>{averageAttendance}</div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: guestFeaturesEnabled ? '#4ade80' : '#f87171' }}>
-                                {guestFeaturesEnabled ? '● ACTIVE' : '● DISABLED'}
-                            </span>
+
+                        <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+                            <table className="glass-table-premium" style={{ width: '100%' }}>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Session Title</th>
+                                        <th>Campus</th>
+                                        <th>Attendance</th>
+                                        <th style={{ textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredMeetings.length === 0 ? (
+                                        <tr><td colSpan="5" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No reports available for the specified range.</td></tr>
+                                    ) : (
+                                        filteredMeetings.map(m => (
+                                            <tr key={m._id} style={{ transition: 'background 0.2s' }}>
+                                                <td style={{ fontWeight: 700 }}>{new Date(m.date).toLocaleDateString()}</td>
+                                                <td>{m.name}</td>
+                                                <td>{m.campus}</td>
+                                                <td>
+                                                    <span style={{ color: '#1da6d9', fontWeight: 800, background: 'rgba(29,166,217,0.1)', padding: '0.2rem 0.6rem', borderRadius: '0.4rem' }}>{m.attendees || 0}</span>
+                                                </td>
+                                                <td style={{ textAlign: 'right' }}>
+                                                    <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.4rem', fontWeight: 700 }}>
+                                                        Download CSV
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center', padding: '2rem 1rem' }}>
+                        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+                            <FileSpreadsheet size={48} style={{ color: '#4ade80', opacity: 0.3, marginBottom: '1.25rem' }} />
+                            <h3 style={{ fontSize: '1.2rem', margin: '0 0 0.5rem' }}>Cumulative Term Report</h3>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', lineHeight: 1.5, marginBottom: '2rem' }}>
+                                Compile all meetings attendance for the selected filters into a single term spreadsheet, useful to track student growth and points.
+                            </p>
                             <button
-                                className="btn"
-                                onClick={() => onUpdateSetting('guest_features', !guestFeaturesEnabled)}
-                                style={{ padding: '0.6rem 1.2rem', background: guestFeaturesEnabled ? 'rgba(248,113,113,0.1)' : 'rgba(74,222,128,0.1)', color: guestFeaturesEnabled ? '#f87171' : '#4ade80', border: `1px solid ${guestFeaturesEnabled ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)'}`, fontWeight: 800, borderRadius: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                className="btn btn-primary"
+                                style={{ background: '#4ade80', color: 'black', fontWeight: 800, padding: '0.75rem 2rem', width: '100%', borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                onClick={() => {
+                                    // Compile a simple cumulative data
+                                    const studentMap = {};
+                                    filteredMeetings.forEach(m => {
+                                        // Count attendees
+                                        // Since we do this inside dashboard, we mock it or fetch cumulative lists
+                                    });
+                                    // Let G9 download directly
+                                    onDownloadCumulativeCSV(members, filterSemester === 'Current' ? currentSemester : filterSemester);
+                                }}
                             >
-                                {guestFeaturesEnabled ? <><X size={16} /> Turn OFF</> : <><Check size={16} /> Turn ON</>}
+                                <Download size={16} /> Compile & Export Cumulative Report
                             </button>
                         </div>
                     </div>
-
-                    {/* Active Semester */}
-                    <div className="setting-card" style={{ borderLeft: '4px solid #1da6d9' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <div style={{ padding: '0.75rem', background: 'rgba(29,166,217,0.12)', borderRadius: '0.75rem' }}>
-                                <Calendar size={22} color="#1da6d9" />
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: 800, fontSize: '1rem' }}>Active Semester</div>
-                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem' }}>Current academic tracking period</div>
-                            </div>
-                        </div>
-                        <input
-                            className="modern-input"
-                            style={{ width: '100%', marginBottom: '0', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.6rem', color: 'white', outline: 'none' }}
-                            value={currentSemester}
-                            onChange={(e) => onUpdateSetting('current_semester', e.target.value)}
-                            placeholder="e.g. MAY-AUG 2026"
-                        />
-                    </div>
-
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
@@ -5473,8 +864,6 @@ const FeedbackView = ({ isGuest }) => {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.5s' }}>
-
-            {/* Header */}
             <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(250,204,21,0.07) 0%, rgba(2,21,37,0.9) 100%)', border: '1px solid rgba(250,204,21,0.15)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
@@ -5487,7 +876,6 @@ const FeedbackView = ({ isGuest }) => {
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>{feedbacks.length} total · {feedbacks.filter(f => f.status === 'new').length} unread</p>
                         </div>
                     </div>
-                    {/* Filter Pills */}
                     <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem', flexWrap: 'wrap' }}>
                         {['all', 'new', 'read', 'resolved'].map(s => {
                             const isActive = filter === s;
@@ -5509,7 +897,6 @@ const FeedbackView = ({ isGuest }) => {
                 </div>
             </div>
 
-            {/* Feedback Cards */}
             {filteredFeedbacks.length === 0 ? (
                 <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', opacity: 0.5 }}>
                     <Lightbulb size={40} style={{ marginBottom: '1rem', opacity: 0.3 }} />
@@ -5521,14 +908,14 @@ const FeedbackView = ({ isGuest }) => {
                     {filteredFeedbacks.map(f => {
                         const sm = statusMeta[f.status] || statusMeta.read;
                         return (
-                            <div key={f._id} className="feedback-card" style={{ borderLeft: `3px solid ${sm.color}` }}>
+                            <div key={f._id} className="feedback-card" style={{ borderLeft: `3px solid ${sm.color}`, background: 'rgba(9, 29, 46, 0.4)', padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
                                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: sm.bg, border: `1px solid ${sm.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900, color: sm.color }}>
                                                 {(f.name || 'A').charAt(0).toUpperCase()}
                                             </div>
-                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{f.name || 'Anonymous'}</span>
+                                            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{f.name || 'Anonymous'}</span>
                                             <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>{new Date(f.createdAt).toLocaleDateString()}</span>
                                             <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                 {f.category?.replace('_', ' ')}
@@ -5568,150 +955,6 @@ const FeedbackView = ({ isGuest }) => {
                     })}
                 </div>
             )}
-        </div>
-    );
-};
-
-const SystemView = ({ onUpdateSetting, isGuest }) => {
-    const [semester, setSemester] = useState('MAY-AUG 2026');
-    const [guestAccess, setGuestAccess] = useState('true');
-    const [waLink, setWaLink] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState({});
-
-    useEffect(() => {
-        const fetchSettings = async () => {
-            setLoading(true);
-            try {
-                const [semRes, guestRes, waRes] = await Promise.all([
-                    api.get('/settings/current_semester'),
-                    api.get('/settings/guest_features'),
-                    api.get('/settings/whatsapp_link')
-                ]);
-                if (semRes.data?.value) setSemester(semRes.data.value);
-                if (guestRes.data?.value) setGuestAccess(guestRes.data.value);
-                if (waRes.data?.value) setWaLink(waRes.data.value);
-            } catch (err) {
-                console.error("Failed to fetch system settings", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSettings();
-    }, []);
-
-    const handleSave = async (key, value) => {
-        setSaving(prev => ({ ...prev, [key]: true }));
-        await onUpdateSetting(key, value);
-        setTimeout(() => setSaving(prev => ({ ...prev, [key]: false })), 1200);
-    };
-
-    if (loading) return (
-        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <SettingsIcon size={36} style={{ opacity: 0.3, animation: 'spin 2s linear infinite' }} />
-            <div>Loading System Configurations...</div>
-        </div>
-    );
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
-
-            {/* Header */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(29,166,217,0.08) 0%, rgba(2,21,37,0.92) 100%)', border: '1px solid rgba(29,166,217,0.18)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(29,166,217,0.15)', borderRadius: '1rem', border: '1px solid rgba(29,166,217,0.25)' }}>
-                        <SettingsIcon size={28} color="#1da6d9" />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#1da6d9', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>CONTROL PANEL</div>
-                        <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900 }}>Global Settings</h2>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>Configure system-wide parameters and access controls</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Settings Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-
-                {/* Active Semester Card */}
-                <div className="setting-card" style={{ borderLeft: '4px solid #1da6d9' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                        <div style={{ padding: '0.7rem', background: 'rgba(29,166,217,0.12)', borderRadius: '0.75rem' }}>
-                            <Calendar size={20} color="#1da6d9" />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Active Tracking Semester</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Academic period for enrollment & attendance</div>
-                        </div>
-                    </div>
-                    <input
-                        style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.6rem', color: 'white', outline: 'none', fontSize: '0.9rem', marginBottom: '1rem', boxSizing: 'border-box' }}
-                        value={semester}
-                        onChange={(e) => setSemester(e.target.value)}
-                        placeholder="MAY-AUG 2026"
-                    />
-                    <button className="btn glass-btn-primary" style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => handleSave('current_semester', semester)}>
-                        {saving.current_semester ? <><RotateCcw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><CheckCircle size={15} /> Update Semester</>}
-                    </button>
-                </div>
-
-                {/* WhatsApp Link Card */}
-                <div className="setting-card" style={{ borderLeft: '4px solid #4ade80' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                        <div style={{ padding: '0.7rem', background: 'rgba(74,222,128,0.1)', borderRadius: '0.75rem' }}>
-                            <LinkIcon size={20} color="#4ade80" />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>G9 Group / Support Link</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>WhatsApp community or support URL</div>
-                        </div>
-                    </div>
-                    <input
-                        style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '0.6rem', color: 'white', outline: 'none', fontSize: '0.85rem', marginBottom: '1rem', boxSizing: 'border-box' }}
-                        value={waLink}
-                        onChange={(e) => setWaLink(e.target.value)}
-                        placeholder="https://chat.whatsapp.com/..."
-                    />
-                    <button
-                        className="btn"
-                        style={{ width: '100%', padding: '0.7rem', background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)', borderRadius: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        onClick={() => handleSave('whatsapp_link', waLink)}
-                    >
-                        {saving.whatsapp_link ? <><RotateCcw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><CheckCircle size={15} /> Update Link</>}
-                    </button>
-                </div>
-
-                {/* Guest Access Card */}
-                <div className="setting-card" style={{ borderLeft: `4px solid ${guestAccess === 'true' ? '#4ade80' : '#f87171'}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                        <div style={{ padding: '0.7rem', background: guestAccess === 'true' ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', borderRadius: '0.75rem' }}>
-                            <ShieldAlert size={20} color={guestAccess === 'true' ? '#4ade80' : '#f87171'} />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Public Guest Access</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Show guest login link on public pages</div>
-                        </div>
-                    </div>
-                    <select
-                        style={{ width: '100%', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.3)', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`, borderRadius: '0.6rem', color: 'white', outline: 'none', fontSize: '0.88rem', marginBottom: '1rem' }}
-                        value={guestAccess}
-                        onChange={(e) => setGuestAccess(e.target.value)}
-                    >
-                        <option value="true">Enabled (Allow Guest Link on Login)</option>
-                        <option value="false">Disabled (Private Only)</option>
-                    </select>
-                    <button
-                        className="btn"
-                        style={{ width: '100%', padding: '0.7rem', background: guestAccess === 'true' ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)', color: guestAccess === 'true' ? '#4ade80' : '#f87171', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.2)'}`, borderRadius: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        onClick={() => handleSave('guest_features', guestAccess)}
-                    >
-                        {saving.guest_features ? <><RotateCcw size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><CheckCircle size={15} /> Update Policy</>}
-                    </button>
-                </div>
-
-            </div>
-
-            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 };

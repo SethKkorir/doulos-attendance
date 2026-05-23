@@ -473,15 +473,25 @@ export const clearGraduationCongrats = async (req, res) => {
 };
 
 export const enrollMember = async (req, res) => {
-    const { studentRegNo, semester } = req.body;
+    const { studentRegNo, semester, isActiveThisSemester } = req.body;
     try {
         const regNo = studentRegNo.trim().toUpperCase();
+        const updateFields = {};
+
+        if (isActiveThisSemester) {
+            updateFields.lastActiveSemester = semester;
+            updateFields.status = 'Active';
+        } else {
+            // Keep them in the database but mark them as Inactive for active semester tracking/points
+            updateFields.status = 'Inactive';
+        }
+
         const member = await Member.findOneAndUpdate(
             { studentRegNo: regNo },
-            { $set: { lastActiveSemester: semester, status: 'Active' } },
+            { $set: updateFields },
             { new: true }
         );
-        res.json({ message: `Successfully enrolled in ${semester}`, member });
+        res.json({ message: 'Welcome to the new semester!', member });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
