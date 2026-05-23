@@ -4,7 +4,8 @@ import api from '../api';
 import {
     Calendar, CheckCircle, XCircle, BookOpen, Music, Bell, Star, Trophy, Search,
     LogOut, GraduationCap, Sparkles, MessageCircle, Send, CreditCard, Wallet,
-    History, FileText, LayoutDashboard, Activity, Clock, ChevronRight, Users
+    History, FileText, LayoutDashboard, Activity, Clock, ChevronRight, Users,
+    AlertCircle, ArrowRight, User
 } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -268,6 +269,27 @@ const CSS = `
     .rotating-logo { animation: rotateLogo 60s linear infinite; filter: drop-shadow(0 0 20px rgba(37,170,225,0.3)); }
 `;
 
+/* ─── Login Sub-components ─── */
+const SplInputField = ({ label, icon, input }) => (
+    <div>
+        <div className="spl-label">{label}</div>
+        <div className="spl-input-wrap">
+            <span className="spl-icon">{icon}</span>
+            {input}
+        </div>
+    </div>
+);
+const SplSubmitButton = ({ loading, label, loadingLabel }) => (
+    <button type="submit" className="spl-submit" disabled={loading} style={{ marginTop: '0.5rem' }}>
+        <div className="spl-submit-inner">
+            {loading
+                ? (<><div className="spl-spinner" /><span>{loadingLabel}</span></>)
+                : (<><span>{label}</span><ArrowRight size={18} className="spl-arrow" /></>)
+            }
+        </div>
+    </button>
+);
+
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
@@ -462,137 +484,208 @@ const StudentPortal = () => {
     /* ── Login Screen ── */
     if (!isLoggedIn) {
         return (
-            <div className="sp-login-wrap">
+            <div className="spl-page flex-center" style={{
+                minHeight: '100vh',
+                flexDirection: 'column',
+                padding: '1.5rem',
+                position: 'relative',
+                overflow: 'hidden',
+                fontFamily: "'Inter', system-ui, sans-serif"
+            }}>
                 <style>{CSS}</style>
                 <BackgroundGallery />
                 <ValentineRain />
 
-                {/* Left branding panel */}
-                <div className="sp-login-left">
-                    <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
-                        <div className="rotating-logo" style={{ display: 'inline-block', marginBottom: '2rem' }}>
-                            <Logo size={90} showText={false} />
+                {/* Ambient glowing blobs */}
+                <div className="spl-blob spl-blob-1" />
+                <div className="spl-blob spl-blob-2" />
+
+                {/* Error Toast */}
+                {error && (
+                    <div style={{
+                        position: 'fixed', top: '1.5rem', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 2000, minWidth: '300px', maxWidth: '90%',
+                        padding: '0.9rem 1.25rem', borderRadius: '1rem',
+                        background: 'rgba(28,9,15,0.9)', border: '1px solid rgba(239,68,68,0.3)',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 20px rgba(239,68,68,0.08)',
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        animation: 'spl-slide-down 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
+                        backdropFilter: 'blur(12px)'
+                    }}>
+                        <AlertCircle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+                        <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#ef4444', marginBottom: '2px' }}>Access Denied</div>
+                            <div style={{ fontSize: '0.84rem', color: '#fca5a5', fontWeight: 500 }}>{error}</div>
                         </div>
-                        <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em', marginBottom: '0.75rem' }}>
-                            DOULOS <span style={{ color: '#25AAE1' }}>PORTAL</span>
+                    </div>
+                )}
+
+                {/* Premium Card */}
+                <div className="spl-card" style={{
+                    width: '100%', maxWidth: '420px',
+                    padding: registrationRequired ? '2.5rem 2rem' : '3rem 2.25rem 2.5rem',
+                    borderRadius: '2rem',
+                    border: '1px solid rgba(29,166,217,0.2)',
+                    background: 'rgba(2,21,37,0.72)',
+                    backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+                    boxShadow: '0 30px 60px -15px rgba(0,0,0,0.8), 0 0 50px -10px rgba(29,166,217,0.12)',
+                    position: 'relative', zIndex: 10,
+                    transition: 'all 0.4s cubic-bezier(0.16,1,0.3,1)',
+                    animation: 'spl-card-in 0.6s cubic-bezier(0.16,1,0.3,1)'
+                }}>
+
+                    {/* ── Header with orbital logo ── */}
+                    <div style={{ marginBottom: '2.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <div className="spl-ring spl-ring-outer" />
+                            <div className="spl-ring spl-ring-inner" />
+                            <div style={{ position: 'relative', zIndex: 5, filter: 'drop-shadow(0 0 25px rgba(29,166,217,0.45))', transition: 'transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                                <Logo size={76} showText={false} />
+                            </div>
+                        </div>
+
+                        <h1 style={{
+                            marginTop: '1.75rem', marginBottom: '0.5rem',
+                            fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.03em',
+                            background: 'linear-gradient(135deg, #ffffff 0%, #25AAE1 100%)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                            textTransform: 'uppercase'
+                        }}>
+                            {registrationRequired ? 'New Member' : 'Member Portal'}
                         </h1>
-                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', maxWidth: '320px', lineHeight: 1.6 }}>
-                            Your personal dashboard for attendance, activities, finance & more.
-                        </p>
-                        {/* Decorative stat pills */}
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            {[['Attendance', 'Tracked'], ['Activities', 'Logged'], ['Finance', 'Managed']].map(([a, b]) => (
-                                <div key={a} style={{ padding: '0.75rem 1.25rem', background: 'rgba(37,170,225,0.08)', border: '1px solid rgba(37,170,225,0.2)', borderRadius: '1rem', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#25AAE1' }}>{a}</div>
-                                    <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>{b}</div>
-                                </div>
-                            ))}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '80%', justifyContent: 'center', opacity: 0.65 }}>
+                            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to right, transparent, rgba(29,166,217,0.4))' }} />
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '2.5px', textTransform: 'uppercase', color: '#25AAE1' }}>
+                                {registrationRequired ? 'Self Registration' : 'Secure Access'}
+                            </span>
+                            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to left, transparent, rgba(29,166,217,0.4))' }} />
                         </div>
                     </div>
-                    {/* bg glow blobs */}
-                    <div style={{ position: 'absolute', top: '10%', left: '10%', width: '200px', height: '200px', background: 'rgba(37,170,225,0.06)', borderRadius: '50%', filter: 'blur(60px)' }} />
-                    <div style={{ position: 'absolute', bottom: '15%', right: '5%', width: '150px', height: '150px', background: 'rgba(37,170,225,0.04)', borderRadius: '50%', filter: 'blur(40px)' }} />
-                </div>
 
-                {/* Right login card */}
-                <div className="sp-login-right">
-                    <div className="sp-login-card">
-                        {/* Mobile logo header (visible on mobile only) */}
-                        <div className="sp-login-mobile-header">
-                            <div className="rotating-logo" style={{ marginBottom: '1rem' }}>
-                                <Logo size={64} showText={false} />
-                            </div>
-                            <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', letterSpacing: '-0.03em', margin: 0 }}>
-                                DOULOS <span style={{ color: '#25AAE1' }}>PORTAL</span>
-                            </h1>
-                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', textAlign: 'center', marginTop: '0.4rem', maxWidth: '280px', lineHeight: 1.4 }}>
-                                Track attendance, log activities, and manage finances.
-                            </p>
-                        </div>
-
-                        <div style={{ marginBottom: '2rem' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>MEMBER ACCESS</div>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: 0, letterSpacing: '-0.02em' }}>
-                                {registrationRequired ? 'Register to Join' : 'Sign In'}
-                            </h2>
-                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', marginTop: '0.4rem' }}>
-                                {registrationRequired ? 'Create your profile to access the portal' : 'Enter your admission number to continue'}
-                            </p>
-                        </div>
-
-                        {registrationRequired ? (
-                            <div style={{ animation: 'fadeUp 0.4s ease' }}>
-                                <div style={{ background: 'rgba(37,170,225,0.08)', border: '1px solid rgba(37,170,225,0.2)', borderRadius: '0.75rem', padding: '0.85rem', marginBottom: '1.5rem' }}>
-                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Doulos Enrollment</div>
-                                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)' }}>No record found for <strong>{regNo}</strong>. Register your details to proceed.</div>
-                                </div>
-                                <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {[{ label: 'Full Name', el: <input type="text" placeholder="Enter your full name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} required style={{ width: '100%', height: '46px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.65rem', color: 'white', padding: '0 1rem', fontSize: '0.9rem', outline: 'none' }} /> }].map(f => (
-                                        <div key={f.label}>
-                                            <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.45)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{f.label}</label>
-                                            {f.el}
-                                        </div>
-                                    ))}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        {[
-                                            { label: 'Campus', val: newMemberCampus, set: setNewMemberCampus, opts: ['Athi River', 'Valley Road'] },
-                                            { label: 'Category', val: newMemberType, set: setNewMemberType, opts: ['Douloid', 'Recruit', 'Visitor'] }
-                                        ].map(f => (
-                                            <div key={f.label}>
-                                                <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.45)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{f.label}</label>
-                                                <select value={f.val} onChange={e => f.set(e.target.value)} style={{ width: '100%', height: '46px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.65rem', color: 'white', padding: '0 0.75rem', fontSize: '0.88rem', outline: 'none' }}>
-                                                    {f.opts.map(o => <option key={o}>{o}</option>)}
-                                                </select>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button type="submit" disabled={loading} style={{ width: '100%', height: '50px', background: 'linear-gradient(135deg, #25AAE1 0%, #0a4d68 100%)', color: 'white', border: '1px solid rgba(37,170,225,0.4)', borderRadius: '0.75rem', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 8px 20px rgba(37,170,225,0.25)', marginTop: '0.5rem' }}>
-                                        {loading ? <><span className="loading-spinner-small" style={{ marginRight: '0.5rem' }} />ENROLLING...</> : 'REGISTER & PROCEED'}
-                                    </button>
-                                    <button type="button" onClick={() => setRegistrationRequired(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textAlign: 'center' }}>← Back to Sign In</button>
-                                </form>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* ── Registration Form ── */}
+                    {registrationRequired ? (
+                        <div style={{ animation: 'spl-fade-up 0.4s ease' }}>
+                            <div style={{ background: 'rgba(37,170,225,0.06)', border: '1px solid rgba(37,170,225,0.18)', borderRadius: '0.85rem', padding: '0.85rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                                <GraduationCap size={18} color="#25AAE1" style={{ flexShrink: 0, marginTop: '2px' }} />
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.45)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Admission Number</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            placeholder="21-1234"
-                                            style={{ width: '100%', height: '50px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.75rem', color: 'white', padding: '0 3rem 0 1rem', fontSize: '1rem', fontWeight: 700, outline: 'none', letterSpacing: '1px' }}
-                                            value={regNo}
-                                            onChange={e => { let v = e.target.value.replace(/\D/g, ''); if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2, 6); setRegNo(v); }}
-                                            required
-                                        />
-                                        <Search size={18} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.25)', pointerEvents: 'none' }} />
+                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Doulos Enrollment</div>
+                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.4 }}>No record found for <strong style={{ color: 'white' }}>{regNo}</strong>. Complete the form to join.</div>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                {/* Full Name */}
+                                <SplInputField
+                                    label="Full Name"
+                                    icon={<User size={16} />}
+                                    input={<input type="text" placeholder="Enter your full name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} required />}
+                                />
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.45rem' }}>Campus</label>
+                                        <select value={newMemberCampus} onChange={e => setNewMemberCampus(e.target.value)} style={{ width: '100%', height: '46px', background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(29,166,217,0.15)', borderRadius: '10px', color: 'white', padding: '0 0.75rem', fontSize: '0.88rem', outline: 'none' }}>
+                                            {['Athi River', 'Valley Road'].map(o => <option key={o}>{o}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.45rem' }}>Category</label>
+                                        <select value={newMemberType} onChange={e => setNewMemberType(e.target.value)} style={{ width: '100%', height: '46px', background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(29,166,217,0.15)', borderRadius: '10px', color: 'white', padding: '0 0.75rem', fontSize: '0.88rem', outline: 'none' }}>
+                                            {['Douloid', 'Recruit', 'Visitor'].map(o => <option key={o}>{o}</option>)}
+                                        </select>
                                     </div>
                                 </div>
-                                <button type="submit" disabled={loading} style={{ width: '100%', height: '52px', background: 'linear-gradient(135deg, #25AAE1 0%, #0a4d68 100%)', color: 'white', border: '1px solid rgba(37,170,225,0.4)', borderRadius: '0.75rem', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '2px', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 8px 25px rgba(37,170,225,0.25)' }}>
-                                    {loading ? <><span className="loading-spinner-small" style={{ marginRight: '0.5rem' }} />VERIFYING...</> : 'LOG IN →'}
-                                </button>
-                            </form>
-                        )}
 
-                        {error && (
-                            <div style={{ marginTop: '1.25rem', padding: '0.85rem 1rem', borderRadius: '0.65rem', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171', fontSize: '0.82rem', fontWeight: 600 }}>
-                                ⚠️ {error}
-                            </div>
-                        )}
-                        {guestFeaturesEnabled && (
-                            <div style={{ textAlign: 'center', marginTop: '1.75rem' }}>
-                                <button onClick={() => navigate('/guest')} style={{ background: 'none', border: 'none', color: '#25AAE1', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', opacity: 0.8 }}>
-                                    Continue as Guest →
-                                </button>
-                            </div>
-                        )}
-                        <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                            Doulos Attendance System • Secure Portal
+                                <SplSubmitButton loading={loading} label="Register & Enter" loadingLabel="Enrolling..." />
+                                <button type="button" onClick={() => setRegistrationRequired(false)}
+                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textAlign: 'center', marginTop: '-0.5rem' }}
+                                >← Back to Sign In</button>
+                            </form>
                         </div>
+                    ) : (
+                        /* ── Sign In Form ── */
+                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <SplInputField
+                                label="Admission Number"
+                                icon={<GraduationCap size={16} />}
+                                input={
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. 21-1234"
+                                        value={regNo}
+                                        onChange={e => { let v = e.target.value.replace(/\D/g, ''); if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2, 6); setRegNo(v); }}
+                                        required
+                                        style={{ letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700 }}
+                                    />
+                                }
+                            />
+
+                            <SplSubmitButton loading={loading} label="Access My Portal" loadingLabel="Verifying..." />
+                        </form>
+                    )}
+
+                    {/* Guest link */}
+                    {!registrationRequired && guestFeaturesEnabled && (
+                        <div style={{ marginTop: '1.75rem', display: 'flex', justifyContent: 'center' }}>
+                            <button onClick={() => navigate('/guest')} className="spl-guest-btn">
+                                <span>Browse as Guest</span>
+                                <ArrowRight size={14} className="spl-guest-arrow" />
+                            </button>
+                        </div>
+                    )}
+
+                    <div style={{ marginTop: '1.75rem', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.25, color: '#25AAE1', textAlign: 'center', pointerEvents: 'none' }}>
+                        Doulos Attendance System · Member Portal
                     </div>
                 </div>
+
+                {/* Inline CSS for login page */}
+                <style>{`
+                    .spl-page { background: linear-gradient(160deg, #091d2e 0%, #021525 100%); }
+                    .spl-blob { position: absolute; width: 320px; height: 320px; border-radius: 50%; filter: blur(80px); opacity: 0.12; z-index: 1; pointer-events: none; }
+                    .spl-blob-1 { background: radial-gradient(circle, #25AAE1 0%, transparent 70%); top: 20%; left: 25%; animation: spl-float1 12s ease-in-out infinite; }
+                    .spl-blob-2 { background: radial-gradient(circle, #a855f7 0%, transparent 70%); bottom: 20%; right: 25%; animation: spl-float2 15s ease-in-out infinite; }
+                    .spl-ring { position: absolute; border-radius: 50%; pointer-events: none; }
+                    .spl-ring-outer { width: 114px; height: 114px; border: 1px dashed rgba(29,166,217,0.3); animation: spl-cw 25s linear infinite; }
+                    .spl-ring-inner { width: 96px; height: 96px; border: 1px dotted rgba(29,166,217,0.4); animation: spl-ccw 15s linear infinite; }
+                    .spl-input-wrap { position: relative; display: flex; align-items: center; width: 100%; border-radius: 12px; background: rgba(0,0,0,0.35); border: 1px solid rgba(29,166,217,0.15); transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+                    .spl-input-wrap:focus-within { border-color: #25AAE1; box-shadow: 0 0 0 4px rgba(37,170,225,0.15); background: rgba(0,0,0,0.48); }
+                    .spl-input-wrap .spl-icon { position: absolute; left: 1rem; color: rgba(255,255,255,0.35); pointer-events: none; transition: color 0.3s ease, transform 0.3s ease; }
+                    .spl-input-wrap:focus-within .spl-icon { color: #25AAE1; transform: scale(1.08); }
+                    .spl-input-wrap input { width: 100%; height: 50px; padding: 0 1rem 0 2.85rem; background: transparent; border: none; color: white; font-size: 0.92rem; font-weight: 600; outline: none; }
+                    .spl-input-wrap input::placeholder { color: rgba(255,255,255,0.22); font-weight: 400; }
+                    .spl-label { font-size: 0.62rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 0.45rem; display: flex; align-items: center; gap: 4px; padding-left: 2px; transition: color 0.3s; }
+                    .spl-submit { position: relative; width: 100%; height: 52px; border-radius: 12px; background: linear-gradient(135deg, #25AAE1 0%, #0d729c 100%); border: none; cursor: pointer; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(37,170,225,0.4); transition: all 0.3s cubic-bezier(0.25,0.8,0.25,1); }
+                    .spl-submit::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); transform: translateX(-100%); transition: transform 0.6s ease; pointer-events: none; }
+                    .spl-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 35px -5px rgba(37,170,225,0.6); }
+                    .spl-submit:hover::before { transform: translateX(100%); }
+                    .spl-submit:active:not(:disabled) { transform: translateY(0); }
+                    .spl-submit:disabled { opacity: 0.85; cursor: not-allowed; }
+                    .spl-submit-inner { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 0.65rem; color: white; font-size: 0.88rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+                    .spl-arrow { transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+                    .spl-submit:hover .spl-arrow { transform: translateX(4px) scale(1.1); }
+                    .spl-spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spl-spin 0.8s linear infinite; }
+                    .spl-guest-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: transparent; border: 1px solid transparent; color: rgba(37,170,225,0.75); padding: 0.55rem 1.1rem; border-radius: 30px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.16,1,0.3,1); }
+                    .spl-guest-btn:hover { color: white; background: rgba(37,170,225,0.1); border-color: rgba(37,170,225,0.15); }
+                    .spl-guest-arrow { transition: transform 0.3s ease; }
+                    .spl-guest-btn:hover .spl-guest-arrow { transform: translateX(3px); }
+                    @keyframes spl-float1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(40px,-60px) scale(1.15); } 66% { transform: translate(-30px,30px) scale(0.9); } }
+                    @keyframes spl-float2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-50px,50px) scale(0.9); } 66% { transform: translate(30px,-40px) scale(1.15); } }
+                    @keyframes spl-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    @keyframes spl-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+                    @keyframes spl-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    @keyframes spl-fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                    @keyframes spl-slide-down { 0% { transform: translate(-50%, -20px); opacity: 0; } 100% { transform: translate(-50%, 0); opacity: 1; } }
+                    @keyframes spl-card-in { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+                `}</style>
             </div>
         );
     }
+
+
 
     /* ── Loading ── */
     if (!data) {
@@ -747,14 +840,7 @@ const StudentPortal = () => {
                             {data.campus} · <span style={{ color: tc.color, fontWeight: 800 }}>{data.memberType}</span>
                         </p>
 
-                        {/* Quick check-in bar */}
-                        <form onSubmit={e => { e.preventDefault(); if (isGuest) { alert('Guest users cannot perform check-ins.'); return; } const code = e.target.elements.code.value.trim(); if (code) window.location.href = `/check-in/${code}`; }} className="sp-checkin-form">
-                            <div style={{ position: 'relative', flex: 1, minWidth: 0, width: '100%' }}>
-                                <Search size={16} style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.25)', pointerEvents: 'none' }} />
-                                <input name="code" placeholder="ENTER MEETING CODE..." className="sp-checkin-input" style={{ paddingLeft: '2.5rem' }} required />
-                            </div>
-                            <button type="submit" className="sp-checkin-btn">CHECK IN</button>
-                        </form>
+
                     </div>
 
                     {/* Recovery mode banner */}
@@ -768,8 +854,8 @@ const StudentPortal = () => {
                         </div>
                     )}
 
-                    {/* ── 3 STAT PILLS ── */}
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                    {/* ── STAT PILLS ── */}
+                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                         <div className="sp-stat-pill">
                             <div className="sp-stat-num" style={{ color: '#25AAE1' }}>{data.stats.totalAttended}</div>
                             <div className="sp-stat-label">Attended</div>
@@ -781,6 +867,16 @@ const StudentPortal = () => {
                         <div className="sp-stat-pill">
                             <div className="sp-stat-num" style={{ color: pct >= 75 ? '#4ade80' : '#facc15' }}>{pct}%</div>
                             <div className="sp-stat-label">Health</div>
+                        </div>
+                        {data.memberType === 'Douloid' && (
+                            <div className="sp-stat-pill" style={{ borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.05)' }}>
+                                <div className="sp-stat-num" style={{ color: '#f59e0b' }}>{systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)}</div>
+                                <div className="sp-stat-label" style={{ color: '#f59e0b' }}>Training</div>
+                            </div>
+                        )}
+                        <div className="sp-stat-pill" style={{ borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.05)', cursor: 'pointer' }} onClick={() => goTab('finance')}>
+                            <div style={{ fontSize: '1.1rem' }}>💳</div>
+                            <div className="sp-stat-label" style={{ color: '#f59e0b' }}>Finance</div>
                         </div>
                     </div>
 
@@ -823,26 +919,7 @@ const StudentPortal = () => {
                         </div>
                     </div>
 
-                    {/* ── TRAINING TRACK (Douloids) ── */}
-                    {data.memberType === 'Douloid' && (
-                        <div className="sp-card" onClick={() => systemStatus.recoveryMode && setComingSoon('Data Synchronization')} style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(245,158,11,0.07) 0%, rgba(2,21,37,0.85) 100%)', borderColor: 'rgba(245,158,11,0.18)', cursor: systemStatus.recoveryMode ? 'pointer' : 'default' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                    <Trophy size={18} color="#f59e0b" />
-                                    <span style={{ fontWeight: 900, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#f59e0b' }}>Training Track</span>
-                                </div>
-                                <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#f59e0b' }}>
-                                    {systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)} <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>sessions</span>
-                                </span>
-                            </div>
-                            <div className="sp-progress">
-                                <div className="sp-progress-fill" style={{ width: systemStatus.recoveryMode ? '0%' : `${Math.min((data.stats.trainingAttended || 0) * 10, 100)}%`, background: '#f59e0b', boxShadow: '0 0 10px rgba(245,158,11,0.4)' }} />
-                            </div>
-                            <p style={{ margin: '0.6rem 0 0', fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                                {systemStatus.recoveryMode ? 'History sync in progress...' : 'Attend training sessions to achieve leadership accreditation.'}
-                            </p>
-                        </div>
-                    )}
+
 
                     {/* ── ALERT ACTION CARDS ── */}
                     {data.alerts && data.alerts.length > 0 && !systemStatus.recoveryMode && (
@@ -1002,8 +1079,15 @@ const StudentPortal = () => {
 
                         {/* FINANCE */}
                         {activeTab === 'finance' && (
-                            <div className="sp-card" style={{ padding: '1.75rem' }}>
-                                <FinanceView regNo={data.studentRegNo} memberName={data.memberName} />
+                            <div className="sp-card" style={{ padding: '3rem 2rem', textAlign: 'center', background: 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(2,21,37,0.9) 100%)', borderColor: 'rgba(245,158,11,0.15)' }}>
+                                <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '2rem' }}>💳</div>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Finance Module</div>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '0.6rem', letterSpacing: '-0.02em' }}>Updating — Coming Soon</h2>
+                                <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: '320px', margin: '0 auto 2rem' }}>We are upgrading the finance module to bring you a better contribution tracking experience. Please check back shortly!</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', animation: 'bounce 1.2s infinite' }} />
+                                    Building in progress
+                                </div>
                             </div>
                         )}
                     </div>
