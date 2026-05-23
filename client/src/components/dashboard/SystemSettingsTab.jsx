@@ -129,62 +129,6 @@ const SystemSettingsTab = ({
             {/* Settings Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
 
-                {/* WhatsApp Link Card */}
-                <div className="glass-card-premium" style={{ borderLeft: '4px solid #4ade80', background: '#0d111b', padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                        <div style={{ padding: '0.7rem', background: 'rgba(74,222,128,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(74,222,128,0.15)' }}>
-                            <LinkIcon size={20} color="#4ade80" />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>G9 Group / Support Link</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>WhatsApp community or support URL</div>
-                        </div>
-                    </div>
-                    <input
-                        className="modern-input"
-                        style={{ width: '100%', border: '1px solid rgba(74,222,128,0.2)', marginBottom: '1rem', boxSizing: 'border-box' }}
-                        value={waLink}
-                        onChange={(e) => setWaLink(e.target.value)}
-                        placeholder="https://chat.whatsapp.com/..."
-                    />
-                    <button
-                        className="btn"
-                        style={{ width: '100%', background: 'rgba(74,222,128,0.05)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        onClick={() => handleSave('whatsapp_link', waLink)}
-                    >
-                        {saving.whatsapp_link ? <><RotateCcw size={15} className="animate-spin" /> Saving...</> : <><CheckCircle size={15} /> Update Link</>}
-                    </button>
-                </div>
-
-                {/* Guest Access Card */}
-                <div className="glass-card-premium" style={{ borderLeft: `4px solid ${guestAccess === 'true' ? '#4ade80' : '#f87171'}`, background: '#0d111b', padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                        <div style={{ padding: '0.7rem', background: guestAccess === 'true' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', borderRadius: '0.75rem', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'}` }}>
-                            <ShieldAlert size={20} color={guestAccess === 'true' ? '#4ade80' : '#f87171'} />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Public Guest Access</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Show guest login link on public pages</div>
-                        </div>
-                    </div>
-                    <select
-                        className="modern-input"
-                        style={{ width: '100%', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`, marginBottom: '1rem' }}
-                        value={guestAccess}
-                        onChange={(e) => setGuestAccess(e.target.value)}
-                    >
-                        <option value="true">Enabled (Allow Guest Link on Login)</option>
-                        <option value="false">Disabled (Private Only)</option>
-                    </select>
-                    <button
-                        className="btn"
-                        style={{ width: '100%', background: guestAccess === 'true' ? 'rgba(74,222,128,0.05)' : 'rgba(248,113,113,0.05)', color: guestAccess === 'true' ? '#4ade80' : '#f87171', border: `1px solid ${guestAccess === 'true' ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`, borderRadius: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        onClick={() => handleSave('guest_features', guestAccess)}
-                    >
-                        {saving.guest_features ? <><RotateCcw size={15} className="animate-spin" /> Saving...</> : <><CheckCircle size={15} /> Update Policy</>}
-                    </button>
-                </div>
-
                 {/* Spiritual Theme Card */}
                 <div className="glass-card-premium" style={{ borderLeft: '4px solid #8b5cf6', background: '#0d111b', padding: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>

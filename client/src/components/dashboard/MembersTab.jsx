@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
     Users, FileSpreadsheet, ChevronDown, Plus, Search, RotateCcw, 
     CheckCircle, Archive, GraduationCap, Trash2, ListChecks, X, Trophy, 
-    Calendar, MapPin, Lightbulb
+    Calendar, MapPin, Lightbulb, Settings as SettingsIcon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
