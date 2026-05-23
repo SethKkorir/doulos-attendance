@@ -290,8 +290,16 @@ const StudentPortal = () => {
     const [newMemberName, setNewMemberName] = useState('');
     const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
     const [newMemberType, setNewMemberType] = useState('Douloid');
+    const [showRolloverWelcome, setShowRolloverWelcome] = useState(false);
     const navigate = useNavigate();
     const tabContentRef = useRef(null);
+
+    useEffect(() => {
+        if (data) {
+            setShowRolloverWelcome(data.lastActiveSemester !== data.currentSemester);
+        }
+    }, [data]);
+
 
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState([
@@ -390,10 +398,15 @@ const StudentPortal = () => {
         try {
             await api.post('/members/enroll', { studentRegNo: data.studentRegNo, semester: data.currentSemester });
             setData(prev => ({ ...prev, lastActiveSemester: data.currentSemester, alerts: prev.alerts.filter(a => a.type !== 'semester') }));
-            alert(`Great! You are now active for ${data.currentSemester}.`);
-        } catch (err) { alert('Enrollment failed. Please try again or see an admin.'); }
-        finally { setLoading(false); }
+            setShowRolloverWelcome(false);
+            alert(`Great! You are now active for ${data.currentSemester}. 🌿`);
+        } catch (err) { 
+            alert('Enrollment failed. Please try again or see an admin.'); 
+        } finally { 
+            setLoading(false); 
+        }
     };
+
 
     const handleLogActivity = async (type) => {
         const code = prompt(`Please enter the ${type} verification code from the physical banner:`);
@@ -830,16 +843,7 @@ const StudentPortal = () => {
                         </div>
                     )}
 
-                    {/* ── TAB NAVIGATION PILLS ── */}
-                    <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(9,29,46,0.5)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.85rem', padding: '0.3rem', marginBottom: '1.5rem', overflowX: 'auto' }}>
-                        {TABS.map(t => (
-                            <button key={t.id} onClick={() => goTab(t.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', flex: 1, justifyContent: 'center', letterSpacing: '0.3px', transition: 'all 0.2s', opacity: systemStatus.recoveryMode && t.id !== 'overview' ? 0.4 : 1, background: activeTab === t.id ? 'linear-gradient(135deg, rgba(37,170,225,0.22) 0%, rgba(37,170,225,0.06) 100%)' : 'transparent', color: activeTab === t.id ? '#25AAE1' : 'rgba(255,255,255,0.4)' }}>
-                                <t.icon size={14} />
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+
 
                     {/* ══ TAB CONTENT ══ */}
                     <div className="sp-tab-content" ref={tabContentRef}>
@@ -1104,6 +1108,129 @@ const StudentPortal = () => {
                         <button onClick={() => { setIsChatOpen(true); setShowChatPopup(false); }} style={{ width: '52px', height: '52px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '3px solid rgba(37,170,225,0.25)', cursor: 'pointer', boxShadow: '0 8px 25px rgba(37,170,225,0.35)', animation: 'bounce 2.5s infinite' }}>
                             <DoulosBotIcon size={30} />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ══ SEMESTER ROLLOVER WELCOME SHOWCASE MODAL ══ */}
+            {showRolloverWelcome && data && (
+                <div style={{ 
+                    position: 'fixed', 
+                    inset: 0, 
+                    background: 'rgba(2, 6, 12, 0.85)', 
+                    backdropFilter: 'blur(16px)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    zIndex: 1000, 
+                    padding: '1.25rem',
+                    animation: 'fadeUp 0.4s ease-out'
+                }}>
+                    <div className="glass-card-premium" style={{ 
+                        maxWidth: '500px', 
+                        width: '100%', 
+                        background: 'rgba(9, 29, 46, 0.95)', 
+                        border: '1px solid rgba(37, 170, 225, 0.25)', 
+                        borderRadius: '1.5rem', 
+                        padding: '2.25rem', 
+                        textAlign: 'center', 
+                        boxShadow: '0 0 50px rgba(37, 170, 225, 0.18)', 
+                        position: 'relative',
+                        overflow: 'hidden',
+                        animation: 'popScale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 10%, rgba(37, 170, 225, 0.08), transparent 70%)' }}></div>
+                        
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                <Sparkles size={28} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
+                                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(37,170,225,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(37,170,225,0.2)' }}>
+                                    <BookOpen size={24} color="#25AAE1" />
+                                </div>
+                                <Sparkles size={28} color="#FFD700" style={{ animation: 'bounce 2s infinite 1s' }} />
+                            </div>
+
+                            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2.5px', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>Welcome to a New Semester</span>
+                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', margin: '0 0 0.5rem' }}>
+                                {data.currentSemester}
+                            </h2>
+                            
+                            {data.semesterTheme && (
+                                <div style={{ 
+                                    background: 'rgba(37, 170, 225, 0.03)', 
+                                    border: '1px solid rgba(37, 170, 225, 0.15)', 
+                                    borderRadius: '1rem', 
+                                    padding: '1.15rem 1.5rem', 
+                                    margin: '1.25rem 0',
+                                    textAlign: 'center'
+                                }}>
+                                    <span style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>Spiritual Theme</span>
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbbf24', letterSpacing: '-0.25px', lineHeight: 1.25 }}>
+                                        "{data.semesterTheme}"
+                                    </div>
+                                    
+                                    {data.semesterVerse && (
+                                        <p style={{ 
+                                            margin: '0.75rem 0 0', 
+                                            fontSize: '0.78rem', 
+                                            color: 'rgba(255,255,255,0.55)', 
+                                            lineHeight: 1.5, 
+                                            fontStyle: 'italic',
+                                            borderTop: '1px dashed rgba(255,255,255,0.06)',
+                                            paddingTop: '0.75rem'
+                                        }}>
+                                            {data.semesterVerse}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, margin: '1rem 0 1.75rem' }}>
+                                Are you planning to be active in the Doulos class for the <strong>{data.currentSemester}</strong> semester?
+                            </p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <button 
+                                    disabled={loading}
+                                    onClick={handleEnroll}
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '1rem', 
+                                        background: 'linear-gradient(135deg, #25AAE1 0%, #0a4d68 100%)', 
+                                        color: 'white', 
+                                        border: '1px solid rgba(37,170,225,0.4)', 
+                                        borderRadius: '0.85rem', 
+                                        fontWeight: 900, 
+                                        fontSize: '0.85rem', 
+                                        letterSpacing: '1px',
+                                        textTransform: 'uppercase',
+                                        cursor: 'pointer', 
+                                        boxShadow: '0 8px 25px rgba(37,170,225,0.25)' 
+                                    }}
+                                >
+                                    {loading ? 'ENROLLING...' : 'YES, I AM ACTIVE! 🚀'}
+                                </button>
+                                
+                                <button 
+                                    onClick={() => {
+                                        setShowRolloverWelcome(false);
+                                    }}
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '0.85rem', 
+                                        background: 'rgba(255,255,255,0.03)', 
+                                        color: 'rgba(255,255,255,0.45)', 
+                                        border: '1px solid rgba(255,255,255,0.08)', 
+                                        borderRadius: '0.85rem', 
+                                        fontWeight: 800, 
+                                        fontSize: '0.82rem', 
+                                        cursor: 'pointer' 
+                                    }}
+                                >
+                                    Just attending today (Visitor)
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
