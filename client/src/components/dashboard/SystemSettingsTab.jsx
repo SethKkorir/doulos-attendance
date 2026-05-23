@@ -184,6 +184,61 @@ const SystemSettingsTab = ({
                         {saving.guest_features ? <><RotateCcw size={15} className="animate-spin" /> Saving...</> : <><CheckCircle size={15} /> Update Policy</>}
                     </button>
                 </div>
+
+                {/* Spiritual Theme Card */}
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #8b5cf6', background: '#0d111b', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                        <div style={{ padding: '0.7rem', background: 'rgba(139,92,246,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(139,92,246,0.15)' }}>
+                            <BookOpen size={20} color="#8b5cf6" />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Spiritual Theme</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Current Semester Theme title</div>
+                        </div>
+                    </div>
+                    <input
+                        className="modern-input"
+                        style={{ width: '100%', border: '1px solid rgba(139,92,246,0.2)', marginBottom: '1rem', boxSizing: 'border-box' }}
+                        value={theme}
+                        onChange={(e) => setTheme(e.target.value)}
+                        placeholder="e.g. Trust the designer..."
+                    />
+                    <button
+                        className="btn"
+                        style={{ width: '100%', background: 'rgba(139,92,246,0.05)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        onClick={() => handleSave('semester_theme', theme)}
+                    >
+                        {saving.semester_theme ? <><RotateCcw size={15} className="animate-spin" /> Saving...</> : <><CheckCircle size={15} /> Update Theme</>}
+                    </button>
+                </div>
+
+                {/* Scriptural Verse Card */}
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #f43f5e', background: '#0d111b', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                        <div style={{ padding: '0.7rem', background: 'rgba(244,63,94,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(244,63,94,0.15)' }}>
+                            <Sparkles size={20} color="#f43f5e" />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Scriptural Verse</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Reference — Verse text</div>
+                        </div>
+                    </div>
+                    <input
+                        className="modern-input"
+                        style={{ width: '100%', border: '1px solid rgba(244,63,94,0.2)', marginBottom: '1rem', boxSizing: 'border-box' }}
+                        value={verse}
+                        onChange={(e) => setVerse(e.target.value)}
+                        placeholder="e.g. Proverbs 3:5-6 — 'Trust the Lord...'"
+                    />
+                    <button
+                        className="btn"
+                        style={{ width: '100%', background: 'rgba(244,63,94,0.05)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', borderRadius: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        onClick={() => handleSave('semester_verse', verse)}
+                    >
+                        {saving.semester_verse ? <><RotateCcw size={15} className="animate-spin" /> Saving...</> : <><CheckCircle size={15} /> Update Verse</>}
+                    </button>
+                </div>
+
             </div>
 
             {/* Semester Rollover Configuration Wizard */}

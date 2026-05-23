@@ -568,15 +568,25 @@ export const deleteAttendance = async (req, res) => {
         const attendance = await Attendance.findById(id).populate('meeting');
         if (!attendance) return res.status(404).json({ message: 'Record not found' });
 
-        // Security: Only allow deletion if it's a test meeting OR user is developer
+        // Security: Only allow deletion if it's a test meeting OR user is developer/superadmin
         const isTestMeeting = attendance.meeting?.isTestMeeting;
-        const isDeveloper = ['developer', 'superadmin'].includes(req.user.role);
+        const isDeveloper = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
         if (isTestMeeting || isDeveloper) {
             await Attendance.findByIdAndDelete(id);
+
+            // Deduct 10 points from the member's profile, clamping to minimum of 0
+            if (attendance.studentRegNo) {
+                const member = await Member.findOne({ studentRegNo: attendance.studentRegNo });
+                if (member) {
+                    member.totalPoints = Math.max(0, (member.totalPoints || 0) - 10);
+                    await member.save();
+                }
+            }
+
             res.json({ message: 'Attendance record deleted' });
         } else {
-            res.status(403).json({ message: 'Only developers can delete live attendance data' });
+            res.status(403).json({ message: 'Only developers and superadmins can delete live attendance data' });
         }
     } catch (error) {
         res.status(500).json({ message: error.message });

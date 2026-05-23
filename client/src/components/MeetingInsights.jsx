@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
 import {
-    BarChart3, Activity, Users, Search, X, ShieldAlert as Ghost
+    BarChart3, Activity, Users, Search, X, ShieldAlert as Ghost, Trash2
 } from 'lucide-react';
 
 const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
@@ -54,6 +54,55 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
         fetchInsights();
     }, [meeting, api]);
 
+    const handleRemoveCheckIn = async (recordId, regNo, memberName) => {
+        if (!window.confirm(`⚠️ DANGER: Remove check-in for ${memberName || regNo}?\n\nThis will also automatically decrement 10 points from their profile.`)) {
+            return;
+        }
+        try {
+            await api.delete(`/attendance/${recordId}`);
+            // Update stats state locally
+            setStats(prev => {
+                if (!prev) return prev;
+                // Find the removed participant from the presentList
+                const removed = prev.presentList.find(a => a._id === recordId);
+                const updatedPresentList = prev.presentList.filter(a => a._id !== recordId);
+                
+                // Add back to absentList
+                let updatedAbsentList = [...prev.absentList];
+                if (removed) {
+                    const alreadyAbsent = prev.absentList.some(m => String(m.studentRegNo).trim().toUpperCase() === String(regNo).trim().toUpperCase());
+                    if (!alreadyAbsent) {
+                        const restoredMember = {
+                            _id: removed._id || Math.random().toString(),
+                            studentRegNo: regNo,
+                            name: memberName || 'Member',
+                            memberType: removed.memberType || 'Douloid',
+                            campus: meeting.campus
+                        };
+                        updatedAbsentList.push(restoredMember);
+                        // Sort alphabetically
+                        updatedAbsentList.sort((a, b) => a.name.localeCompare(b.name));
+                    }
+                }
+
+                // Recalculate recruits count
+                const recruitsCount = updatedPresentList.filter(a => a.memberType === 'Recruit').length;
+
+                return {
+                    ...prev,
+                    presentCount: updatedPresentList.length,
+                    absentCount: updatedAbsentList.length,
+                    presentList: updatedPresentList,
+                    absentList: updatedAbsentList,
+                    recruitsCount
+                };
+            });
+        } catch (err) {
+            console.error("Failed to delete check-in", err);
+            alert(err.response?.data?.message || 'Failed to remove check-in record.');
+        }
+    };
+
     if (loading) return (
         <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '50px', height: '50px', borderTopColor: 'hsl(var(--color-primary))' }}></div>
@@ -89,8 +138,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(124, 58, 237, 0.15)', borderRadius: '1rem' }}>
-                            <BarChart3 size={32} color="hsl(var(--color-primary))" />
+                        <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.15)', borderRadius: '1rem' }}>
+                            <BarChart3 size={32} color="#25AAE1" />
                         </div>
                         <div>
                             <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 950, letterSpacing: '-1px', color: 'white' }}>Meeting Insights</h2>
@@ -209,10 +258,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Ghost size={20} color="#f87171" />
-                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>MISSED MEMBERS ({filteredAbsent.length})</h4>
+                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#f87171' }}>MISSED MEMBERS ({filteredAbsent.length})</h4>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
+                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
                         {filteredAbsent.length === 0 ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '🏆'}</div>
@@ -270,10 +319,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Users size={20} color="#4ade80" />
-                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>PARTICIPANTS ({filteredPresent.length})</h4>
+                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#4ade80' }}>PARTICIPANTS ({filteredPresent.length})</h4>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem' }}>
+                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
                         {filteredPresent.length === 0 ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '⏳'}</div>
@@ -295,15 +344,35 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                     <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{a.responses?.studentName || 'Member'}</div>
                                     <div style={{ fontSize: '0.8rem', opacity: 0.5, fontWeight: 700 }}>{a.studentRegNo}</div>
                                 </div>
-                                <div style={{
-                                    fontSize: '0.65rem',
-                                    padding: '0.4rem 0.75rem',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    borderRadius: '2rem',
-                                    fontWeight: 900,
-                                    color: '#4ade80',
-                                    border: '1px solid rgba(74, 222, 128, 0.2)'
-                                }}>{(a.memberType || 'Member').toUpperCase()}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{
+                                        fontSize: '0.65rem',
+                                        padding: '0.4rem 0.75rem',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        borderRadius: '2rem',
+                                        fontWeight: 900,
+                                        color: '#4ade80',
+                                        border: '1px solid rgba(74, 222, 128, 0.2)'
+                                    }}>{(a.memberType || 'Member').toUpperCase()}</div>
+                                    <button
+                                        onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
+                                        style={{
+                                            padding: '0.45rem',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            color: '#f87171',
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            borderRadius: '0.5rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title="Remove Check-In"
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

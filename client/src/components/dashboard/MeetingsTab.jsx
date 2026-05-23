@@ -28,6 +28,42 @@ const MeetingsTab = ({
     const [insightMeeting, setInsightMeeting] = useState(null);
     const [importLoading, setImportLoading] = useState(false);
     const [meetingSemesterFilter, setMeetingSemesterFilter] = useState('Current');
+    
+    const [semesterTheme, setSemesterTheme] = useState('');
+    const [semesterVerse, setSemesterVerse] = useState('');
+
+    useEffect(() => {
+        const fetchSemesterSettings = async () => {
+            try {
+                const [themeRes, verseRes] = await Promise.all([
+                    api.get('/settings/semester_theme'),
+                    api.get('/settings/semester_verse')
+                ]);
+                if (themeRes.data?.value) setSemesterTheme(themeRes.data.value);
+                if (verseRes.data?.value) setSemesterVerse(verseRes.data.value);
+            } catch (err) {
+                console.error("Failed to fetch semester theme/verse", err);
+            }
+        };
+        fetchSemesterSettings();
+    }, [api]);
+
+    const splitVerse = (verseStr) => {
+        if (!verseStr) {
+            return {
+                ref: 'Proverbs 3:5-6',
+                text: 'Trust the Lord with all your heart and lean not on your own understanding; in all your ways submit to Him and He will make your paths straight'
+            };
+        }
+        const parts = verseStr.split(/[—–-]/);
+        if (parts.length >= 2) {
+            return {
+                ref: parts[0].trim(),
+                text: parts.slice(1).join('—').trim()
+            };
+        }
+        return { ref: '', text: verseStr };
+    };
 
     const [formData, setFormData] = useState({
         name: 'Weekly Doulos',
@@ -207,51 +243,76 @@ const MeetingsTab = ({
                 <head>
                     <title>Doulos QR - ${meeting.name}</title>
                     <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
                         @page { size: A4; margin: 0; }
                         body { 
-                            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-                            margin: 0; padding: 0; background: white;
+                            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+                            margin: 0; padding: 0; background: #ffffff;
                             -webkit-print-color-adjust: exact !important;
                             print-color-adjust: exact !important;
+                            color: #0f172a;
                         }
                         .page {
                             width: 210mm; height: 297mm; position: relative;
-                            background: white; color: black; overflow: hidden;
-                            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+                            background: #ffffff; overflow: hidden;
+                            display: flex; flex-direction: column; align-items: center; justify-content: center;
+                            box-sizing: border-box;
+                            border: 12px solid #0f172a;
+                        }
+                        .page-inner-border {
+                            position: absolute;
+                            inset: 8px;
+                            border: 2px solid rgba(15, 23, 42, 0.1);
+                            pointer-events: none;
                         }
                         .content {
                             position: relative; z-index: 10; width: 100%; height: 100%;
                             display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-                            padding: 25mm; box-sizing: border-box;
+                            padding: 22mm 20mm; box-sizing: border-box;
                         }
-                        .header { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-                        .logo-img { width: 120px; height: 120px; object-fit: contain; margin-bottom: 0.5rem; }
-                        .meeting-title { font-size: 2.2rem; font-weight: 900; line-height: 1.1; color: #0c1a29; margin: 10px 0; max-width: 90%; }
-                        .meeting-meta { font-size: 1.8rem; color: #4b5563; margin-top: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-                        .qr-outer-container { position: relative; padding: 15px; background: white; border-radius: 40px; border: 4px solid #0c1a29; }
-                        .qr-inner-wrapper { padding: 30px; background: white; border-radius: 30px; }
-                        .scan-badge { position: absolute; top: -25px; right: -25px; background: #ef4444; color: white; font-weight: 900; padding: 12px 25px; border-radius: 50px; transform: rotate(12deg); box-shadow: 0 10px 20px rgba(0,0,0,0.15); font-size: 1.4rem; border: 3px solid white; }
-                        .footer { width: 100%; border-top: 2px solid #f3f4f6; padding-top: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+                        .header { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+                        .logo-img { width: 95px; height: 95px; object-fit: contain; margin-bottom: 0.2rem; }
+                        .meeting-title { font-size: 2.5rem; font-weight: 900; line-height: 1.1; color: #0f172a; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
+                        .meeting-meta { font-size: 1.25rem; color: #25AAE1; margin-top: 5px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: flex; align-items: center; gap: 10px; }
+                        .meeting-meta-dot { color: rgba(15, 23, 42, 0.2); }
+                        .qr-outer-container { position: relative; padding: 12px; background: white; border-radius: 36px; border: 4px solid #0f172a; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
+                        .qr-inner-wrapper { padding: 25px; background: white; border-radius: 28px; }
+                        .scan-badge { position: absolute; top: -18px; right: -22px; background: #ef4444; color: white; font-weight: 900; padding: 10px 22px; border-radius: 50px; transform: rotate(10deg); box-shadow: 0 10px 20px rgba(239, 68, 68, 0.25); font-size: 1.1rem; border: 3px solid white; text-transform: uppercase; letter-spacing: 1px; }
+                        .footer { width: 100%; border-top: 2px solid #f1f5f9; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
                         .instruction { text-align: left; }
-                        .instruction h3 { font-size: 1.6rem; color: #3b82f6; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 900; }
-                        .instruction p { font-size: 1.1rem; color: #6b7280; margin: 0; max-width: 400px; }
-                        .theme-section { margin: 20px 0; padding: 20px; border: 1px dashed #3b82f6; border-radius: 15px; max-width: 85%; }
-                        .theme-title { font-size: 1.5rem; font-weight: 900; color: #032540; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #3b82f6; font-style: italic; margin: 10px 0; }
-                        .theme-verse { font-size: 1rem; color: #4b5563; font-weight: 600; line-height: 1.4; margin-top: 10px; }
-                        .meta { text-align: right; font-size: 1.1rem; color: #9ca3af; font-weight: 600; }
+                        .instruction h3 { font-size: 1.35rem; color: #25AAE1; margin: 0 0 4px 0; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; }
+                        .instruction p { font-size: 0.95rem; color: #64748b; margin: 0; max-width: 380px; font-weight: 500; }
+                        .theme-section { 
+                            margin: 15px 0; 
+                            padding: 24px 30px; 
+                            background: linear-gradient(135deg, rgba(37, 170, 225, 0.03) 0%, rgba(139, 92, 246, 0.03) 100%);
+                            border: 1px solid rgba(37, 170, 225, 0.15); 
+                            border-radius: 24px; 
+                            max-width: 90%; 
+                            width: 100%;
+                            box-sizing: border-box;
+                            text-align: center;
+                            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+                        }
+                        .theme-title { font-size: 0.9rem; font-weight: 900; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
+                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #0f172a; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.3px; line-height: 1.25; }
+                        .theme-verse { font-size: 1.05rem; color: #475569; font-weight: 600; line-height: 1.5; margin-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.05); padding-top: 10px; }
+                        .theme-verse strong { color: #0f172a; font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; }
+                        .meta { text-align: right; font-size: 0.95rem; color: #64748b; font-weight: 700; line-height: 1.4; }
+                        .meta-system { font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
                         @media print { body { background: none; } .page { box-shadow: none; margin: 0; width: 100%; height: 100%; } }
                     </style>
                 </head>
                 <body>
                     <div class="page">
+                        <div class="page-inner-border"></div>
                         <div class="content">
                             <div class="header">
                                 <img src="/logo.png" class="logo-img" alt="Logo" />
                                 <h1 class="meeting-title">${meeting.name}</h1>
                                 <div class="meeting-meta">
                                     <span>${meeting.campus.toUpperCase()} CAMPUS</span>
-                                    <span>•</span>
+                                    <span class="meeting-meta-dot">•</span>
                                     <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                                 </div>
                             </div>
@@ -263,10 +324,10 @@ const MeetingsTab = ({
                             </div>
                             <div class="theme-section">
                                 <div class="theme-title">Semester Theme</div>
-                                <div class="theme-text">"Trust the designer He knows the journey"</div>
+                                <div class="theme-text">"${semesterTheme || 'Trust the designer He knows the journey'}"</div>
                                 <div class="theme-verse">
-                                    <strong>Proverbs 3:5-6</strong><br/>
-                                    "Trust the Lord with all your heart and lean not on your own understanding; in all your ways submit to Him and He will make your paths straight"
+                                    <strong>${splitVerse(semesterVerse).ref}</strong><br/>
+                                    "${splitVerse(semesterVerse).text}"
                                 </div>
                             </div>
                             <div class="footer">
@@ -276,7 +337,7 @@ const MeetingsTab = ({
                                 </div>
                                 <div class="meta">
                                     ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
-                                    Leaders In Service System
+                                    <span class="meta-system">Leaders In Service System</span>
                                 </div>
                             </div>
                         </div>
@@ -827,9 +888,23 @@ const MeetingsTab = ({
 
             {/* QR Modal for Meeting */}
             {selectedMeeting && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '3rem 1rem' }}
+                <div style={{ 
+                    position: 'fixed', inset: 0, 
+                    background: 'rgba(2, 6, 12, 0.75)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                    zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' 
+                }}
                     onClick={() => setSelectedMeeting(null)}>
-                    <div className="glass-card-premium" style={{ padding: '2.5rem 2rem', textAlign: 'center', maxWidth: '400px', width: '100%', background: '#0d111b' }} onClick={e => e.stopPropagation()}>
+                    <div className="glass-card-premium" style={{ 
+                        padding: '2.5rem 2rem', 
+                        textAlign: 'center', 
+                        maxWidth: '400px', 
+                        width: '100%', 
+                        background: '#090d16',
+                        borderRadius: '1.25rem',
+                        border: '1px solid rgba(29, 166, 217, 0.2)',
+                        boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
+                        animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ marginBottom: '0.5rem' }}>Scan Meeting QR</h3>
 
                         <div className="qr-modal-content" style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '1.5rem' }}>

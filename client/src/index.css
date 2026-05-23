@@ -886,4 +886,36 @@ table td {
 .btn:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+}
+
+@keyframes popScale {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Custom premium scrollbar for bounded containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(37, 170, 225, 0.15);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  transition: all 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 170, 225, 0.45);
 }

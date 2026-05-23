@@ -26,6 +26,7 @@ const MembersTab = ({
     
     // UI Modal Toggles
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [showActionMenu, setShowActionMenu] = useState(false);
     const [showBulkListTool, setShowBulkListTool] = useState(false);
     const [bulkListType, setBulkListType] = useState('graduate');
     const [bulkListInput, setBulkListInput] = useState('');
@@ -488,7 +489,7 @@ const MembersTab = ({
             
             {/* Registry Header & Toolbar */}
             <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(2, 21, 37, 0.4)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <Users size={24} /> Members Registry
@@ -510,7 +511,7 @@ const MembersTab = ({
                             <button
                                 className="btn btn-primary"
                                 style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 800 }}
-                                onClick={() => setShowAddMenu(!showAddMenu)}
+                                onClick={() => { setShowAddMenu(!showAddMenu); setShowActionMenu(false); }}
                             >
                                 <Plus size={18} /> Add Member <ChevronDown size={14} />
                             </button>
@@ -521,18 +522,85 @@ const MembersTab = ({
                                     borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
                                     gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
                                 }}>
-                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%' }}
+                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
                                         onClick={() => { setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' }); setShowAddMenu(false); }}>
-                                        <Users size={16} style={{ marginRight: '0.75rem', opacity: 0.7, color: '#1da6d9' }} /> Single Entry
+                                        <Users size={16} style={{ opacity: 0.7, color: '#1da6d9' }} /> Single Entry
                                     </button>
-                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%' }}
+                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
                                         onClick={() => { document.getElementById('import-file-input').click(); setShowAddMenu(false); }}>
-                                        <FileSpreadsheet size={16} style={{ marginRight: '0.75rem', opacity: 0.7, color: '#34d399' }} /> Import Excel / CSV
+                                        <FileSpreadsheet size={16} style={{ opacity: 0.7, color: '#34d399' }} /> Import Excel / CSV
                                     </button>
                                 </div>
                             )}
                             <input type="file" id="import-file-input" hidden accept=".csv, .xlsx, .xls, .pdf, .doc, .docx" onChange={handleFileImport} />
                         </div>
+
+                        {/* Action Center Dropdown */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className="btn"
+                                style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
+                                onClick={() => { setShowActionMenu(!showActionMenu); setShowAddMenu(false); }}
+                            >
+                                <SettingsIcon size={16} /> Admin Actions <ChevronDown size={14} />
+                            </button>
+                            {showActionMenu && (
+                                <div className="glass-card-premium" style={{
+                                    position: 'absolute', top: '115%', right: 0, zIndex: 100,
+                                    background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
+                                    borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
+                                    gap: '0.25rem', minWidth: '240px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+                                }}>
+                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#22c55e', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                        onClick={() => { handleBulkEnroll(); setShowActionMenu(false); }}>
+                                        <CheckCircle size={14} /> Bulk Enroll This Sem
+                                    </button>
+                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                        onClick={() => { handleSyncRegistry(); setShowActionMenu(false); }}>
+                                        <RotateCcw size={14} /> Sync from History
+                                    </button>
+                                    
+                                    {memberTypeFilter === 'Recruit' && (
+                                        <>
+                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#eab308', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                onClick={() => { handleGraduateAll(); setShowActionMenu(false); }}>
+                                                <GraduationCap size={14} /> Graduate All Recruits
+                                            </button>
+                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#f87171', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                onClick={() => { handleArchiveAllRecruits(); setShowActionMenu(false); }}>
+                                                <Archive size={14} /> Archive Rem. Recruits
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {memberTypeFilter === 'Douloid' && (
+                                        <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#f87171', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                            onClick={() => { handleUndoGraduation(); setShowActionMenu(false); }}>
+                                            <RotateCcw size={14} /> Undo Graduation
+                                        </button>
+                                    )}
+
+                                    {['developer', 'superadmin'].includes(userRole) && (
+                                        <>
+                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.25rem 0' }}></div>
+                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#1da6d9', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                onClick={() => { setShowBulkListTool(true); setShowActionMenu(false); }}>
+                                                <ListChecks size={14} /> Bulk List Actions
+                                            </button>
+                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#1da6d9', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                onClick={() => { handleSetupTestAccount(); setShowActionMenu(false); }}>
+                                                <SettingsIcon size={14} /> Setup Tester Account
+                                            </button>
+                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#ef4444', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                onClick={() => { handleResetAllPoints(); setShowActionMenu(false); }}>
+                                                <Trash2 size={14} /> Reset All Points
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 </div>
 
@@ -586,55 +654,6 @@ const MembersTab = ({
                         >
                             <CheckCircle size={14} style={{ color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Active This Sem
                         </button>
-                    </div>
-
-                    <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button className="btn" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '0.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={handleBulkEnroll} title="Enroll everyone who has attended a meeting this semester">
-                            <CheckCircle size={14} /> Bulk Enroll
-                        </button>
-                        <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={handleSyncRegistry}>
-                            <RotateCcw size={14} /> Sync
-                        </button>
-                        {memberTypeFilter === 'Recruit' && (
-                            <>
-                                <button className="btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(234,179,8,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                    onClick={handleGraduateAll} title="Graduate all Recruits to Douloids">
-                                    <GraduationCap size={16} /> Graduate All
-                                </button>
-                                <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                    onClick={handleArchiveAllRecruits} title="Archive all members who are currently Recruits">
-                                    <Archive size={16} /> Archive Remaining
-                                </button>
-                                {selectedMemberIds.length > 0 && (
-                                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '0.5rem', fontWeight: 800 }}
-                                        onClick={handleBulkGraduate}>
-                                        <GraduationCap size={16} /> Graduate Selected ({selectedMemberIds.length})
-                                    </button>
-                                )}
-                            </>
-                        )}
-                        {memberTypeFilter === 'Douloid' && (
-                            <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                onClick={handleUndoGraduation} title="Undo recently graduated recruits (revert to Recruit)">
-                                <RotateCcw size={16} /> Undo Graduation
-                            </button>
-                        )}
-                        {['developer', 'superadmin'].includes(userRole) && (
-                            <>
-                                <button className="btn" style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                    onClick={() => setShowBulkListTool(true)} title="Graduate or Archive members by pasting a list of registration numbers">
-                                    <ListChecks size={16} /> Bulk List Actions
-                                </button>
-                                <button className="btn" style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid rgba(29,166,217,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                    onClick={handleSetupTestAccount} title="Designate a student as a permanent tester">
-                                    Setup Tester
-                                </button>
-                                <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                    onClick={handleResetAllPoints} title="Reset all points to 0">
-                                    <Trash2 size={14} /> Reset Points
-                                </button>
-                            </>
-                        )}
                     </div>
                 </div>
             </div>
@@ -801,9 +820,21 @@ const MembersTab = ({
             {editingMember && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', zIndex: 110, padding: '2rem 1rem', overflowY: 'auto'
+                    background: 'rgba(2, 6, 12, 0.75)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 110, padding: '1rem',
                 }} onClick={() => { setEditingMember(null); setMemberInsights(null); setIsEditingMemberProfile(false); }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '700px', padding: '2.5rem 2rem', background: '#0d111b' }} onClick={e => e.stopPropagation()}>
+                    <div className="glass-panel" style={{ 
+                        width: '100%', 
+                        maxWidth: '700px', 
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
+                        padding: '2.5rem 2rem', 
+                        background: '#090d16',
+                        borderRadius: '1.25rem',
+                        border: '1px solid rgba(29, 166, 217, 0.2)',
+                        boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
+                        animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'hsl(var(--color-primary))' }}>{editingMember._id === 'NEW' ? 'Register New Member' : editingMember.name}</h2>
