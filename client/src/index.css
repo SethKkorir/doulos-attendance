@@ -2,60 +2,51 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Doulos Signature Palette */
-  --bg-deep: #021525;         /* HSL: 206 91% 8% */
-  --primary-electric: #1da6d9; /* HSL: 198 76% 51% */
-  --surface-slate: #091d2e;    /* HSL: 206 80% 14% */
-  --surface-bright: #293b4d;
+  /* Premium Dark-Carbon & Electric-Blue Design Palette */
+  --bg-deep: #07090e;             /* Pitch-black charcoal main background */
+  --primary-electric: #25AAE1;     /* High-impact electric blue accent */
+  --surface-slate: #0d111b;        /* Lighter card slate background */
+  --surface-bright: #161a25;       /* Elevated focus / active background */
   
-  --glass-border: rgba(29, 166, 217, 0.15);
-  --glass-border-light: rgba(255, 255, 255, 0.03);
-  --neon-glow: 0 0 20px rgba(29, 166, 217, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.05); /* Hairline slate-grey border */
+  --glass-border-light: rgba(255, 255, 255, 0.02);
+  --neon-glow: 0 4px 20px rgba(37, 170, 225, 0.15);
   
-  --font-main: 'Hanken Grotesk', sans-serif;
+  --font-main: 'Outfit', sans-serif; /* High-tech geometric sans-serif */
 
-  /* HSL Colors - kept for backward compatibility */
-  --color-bg-h: 206;
-  --color-bg-s: 91%;
-  --color-bg-l: 8%;
+  /* Compatibility HSL variables mapped to new dark palette */
+  --color-bg-h: 220;
+  --color-bg-s: 35%;
+  --color-bg-l: 5%;
   --color-bg: var(--color-bg-h) var(--color-bg-s) var(--color-bg-l);
 
-  --color-surface: 206 80% 14%;
-  --color-primary: 198 76% 51%;
-  --color-primary-glow: 198 76% 51% / 0.4;
-  --color-accent: 330 80% 60%;
+  --color-surface: 220 35% 8%;
+  --color-primary: 198 80% 51%;
+  --color-primary-glow: 198 80% 51% / 0.15;
+  --color-accent: 260 85% 65%; /* Premium purple secondary accent */
 
-  --glass-bg: rgba(9, 29, 46, 0.6);
-  --glass-border-hsla: hsla(206, 80%, 30%, 0.5);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(13, 17, 27, 0.96);
+  --glass-border-hsla: rgba(255, 255, 255, 0.04);
+  --glass-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
 
   --color-text: 0 0% 100%;
-  --color-text-dim: 206 20% 70%;
+  --color-text-dim: 220 15% 65%;
 
-  --bg-gradient: radial-gradient(circle at 0% 0%, hsla(198, 76%, 51%, 0.15), transparent 40%),
-    radial-gradient(circle at 100% 100%, hsla(353, 63%, 62%, 0.08), transparent 40%),
-    linear-gradient(to bottom, hsla(var(--color-bg-h), var(--color-bg-s), 10%, 1), hsla(var(--color-bg-h), var(--color-bg-s), 5%, 1));
+  --bg-gradient: radial-gradient(circle at 0% 0%, rgba(37, 170, 225, 0.08), transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.04), transparent 45%),
+    linear-gradient(to bottom, #07090e, #040508);
 }
 
 .light-mode {
-  --color-bg-h: 210;
-  --color-bg-s: 20%;
-  --color-bg-l: 98%;
-  --color-bg: var(--color-bg-h) var(--color-bg-s) var(--color-bg-l);
-
-  --color-surface: 0 0% 100%;
-  --color-primary: 198 76% 51%;
-  --color-primary-glow: 198 76% 51% / 0.2;
-  --color-text: 206 91% 8%;
-  --color-text-dim: 206 20% 40%;
-
-  --glass-bg: #ffffff;
-  --glass-border-hsla: #e2e8f0;
-  --glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-
-  --bg-gradient: radial-gradient(circle at 0% 0%, hsla(198, 76%, 51%, 0.05), transparent 40%),
-    radial-gradient(circle at 100% 100%, hsla(353, 63%, 62%, 0.03), transparent 40%),
-    linear-gradient(to bottom, #f8fafc, #eff6ff);
+  /* Light mode retains a stunning, premium high-contrast dark scheme since this is a tech carbon suite */
+  --bg-deep: #07090e;
+  --primary-electric: #25AAE1;
+  --surface-slate: #0d111b;
+  --surface-bright: #161a25;
+  --glass-bg: rgba(13, 17, 27, 0.96);
+  --glass-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  --bg-gradient: radial-gradient(circle at 0% 0%, rgba(37, 170, 225, 0.08), transparent 45%),
+    linear-gradient(to bottom, #07090e, #040508);
 }
 
 * {
@@ -610,3 +601,289 @@ select.input-field {
     transform: translate(0, 0) rotate(360deg);
   }
 }
+
+/* ==========================================================================
+   DOULOS PREMIUM TECH DASHBOARD DESIGN SYSTEM (NEURO-CARBON GLOW)
+   ========================================================================== */
+
+/* 1. Sidebar Layout & Sub-elements */
+.sidebar {
+  background-color: #090c14 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.04) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  z-index: 20;
+}
+
+.sidebar-profile-card {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 18px !important;
+  padding: 1.25rem !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.03), 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.sidebar-profile-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(37, 170, 225, 0.05) 0%, transparent 70%);
+  filter: blur(15px);
+  pointer-events: none;
+}
+
+.sidebar-profile-card:hover {
+  border-color: rgba(37, 170, 225, 0.15) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.sidebar-nav-btn {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.85rem !important;
+  padding: 0.75rem 1.15rem !important;
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  font-weight: 700 !important;
+  font-family: var(--font-main) !important;
+  font-size: 0.84rem !important;
+  color: #94a3b8 !important; /* Dim grey text */
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.sidebar-nav-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: #ffffff !important;
+  transform: translateX(2px) !important;
+}
+
+.sidebar-nav-btn.active {
+  background: rgba(37, 170, 225, 0.08) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(37, 170, 225, 0.15) !important;
+  box-shadow: 0 4px 15px rgba(37, 170, 225, 0.05) !important;
+}
+
+.sidebar-nav-btn svg {
+  color: #64748b !important;
+  transition: color 0.2s !important;
+}
+
+.sidebar-nav-btn.active svg,
+.sidebar-nav-btn:hover svg {
+  color: #25AAE1 !important;
+}
+
+/* Beautiful Glowing CTA Banner Card */
+.sidebar-cta-card {
+  background: linear-gradient(135deg, rgba(37, 170, 225, 0.15) 0%, rgba(15, 23, 42, 0.5) 50%, rgba(99, 102, 241, 0.06) 100%) !important;
+  border: 1px solid rgba(37, 170, 225, 0.18) !important;
+  border-radius: 16px !important;
+  padding: 1.15rem !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 15px rgba(37, 170, 225, 0.05) !important;
+  position: relative;
+  overflow: hidden;
+  margin-top: auto;
+}
+
+.sidebar-cta-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 12px 12px;
+  pointer-events: none;
+}
+
+.sidebar-cta-card:hover {
+  background: linear-gradient(135deg, rgba(37, 170, 225, 0.18) 0%, rgba(15, 23, 42, 0.5) 50%, rgba(99, 102, 241, 0.08) 100%) !important;
+  border-color: rgba(37, 170, 225, 0.28) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 0 25px rgba(37, 170, 225, 0.08) !important;
+}
+
+.btn-sign-out {
+  background: rgba(239, 68, 68, 0.03) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.1) !important;
+  transition: all 0.2s !important;
+}
+
+.btn-sign-out:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: #ef4444 !important;
+}
+
+/* 2. Main Content Cards & Tech Grid Backgrounds */
+.glass-card-premium,
+.glass-panel,
+.feedback-card,
+.meeting-card {
+  background: #0d111b !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45) !important;
+  padding: 1.75rem 2rem !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Subtle overlay grid pattern like bottom-center mockup card */
+.glass-card-premium::before,
+.glass-panel::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.8 !important;
+}
+
+/* Highlighting upper boundary card line */
+.glass-card-premium::after,
+.glass-panel::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent) !important;
+  z-index: 1 !important;
+}
+
+.glass-card-premium > *,
+.glass-panel > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.glass-card-premium:hover,
+.glass-panel:hover {
+  border-color: rgba(37, 170, 225, 0.12) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55), 0 0 25px rgba(37, 170, 225, 0.02) !important;
+  transform: translateY(-2.5px) !important;
+}
+
+/* 3. High-Tech Form Controls */
+.modern-input,
+.input-field,
+.textarea-field {
+  background-color: #06080d !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-family: var(--font-main) !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  padding: 0.8rem 1rem !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.modern-input:focus,
+.input-field:focus,
+.textarea-field:focus {
+  border-color: rgba(37, 170, 225, 0.45) !important;
+  background-color: #090c14 !important;
+  box-shadow: 0 0 0 3px rgba(37, 170, 225, 0.12) !important;
+  outline: none !important;
+}
+
+/* 4. Dynamic Tech Data Tables */
+.table-container {
+  background: #0d111b !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+  transition: background-color 0.2s ease !important;
+}
+
+table tr:last-child {
+  border-bottom: none !important;
+}
+
+table tr:hover {
+  background-color: rgba(255, 255, 255, 0.015) !important;
+}
+
+table th {
+  background-color: rgba(255, 255, 255, 0.005) !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  text-transform: uppercase !important;
+  font-size: 0.65rem !important;
+  letter-spacing: 1.5px !important;
+  font-weight: 800 !important;
+  padding: 1.15rem 1.25rem !important;
+  text-align: left !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+table td {
+  padding: 1.15rem 1.25rem !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* 5. Custom Button Styles */
+.btn-primary {
+  background: linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 25px rgba(37, 170, 225, 0.18) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-family: var(--font-main) !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  font-size: 0.8rem !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1.5px) scale(1.01) !important;
+  box-shadow: 0 12px 35px rgba(37, 170, 225, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.btn {
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  font-family: var(--font-main) !important;
+  font-size: 0.8rem !important;
+  transition: all 0.22s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+}
