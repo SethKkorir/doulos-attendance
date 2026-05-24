@@ -1,1 +1,0 @@
-feat: implement activities, groups auto-generator, watering commitments selector, and high-fidelity PDF/CSV reports

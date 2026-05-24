@@ -405,7 +405,7 @@ const AdminDashboard = () => {
                                     {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
                                 </div>
                                 <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'white', lineHeight: 1.35 }}>
-                                    Welcome back,<br />Leader!
+                                    Welcome back,<br />G9!
                                 </h2>
                             </div>
                         )}

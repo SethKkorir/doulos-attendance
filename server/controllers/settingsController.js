@@ -226,20 +226,45 @@ export const rollbackSemesterRollover = async (req, res) => {
 
 export const getObservabilityTelemetry = async (req, res) => {
     try {
-        // 1. System Telemetry
+        // 1. Fetch system active semester setting
+        const currentSemesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
+        const semesterUpdatedTime = currentSemesterSetting ? currentSemesterSetting.updatedAt : new Date(0);
+
+        // 2. Resolve IDs of all meetings and trainings within the current semester
+        const semMeetings = await Meeting.find({ semester: currentSemester }, '_id');
+        const semMeetingIds = semMeetings.map(m => m._id);
+        const semTrainings = await Training.find({ semester: currentSemester }, '_id');
+        const semTrainingIds = semTrainings.map(t => t._id);
+
+        // 3. System Telemetry
         const heapUsed = process.memoryUsage().heapUsed / 1024 / 1024;
         const uptime = process.uptime(); // in seconds
         
-        // 2. Dashboard Database Stats
+        // 4. Dashboard Database Stats scoped to current semester
         const totalMembers = await Member.countDocuments({ isTestAccount: { $ne: true } });
-        const totalAttendance = await Attendance.countDocuments();
+        
+        const totalAttendance = await Attendance.countDocuments({
+            $or: [
+                { meeting: { $in: semMeetingIds } },
+                { trainingId: { $in: semTrainingIds } }
+            ]
+        });
+
         const activeMeetingsList = await Meeting.find({ isActive: true }).select('_id name campus').lean();
         const activeTrainingsList = await Training.find({ isActive: true }).select('_id name campus').lean();
         const activeSessions = activeMeetingsList.length + activeTrainingsList.length;
 
-
-        // 3. Real Recent Successful Check-Ins (Join Member with Attendance)
+        // 5. Real Recent Successful Check-Ins scoped to current semester
         const recentCheckins = await Attendance.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { meeting: { $in: semMeetingIds } },
+                        { trainingId: { $in: semTrainingIds } }
+                    ]
+                }
+            },
             { $sort: { timestamp: -1 } },
             { $limit: 10 },
             {
@@ -263,11 +288,12 @@ export const getObservabilityTelemetry = async (req, res) => {
             }
         ]);
 
-        // 4. Real Recent Check-In Failures (Join Member with scanerrors)
+        // 6. Real Recent Check-In Failures scoped to current semester (since last rollover)
         let scanErrors = [];
         if (mongoose.connection.readyState === 1) {
             scanErrors = await mongoose.connection.db.collection('scanerrors')
                 .aggregate([
+                    { $match: { timestamp: { $gte: semesterUpdatedTime } } },
                     { $sort: { timestamp: -1 } },
                     { $limit: 10 },
                     {
