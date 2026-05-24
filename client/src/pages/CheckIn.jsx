@@ -23,6 +23,7 @@ const CheckIn = () => {
     const [isLocating, setIsLocating] = useState(false);
     const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
     const [isNewMember, setIsNewMember] = useState(false);
+    const [regStep, setRegStep] = useState(1);
     const [registrationData, setRegistrationData] = useState({
         name: '',
         campus: 'Athi River',
@@ -170,8 +171,9 @@ const CheckIn = () => {
                 setMemberInfo(null);
             }
         } catch (err) {
-            if (err.response?.status === 404 && systemStatus.recoveryMode) {
+            if (err.response?.status === 404) {
                 setIsNewMember(true);
+                setRegStep(1);
             } else {
                 setMemberInfo(null);
             }
@@ -479,26 +481,6 @@ const CheckIn = () => {
 
                 ) : (status === 'idle' || status === 'submitting') ? (
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {/* Permanent Welcome Banner for New Members */}
-                        {isNewMember && (
-                            <div style={{
-                                background: 'rgba(37, 170, 225, 0.1)',
-                                border: '1px solid rgba(37, 170, 225, 0.3)',
-                                padding: '1rem 1.25rem',
-                                borderRadius: '0.75rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                marginBottom: '0.5rem',
-                                animation: 'slideDown 0.5s ease-out'
-                            }}>
-                                <span style={{ fontSize: '1.25rem' }}>👋</span>
-                                <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.4, color: '#fff', fontWeight: 600 }}>
-                                    Welcome! We couldn't find your record in our new system yet. <strong>Please tell us a bit about yourself</strong> to check in.
-                                </p>
-                            </div>
-                        )}
-
                         {msg && (
                             <div style={{
                                 padding: '1rem',
@@ -544,274 +526,95 @@ const CheckIn = () => {
                             </div>
                         )}
 
-                        {isNewMember ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                {/* Wizard Step Indicator */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                        <span>Registration Progress</span>
-                                        <span style={{ color: 'hsl(var(--color-primary))' }}>Step {regStep} of 2</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-                                        <div style={{ width: regStep === 1 ? '50%' : '100%', height: '100%', background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, #38bdf8 100%)', borderRadius: '2px', transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}></div>
-                                    </div>
-                                </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* Standard Admission Number Input */}
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '0.75rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 900,
+                                    letterSpacing: '1px',
+                                    textTransform: 'uppercase',
+                                    color: memberInfo ? '#25AAE1' : 'var(--color-text-dim)'
+                                }}>
+                                    Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        className="input-field"
+                                        placeholder="ADMISSION NO (22-0000)"
+                                        style={{
+                                            height: '45px',
+                                            fontSize: '0.9rem',
+                                            fontWeight: 700,
+                                            paddingLeft: '1.25rem',
+                                            background: memberInfo ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
+                                            borderColor: memberInfo ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
+                                            color: memberInfo ? '#25AAE1' : 'white',
+                                            cursor: memberInfo ? 'not-allowed' : 'text',
+                                            borderRadius: '0.75rem',
+                                            transition: 'all 0.3s ease',
+                                            width: '100%'
+                                        }}
+                                        value={responses.studentRegNo || ''}
+                                        readOnly={!!memberInfo}
+                                        onChange={e => {
+                                            if (memberInfo) return;
+                                            let val = e.target.value;
+                                            let digits = val.replace(/\D/g, '');
+                                            let formatted = digits;
+                                            if (digits.length > 2) {
+                                                formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
+                                            }
+                                            val = formatted;
 
-                                {regStep === 1 ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.4s ease-out' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
-                                                ADMISSION NUMBER
-                                            </label>
-                                            <input
-                                                className="input-field"
-                                                style={{
-                                                    height: '45px',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: 700,
-                                                    paddingLeft: '1.25rem',
-                                                    background: 'rgba(37, 170, 225, 0.05)',
-                                                    borderColor: 'rgba(37, 170, 225, 0.3)',
-                                                    color: '#25AAE1',
-                                                    borderRadius: '0.75rem',
-                                                    cursor: 'not-allowed',
-                                                    width: '100%'
-                                                }}
-                                                value={responses.studentRegNo || ''}
-                                                readOnly
-                                            />
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '0.25rem', display: 'block' }}>Verified from your check-in code.</span>
+                                            if (digits.length === 6) {
+                                                lookupMember(formatted);
+                                            } else {
+                                                setMemberInfo(null);
+                                            }
+
+                                            setResponses({ ...responses, studentRegNo: val });
+                                            if (msg) setMsg('');
+                                        }}
+                                        maxLength={7}
+                                        required
+                                        disabled={status === 'submitting'}
+                                    />
+                                    {isLookingUp && (
+                                        <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                                            <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
                                         </div>
-
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                                FULL NAME <span style={{ color: '#ef4444' }}>*</span>
-                                            </label>
-                                            <input
-                                                className="input-field"
-                                                placeholder="Enter your official name"
-                                                style={{
-                                                    height: '45px',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: 700,
-                                                    paddingLeft: '1.25rem',
-                                                    background: 'rgba(0,0,0,0.2)',
-                                                    borderColor: 'var(--glass-border)',
-                                                    color: 'white',
-                                                    borderRadius: '0.75rem',
-                                                    width: '100%',
-                                                    transition: 'all 0.3s ease'
-                                                }}
-                                                value={registrationData.name || ''}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setRegistrationData(prev => ({ ...prev, name: val }));
-                                                    setResponses(prev => ({ ...prev, studentName: val }));
-                                                    if (msg) setMsg('');
-                                                }}
-                                                required
-                                            />
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '0.25rem', display: 'block' }}>First name and Last name, matching school registry.</span>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary"
-                                            onClick={() => {
-                                                if (registrationData.name.trim().length >= 3) {
-                                                    setRegStep(2);
-                                                    if (msg) setMsg('');
-                                                } else {
-                                                    setMsg("Please enter your official name (min 3 chars).");
-                                                    setStatus('error');
-                                                }
-                                            }}
-                                            style={{
-                                                height: '48px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 900,
-                                                borderRadius: '0.75rem',
-                                                letterSpacing: '1px',
-                                                textTransform: 'uppercase',
-                                                marginTop: '0.5rem',
-                                                boxShadow: '0 10px 20px -8px hsl(var(--color-primary) / 0.4)'
-                                            }}
-                                        >
-                                            CONTINUE
-                                        </button>
-
+                                    )}
+                                    {memberInfo && (
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                setIsNewMember(false);
-                                                setRegistrationData({ name: '', campus: 'Athi River', memberType: 'Douloid' });
+                                                setMemberInfo(null);
                                                 setResponses(prev => ({ ...prev, studentRegNo: '' }));
-                                                setMsg('');
-                                                setStatus('idle');
                                             }}
                                             style={{
+                                                position: 'absolute',
+                                                right: '1rem',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
                                                 background: 'transparent',
                                                 border: 'none',
                                                 color: 'var(--color-text-dim)',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 800,
                                                 cursor: 'pointer',
-                                                letterSpacing: '1px',
-                                                textTransform: 'uppercase',
-                                                textAlign: 'center',
-                                                marginTop: '0.25rem',
-                                                textDecoration: 'underline'
+                                                fontWeight: 800,
+                                                fontSize: '0.8rem'
                                             }}
                                         >
-                                            START OVER / CORRECT ADMISSION NO
+                                            CHANGE
                                         </button>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.4s ease-out' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                                CAMPUS <span style={{ color: '#ef4444' }}>*</span>
-                                            </label>
-                                            <select
-                                                className="input-field"
-                                                style={{
-                                                    height: '45px',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: 700,
-                                                    paddingLeft: '1.25rem',
-                                                    background: 'rgba(0,0,0,0.2)',
-                                                    borderColor: 'var(--glass-border)',
-                                                    borderRadius: '0.75rem',
-                                                    color: 'white',
-                                                    width: '100%',
-                                                    appearance: 'none',
-                                                    cursor: 'pointer'
-                                                }}
-                                                value={registrationData.campus || 'Athi River'}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setRegistrationData(prev => ({ ...prev, campus: val }));
-                                                }}
-                                                required
-                                            >
-                                                <option value="Athi River">Athi River</option>
-                                                <option value="Valley Road">Valley Road</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                                CATEGORY <span style={{ color: '#ef4444' }}>*</span>
-                                            </label>
-                                            <select
-                                                className="input-field"
-                                                style={{
-                                                    height: '45px',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: 700,
-                                                    paddingLeft: '1.25rem',
-                                                    background: 'rgba(0,0,0,0.2)',
-                                                    borderColor: 'var(--glass-border)',
-                                                    borderRadius: '0.75rem',
-                                                    color: 'white',
-                                                    width: '100%',
-                                                    appearance: 'none',
-                                                    cursor: 'pointer'
-                                                }}
-                                                value={registrationData.memberType || 'Douloid'}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setRegistrationData(prev => ({ ...prev, memberType: val }));
-                                                }}
-                                                required
-                                            >
-                                                <option value="Douloid">Douloid</option>
-                                                <option value="Recruit">Recruit</option>
-                                                <option value="Visitor">Visitor</option>
-                                            </select>
-                                        </div>
-
-                                        {meeting?.questionOfDay && (
-                                            <div>
-                                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'hsl(var(--color-primary))' }}>
-                                                    Question of the Day <span style={{ color: '#ef4444' }}>*</span>
-                                                </label>
-                                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginBottom: '0.5rem', fontWeight: 600 }}>
-                                                    "{meeting.questionOfDay}"
-                                                </p>
-                                                <textarea
-                                                    className="input-field"
-                                                    placeholder="Type your answer here..."
-                                                    style={{
-                                                        width: '100%',
-                                                        minHeight: '70px',
-                                                        fontSize: '0.9rem',
-                                                        fontWeight: 700,
-                                                        padding: '0.75rem 1rem',
-                                                        background: 'rgba(0,0,0,0.2)',
-                                                        borderColor: 'var(--glass-border)',
-                                                        borderRadius: '0.75rem',
-                                                        transition: 'all 0.3s ease'
-                                                    }}
-                                                    value={responses.dailyQuestionAnswer || ''}
-                                                    onChange={e => setResponses(prev => ({ ...prev, dailyQuestionAnswer: e.target.value }))}
-                                                    required
-                                                    disabled={status === 'submitting'}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                            <button
-                                                type="button"
-                                                className="btn"
-                                                onClick={() => setRegStep(1)}
-                                                style={{
-                                                    flex: 1,
-                                                    height: '48px',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: 900,
-                                                    borderRadius: '0.75rem',
-                                                    letterSpacing: '1px',
-                                                    textTransform: 'uppercase',
-                                                    background: 'rgba(255,255,255,0.08)',
-                                                    border: '1px solid rgba(255,255,255,0.15)',
-                                                    color: 'white'
-                                                }}
-                                            >
-                                                BACK
-                                            </button>
-
-                                            <button
-                                                type="submit"
-                                                className="btn btn-primary"
-                                                disabled={status === 'submitting' || isLocating}
-                                                style={{
-                                                    flex: 1.5,
-                                                    height: '48px',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: 900,
-                                                    borderRadius: '0.75rem',
-                                                    letterSpacing: '1px',
-                                                    textTransform: 'uppercase',
-                                                    boxShadow: '0 10px 20px -8px hsl(var(--color-primary) / 0.4)'
-                                                }}
-                                            >
-                                                {status === 'submitting' || isLocating ? (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                                                        <div className="loading-spinner-small" style={{ width: '14px', height: '14px' }}></div>
-                                                        <span>{isLocating ? 'GPS...' : 'SAVING...'}</span>
-                                                    </div>
-                                                ) : 'REGISTER & IN'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                {/* Standard Admission Number Input */}
-                                <div>
+
+                            {meeting?.questionOfDay && memberInfo && (
+                                <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
                                     <label style={{
                                         display: 'block',
                                         marginBottom: '0.75rem',
@@ -819,144 +622,57 @@ const CheckIn = () => {
                                         fontWeight: 900,
                                         letterSpacing: '1px',
                                         textTransform: 'uppercase',
-                                        color: memberInfo ? '#25AAE1' : 'var(--color-text-dim)'
+                                        color: 'hsl(var(--color-primary))'
                                     }}>
-                                        Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                                        Question of the Day <span style={{ color: '#ef4444' }}>*</span>
                                     </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            className="input-field"
-                                            placeholder="ADMISSION NO (22-0000)"
-                                            style={{
-                                                height: '45px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                paddingLeft: '1.25rem',
-                                                background: memberInfo ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
-                                                borderColor: memberInfo ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
-                                                color: memberInfo ? '#25AAE1' : 'white',
-                                                cursor: memberInfo ? 'not-allowed' : 'text',
-                                                borderRadius: '0.75rem',
-                                                transition: 'all 0.3s ease',
-                                                width: '100%'
-                                            }}
-                                            value={responses.studentRegNo || ''}
-                                            readOnly={!!memberInfo}
-                                            onChange={e => {
-                                                if (memberInfo) return;
-                                                let val = e.target.value;
-                                                let digits = val.replace(/\D/g, '');
-                                                let formatted = digits;
-                                                if (digits.length > 2) {
-                                                    formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
-                                                }
-                                                val = formatted;
-
-                                                if (digits.length === 6) {
-                                                    lookupMember(formatted);
-                                                } else {
-                                                    setMemberInfo(null);
-                                                }
-
-                                                setResponses({ ...responses, studentRegNo: val });
-                                                if (msg) setMsg('');
-                                            }}
-                                            maxLength={7}
-                                            required
-                                            disabled={status === 'submitting'}
-                                        />
-                                        {isLookingUp && (
-                                            <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
-                                                <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
-                                            </div>
-                                        )}
-                                        {memberInfo && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setMemberInfo(null);
-                                                    setResponses(prev => ({ ...prev, studentRegNo: '' }));
-                                                }}
-                                                style={{
-                                                    position: 'absolute',
-                                                    right: '1rem',
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    color: 'var(--color-text-dim)',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 800,
-                                                    fontSize: '0.8rem'
-                                                }}
-                                            >
-                                                CHANGE
-                                            </button>
-                                        )}
-                                    </div>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
+                                        "{meeting.questionOfDay}"
+                                    </p>
+                                    <textarea
+                                        className="input-field"
+                                        placeholder="Type your answer here..."
+                                        style={{
+                                            width: '100%',
+                                            minHeight: '80px',
+                                            fontSize: '0.9rem',
+                                            fontWeight: 700,
+                                            padding: '1rem',
+                                            background: 'rgba(0,0,0,0.2)',
+                                            borderRadius: '0.75rem',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        value={responses.dailyQuestionAnswer || ''}
+                                        onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
+                                        required
+                                        disabled={status === 'submitting'}
+                                    />
                                 </div>
+                            )}
 
-                                {meeting?.questionOfDay && memberInfo && (
-                                    <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-                                        <label style={{
-                                            display: 'block',
-                                            marginBottom: '0.75rem',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 900,
-                                            letterSpacing: '1px',
-                                            textTransform: 'uppercase',
-                                            color: 'hsl(var(--color-primary))'
-                                        }}>
-                                            Question of the Day <span style={{ color: '#ef4444' }}>*</span>
-                                        </label>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
-                                            "{meeting.questionOfDay}"
-                                        </p>
-                                        <textarea
-                                            className="input-field"
-                                            placeholder="Type your answer here..."
-                                            style={{
-                                                width: '100%',
-                                                minHeight: '80px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                padding: '1rem',
-                                                background: 'rgba(0,0,0,0.2)',
-                                                borderRadius: '0.75rem',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                            value={responses.dailyQuestionAnswer || ''}
-                                            onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
-                                            required
-                                            disabled={status === 'submitting'}
-                                        />
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={status === 'submitting' || isLocating || (!memberInfo && !meeting?.allowManualOverride)}
+                                style={{
+                                    height: '50px',
+                                    marginTop: '0.5rem',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 900,
+                                    borderRadius: '0.75rem',
+                                    letterSpacing: '1px',
+                                    textTransform: 'uppercase',
+                                    boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
+                                }}
+                            >
+                                {status === 'submitting' || isLocating ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                                        <div className="loading-spinner-small"></div>
+                                        {isLocating ? 'VERIFYING LOCATION...' : 'SUBMITTING...'}
                                     </div>
-                                )}
-
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary"
-                                    disabled={status === 'submitting' || isLocating || (!memberInfo && !meeting?.allowManualOverride)}
-                                    style={{
-                                        height: '50px',
-                                        marginTop: '0.5rem',
-                                        fontSize: '0.9rem',
-                                        fontWeight: 900,
-                                        borderRadius: '0.75rem',
-                                        letterSpacing: '1px',
-                                        textTransform: 'uppercase',
-                                        boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
-                                    }}
-                                >
-                                    {status === 'submitting' || isLocating ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
-                                            <div className="loading-spinner-small"></div>
-                                            {isLocating ? 'VERIFYING LOCATION...' : 'SUBMITTING...'}
-                                        </div>
-                                    ) : 'COMPLETE CHECK-IN'}
-                                </button>
-                            </div>
-                        )}
+                                ) : 'COMPLETE CHECK-IN'}
+                            </button>
+                        </div>
 
                         {meeting?.previousRecap && (
                             <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
@@ -1456,6 +1172,334 @@ const CheckIn = () => {
                                 No, just attending today 😊
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Step-by-Step Onboarding Registration Modal Popup */}
+            {isNewMember && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(2, 6, 12, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 2500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1.5rem',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div className="glass-card-premium" style={{
+                        width: '100%',
+                        maxWidth: '440px',
+                        background: '#0d111b',
+                        border: '1px solid rgba(37, 170, 225, 0.25)',
+                        borderRadius: '1.75rem',
+                        padding: '2.25rem 2rem',
+                        boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.8)',
+                        animation: 'popScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                        position: 'relative',
+                        textAlign: 'left'
+                    }}>
+                        {/* Close button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsNewMember(false);
+                                setRegistrationData({ name: '', campus: 'Athi River', memberType: 'Douloid' });
+                                setResponses(prev => ({ ...prev, studentRegNo: '' }));
+                                setMsg('');
+                                setStatus('idle');
+                            }}
+                            style={{
+                                position: 'absolute',
+                                right: '1.25rem',
+                                top: '1.25rem',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-text-dim)',
+                                cursor: 'pointer',
+                                fontSize: '1.25rem',
+                                padding: '0.25rem',
+                                transition: 'color 0.2s'
+                            }}
+                            title="Cancel Registration"
+                        >
+                            ✕
+                        </button>
+
+                        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                            <div style={{
+                                width: '56px', height: '56px',
+                                borderRadius: '50%',
+                                background: 'rgba(37, 170, 225, 0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 1rem',
+                                border: '1px solid rgba(37, 170, 225, 0.3)'
+                            }}>
+                                <span style={{ fontSize: '1.75rem' }}>🌱</span>
+                            </div>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-0.5px', color: 'white' }}>Welcome New Douloid!</h2>
+                            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)', fontWeight: 600, lineHeight: 1.4 }}>
+                                We couldn't find your Admission Number in our registry. Let's get you set up for this semester!
+                            </p>
+                        </div>
+
+                        {/* Step Indicator */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                <span>REGISTRATION WIZARD</span>
+                                <span style={{ color: '#25AAE1' }}>STEP {regStep} OF 2</span>
+                            </div>
+                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{
+                                    width: regStep === 1 ? '50%' : '100%',
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #25AAE1 0%, #38bdf8 100%)',
+                                    borderRadius: '2px',
+                                    transition: 'width 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                                }}></div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {regStep === 1 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
+                                            ADMISSION NUMBER
+                                        </label>
+                                        <input
+                                            className="input-field"
+                                            style={{
+                                                height: '44px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 700,
+                                                paddingLeft: '1rem',
+                                                background: 'rgba(37, 170, 225, 0.05)',
+                                                borderColor: 'rgba(37, 170, 225, 0.25)',
+                                                color: '#25AAE1',
+                                                borderRadius: '0.75rem',
+                                                cursor: 'not-allowed',
+                                                width: '100%',
+                                                textAlign: 'center'
+                                            }}
+                                            value={responses.studentRegNo || ''}
+                                            readOnly
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                            FULL NAME <span style={{ color: '#ef4444' }}>*</span>
+                                        </label>
+                                        <input
+                                            className="input-field"
+                                            placeholder="Enter your official name"
+                                            style={{
+                                                height: '44px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 700,
+                                                paddingLeft: '1rem',
+                                                background: 'rgba(0,0,0,0.25)',
+                                                borderColor: 'var(--glass-border)',
+                                                color: 'white',
+                                                borderRadius: '0.75rem',
+                                                width: '100%',
+                                                outline: 'none',
+                                                transition: 'all 0.3s'
+                                            }}
+                                            value={registrationData.name || ''}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setRegistrationData(prev => ({ ...prev, name: val }));
+                                                setResponses(prev => ({ ...prev, studentName: val }));
+                                                if (msg) setMsg('');
+                                            }}
+                                            required
+                                            autoFocus
+                                        />
+                                        <span style={{ fontSize: '0.68rem', color: 'var(--color-text-dim)', marginTop: '0.35rem', display: 'block', lineHeight: 1.3 }}>
+                                            Use your primary names as they appear on the official school roster.
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() => {
+                                            if (registrationData.name.trim().length >= 3) {
+                                                setRegStep(2);
+                                                if (msg) setMsg('');
+                                            } else {
+                                                alert("Please enter your official name (minimum 3 characters).");
+                                            }
+                                        }}
+                                        style={{
+                                            height: '46px',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 900,
+                                            borderRadius: '0.75rem',
+                                            letterSpacing: '1px',
+                                            textTransform: 'uppercase',
+                                            marginTop: '0.5rem',
+                                            boxShadow: '0 8px 20px -8px rgba(37, 170, 225, 0.4)',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: 'white'
+                                        }}
+                                    >
+                                        CONTINUE
+                                    </button>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                            CAMPUS <span style={{ color: '#ef4444' }}>*</span>
+                                        </label>
+                                        <select
+                                            className="input-field"
+                                            style={{
+                                                height: '44px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 700,
+                                                paddingLeft: '1rem',
+                                                background: 'rgba(0,0,0,0.25)',
+                                                borderColor: 'var(--glass-border)',
+                                                borderRadius: '0.75rem',
+                                                color: 'white',
+                                                width: '100%',
+                                                cursor: 'pointer'
+                                            }}
+                                            value={registrationData.campus || 'Athi River'}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setRegistrationData(prev => ({ ...prev, campus: val }));
+                                            }}
+                                            required
+                                        >
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                            CATEGORY <span style={{ color: '#ef4444' }}>*</span>
+                                        </label>
+                                        <select
+                                            className="input-field"
+                                            style={{
+                                                height: '44px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 700,
+                                                paddingLeft: '1rem',
+                                                background: 'rgba(0,0,0,0.25)',
+                                                borderColor: 'var(--glass-border)',
+                                                borderRadius: '0.75rem',
+                                                color: 'white',
+                                                width: '100%',
+                                                cursor: 'pointer'
+                                            }}
+                                            value={registrationData.memberType || 'Douloid'}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setRegistrationData(prev => ({ ...prev, memberType: val }));
+                                            }}
+                                            required
+                                        >
+                                            <option value="Douloid">Douloid</option>
+                                            <option value="Recruit">Recruit</option>
+                                            <option value="Visitor">Visitor</option>
+                                        </select>
+                                    </div>
+
+                                    {meeting?.questionOfDay && (
+                                        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
+                                                Question of the Day <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', marginBottom: '0.5rem', fontWeight: 600, lineHeight: 1.3 }}>
+                                                "{meeting.questionOfDay}"
+                                            </p>
+                                            <textarea
+                                                className="input-field"
+                                                placeholder="Type your answer here..."
+                                                style={{
+                                                    width: '100%',
+                                                    minHeight: '60px',
+                                                    fontSize: '0.88rem',
+                                                    fontWeight: 700,
+                                                    padding: '0.6rem 0.8rem',
+                                                    background: 'rgba(0,0,0,0.25)',
+                                                    borderColor: 'var(--glass-border)',
+                                                    borderRadius: '0.75rem',
+                                                    transition: 'all 0.3s',
+                                                    color: 'white'
+                                                }}
+                                                value={responses.dailyQuestionAnswer || ''}
+                                                onChange={e => setResponses(prev => ({ ...prev, dailyQuestionAnswer: e.target.value }))}
+                                                required
+                                                disabled={status === 'submitting'}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                        <button
+                                            type="button"
+                                            className="btn"
+                                            onClick={() => setRegStep(1)}
+                                            style={{
+                                                flex: 1,
+                                                height: '44px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 900,
+                                                borderRadius: '0.75rem',
+                                                letterSpacing: '1px',
+                                                textTransform: 'uppercase',
+                                                background: 'rgba(255,255,255,0.06)',
+                                                border: '1px solid rgba(255,255,255,0.12)',
+                                                color: 'white',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            BACK
+                                        </button>
+
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary"
+                                            disabled={status === 'submitting' || isLocating}
+                                            style={{
+                                                flex: 1.5,
+                                                height: '44px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 900,
+                                                borderRadius: '0.75rem',
+                                                letterSpacing: '1px',
+                                                textTransform: 'uppercase',
+                                                boxShadow: '0 8px 20px -8px rgba(37, 170, 225, 0.4)',
+                                                border: 'none',
+                                                color: 'white',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {status === 'submitting' || isLocating ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+                                                    <div className="loading-spinner-small" style={{ width: '12px', height: '12px' }}></div>
+                                                    <span>{isLocating ? 'GPS...' : 'SAVING...'}</span>
+                                                </div>
+                                            ) : 'REGISTER & IN'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </form>
                     </div>
                 </div>
             )}
