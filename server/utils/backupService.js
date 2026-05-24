@@ -11,6 +11,7 @@ import Training from '../models/Training.js';
 import Payment from '../models/Payment.js';
 import Settings from '../models/Settings.js';
 import Feedback from '../models/Feedback.js';
+import ActivityLog from '../models/ActivityLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +34,8 @@ export const runDatabaseBackup = async () => {
                 trainings: await Training.find({}),
                 payments: await Payment.find({}),
                 settings: await Settings.find({}),
-                feedback: await Feedback.find({})
+                feedback: await Feedback.find({}),
+                activitylogs: await ActivityLog.find({})
             }
         };
 

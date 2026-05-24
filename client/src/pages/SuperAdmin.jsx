@@ -17,7 +17,71 @@ const SuperAdmin = () => {
     const [backingUp, setBackingUp] = useState(false);
     const [unauthorized, setUnauthorized] = useState(false);
     const [message, setMessage] = useState(null);
+    const [cloudBackups, setCloudBackups] = useState([]);
+    const [loadingBackups, setLoadingBackups] = useState(false);
     const navigate = useNavigate();
+
+    const fetchCloudBackups = async () => {
+        setLoadingBackups(true);
+        try {
+            const res = await api.get('/system/cloud-backups');
+            setCloudBackups(res.data);
+        } catch (err) {
+            console.error("Failed to load cloud backups", err);
+        } finally {
+            setLoadingBackups(false);
+        }
+    };
+
+    const handleRestoreCloudBackup = async (fileName) => {
+        if (!window.confirm(`⚠️ CRITICAL DANGER: You are about to restore the database from cloud snapshot: ${fileName}.\n\nThis will completely WIPE all active student profiles, check-ins, points, logs, and settings, and overwrite them! This cannot be undone.\n\nAre you sure you want to proceed?`)) {
+            return;
+        }
+
+        if (!window.confirm(`FINAL WARNING: Are you absolutely 100% sure you want to overwrite the active database with "${fileName}"?`)) {
+            return;
+        }
+
+        setLoading(true);
+        setMessage({ type: 'info', text: `Fetching and restoring snapshot "${fileName}"...` });
+
+        try {
+            const res = await api.post('/system/restore-cloud-backup', { fileName });
+            setMessage({ type: 'success', text: res.data.message });
+            alert(`SUCCESS: Database successfully recovered!\n\nDetails: ${res.data.message}`);
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: 'error', text: 'Restore failed: ' + (err.response?.data?.message || err.message) });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatBackupName = (name) => {
+        try {
+            const clean = name.replace('snapshot_', '').replace('.json', '');
+            const parts = clean.split('T');
+            if (parts.length === 2) {
+                const datePart = parts[0];
+                const timePart = parts[1].replace(/-/g, ':');
+                const d = new Date(`${datePart}T${timePart}Z`);
+                if (!isNaN(d.getTime())) {
+                    return d.toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                }
+            }
+            return name;
+        } catch (err) {
+            return name;
+        }
+    };
 
     useEffect(() => {
         const fetchStatus = async () => {
@@ -44,6 +108,7 @@ const SuperAdmin = () => {
                 const res = await api.get('/system/system-status');
                 setStatus(res.data);
                 setUnauthorized(false);
+                fetchCloudBackups();
             } catch (err) {
                 console.error("System Offline");
                 if (err.response?.status === 401 || err.response?.status === 403) {
@@ -120,6 +185,7 @@ const SuperAdmin = () => {
         try {
             const res = await api.post('/system/manual-backup');
             setMessage({ type: 'success', text: res.data.message });
+            fetchCloudBackups(); // Refresh the backups list automatically!
         } catch (err) {
             setMessage({ type: 'error', text: 'Cloud Backup failed. Try "Download Snapshot" below to save to your PC instead.' });
         } finally {
@@ -154,6 +220,48 @@ const SuperAdmin = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRestoreBackup = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const backupData = JSON.parse(event.target.result);
+                
+                // Confirm structure
+                if (!backupData.members || !backupData.meetings || !backupData.attendance) {
+                    alert("Invalid backup file: The snapshot must contain members, meetings, and attendance collections.");
+                    return;
+                }
+
+                // Double confirmation checks
+                if (!window.confirm("⚠️ DANGER: You are about to restore the database from this snapshot. This will completely WIPE all your current student points, attendance check-ins, and settings, and replace them with the snapshot contents! This operation cannot be undone. Are you sure you want to proceed?")) {
+                    return;
+                }
+
+                if (!window.confirm("FINAL CONFIRMATION: Are you absolutely 100% sure? Understood that this will overwrite the active database?")) {
+                    return;
+                }
+
+                setLoading(true);
+                setMessage({ type: 'info', text: 'Wiping database and injecting snapshot data...' });
+
+                const res = await api.post('/system/restore-db', backupData);
+                setMessage({ type: 'success', text: res.data.message });
+                alert(`SUCCESS: Database successfully recovered! Stored ${res.data.counts.members} members and ${res.data.counts.attendance} attendance check-ins.`);
+                window.location.reload(); // Reload to sync dashboard states
+            } catch (err) {
+                console.error(err);
+                setMessage({ type: 'error', text: 'Restore failed: ' + (err.response?.data?.message || err.message || 'Invalid JSON file') });
+            } finally {
+                setLoading(false);
+                e.target.value = '';
+            }
+        };
+        reader.readAsText(file);
     };
 
     return (
@@ -458,7 +566,7 @@ const SuperAdmin = () => {
                                 RUN CLOUD BACKUP
                             </button>
 
-                            <button 
+                             <button 
                                 onClick={handleDownloadBackup}
                                 disabled={loading}
                                 style={{
@@ -481,9 +589,188 @@ const SuperAdmin = () => {
                                 {loading ? <RefreshCw className="animate-spin" size={16} /> : <Database size={16} />}
                                 DOWNLOAD SNAPSHOT (.JSON)
                             </button>
+
+                            <div style={{ marginTop: '0.5rem', borderTop: '1px dashed rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
+                                <input 
+                                    type="file" 
+                                    id="db-restore-upload" 
+                                    accept=".json" 
+                                    onChange={handleRestoreBackup}
+                                    style={{ display: 'none' }} 
+                                />
+                                <button 
+                                    onClick={() => document.getElementById('db-restore-upload').click()}
+                                    disabled={loading}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        background: 'rgba(239, 68, 68, 0.12)',
+                                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                                        borderRadius: '0.75rem',
+                                        color: '#f87171',
+                                        fontWeight: 800,
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        transition: '0.3s'
+                                    }}
+                                >
+                                    {loading ? <RefreshCw className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+                                    RESTORE FROM SNAPSHOT (.JSON)
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </div>
 
+                {/* Cloud Backups Registry (Full Width Panel below the grids) */}
+                <div className="glass-panel" style={{
+                    marginTop: '2rem',
+                    padding: '2.5rem',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    borderRadius: '2rem',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <Database size={24} color="#a78bfa" />
+                            <div>
+                                <h3 style={{ margin: 0, fontWeight: 800 }}>CLOUD BACKUP REGISTRY</h3>
+                                <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5, marginTop: '2px' }}>
+                                    Stored snapshots in your secure GitHub repository
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={fetchCloudBackups}
+                            disabled={loadingBackups}
+                            style={{
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'white',
+                                cursor: 'pointer',
+                                transition: '0.3s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        >
+                            <RefreshCw size={14} className={loadingBackups ? "animate-spin" : ""} />
+                            Sync Registry
+                        </button>
+                    </div>
+
+                    {loadingBackups ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 0', gap: '1rem' }}>
+                            <RefreshCw className="animate-spin" size={32} color="#a78bfa" />
+                            <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>Fetching remote snapshots from GitHub...</span>
+                        </div>
+                    ) : cloudBackups.length === 0 ? (
+                        <div style={{
+                            padding: '3rem',
+                            background: 'rgba(0,0,0,0.2)',
+                            borderRadius: '1.5rem',
+                            border: '1px dashed rgba(255,255,255,0.05)',
+                            textAlign: 'center'
+                        }}>
+                            <Database size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, opacity: 0.6 }}>No cloud snapshots found</p>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.4 }}>
+                                Run a cloud backup above to generate your first snapshot in GitHub!
+                            </p>
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '35%' }}>TIMESTAMP & DATE</th>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '35%' }}>SNAPSHOT FILE</th>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '15%' }}>SIZE</th>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '15%', textAlign: 'right' }}>ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cloudBackups.map((backup, idx) => (
+                                        <tr key={idx} style={{ 
+                                            borderBottom: '1px solid rgba(255,255,255,0.03)', 
+                                            transition: '0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <td style={{ padding: '1.25rem 0.5rem', fontSize: '0.85rem', fontWeight: 700, color: '#e2e8f0' }}>
+                                                {formatBackupName(backup.name)}
+                                            </td>
+                                            <td style={{ padding: '1.25rem 0.5rem', fontSize: '0.8rem', fontFamily: 'monospace', opacity: 0.6 }}>
+                                                {backup.name}
+                                            </td>
+                                            <td style={{ padding: '1.25rem 0.5rem', fontSize: '0.8rem', opacity: 0.6 }}>
+                                                {backup.size ? `${(backup.size / 1024).toFixed(1)} KB` : 'N/A'}
+                                            </td>
+                                            <td style={{ padding: '1.25rem 0.5rem', textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                    <a 
+                                                        href={backup.downloadUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            background: 'rgba(37, 170, 225, 0.1)',
+                                                            border: '1px solid rgba(37, 170, 225, 0.2)',
+                                                            borderRadius: '8px',
+                                                            color: '#25AAE1',
+                                                            padding: '0.4rem 0.8rem',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 800,
+                                                            textDecoration: 'none',
+                                                            transition: '0.3s',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.25rem'
+                                                        }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#25AAE1'; e.currentTarget.style.color = 'white'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(37, 170, 225, 0.1)'; e.currentTarget.style.color = '#25AAE1'; }}
+                                                    >
+                                                        DOWNLOAD
+                                                    </a>
+                                                    <button 
+                                                        onClick={() => handleRestoreCloudBackup(backup.name)}
+                                                        disabled={loading}
+                                                        style={{
+                                                            background: 'rgba(239, 68, 68, 0.12)',
+                                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                            borderRadius: '8px',
+                                                            color: '#f87171',
+                                                            padding: '0.4rem 0.8rem',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer',
+                                                            transition: '0.3s'
+                                                        }}
+                                                        onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; } }}
+                                                        onMouseLeave={(e) => { if (!loading) { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.color = '#f87171'; } }}
+                                                    >
+                                                        RESTORE
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* Master Merge Action */}

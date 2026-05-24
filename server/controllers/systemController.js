@@ -152,3 +152,174 @@ export const triggerManualBackup = async (req, res) => {
         res.status(500).json({ message: 'Backup engine error', error: error.message });
     }
 };
+
+export const getCloudBackups = async (req, res) => {
+    // Role check: strictly only superadmin and developer allowed to view cloud backups
+    const allowedRoles = ['superadmin', 'developer'];
+    if (!allowedRoles.includes(req.user?.role?.toLowerCase())) {
+        return res.status(403).json({ message: 'Forbidden: SuperAdmin or Developer permissions required.' });
+    }
+
+    const token = process.env.GITHUB_BACKUP_TOKEN;
+    const repo = process.env.GITHUB_BACKUP_REPO;
+
+    if (!token || !repo) {
+        return res.status(400).json({ message: 'GitHub backups not configured in .env.' });
+    }
+
+    try {
+        const url = `https://api.github.com/repos/${repo}/contents/backups`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            return res.status(response.status).json({ message: 'GitHub API Error: ' + err.message });
+        }
+
+        const files = await response.json();
+        
+        if (!Array.isArray(files)) {
+            return res.json([]);
+        }
+
+        // Filter for .json backup files and sort by date descending
+        const backups = files
+            .filter(f => f.name.endsWith('.json'))
+            .map(f => ({
+                name: f.name,
+                path: f.path,
+                sha: f.sha,
+                size: f.size,
+                downloadUrl: f.download_url,
+                htmlUrl: f.html_url
+            }))
+            .reverse();
+
+        res.json(backups);
+    } catch (error) {
+        console.error("Failed to fetch cloud backups:", error);
+        res.status(500).json({ message: 'Failed to fetch cloud backups', error: error.message });
+    }
+};
+
+export const restoreCloudBackup = async (req, res) => {
+    // Role check: strictly only superadmin and developer allowed to run database restore
+    const allowedRoles = ['superadmin', 'developer'];
+    if (!allowedRoles.includes(req.user?.role?.toLowerCase())) {
+        return res.status(403).json({ message: 'Forbidden: SuperAdmin or Developer permissions required.' });
+    }
+
+    const { fileName } = req.body;
+    if (!fileName) {
+        return res.status(400).json({ message: 'Missing backup fileName in request body.' });
+    }
+
+    const token = process.env.GITHUB_BACKUP_TOKEN;
+    const repo = process.env.GITHUB_BACKUP_REPO;
+
+    if (!token || !repo) {
+        return res.status(400).json({ message: 'GitHub backups not configured in .env.' });
+    }
+
+    try {
+        const url = `https://api.github.com/repos/${repo}/contents/backups/${fileName}`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            return res.status(response.status).json({ message: 'Failed to fetch file from GitHub: ' + err.message });
+        }
+
+        const fileData = await response.json();
+        
+        if (!fileData.content) {
+            return res.status(500).json({ message: 'No content in the backup file fetched from GitHub.' });
+        }
+
+        const decodedContent = Buffer.from(fileData.content, 'base64').toString('utf-8');
+        const backupPayload = JSON.parse(decodedContent);
+
+        // Backup payload nests items in `.data` key (see backupData structure in runDatabaseBackup)
+        const dbData = backupPayload.data || backupPayload;
+
+        const { members, meetings, attendance, trainings, payments, feedback, settings, activitylogs } = dbData;
+        
+        // Basic structure validation
+        if (!members || !meetings || !attendance) {
+            return res.status(400).json({ message: 'Restore failed: Invalid cloud backup snapshot structure.' });
+        }
+
+        const [Member, Meeting, Attendance, Training, Payment, Feedback, Settings, ActivityLog] = await Promise.all([
+            import('../models/Member.js').then(m => m.default),
+            import('../models/Meeting.js').then(m => m.default),
+            import('../models/Attendance.js').then(m => m.default),
+            import('../models/Training.js').then(m => m.default),
+            import('../models/Payment.js').then(m => m.default),
+            import('../models/Feedback.js').then(m => m.default),
+            import('../models/Settings.js').then(m => m.default),
+            import('../models/ActivityLog.js').then(m => m.default)
+        ]);
+
+        // Wipe existing collections
+        await Promise.all([
+            Member.deleteMany({}),
+            Meeting.deleteMany({}),
+            Attendance.deleteMany({}),
+            Training.deleteMany({}),
+            Payment.deleteMany({}),
+            Feedback.deleteMany({}),
+            Settings.deleteMany({}),
+            ActivityLog.deleteMany({})
+        ]);
+
+        // Re-populate database
+        await Promise.all([
+            members && members.length ? Member.insertMany(members) : Promise.resolve(),
+            meetings && meetings.length ? Meeting.insertMany(meetings) : Promise.resolve(),
+            attendance && attendance.length ? Attendance.insertMany(attendance) : Promise.resolve(),
+            trainings && trainings.length ? Training.insertMany(trainings) : Promise.resolve(),
+            payments && payments.length ? Payment.insertMany(payments) : Promise.resolve(),
+            feedback && feedback.length ? Feedback.insertMany(feedback) : Promise.resolve(),
+            settings && settings.length ? Settings.insertMany(settings) : Promise.resolve(),
+            activitylogs && activitylogs.length ? ActivityLog.insertMany(activitylogs) : Promise.resolve()
+        ]);
+
+        // Create an Activity Log recording this manual restore operation
+        const restoreLog = new ActivityLog({
+            studentRegNo: 'SYSTEM',
+            type: 'Other',
+            semester: settings?.find(s => s.key === 'current_semester')?.value || 'SYSTEM',
+            pointsEarned: 0,
+            notes: `Full system database recovery restored from cloud backup (${fileName}) by SuperAdmin: ${req.user?.username || 'Admin'}.`
+        });
+        await restoreLog.save();
+
+        res.json({
+            message: `Cloud database snapshot (${fileName}) successfully restored!`,
+            counts: {
+                members: members.length,
+                meetings: meetings.length,
+                attendance: attendance.length,
+                trainings: trainings ? trainings.length : 0,
+                payments: payments ? payments.length : 0,
+                activitylogs: activitylogs ? activitylogs.length : 0
+            }
+        });
+    } catch (err) {
+        console.error("Cloud database restore failed:", err);
+        res.status(500).json({ message: 'Cloud database recovery failed.', error: err.message });
+    }
+};
+
