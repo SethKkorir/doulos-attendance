@@ -222,15 +222,11 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 10. Member Registry Lookup & Auto-Registration (RECOVERY MODE ONLY)
+        // 10. Member Registry Lookup & Auto-Registration
         if (!member) {
             const { isNewMember, registrationData } = req.body;
-            
-            // Check if we are in recovery mode
-            const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
-            const isRecovery = recoverySetting?.value === 'true';
 
-            if (isRecovery && isNewMember && registrationData?.name) {
+            if (isNewMember && registrationData?.name) {
                 member = new Member({
                     studentRegNo,
                     name: registrationData.name,
@@ -239,13 +235,13 @@ export const submitAttendance = async (req, res) => {
                     status: 'Active'
                 });
                 await member.save();
-                console.log(`[RECOVERY AUTO-REGISTER] New student created: ${studentRegNo} (${registrationData.name})`);
+                console.log(`[AUTO-REGISTER] New student created: ${studentRegNo} (${registrationData.name})`);
             } else {
+                const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
+                const isRecovery = recoverySetting?.value === 'true';
                 await logScanError(studentRegNo, 'Registry Mismatch', `Admission Number not found in MongoDB registry. Recovery: ${isRecovery}`, meeting.campus);
                 return res.status(403).json({
-                    message: isRecovery 
-                        ? "Access Denied: Your Admission Number is not in our records yet. Please fill in your name and campus to register."
-                        : "Access Denied: Your Admission Number is not in the Doulos Registry. Please contact G9s to be added."
+                    message: "Access Denied: Your Admission Number is not in the Doulos Registry. Please check details or register."
                 });
             }
         }

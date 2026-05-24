@@ -27,7 +27,6 @@ const TABS = [
     { id: 'history',     label: 'History',     icon: History },
     { id: 'activities',  label: 'Activities',  icon: Activity },
     { id: 'events',      label: 'Events',      icon: Calendar },
-    { id: 'finance',     label: 'Finance',     icon: Wallet },
 ];
 
 const memberTypeColor = (type) => {
@@ -867,7 +866,7 @@ const StudentPortal = () => {
                         </div>
                         <div className="sp-stat-pill">
                             <div className="sp-stat-num" style={{ color: pct >= 75 ? '#4ade80' : '#facc15' }}>{pct}%</div>
-                            <div className="sp-stat-label">Health</div>
+                            <div className="sp-stat-label">Progress</div>
                         </div>
                         {data.memberType === 'Douloid' && (
                             <div className="sp-stat-pill" style={{ borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.05)' }}>
@@ -875,13 +874,9 @@ const StudentPortal = () => {
                                 <div className="sp-stat-label" style={{ color: '#f59e0b' }}>Training</div>
                             </div>
                         )}
-                        <div className="sp-stat-pill" style={{ borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.05)', cursor: 'pointer' }} onClick={() => goTab('finance')}>
-                            <div style={{ fontSize: '1.1rem' }}>💳</div>
-                            <div className="sp-stat-label" style={{ color: '#f59e0b' }}>Finance</div>
-                        </div>
                     </div>
 
-                    {/* ── ATTENDANCE HEALTH CARD ── */}
+                    {/* ── ATTENDANCE PROGRESS CARD ── */}
                     <div className="sp-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(37,170,225,0.07) 0%, rgba(2,21,37,0.85) 100%)', borderColor: 'rgba(37,170,225,0.18)' }}>
                         <div style={{ flex: 1, minWidth: '200px' }}>
                             <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Semester Attendance</div>
@@ -915,7 +910,7 @@ const StudentPortal = () => {
                             </svg>
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.04em' }}>{pct}%</span>
-                                <span style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px', color: '#25AAE1' }}>health</span>
+                                <span style={{ fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px', color: '#25AAE1' }}>Progress</span>
                             </div>
                         </div>
                     </div>
@@ -925,7 +920,7 @@ const StudentPortal = () => {
                     {/* ── ALERT ACTION CARDS ── */}
                     {data.alerts && data.alerts.length > 0 && !systemStatus.recoveryMode && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                            {data.alerts.map((alert, i) => {
+                            {data.alerts.filter(alert => alert.type !== 'finance' && alert.action !== 'PAY').map((alert, i) => {
                                 const isWatering = alert.type === 'watering' || alert.action === 'SCAN_QR';
                                 const isFinance = alert.type === 'finance' || alert.action === 'PAY';
                                 const ac = isWatering ? '#22c55e' : isFinance ? '#f59e0b' : '#ef4444';
@@ -981,25 +976,21 @@ const StudentPortal = () => {
                                         </div>
                                     </div>
 
-                                    {/* Monthly Contribution */}
-                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(245,158,11,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                    {/* Semester Focus Card */}
+                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(37,170,225,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(37,170,225,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                                         <div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase' }}>Monthly Contribution</div>
-                                                <span style={{ fontSize: '0.9rem' }}>💳</span>
+                                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase' }}>Spiritual Focus</div>
+                                                <span style={{ fontSize: '0.9rem' }}>🌿</span>
                                             </div>
-                                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
-                                                May Pending
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '-0.02em', fontStyle: 'italic' }}>
+                                                "{data.semesterTheme || 'Set Apart'}"
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.4rem' }}>
-                                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.4 }}>
-                                                Your contribution for May is currently pending.
+                                        <div style={{ marginTop: '0.4rem' }}>
+                                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.4, borderLeft: '2px solid rgba(56,189,248,0.4)', paddingLeft: '0.5rem', fontStyle: 'italic' }}>
+                                                {data.semesterVerse || 'Be holy in all you do.'}
                                             </div>
-                                            <button onClick={() => goTab('finance')} style={{ alignSelf: 'flex-start', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '0.25rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                Pay Contribution <ArrowRight size={10} />
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1149,7 +1140,7 @@ const StudentPortal = () => {
                             {[
                                 { val: data.stats.totalAttended, label: 'Attended', color: '#25AAE1' },
                                 { val: absent, label: 'Missed', color: '#f87171' },
-                                { val: `${pct}%`, label: 'Health', color: pct >= 75 ? '#4ade80' : '#facc15' }
+                                { val: `${pct}%`, label: 'Progress', color: pct >= 75 ? '#4ade80' : '#facc15' }
                             ].map((s, i) => (
                                 <div key={s.label} style={{ flex: 1, textAlign: 'center', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                                     <div style={{ fontSize: '1.3rem', fontWeight: 900, color: s.color }}>{s.val}</div>

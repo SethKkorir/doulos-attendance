@@ -130,20 +130,20 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
 
     return (
         <div className="glass-card-premium" style={{
-            padding: '2.5rem',
+            padding: '1.5rem',
             background: '#0d111b',
             animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.15)', borderRadius: '1rem' }}>
-                            <BarChart3 size={32} color="#25AAE1" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                        <div style={{ padding: '0.5rem', background: 'rgba(37, 170, 225, 0.15)', borderRadius: '0.75rem' }}>
+                            <BarChart3 size={24} color="#25AAE1" />
                         </div>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 950, letterSpacing: '-1px', color: 'white' }}>Meeting Insights</h2>
-                            <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-1px', color: 'white' }}>Meeting Insights</h2>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>
                                 {meeting.name} • {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                             </p>
                         </div>
@@ -169,7 +169,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
             </div>
 
             {/* Smart Search Bar */}
-            <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ marginBottom: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
                     <Search
                         size={18}
@@ -219,74 +219,74 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>PRESENCE</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                        <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: '#25AAE1', lineHeight: 1 }}>{stats.presentCount}</div>
-                        <div style={{ fontSize: '1rem', opacity: 0.4, fontWeight: 700 }}>/ {stats.totalEligible}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '0.5rem' }}>PRESENCE</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+                        <div style={{ fontSize: '2.25rem', fontWeight: 1000, color: '#25AAE1', lineHeight: 1 }}>{stats.presentCount}</div>
+                        <div style={{ fontSize: '0.85rem', opacity: 0.4, fontWeight: 700 }}>/ {stats.totalEligible}</div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'rgba(37, 170, 225, 0.8)', marginTop: '0.75rem', fontWeight: 600 }}>{stats.recruitsCount} First Timers (Recruits)</div>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(37, 170, 225, 0.8)', marginTop: '0.5rem', fontWeight: 600 }}>{stats.recruitsCount} First Timers (Recruits)</div>
                     <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05 }}>
-                        <Users size={80} />
+                        <Users size={60} />
                     </div>
                 </div>
 
-                <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>REACH RATE</div>
-                    <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: '#4ade80', lineHeight: 1 }}>{rate}%</div>
-                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', marginTop: '1.25rem', overflow: 'hidden' }}>
-                        <div style={{ width: `${rate}%`, height: '100%', background: '#4ade80', borderRadius: '4px', transition: 'width 1s ease-out' }}></div>
+                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '0.5rem' }}>REACH RATE</div>
+                    <div style={{ fontSize: '2.25rem', fontWeight: 1000, color: '#4ade80', lineHeight: 1 }}>{rate}%</div>
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '0.75rem', overflow: 'hidden' }}>
+                        <div style={{ width: `${rate}%`, height: '100%', background: '#4ade80', borderRadius: '3px', transition: 'width 1s ease-out' }}></div>
                     </div>
                     <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05 }}>
-                        <Activity size={80} />
+                        <Activity size={60} />
                     </div>
                 </div>
 
-                <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '1rem' }}>ATTRITION</div>
-                    <div style={{ fontSize: '3.5rem', fontWeight: 1000, color: '#f87171', lineHeight: 1 }}>{stats.absentCount}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'rgba(248, 113, 113, 0.8)', marginTop: '0.75rem', fontWeight: 600 }}>Members did not attend</div>
+                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '0.5rem' }}>ATTRITION</div>
+                    <div style={{ fontSize: '2.25rem', fontWeight: 1000, color: '#f87171', lineHeight: 1 }}>{stats.absentCount}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(248, 113, 113, 0.8)', marginTop: '0.5rem', fontWeight: 600 }}>Members did not attend</div>
                     <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05 }}>
-                        <Ghost size={80} />
+                        <Ghost size={60} />
                     </div>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
-                <div className="glass-panel" style={{ background: '#090c14', padding: '2rem', borderRadius: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Ghost size={20} color="#f87171" />
-                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#f87171' }}>MISSED MEMBERS ({filteredAbsent.length})</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                <div className="glass-panel" style={{ background: '#090c14', padding: '1.25rem', borderRadius: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Ghost size={18} color="#f87171" />
+                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#f87171' }}>MISSED MEMBERS ({filteredAbsent.length})</h4>
                         </div>
                     </div>
-                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
+                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.5rem', maxHeight: '350px', overflowY: 'auto' }}>
                         {filteredAbsent.length === 0 ? (
-                            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '🏆'}</div>
-                                <h3 style={{ margin: 0, color: insightSearch ? 'white' : '#4ade80' }}>{insightSearch ? 'No matches found' : '100% Attendance!'}</h3>
-                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in the missed list.` : 'Every registered member shows up. Outstanding!'}</p>
+                            <div style={{ padding: '2.5rem 1rem', textAlign: 'center' }}>
+                                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{insightSearch ? '🔍' : '🏆'}</div>
+                                <h4 style={{ margin: 0, color: insightSearch ? 'white' : '#4ade80', fontSize: '1rem' }}>{insightSearch ? 'No matches found' : '100% Attendance!'}</h4>
+                                <p style={{ opacity: 0.5, fontSize: '0.8rem', marginTop: '0.25rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in the missed list.` : 'Every registered member shows up. Outstanding!'}</p>
                             </div>
                         ) : filteredAbsent.map(m => (
                             <div key={m._id} style={{
-                                padding: '1rem 1.25rem',
+                                padding: '0.6rem 0.85rem',
                                 background: 'rgba(239, 68, 68, 0.02)',
                                 border: '1px solid rgba(239, 68, 68, 0.08)',
-                                borderRadius: '12px',
+                                borderRadius: '8px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 transition: 'all 0.2s'
                             }}>
                                 <div>
-                                    <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{m.name}</div>
-                                    <div style={{ fontSize: '0.8rem', opacity: 0.5, fontWeight: 700 }}>{m.studentRegNo}</div>
+                                    <div style={{ fontWeight: 900, fontSize: '0.9rem', color: 'white' }}>{m.name}</div>
+                                    <div style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 700 }}>{m.studentRegNo}</div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <div style={{
-                                        fontSize: '0.65rem',
-                                        padding: '0.4rem 0.75rem',
+                                        fontSize: '0.6rem',
+                                        padding: '0.25rem 0.5rem',
                                         background: 'rgba(255,255,255,0.05)',
                                         borderRadius: '2rem',
                                         fontWeight: 900,
@@ -297,12 +297,12 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                         onClick={() => onQuickCheckIn && onQuickCheckIn(meeting._id, m.studentRegNo)}
                                         className="btn"
                                         style={{
-                                            padding: '0.4rem 0.75rem',
+                                            padding: '0.3rem 0.6rem',
                                             background: '#25AAE1',
                                             color: 'white',
-                                            fontSize: '0.65rem',
+                                            fontSize: '0.6rem',
                                             fontWeight: 900,
-                                            borderRadius: '0.5rem',
+                                            borderRadius: '0.35rem',
                                             border: 'none',
                                             cursor: 'pointer'
                                         }}
@@ -315,39 +315,39 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                     </div>
                 </div>
 
-                <div className="glass-panel" style={{ background: '#090c14', padding: '2rem', borderRadius: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Users size={20} color="#4ade80" />
-                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#4ade80' }}>PARTICIPANTS ({filteredPresent.length})</h4>
+                <div className="glass-panel" style={{ background: '#090c14', padding: '1.25rem', borderRadius: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Users size={18} color="#4ade80" />
+                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#4ade80' }}>PARTICIPANTS ({filteredPresent.length})</h4>
                         </div>
                     </div>
-                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
+                    <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.5rem', maxHeight: '350px', overflowY: 'auto' }}>
                         {filteredPresent.length === 0 ? (
-                            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{insightSearch ? '🔍' : '⏳'}</div>
-                                <h3 style={{ margin: 0, color: 'white' }}>{insightSearch ? 'No matches found' : 'No participants yet'}</h3>
-                                <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in participants.` : 'Waiting for members to check in...'}</p>
+                            <div style={{ padding: '2.5rem 1rem', textAlign: 'center' }}>
+                                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{insightSearch ? '🔍' : '⏳'}</div>
+                                <h4 style={{ margin: 0, color: 'white', fontSize: '1rem' }}>{insightSearch ? 'No matches found' : 'No participants yet'}</h4>
+                                <p style={{ opacity: 0.5, fontSize: '0.8rem', marginTop: '0.25rem' }}>{insightSearch ? `Nobody matching "${insightSearch}" was found in participants.` : 'Waiting for members to check in...'}</p>
                             </div>
                         ) : filteredPresent.map(a => (
                             <div key={a._id} style={{
-                                padding: '1rem 1.25rem',
+                                padding: '0.6rem 0.85rem',
                                 background: 'rgba(74, 222, 128, 0.02)',
                                 border: '1px solid rgba(74, 222, 128, 0.08)',
-                                borderRadius: '12px',
+                                borderRadius: '8px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 transition: 'all 0.2s'
                             }}>
                                 <div>
-                                    <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white' }}>{a.responses?.studentName || 'Member'}</div>
-                                    <div style={{ fontSize: '0.8rem', opacity: 0.5, fontWeight: 700 }}>{a.studentRegNo}</div>
+                                    <div style={{ fontWeight: 900, fontSize: '0.9rem', color: 'white' }}>{a.responses?.studentName || 'Member'}</div>
+                                    <div style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 700 }}>{a.studentRegNo}</div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <div style={{
-                                        fontSize: '0.65rem',
-                                        padding: '0.4rem 0.75rem',
+                                        fontSize: '0.6rem',
+                                        padding: '0.25rem 0.5rem',
                                         background: 'rgba(255,255,255,0.05)',
                                         borderRadius: '2rem',
                                         fontWeight: 900,
@@ -357,11 +357,11 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                     <button
                                         onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
                                         style={{
-                                            padding: '0.45rem',
+                                            padding: '0.35rem',
                                             background: 'rgba(239, 68, 68, 0.1)',
                                             color: '#f87171',
                                             border: '1px solid rgba(239, 68, 68, 0.2)',
-                                            borderRadius: '0.5rem',
+                                            borderRadius: '0.35rem',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -370,14 +370,14 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                         }}
                                         title="Remove Check-In"
                                     >
-                                        <Trash2 size={13} />
+                                        <Trash2 size={11} />
                                     </button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
-            </div >
+            </div>
         </div >
     );
 };

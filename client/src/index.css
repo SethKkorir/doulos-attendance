@@ -38,15 +38,144 @@
 }
 
 .light-mode {
-  /* Light mode retains a stunning, premium high-contrast dark scheme since this is a tech carbon suite */
-  --bg-deep: #07090e;
-  --primary-electric: #25AAE1;
-  --surface-slate: #0d111b;
-  --surface-bright: #161a25;
-  --glass-bg: rgba(13, 17, 27, 0.96);
-  --glass-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-  --bg-gradient: radial-gradient(circle at 0% 0%, rgba(37, 170, 225, 0.08), transparent 45%),
-    linear-gradient(to bottom, #07090e, #040508);
+  /* Premium Slate-White & High-Contrast Electric Blue Light Palette */
+  --bg-deep: #f8fafc;             /* Extremely soft slate light grey background */
+  --primary-electric: #0284c7;     /* Vibrant sky blue for light mode */
+  --surface-slate: #ffffff;        /* Pure white cards */
+  --surface-bright: #f1f5f9;       /* Light grey for active items */
+  
+  --glass-border: rgba(15, 23, 42, 0.08); /* Soft slate border */
+  --glass-border-light: rgba(15, 23, 42, 0.04);
+  --neon-glow: 0 4px 20px rgba(2, 132, 199, 0.08);
+
+  --color-bg-h: 210;
+  --color-bg-s: 40%;
+  --color-bg-l: 96%;
+  --color-bg: var(--color-bg-h) var(--color-bg-s) var(--color-bg-l);
+
+  --color-surface: 0 0% 100%;
+  --color-primary: 200 95% 39%;
+  --color-primary-glow: 200 95% 39% / 0.08;
+  --color-accent: 258 90% 66%;
+
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border-hsla: rgba(15, 23, 42, 0.06);
+  --glass-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+
+  --color-text: 222 47% 11%;      /* Slate navy text color */
+  --color-text-dim: 215 16% 47%;  /* Slate muted text color */
+
+  --bg-gradient: radial-gradient(circle at 0% 0%, rgba(2, 132, 199, 0.06), transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.03), transparent 45%),
+    linear-gradient(to bottom, #f8fafc, #f1f5f9);
+}
+
+/* Light mode overrides for structural elements */
+.light-mode body {
+  color: #0f172a !important;
+}
+
+.light-mode h1,
+.light-mode h2,
+.light-mode h3,
+.light-mode h4,
+.light-mode h5,
+.light-mode h6,
+.light-mode span,
+.light-mode p,
+.light-mode div,
+.light-mode label {
+  text-shadow: none !important;
+}
+
+.light-mode .glass-panel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+.light-mode .sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+.light-mode .sidebar-profile-card,
+.light-mode .sidebar-cta-card {
+  background: #f1f5f9 !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+.light-mode .sidebar-profile-card h2,
+.light-mode .sidebar-profile-card div,
+.light-mode .sidebar-cta-card div,
+.light-mode .sidebar-cta-card span {
+  color: #0f172a !important;
+}
+
+.light-mode .sidebar-nav-btn {
+  color: #475569 !important;
+}
+
+.light-mode .sidebar-nav-btn.active {
+  background: rgba(2, 132, 199, 0.08) !important;
+  color: #0284c7 !important;
+}
+
+.light-mode .main-content h1,
+.light-mode .main-content h2,
+.light-mode .main-content h3 {
+  color: #0f172a !important;
+}
+
+.light-mode .sp-card {
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05) !important;
+}
+
+.light-mode .sp-card h3,
+.light-mode .sp-card div,
+.light-mode .sp-card p,
+.light-mode .sp-card span {
+  color: #0f172a !important;
+}
+
+.light-mode .sp-stat-pill {
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+
+.light-mode .sp-meeting-card {
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+
+.light-mode .sp-meeting-card div {
+  color: #0f172a !important;
+}
+
+.light-mode .sp-stat-label {
+  color: #475569 !important;
+}
+
+.light-mode .btn {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light-mode .btn-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.15) !important;
+}
+
+.light-mode .input-field,
+.light-mode .textarea-field {
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: #0f172a !important;
 }
 
 * {
@@ -58,7 +187,7 @@
 body {
   font-family: var(--font-main);
   background-color: var(--bg-deep);
-  color: #ffffff;
+  color: hsl(var(--color-text));
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;

@@ -544,44 +544,360 @@ const CheckIn = () => {
                             </div>
                         )}
 
-                        {(() => {
-                            const fields = [...(meeting?.requiredFields || [])];
-                            if (!fields.find(f => f.key === 'studentRegNo')) {
-                                fields.push({ label: 'Admission Number', key: 'studentRegNo', required: true });
-                            }
+                        {isNewMember ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                {/* Wizard Step Indicator */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                        <span>Registration Progress</span>
+                                        <span style={{ color: 'hsl(var(--color-primary))' }}>Step {regStep} of 2</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                                        <div style={{ width: regStep === 1 ? '50%' : '100%', height: '100%', background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, #38bdf8 100%)', borderRadius: '2px', transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}></div>
+                                    </div>
+                                </div>
 
-                            // If Member is not found in recovery mode, inject registration fields into the main flow
-                            if (isNewMember) {
-                                // Add Full Name if no name-like field exists
-                                if (!fields.some(f => f.key.toLowerCase().includes('name') && f.key !== 'studentRegNo')) {
-                                    fields.push({ label: 'Full Name', key: 'studentName', required: true });
-                                }
-                                fields.push({ 
-                                    label: 'Campus', 
-                                    key: 'campus', 
-                                    required: true, 
-                                    type: 'select', 
-                                    options: ['Athi River', 'Valley Road'] 
-                                });
-                                fields.push({ 
-                                    label: 'Category', 
-                                    key: 'memberType', 
-                                    required: true, 
-                                    type: 'select', 
-                                    options: ['Douloid', 'Recruit', 'Visitor'] 
-                                });
-                            }
+                                {regStep === 1 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.4s ease-out' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
+                                                ADMISSION NUMBER
+                                            </label>
+                                            <input
+                                                className="input-field"
+                                                style={{
+                                                    height: '45px',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 700,
+                                                    paddingLeft: '1.25rem',
+                                                    background: 'rgba(37, 170, 225, 0.05)',
+                                                    borderColor: 'rgba(37, 170, 225, 0.3)',
+                                                    color: '#25AAE1',
+                                                    borderRadius: '0.75rem',
+                                                    cursor: 'not-allowed',
+                                                    width: '100%'
+                                                }}
+                                                value={responses.studentRegNo || ''}
+                                                readOnly
+                                            />
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '0.25rem', display: 'block' }}>Verified from your check-in code.</span>
+                                        </div>
 
-                            return fields.sort((a, b) => {
-                                if (a.key === 'studentRegNo') return -1;
-                                if (b.key === 'studentRegNo') return 1;
-                                return 0;
-                            }).map((field) => {
-                                const isNameField = field.key.toLowerCase().includes('name') && field.key !== 'studentRegNo';
-                                const isLocked = memberInfo && isNameField;
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                                FULL NAME <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <input
+                                                className="input-field"
+                                                placeholder="Enter your official name"
+                                                style={{
+                                                    height: '45px',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 700,
+                                                    paddingLeft: '1.25rem',
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    borderColor: 'var(--glass-border)',
+                                                    color: 'white',
+                                                    borderRadius: '0.75rem',
+                                                    width: '100%',
+                                                    transition: 'all 0.3s ease'
+                                                }}
+                                                value={registrationData.name || ''}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setRegistrationData(prev => ({ ...prev, name: val }));
+                                                    setResponses(prev => ({ ...prev, studentName: val }));
+                                                    if (msg) setMsg('');
+                                                }}
+                                                required
+                                            />
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', marginTop: '0.25rem', display: 'block' }}>First name and Last name, matching school registry.</span>
+                                        </div>
 
-                                return (
-                                    <div key={field.key} style={{ animation: 'fadeIn 0.5s ease-out' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                if (registrationData.name.trim().length >= 3) {
+                                                    setRegStep(2);
+                                                    if (msg) setMsg('');
+                                                } else {
+                                                    setMsg("Please enter your official name (min 3 chars).");
+                                                    setStatus('error');
+                                                }
+                                            }}
+                                            style={{
+                                                height: '48px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 900,
+                                                borderRadius: '0.75rem',
+                                                letterSpacing: '1px',
+                                                textTransform: 'uppercase',
+                                                marginTop: '0.5rem',
+                                                boxShadow: '0 10px 20px -8px hsl(var(--color-primary) / 0.4)'
+                                            }}
+                                        >
+                                            CONTINUE
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsNewMember(false);
+                                                setRegistrationData({ name: '', campus: 'Athi River', memberType: 'Douloid' });
+                                                setResponses(prev => ({ ...prev, studentRegNo: '' }));
+                                                setMsg('');
+                                                setStatus('idle');
+                                            }}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: 'var(--color-text-dim)',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 800,
+                                                cursor: 'pointer',
+                                                letterSpacing: '1px',
+                                                textTransform: 'uppercase',
+                                                textAlign: 'center',
+                                                marginTop: '0.25rem',
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            START OVER / CORRECT ADMISSION NO
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.4s ease-out' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                                CAMPUS <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <select
+                                                className="input-field"
+                                                style={{
+                                                    height: '45px',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 700,
+                                                    paddingLeft: '1.25rem',
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    borderColor: 'var(--glass-border)',
+                                                    borderRadius: '0.75rem',
+                                                    color: 'white',
+                                                    width: '100%',
+                                                    appearance: 'none',
+                                                    cursor: 'pointer'
+                                                }}
+                                                value={registrationData.campus || 'Athi River'}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setRegistrationData(prev => ({ ...prev, campus: val }));
+                                                }}
+                                                required
+                                            >
+                                                <option value="Athi River">Athi River</option>
+                                                <option value="Valley Road">Valley Road</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                                CATEGORY <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <select
+                                                className="input-field"
+                                                style={{
+                                                    height: '45px',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 700,
+                                                    paddingLeft: '1.25rem',
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    borderColor: 'var(--glass-border)',
+                                                    borderRadius: '0.75rem',
+                                                    color: 'white',
+                                                    width: '100%',
+                                                    appearance: 'none',
+                                                    cursor: 'pointer'
+                                                }}
+                                                value={registrationData.memberType || 'Douloid'}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setRegistrationData(prev => ({ ...prev, memberType: val }));
+                                                }}
+                                                required
+                                            >
+                                                <option value="Douloid">Douloid</option>
+                                                <option value="Recruit">Recruit</option>
+                                                <option value="Visitor">Visitor</option>
+                                            </select>
+                                        </div>
+
+                                        {meeting?.questionOfDay && (
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'hsl(var(--color-primary))' }}>
+                                                    Question of the Day <span style={{ color: '#ef4444' }}>*</span>
+                                                </label>
+                                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                                                    "{meeting.questionOfDay}"
+                                                </p>
+                                                <textarea
+                                                    className="input-field"
+                                                    placeholder="Type your answer here..."
+                                                    style={{
+                                                        width: '100%',
+                                                        minHeight: '70px',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: 700,
+                                                        padding: '0.75rem 1rem',
+                                                        background: 'rgba(0,0,0,0.2)',
+                                                        borderColor: 'var(--glass-border)',
+                                                        borderRadius: '0.75rem',
+                                                        transition: 'all 0.3s ease'
+                                                    }}
+                                                    value={responses.dailyQuestionAnswer || ''}
+                                                    onChange={e => setResponses(prev => ({ ...prev, dailyQuestionAnswer: e.target.value }))}
+                                                    required
+                                                    disabled={status === 'submitting'}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                            <button
+                                                type="button"
+                                                className="btn"
+                                                onClick={() => setRegStep(1)}
+                                                style={{
+                                                    flex: 1,
+                                                    height: '48px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 900,
+                                                    borderRadius: '0.75rem',
+                                                    letterSpacing: '1px',
+                                                    textTransform: 'uppercase',
+                                                    background: 'rgba(255,255,255,0.08)',
+                                                    border: '1px solid rgba(255,255,255,0.15)',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                BACK
+                                            </button>
+
+                                            <button
+                                                type="submit"
+                                                className="btn btn-primary"
+                                                disabled={status === 'submitting' || isLocating}
+                                                style={{
+                                                    flex: 1.5,
+                                                    height: '48px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 900,
+                                                    borderRadius: '0.75rem',
+                                                    letterSpacing: '1px',
+                                                    textTransform: 'uppercase',
+                                                    boxShadow: '0 10px 20px -8px hsl(var(--color-primary) / 0.4)'
+                                                }}
+                                            >
+                                                {status === 'submitting' || isLocating ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                        <div className="loading-spinner-small" style={{ width: '14px', height: '14px' }}></div>
+                                                        <span>{isLocating ? 'GPS...' : 'SAVING...'}</span>
+                                                    </div>
+                                                ) : 'REGISTER & IN'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                {/* Standard Admission Number Input */}
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '0.75rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 900,
+                                        letterSpacing: '1px',
+                                        textTransform: 'uppercase',
+                                        color: memberInfo ? '#25AAE1' : 'var(--color-text-dim)'
+                                    }}>
+                                        Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            className="input-field"
+                                            placeholder="ADMISSION NO (22-0000)"
+                                            style={{
+                                                height: '45px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 700,
+                                                paddingLeft: '1.25rem',
+                                                background: memberInfo ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
+                                                borderColor: memberInfo ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
+                                                color: memberInfo ? '#25AAE1' : 'white',
+                                                cursor: memberInfo ? 'not-allowed' : 'text',
+                                                borderRadius: '0.75rem',
+                                                transition: 'all 0.3s ease',
+                                                width: '100%'
+                                            }}
+                                            value={responses.studentRegNo || ''}
+                                            readOnly={!!memberInfo}
+                                            onChange={e => {
+                                                if (memberInfo) return;
+                                                let val = e.target.value;
+                                                let digits = val.replace(/\D/g, '');
+                                                let formatted = digits;
+                                                if (digits.length > 2) {
+                                                    formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
+                                                }
+                                                val = formatted;
+
+                                                if (digits.length === 6) {
+                                                    lookupMember(formatted);
+                                                } else {
+                                                    setMemberInfo(null);
+                                                }
+
+                                                setResponses({ ...responses, studentRegNo: val });
+                                                if (msg) setMsg('');
+                                            }}
+                                            maxLength={7}
+                                            required
+                                            disabled={status === 'submitting'}
+                                        />
+                                        {isLookingUp && (
+                                            <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                                                <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
+                                            </div>
+                                        )}
+                                        {memberInfo && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setMemberInfo(null);
+                                                    setResponses(prev => ({ ...prev, studentRegNo: '' }));
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '1rem',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: 'var(--color-text-dim)',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 800,
+                                                    fontSize: '0.8rem'
+                                                }}
+                                            >
+                                                CHANGE
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {meeting?.questionOfDay && memberInfo && (
+                                    <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
                                         <label style={{
                                             display: 'block',
                                             marginBottom: '0.75rem',
@@ -589,165 +905,58 @@ const CheckIn = () => {
                                             fontWeight: 900,
                                             letterSpacing: '1px',
                                             textTransform: 'uppercase',
-                                            color: isLocked ? '#25AAE1' : 'var(--color-text-dim)'
+                                            color: 'hsl(var(--color-primary))'
                                         }}>
-                                            {field.label} {field.required && !isLocked && <span style={{ color: '#ef4444' }}>*</span>}
+                                            Question of the Day <span style={{ color: '#ef4444' }}>*</span>
                                         </label>
-                                        <div style={{ position: 'relative' }}>
-                                            {field.type === 'select' ? (
-                                                <select
-                                                    className="input-field"
-                                                    style={{
-                                                        height: '45px',
-                                                        fontSize: '0.9rem',
-                                                        fontWeight: 700,
-                                                        paddingLeft: '1.25rem',
-                                                        background: 'rgba(0,0,0,0.2)',
-                                                        borderRadius: '0.75rem',
-                                                        color: 'white',
-                                                        width: '100%',
-                                                        border: '1px solid var(--glass-border)'
-                                                    }}
-                                                    value={responses[field.key] || ''}
-                                                    onChange={e => {
-                                                        setResponses({ ...responses, [field.key]: e.target.value });
-                                                        setRegistrationData(prev => ({ ...prev, [field.key]: e.target.value }));
-                                                    }}
-                                                    required={field.required}
-                                                    disabled={status === 'submitting'}
-                                                >
-                                                    <option value="">Select {field.label}</option>
-                                                    {field.options.map(opt => (
-                                                        <option key={opt} value={opt}>{opt}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <input
-                                                    className="input-field"
-                                                    placeholder={field.key === 'studentRegNo' ? 'ADMISSION NO (22-0000)' : field.label}
-                                                    style={{
-                                                        height: '45px',
-                                                        fontSize: '0.9rem',
-                                                        fontWeight: 700,
-                                                        paddingLeft: '1.25rem',
-                                                        background: isLocked ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
-                                                        borderColor: isLocked ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
-                                                        color: isLocked ? '#25AAE1' : 'white',
-                                                        cursor: isLocked ? 'not-allowed' : 'text',
-                                                        borderRadius: '0.75rem',
-                                                        transition: 'all 0.3s ease',
-                                                        width: '100%'
-                                                    }}
-                                                    value={isLocked ? memberInfo.name : (responses[field.key] || '')}
-                                                    readOnly={isLocked}
-                                                    onChange={e => {
-                                                        if (isLocked) return;
-                                                        let val = e.target.value;
-                                                        
-                                                        if (field.key === 'studentRegNo') {
-                                                            let digits = val.replace(/\D/g, '');
-                                                            let formatted = digits;
-                                                            if (digits.length > 2) {
-                                                                formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
-                                                            }
-                                                            val = formatted;
-
-                                                            if (digits.length === 6) {
-                                                                lookupMember(formatted);
-                                                            } else {
-                                                                setMemberInfo(null);
-                                                            }
-                                                        }
-
-                                                        setResponses({ ...responses, [field.key]: val });
-                                                        
-                                                        if (isNewMember) {
-                                                            const isName = field.key.toLowerCase().includes('name') || field.key === 'studentName';
-                                                            if (isName) setRegistrationData(prev => ({ ...prev, name: val }));
-                                                            else setRegistrationData(prev => ({ ...prev, [field.key]: val }));
-                                                        }
-
-                                                        if (msg) setMsg('');
-                                                    }}
-                                                    maxLength={field.key === 'studentRegNo' ? 7 : undefined}
-                                                    required={field.required}
-                                                    disabled={status === 'submitting'}
-                                                />
-                                            )}
-                                            {field.key === 'studentRegNo' && isLookingUp && (
-                                                <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
-                                                    <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
+                                            "{meeting.questionOfDay}"
+                                        </p>
+                                        <textarea
+                                            className="input-field"
+                                            placeholder="Type your answer here..."
+                                            style={{
+                                                width: '100%',
+                                                minHeight: '80px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 700,
+                                                padding: '1rem',
+                                                background: 'rgba(0,0,0,0.2)',
+                                                borderRadius: '0.75rem',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                            value={responses.dailyQuestionAnswer || ''}
+                                            onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
+                                            required
+                                            disabled={status === 'submitting'}
+                                        />
                                     </div>
-                                );
-                            });
-                        })()}
+                                )}
 
-                        {/* Quick Registration block removed - now integrated into the main loop above */}
-
-                        {meeting?.questionOfDay && (
-                            <div style={{ animation: 'fadeIn 0.5s ease-out', marginTop: '1rem' }}>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '0.75rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 900,
-                                    letterSpacing: '1px',
-                                    textTransform: 'uppercase',
-                                    color: 'hsl(var(--color-primary))'
-                                }}>
-                                    Question of the Day <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
-                                    "{meeting.questionOfDay}"
-                                </p>
-                                <textarea
-                                    className="input-field"
-                                    placeholder="Type your answer here..."
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    disabled={status === 'submitting' || isLocating || (!memberInfo && !meeting?.allowManualOverride)}
                                     style={{
-                                        width: '100%',
-                                        minHeight: '80px',
+                                        height: '50px',
+                                        marginTop: '0.5rem',
                                         fontSize: '0.9rem',
-                                        fontWeight: 700,
-                                        padding: '1rem',
-                                        background: 'rgba(0,0,0,0.2)',
+                                        fontWeight: 900,
                                         borderRadius: '0.75rem',
-                                        transition: 'all 0.3s ease'
+                                        letterSpacing: '1px',
+                                        textTransform: 'uppercase',
+                                        boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
                                     }}
-                                    value={responses.dailyQuestionAnswer || ''}
-                                    onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
-                                    required
-                                    disabled={status === 'submitting'}
-                                />
+                                >
+                                    {status === 'submitting' || isLocating ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                                            <div className="loading-spinner-small"></div>
+                                            {isLocating ? 'VERIFYING LOCATION...' : 'SUBMITTING...'}
+                                        </div>
+                                    ) : 'COMPLETE CHECK-IN'}
+                                </button>
                             </div>
                         )}
-
-
-
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={status === 'submitting' || isLocating}
-                            style={{
-                                height: '50px',
-                                marginTop: '1.5rem',
-                                fontSize: '0.9rem',
-                                fontWeight: 900,
-                                borderRadius: '0.75rem',
-                                letterSpacing: '1px',
-                                textTransform: 'uppercase',
-                                boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
-                            }}
-                        >
-                            {status === 'submitting' || isLocating ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
-                                    <div className="loading-spinner-small"></div>
-                                    {isLocating ? 'VERIFYING LOCATION...' : 'SUBMITTING...'}
-                                </div>
-                            ) : 'COMPLETE CHECK-IN'}
-                        </button>
 
                         {meeting?.previousRecap && (
                             <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>

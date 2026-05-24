@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import api from '../api';
 import {
     Users, BarChart3, Sun, Moon, Link as LinkIcon, ExternalLink,
-    ShieldAlert, RotateCcw, ChevronDown, Check, X,
+    ShieldAlert, RotateCcw, ChevronDown, ChevronLeft, ChevronRight, Check, X,
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
     GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star,
@@ -46,6 +46,7 @@ const AdminDashboard = () => {
     const [quickRegNo, setQuickRegNo] = useState('');
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
     const [currentSemester, setCurrentSemester] = useState('MAY-AUG 2026');
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -333,20 +334,53 @@ const AdminDashboard = () => {
 
             <div className="dashboard-layout" style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 10 }}>
                 {/* Sidebar Navigation */}
-                <aside className="sidebar" style={{ width: '290px', flexShrink: 0, padding: '1.75rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', paddingLeft: '0.5rem' }}>
-                        <div style={{ animation: 'rotateLogo 60s linear infinite' }}>
-                            <Logo size={38} showText={false} />
+                <aside className="sidebar" style={{ 
+                    width: sidebarCollapsed ? '78px' : '290px', 
+                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                    flexShrink: 0, 
+                    padding: sidebarCollapsed ? '1.75rem 0.5rem' : '1.75rem 1.25rem', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '1.5rem',
+                    overflowX: 'hidden'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', gap: '0.85rem', paddingLeft: sidebarCollapsed ? '0' : '0.5rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                            <div style={{ animation: 'rotateLogo 60s linear infinite', flexShrink: 0 }}>
+                                <Logo size={38} showText={false} />
+                            </div>
+                            {!sidebarCollapsed && (
+                                <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                    <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, letterSpacing: '-0.5px' }}>DOULOS</h1>
+                                    <span style={{ fontSize: '0.6rem', color: '#25AAE1', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase' }}>G9 Control Panel</span>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, letterSpacing: '-0.5px' }}>DOULOS</h1>
-                            <span style={{ fontSize: '0.6rem', color: '#25AAE1', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase' }}>G9 Control Panel</span>
-                        </div>
+                        <button 
+                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                            style={{ 
+                                background: 'rgba(255,255,255,0.05)', 
+                                border: '1px solid rgba(255,255,255,0.1)', 
+                                borderRadius: '50%', 
+                                width: '28px', 
+                                height: '28px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                cursor: 'pointer', 
+                                color: 'white',
+                                transition: 'all 0.2s',
+                                padding: 0
+                            }}
+                            title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                        >
+                            {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                        </button>
                     </div>
 
                     {/* Premium Welcome Card in Sidebar */}
-                    <div className="sidebar-profile-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <div className="sidebar-profile-card" style={{ padding: sidebarCollapsed ? '0.75rem 0.25rem' : '1.25rem 1rem', display: 'flex', flexDirection: 'column', alignItems: sidebarCollapsed ? 'center' : 'stretch', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', flexDirection: sidebarCollapsed ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '0.75rem' }}>
                             <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem', color: 'white', boxShadow: '0 0 15px rgba(37, 170, 225, 0.25)' }}>
                                 {userRole.charAt(0).toUpperCase()}
                             </div>
@@ -354,16 +388,20 @@ const AdminDashboard = () => {
                                 {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
                             </button>
                         </div>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
-                        </div>
-                        <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'white', lineHeight: 1.35 }}>
-                            Welcome back,<br />Leader!
-                        </h2>
+                        {!sidebarCollapsed && (
+                            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                                    {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
+                                </div>
+                                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'white', lineHeight: 1.35 }}>
+                                    Welcome back,<br />Leader!
+                                </h2>
+                            </div>
+                        )}
                     </div>
 
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', flex: 1, overflowY: 'auto', paddingRight: '2px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>REGISTRY CONTROL</div>
+                        {!sidebarCollapsed && <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>REGISTRY CONTROL</div>}
                         {[
                             { id: 'meetings', label: 'Meetings & Scans', icon: LayoutDashboard },
                             { id: 'trainings', label: 'Trainings & Radius', icon: GraduationCap },
@@ -377,14 +415,15 @@ const AdminDashboard = () => {
                                 key={t.id}
                                 onClick={() => setActiveTab(t.id)}
                                 className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: sidebarCollapsed ? '0' : '0.85rem', padding: sidebarCollapsed ? '0.75rem' : '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                                title={sidebarCollapsed ? t.label : ''}
                             >
-                                <t.icon size={17} />
-                                {t.label}
+                                <t.icon size={17} style={{ flexShrink: 0 }} />
+                                {!sidebarCollapsed && <span>{t.label}</span>}
                             </button>
                         ))}
 
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '1.25rem', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>SYSTEM CONFIG</div>
+                        {!sidebarCollapsed && <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '1.25rem', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>SYSTEM CONFIG</div>}
                         {[
                             { id: 'admins', label: 'Staff Admins', icon: ShieldAlert },
                             { id: 'system', label: 'System Settings', icon: SettingsIcon }
@@ -393,51 +432,59 @@ const AdminDashboard = () => {
                                 key={t.id}
                                 onClick={() => setActiveTab(t.id)}
                                 className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: sidebarCollapsed ? '0' : '0.85rem', padding: sidebarCollapsed ? '0.75rem' : '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                                title={sidebarCollapsed ? t.label : ''}
                             >
-                                <t.icon size={17} />
-                                {t.label}
+                                <t.icon size={17} style={{ flexShrink: 0 }} />
+                                {!sidebarCollapsed && <span>{t.label}</span>}
                             </button>
                         ))}
                         {['superadmin', 'developer'].includes(userRole?.toLowerCase()) && (
                             <button
                                 onClick={() => setActiveTab('observability')}
                                 className={`sidebar-nav-btn ${activeTab === 'observability' ? 'active' : ''}`}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === 'observability' ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: sidebarCollapsed ? '0' : '0.85rem', padding: sidebarCollapsed ? '0.75rem' : '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === 'observability' ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
+                                title={sidebarCollapsed ? "System Observability" : ""}
                             >
-                                <Activity size={17} />
-                                System Observability
+                                <Activity size={17} style={{ flexShrink: 0 }} />
+                                {!sidebarCollapsed && <span>System Observability</span>}
                             </button>
                         )}
                     </nav>
 
                     {/* Glowing CTA Upgrade Card like mockup */}
-                    <div className="sidebar-cta-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <Star size={14} style={{ color: '#fbbf24', fill: '#fbbf24', animation: 'pulse 2s infinite' }} />
-                            <span style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.75px', textTransform: 'uppercase', color: 'white' }}>ACTIVE SEMESTER</span>
+                    <div className="sidebar-cta-card" style={{ padding: sidebarCollapsed ? '0.75rem 0.25rem' : '1rem 0.85rem', display: 'flex', flexDirection: 'column', alignItems: sidebarCollapsed ? 'center' : 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: sidebarCollapsed ? '0' : '0.5rem' }} title={`Active Semester: ${currentSemester}`}>
+                            <Star size={14} style={{ color: '#fbbf24', fill: '#fbbf24', animation: 'pulse 2s infinite', flexShrink: 0 }} />
+                            {!sidebarCollapsed && <span style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.75px', textTransform: 'uppercase', color: 'white' }}>ACTIVE SEMESTER</span>}
                         </div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white', marginBottom: '0.2rem' }}>
-                            {currentSemester}
-                        </div>
-                        <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600, fontStyle: 'italic' }}>
-                            Geofenced points tracking online.
-                        </div>
+                        {!sidebarCollapsed && (
+                            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white', marginBottom: '0.2rem' }}>
+                                    {currentSemester}
+                                </div>
+                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600, fontStyle: 'italic' }}>
+                                    Geofenced points tracking online.
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Bottom User Card */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.25rem' }}>
-                            <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem', alignItems: sidebarCollapsed ? 'center' : 'stretch' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: sidebarCollapsed ? '0' : '0.25rem' }} title={`Administrator (${userRole})`}>
+                            <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', color: '#94a3b8', flexShrink: 0 }}>
                                 G9
                             </div>
-                            <div>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>Administrator</div>
-                                <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{userRole}</span>
-                            </div>
+                            {!sidebarCollapsed && (
+                                <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>Administrator</div>
+                                    <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{userRole}</span>
+                                </div>
+                            )}
                         </div>
-                        <button className="btn btn-sign-out" style={{ padding: '0.6rem', borderRadius: '0.6rem', fontWeight: 800, fontSize: '0.75rem', width: '100%', cursor: 'pointer' }} onClick={handleLogout}>
-                            SIGN OUT SYSTEM
+                        <button className="btn btn-sign-out" style={{ padding: sidebarCollapsed ? '0.5rem 0' : '0.6rem', borderRadius: '0.6rem', fontWeight: 800, fontSize: '0.75rem', width: '100%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={handleLogout} title="Sign Out System">
+                            {sidebarCollapsed ? '✕' : 'SIGN OUT SYSTEM'}
                         </button>
                     </div>
                 </aside>
@@ -462,9 +509,7 @@ const AdminDashboard = () => {
                             </h1>
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                            <a href="/" className="btn" style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,255,255,0.03)', color: 'white', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.75rem', textDecoration: 'none', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
-                                <ExternalLink size={13} /> Public Portal
-                            </a>
+                            {/* Public Portal Button Removed */}
                         </div>
                     </header>
 
