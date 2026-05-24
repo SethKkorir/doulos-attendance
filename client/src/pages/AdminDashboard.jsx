@@ -20,6 +20,7 @@ import TrainingsTab from '../components/dashboard/TrainingsTab';
 import MembersTab from '../components/dashboard/MembersTab';
 import SystemSettingsTab from '../components/dashboard/SystemSettingsTab';
 import SystemObservabilityTab from '../components/dashboard/SystemObservabilityTab';
+import ActivitiesTab from '../components/dashboard/ActivitiesTab';
 
 const AdminDashboard = () => {
     const location = useLocation();
@@ -409,6 +410,7 @@ const AdminDashboard = () => {
                             { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
                             { id: 'finance', label: 'Financial Control', icon: Wallet },
                             { id: 'events', label: 'Events Scheduler', icon: Calendar },
+                            { id: 'activities', label: 'Activities & Groups', icon: Activity },
                             { id: 'feedback', label: 'Community Feedback', icon: MessageCircle }
                         ].map(t => (
                             <button
@@ -502,6 +504,7 @@ const AdminDashboard = () => {
                                  activeTab === 'reports' ? 'Reports & Analytics' : 
                                  activeTab === 'finance' ? 'Financial Systems' : 
                                  activeTab === 'events' ? 'Events Scheduler' : 
+                                 activeTab === 'activities' ? 'Activities & Groups' : 
                                  activeTab === 'feedback' ? 'Community Feedback' : 
                                  activeTab === 'admins' ? 'Staff Administrators' : 
                                  activeTab === 'system' ? 'System Configurations' : 
@@ -553,6 +556,15 @@ const AdminDashboard = () => {
                             userRole={userRole}
                             isGuest={isGuest}
                             fetchMembers={fetchMembers}
+                            setMsg={setMsg}
+                            currentSemester={currentSemester}
+                            api={api}
+                        />
+                    ) : activeTab === 'activities' ? (
+                        <ActivitiesTab
+                            members={members}
+                            fetchMembers={fetchMembers}
+                            isGuest={isGuest}
                             setMsg={setMsg}
                             currentSemester={currentSemester}
                             api={api}

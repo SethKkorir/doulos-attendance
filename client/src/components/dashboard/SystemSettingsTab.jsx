@@ -18,6 +18,7 @@ const SystemSettingsTab = ({
     const [waLink, setWaLink] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState({});
+    const [wateringActive, setWateringActive] = useState(false);
 
     // Rollover Console Wizard state
     const [showWizard, setShowWizard] = useState(false);
@@ -29,18 +30,20 @@ const SystemSettingsTab = ({
         const fetchSettings = async () => {
             setLoading(true);
             try {
-                const [semRes, guestRes, waRes, themeRes, verseRes] = await Promise.all([
+                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes] = await Promise.all([
                     api.get('/settings/current_semester'),
                     api.get('/settings/guest_features'),
                     api.get('/settings/whatsapp_link'),
                     api.get('/settings/semester_theme'),
-                    api.get('/settings/semester_verse')
+                    api.get('/settings/semester_verse'),
+                    api.get('/settings/watering_selector_active')
                 ]);
                 if (semRes.data?.value) setSemester(semRes.data.value);
                 if (guestRes.data?.value) setGuestAccess(guestRes.data.value);
                 if (waRes.data?.value) setWaLink(waRes.data.value);
                 if (themeRes.data?.value) setTheme(themeRes.data.value);
                 if (verseRes.data?.value) setVerse(verseRes.data.value);
+                if (wateringRes.data?.value) setWateringActive(wateringRes.data.value === 'true');
             } catch (err) {
                 console.error("Failed to fetch system settings", err);
             } finally {
@@ -49,6 +52,12 @@ const SystemSettingsTab = ({
         };
         fetchSettings();
     }, [api]);
+
+    const handleToggleWatering = async () => {
+        const newValue = !wateringActive;
+        setWateringActive(newValue);
+        await handleSave('watering_selector_active', String(newValue));
+    };
 
     const handleSave = async (key, value) => {
         if (isGuest) {
@@ -181,6 +190,51 @@ const SystemSettingsTab = ({
                     >
                         {saving.semester_verse ? <><RotateCcw size={15} className="animate-spin" /> Saving...</> : <><CheckCircle size={15} /> Update Verse</>}
                     </button>
+                </div>
+
+                {/* Tree Watering Selector Access Card */}
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #10b981', background: '#0d111b', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
+                        <div style={{ padding: '0.7rem', background: 'rgba(16,185,129,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(16,185,129,0.15)' }}>
+                            <CheckSquare size={20} color="#10b981" />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Watering Commitment Access</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Open student watering selector form</div>
+                        </div>
+                    </div>
+                    
+                    <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45, margin: '0 0 1.25rem 0' }}>
+                        When <strong>Live</strong>, students can select their committed watering days directly in their portal. When <strong>Closed</strong>, the form is hidden but their commitments remain visible as read-only.
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: wateringActive ? '#10b981' : '#f87171', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: wateringActive ? '#10b981' : '#f87171', display: 'inline-block', boxShadow: wateringActive ? '0 0 10px #10b981' : 'none' }}></span>
+                            {wateringActive ? 'STATUS: ACTIVE (LIVE)' : 'STATUS: CLOSED (INACTIVE)'}
+                        </span>
+
+                        <button
+                            onClick={handleToggleWatering}
+                            disabled={saving.watering_selector_active}
+                            style={{
+                                border: 'none',
+                                background: wateringActive ? '#10b981' : 'rgba(255,255,255,0.1)',
+                                color: wateringActive ? '#021525' : 'rgba(255,255,255,0.4)',
+                                padding: '0.45rem 1rem',
+                                borderRadius: '0.5rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem'
+                            }}
+                        >
+                            {saving.watering_selector_active ? <Loader2 size={13} className="animate-spin" /> : wateringActive ? 'Close Selector' : 'Make Selector Live'}
+                        </button>
+                    </div>
                 </div>
 
             </div>

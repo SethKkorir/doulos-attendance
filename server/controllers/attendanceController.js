@@ -490,12 +490,29 @@ export const getStudentPortalData = async (req, res) => {
             });
         }
 
+        // Fetch other group members
+        let groupMembers = [];
+        if (member.groupName) {
+            groupMembers = await Member.find({
+                groupName: member.groupName,
+                status: 'Active',
+                studentRegNo: { $ne: studentRegNo }
+            }).select('name studentRegNo campus memberType').lean();
+        }
+
+        // Fetch watering selector active setting
+        const wateringActiveSetting = await mongoose.model('Settings').findOne({ key: 'watering_selector_active' });
+        const wateringSelectorActive = wateringActiveSetting ? wateringActiveSetting.value === 'true' : false;
+
         res.json({
             studentRegNo,
             memberName: member.name || 'Visitor',
             memberType: member.memberType || 'Visitor',
             status: member.status,
             wateringDays: member.wateringDays,
+            groupName: member.groupName || null,
+            groupMembers,
+            wateringSelectorActive,
             totalPoints: member.totalPoints || 0,
             lastActiveSemester: member.lastActiveSemester,
             currentSemester,

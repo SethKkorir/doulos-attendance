@@ -5,7 +5,7 @@ import {
     resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock,
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
     enrollMember, archiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos,
-    bulkEnrollFromAttendance, selfRegisterMember
+    bulkEnrollFromAttendance, selfRegisterMember, autoGenerateGroups, clearAllGroups, updateSelfWateringDays
 } from '../controllers/memberController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -35,5 +35,8 @@ router.post('/archive-by-regnos', verifyAdmin, archiveByRegNos);
 router.post('/:id/reset-points', verifyAdmin, resetMemberPoints);
 router.post('/self-register', selfRegisterMember);
 router.post('/clear-congrats/:studentRegNo', clearGraduationCongrats);
+router.post('/auto-generate-groups', verifyAdmin, autoGenerateGroups);
+router.post('/clear-all-groups', verifyAdmin, clearAllGroups);
+router.post('/watering/self', updateSelfWateringDays);
 
 export default router;

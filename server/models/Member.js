@@ -24,6 +24,7 @@ const memberSchema = new mongoose.Schema({
         type: String,
         enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     }],
+    groupName: { type: String, default: null },
     isActive: { type: Boolean, default: true },
     isTestAccount: { type: Boolean, default: false },
     needsGraduationCongrats: { type: Boolean, default: false },

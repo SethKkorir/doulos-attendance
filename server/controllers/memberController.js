@@ -557,3 +557,119 @@ export const selfRegisterMember = async (req, res) => {
         res.status(500).json({ message: 'Failed to register', error: error.message });
     }
 };
+
+export const autoGenerateGroups = async (req, res) => {
+    const { groupCount, groupNames } = req.body;
+    try {
+        const count = parseInt(groupCount);
+        if (!count || count < 1) {
+            return res.status(400).json({ message: 'Number of groups must be at least 1' });
+        }
+
+        // Fetch active members
+        const activeMembers = await Member.find({ status: 'Active' });
+        if (activeMembers.length === 0) {
+            return res.status(400).json({ message: 'No active members found to assign.' });
+        }
+
+        // Prepare group names
+        const names = groupNames && groupNames.length >= count 
+            ? groupNames.slice(0, count)
+            : Array.from({ length: count }, (_, i) => `Group ${String.fromCharCode(65 + i)}`); // Group A, Group B, Group C...
+
+        // Stratify active members by memberType for absolute fairness
+        const categories = {
+            Douloid: [],
+            Recruit: [],
+            Visitor: [],
+            Exempted: []
+        };
+
+        activeMembers.forEach(m => {
+            const type = m.memberType || 'Visitor';
+            if (categories[type]) {
+                categories[type].push(m);
+            } else {
+                categories.Visitor.push(m);
+            }
+        });
+
+        // Helper to shuffle array
+        const shuffle = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        };
+
+        // Shuffle each category
+        Object.keys(categories).forEach(k => shuffle(categories[k]));
+
+        // Distribute round-robin into groups
+        const groups = Array.from({ length: count }, () => []);
+        let groupIndex = 0;
+
+        // Douloids first, then Recruits, then Visitors, then Exempted
+        const order = ['Douloid', 'Recruit', 'Visitor', 'Exempted'];
+        order.forEach(cat => {
+            categories[cat].forEach(member => {
+                groups[groupIndex].push(member);
+                groupIndex = (groupIndex + 1) % count;
+            });
+        });
+
+        // Save assignments in DB
+        const bulkOps = [];
+        groups.forEach((groupMembers, i) => {
+            const groupName = names[i];
+            groupMembers.forEach(member => {
+                bulkOps.push(
+                    Member.findByIdAndUpdate(member._id, { $set: { groupName } })
+                );
+            });
+        });
+
+        await Promise.all(bulkOps);
+
+        res.json({
+            message: `Successfully generated ${count} balanced groups!`,
+            groups: names.map((name, i) => ({
+                name,
+                count: groups[i].length,
+                members: groups[i].map(m => ({ name: m.name, studentRegNo: m.studentRegNo, memberType: m.memberType }))
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const clearAllGroups = async (req, res) => {
+    try {
+        await Member.updateMany({}, { $set: { groupName: null } });
+        res.json({ message: 'All active fellowship groups have been successfully reset.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateSelfWateringDays = async (req, res) => {
+    const { studentRegNo, wateringDays } = req.body;
+    try {
+        if (!studentRegNo) {
+            return res.status(400).json({ message: 'Registration number is required' });
+        }
+        const member = await Member.findOneAndUpdate(
+            { studentRegNo: studentRegNo.trim().toUpperCase() },
+            { $set: { wateringDays: wateringDays || [] } },
+            { new: true }
+        );
+        if (!member) {
+            return res.status(404).json({ message: 'Member profile not found in registry' });
+        }
+        res.json({ message: 'Watering days updated successfully!', wateringDays: member.wateringDays });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -327,6 +327,8 @@ const StudentPortal = () => {
     const [newMemberType, setNewMemberType] = useState('Douloid');
     const [showRolloverWelcome, setShowRolloverWelcome] = useState(false);
     const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'info' }
+    const [selectedWateringDays, setSelectedWateringDays] = useState([]);
+    const [isSavingWatering, setIsSavingWatering] = useState(false);
     const navigate = useNavigate();
     const tabContentRef = useRef(null);
 
@@ -338,6 +340,9 @@ const StudentPortal = () => {
     useEffect(() => {
         if (data) {
             setShowRolloverWelcome(data.lastActiveSemester !== data.currentSemester);
+            if (data.wateringDays) {
+                setSelectedWateringDays(data.wateringDays);
+            }
         }
     }, [data]);
 
@@ -445,6 +450,37 @@ const StudentPortal = () => {
             showToast('Enrollment failed. Please try again or see an admin.', 'error');
         } finally { 
             setLoading(false); 
+        }
+    };
+
+    const handleToggleDay = (day) => {
+        setSelectedWateringDays(prev => 
+            prev.includes(day) 
+                ? prev.filter(d => d !== day) 
+                : [...prev, day]
+        );
+    };
+
+    const handleSaveWateringDays = async () => {
+        if (isGuest) {
+            showToast("Commitments cannot be saved in Guest Mode.", "error");
+            return;
+        }
+        setIsSavingWatering(true);
+        try {
+            const res = await api.post('/members/watering/self', {
+                studentRegNo: data.studentRegNo,
+                wateringDays: selectedWateringDays
+            });
+            setData(prev => ({
+                ...prev,
+                wateringDays: res.data.wateringDays
+            }));
+            showToast("Watering commitments saved successfully! 🌿", "success");
+        } catch (err) {
+            showToast(err.response?.data?.message || "Failed to update watering commitments.", "error");
+        } finally {
+            setIsSavingWatering(false);
         }
     };
 
@@ -1073,28 +1109,188 @@ const StudentPortal = () => {
 
                         {/* ACTIVITIES */}
                         {activeTab === 'activities' && (
-                            <div className="sp-card" style={{ padding: '1.75rem' }}>
-                                <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Service Log</div>
-                                <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.2rem', fontWeight: 900 }}>Doulos Hours & Activities</h3>
-                                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>Timeline record of logged physical service hours and environment watering points.</p>
-                                {!data.activityLogs?.length ? (
-                                    <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.06)' }}>
-                                        <Activity size={32} style={{ opacity: 0.2, marginBottom: '0.85rem', color: '#25AAE1' }} />
-                                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>No service hours logged yet for this semester.</div>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                                        {data.activityLogs.map((log, i) => (
-                                            <div key={i} className="sp-history-row">
-                                                <div>
-                                                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{log.type}</div>
-                                                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                    
+                                    {/* Tree Watering Commitments Card */}
+                                    <div className="sp-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '4px solid #10b981' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>🌿 FREEDOM BASE</div>
+                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Tree Watering Commitments</h3>
+                                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: '0.35rem', lineHeight: 1.4 }}>
+                                                Doulos Fellowship tree nurture responsibilities. Commit to days that work best for you (deselect all to clear).
+                                            </p>
+                                        </div>
+
+                                        {data.wateringSelectorActive ? (
+                                            /* Interactive Selector Form */
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s' }}>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                                                        const isSelected = selectedWateringDays.includes(day);
+                                                        return (
+                                                            <button
+                                                                key={day}
+                                                                onClick={() => handleToggleDay(day)}
+                                                                style={{
+                                                                    padding: '0.5rem 0.85rem',
+                                                                    borderRadius: '0.6rem',
+                                                                    border: '1px solid',
+                                                                    borderColor: isSelected ? '#10b981' : 'rgba(255,255,255,0.06)',
+                                                                    background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.3)',
+                                                                    color: isSelected ? '#10b981' : 'rgba(255,255,255,0.6)',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 800,
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.15s ease',
+                                                                }}
+                                                            >
+                                                                {day.slice(0, 3)}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
-                                                <div style={{ color: '#4ade80', fontWeight: 900, fontSize: '0.9rem' }}>+{log.pointsEarned} Pts</div>
+
+                                                <button
+                                                    onClick={handleSaveWateringDays}
+                                                    disabled={isSavingWatering}
+                                                    className="sp-checkin-btn"
+                                                    style={{
+                                                        width: '100%',
+                                                        background: 'linear-gradient(135deg, #10b981 0%, #064e3b 100%)',
+                                                        borderColor: 'rgba(16,185,129,0.3)',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 900,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.4rem',
+                                                        boxShadow: 'none',
+                                                    }}
+                                                >
+                                                    {isSavingWatering ? (
+                                                        <><div className="loading-spinner-small" style={{ width: '13px', height: '13px' }} /> Saving Commitments...</>
+                                                    ) : (
+                                                        'Save Commitments 🌿'
+                                                    )}
+                                                </button>
                                             </div>
-                                        ))}
+                                        ) : (
+                                            /* Static Commitments Info */
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+                                                {data.wateringDays?.length > 0 ? (
+                                                    <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '0.75rem', padding: '1rem' }}>
+                                                        <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>YOUR SCHEDULE</div>
+                                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>
+                                                            {data.wateringDays.join(', ')}
+                                                        </div>
+                                                        <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', margin: '0.5rem 0 0 0', lineHeight: 1.35 }}>
+                                                            The watering selector is currently closed. If you need to make changes, please contact your G9 leader.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '0.75rem', padding: '1rem', textAlign: 'center' }}>
+                                                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)' }}>Watering Commitments Closed</div>
+                                                        <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', margin: '0.35rem 0 0 0', lineHeight: 1.35 }}>
+                                                            You have no active watering day commitments, and scheduling is currently closed.
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+
+                                    {/* My Fellowship Group Card */}
+                                    <div className="sp-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '4px solid #25AAE1' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>👥 FELLOWSHIP PLACEMENT</div>
+                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>My Fellowship Group</h3>
+                                            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: '0.35rem', lineHeight: 1.4 }}>
+                                                Your small group fellowship assignment for leadership training and accountability.
+                                            </p>
+                                        </div>
+
+                                        {data.groupName ? (
+                                            /* Active Group Placement & Members List */
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+                                                <div style={{ background: 'rgba(37, 170, 225, 0.05)', border: '1px solid rgba(37, 170, 225, 0.15)', borderRadius: '0.75rem', padding: '0.85rem 1.1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.12)', border: '1px solid rgba(37, 170, 225, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25AAE1', fontSize: '1.1rem', fontWeight: 950 }}>
+                                                        {data.groupName.replace('Group ', '').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1px', textTransform: 'uppercase' }}>ASSIGNED GROUP</div>
+                                                        <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'white' }}>{data.groupName}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.85rem' }}>
+                                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>GROUP DIRECTORY ({data.groupMembers?.length ? data.groupMembers.length + 1 : 1})</div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '4px' }}>
+                                                        {/* Render Self First */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.65rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.2)', color: '#25AAE1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 900 }}>
+                                                                ME
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.memberName} (You)</div>
+                                                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{data.studentRegNo} · {data.memberType}</div>
+                                                            </div>
+                                                        </div>
+                                                        {/* Render Other Members */}
+                                                        {data.groupMembers?.map(member => (
+                                                            <div key={member.studentRegNo} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.65rem', background: 'rgba(0,0,0,0.15)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.02)' }}>
+                                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 900 }}>
+                                                                    {member.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.name}</div>
+                                                                    <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{member.studentRegNo} · {member.memberType}</div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* Pending Group Placement Card */
+                                            <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '0.75rem', padding: '1.25rem', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center', flex: 1, minHeight: '160px', animation: 'fadeIn 0.3s' }}>
+                                                <div style={{ fontSize: '1.75rem' }}>⏳</div>
+                                                <div>
+                                                    <div style={{ fontSize: '0.82rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '0.5px' }}>Placement Pending</div>
+                                                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: '0.35rem 0 0 0', lineHeight: 1.4 }}>
+                                                        G9 is currently stratifying and balancing class fellowship groups. You will see your group card and classmates here once assigned!
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                </div>
+
+                                {/* Service Logs Card */}
+                                <div className="sp-card" style={{ padding: '1.75rem' }}>
+                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Service Log</div>
+                                    <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.2rem', fontWeight: 900 }}>Doulos Hours & Activities</h3>
+                                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>Timeline record of logged physical service hours and environment watering points.</p>
+                                    {!data.activityLogs?.length ? (
+                                        <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                                            <Activity size={32} style={{ opacity: 0.2, marginBottom: '0.85rem', color: '#25AAE1' }} />
+                                            <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>No service hours logged yet for this semester.</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                                            {data.activityLogs.map((log, i) => (
+                                                <div key={i} className="sp-history-row">
+                                                    <div>
+                                                        <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{log.type}</div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <div style={{ color: '#4ade80', fontWeight: 900, fontSize: '0.9rem' }}>+{log.pointsEarned} Pts</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 

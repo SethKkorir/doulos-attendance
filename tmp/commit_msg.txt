@@ -1,0 +1,1 @@
+feat(ui): display centered glassmorphic registration modal immediately on check-in registry search 404 lookup failure
