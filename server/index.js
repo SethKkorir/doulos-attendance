@@ -6,6 +6,7 @@ import path from 'path';
 
 // Routes
 import authRoutes from './routes/authRoutes.js';
+import systemRoutes from './routes/systemRoutes.js';
 import meetingRoutes from './routes/meetingRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import memberRoutes from './routes/memberRoutes.js';
@@ -29,6 +30,7 @@ if (!process.env.MONGO_URI) {
 }
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 5000;
 
 // Essential Middleware
@@ -127,6 +129,7 @@ app.use(downtimeManager.getDowntimeMiddleware());
 
 // Routes Middleware
 app.use('/api/auth', authRoutes);
+app.use('/api/system', systemRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/members', memberRoutes);

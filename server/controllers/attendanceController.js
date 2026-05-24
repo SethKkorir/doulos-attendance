@@ -6,7 +6,7 @@ import ActivityLog from '../models/ActivityLog.js';
 import Settings from '../models/Settings.js';
 import mongoose from 'mongoose';
 import { checkCampusTime } from '../utils/timeCheck.js';
-import { getKenyanTime } from '../utils/kenyanTime.js';
+import { getKenyanTime, getKenyanDate } from '../utils/kenyanTime.js';
 
 const logScanError = async (studentRegNo, errorType, desc, campus) => {
     try {
@@ -62,7 +62,7 @@ export const submitAttendance = async (req, res) => {
         const M = String(meetingDate.getMonth() + 1).padStart(2, '0');
         const D = String(meetingDate.getDate()).padStart(2, '0');
         const meetingStr = `${Y}-${M}-${D}`;
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = getKenyanDate();
 
         const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
         const [endHours, endMinutes] = meeting.endTime.split(':').map(Number);
@@ -109,8 +109,28 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 5. Location Check (Geofence)
-        if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !meeting.isTestAccount) {
+        // 5. Extract Reg No
+        const data = responses || req.body;
+        let rawRegNo = data.studentRegNo || data.regNo || data.admNo;
+
+        if (!rawRegNo) {
+            const fallbackKey = Object.keys(data).find(k =>
+                k.toLowerCase().includes('reg') || k.toLowerCase().includes('adm')
+            );
+            if (fallbackKey) rawRegNo = data[fallbackKey];
+        }
+
+        if (!rawRegNo) {
+            return res.status(400).json({ message: 'Admission Number is required' });
+        }
+
+        const studentRegNo = String(rawRegNo).trim().toUpperCase();
+
+        // 6. Member Registry Lookup
+        let member = await Member.findOne({ studentRegNo });
+
+        // 7. Location Check (Geofence)
+        if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTrainingSession) {
             if (!userLat || !userLong) {
                 await logScanError(req.body.studentRegNo || 'UNKNOWN', 'GPS Required', `Location disabled for geofenced meeting: ${meeting.name}`, meeting.campus);
                 return res.status(400).json({ message: 'GPS data is required for this meeting. Please enable location.' });
@@ -136,25 +156,7 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-        // 6. Extract Reg No
-        const data = responses || req.body;
-        let rawRegNo = data.studentRegNo || data.regNo || data.admNo;
-
-        if (!rawRegNo) {
-            const fallbackKey = Object.keys(data).find(k =>
-                k.toLowerCase().includes('reg') || k.toLowerCase().includes('adm')
-            );
-            if (fallbackKey) rawRegNo = data[fallbackKey];
-        }
-
-        if (!rawRegNo) {
-            return res.status(400).json({ message: 'Admission Number is required' });
-        }
-
-        const studentRegNo = String(rawRegNo).trim().toUpperCase();
-
-        // 7. Device Handcuff Logic (Locking student to one phone)
-        let member = await Member.findOne({ studentRegNo });
+        // 8. Device Handcuff Logic (Locking student to one phone)
         if (member) {
             if (!member.linkedDeviceId && deviceId) {
                 member.linkedDeviceId = deviceId;

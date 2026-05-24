@@ -376,7 +376,7 @@ const StudentPortal = () => {
                 const [waRes, guestRes, statusRes] = await Promise.all([
                     api.get('/settings/whatsapp_link'),
                     api.get('/settings/guest_features'),
-                    api.get('/auth/system-status')
+                    api.get('/system/system-status')
                 ]);
                 setWhatsappLink(waRes.data?.value || '');
                 setGuestFeaturesEnabled(guestRes.data?.value !== 'false');

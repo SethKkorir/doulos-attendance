@@ -3,7 +3,7 @@ import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { getKenyanTime } from '../utils/kenyanTime.js';
+import { getKenyanTime, getKenyanDate } from '../utils/kenyanTime.js';
 
 export const createTraining = async (req, res) => {
     const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay } = req.body;
@@ -23,7 +23,7 @@ export const getTrainings = async (req, res) => {
     try {
         // --- AUTO-CLOSE EXPIRED TRAININGS ---
         const now = getKenyanTime();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = getKenyanDate();
 
         const activeTrainings = await Training.find({ isActive: true });
         for (const t of activeTrainings) {
@@ -82,7 +82,7 @@ export const getTrainingByCode = async (req, res) => {
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
         const now = getKenyanTime();
         const tDate = new Date(training.date);
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = getKenyanDate();
         const tStr = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}-${String(tDate.getDate()).padStart(2, '0')}`;
 
         const [startH, startM] = training.startTime.split(':').map(Number);

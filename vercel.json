@@ -30,5 +30,11 @@
             "src": "/.*",
             "dest": "/client/index.html"
         }
+    ],
+    "crons": [
+        {
+            "path": "/api/auth/manual-backup",
+            "schedule": "0 21 * * *"
+        }
     ]
 }

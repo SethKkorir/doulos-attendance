@@ -22,5 +22,6 @@ const attendanceSchema = new mongoose.Schema({
 attendanceSchema.index({ meeting: 1, studentRegNo: 1 }, { unique: true, sparse: true });
 // Prevent duplicate check-ins for same training
 attendanceSchema.index({ trainingId: 1, studentRegNo: 1 }, { unique: true, sparse: true });
+attendanceSchema.index({ studentRegNo: 1 });
 
 export default mongoose.model('Attendance', attendanceSchema);

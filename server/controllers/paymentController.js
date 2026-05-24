@@ -194,7 +194,8 @@ export const getDefaulters = async (req, res) => {
     try {
         // 1. Get all members who SHOULD pay (Douloids and Recruits)
         const members = await Member.find({
-            memberType: { $in: ['Douloid', 'Recruit'] }
+            memberType: { $in: ['Douloid', 'Recruit'] },
+            status: 'Active'
         }, 'studentRegNo name campus memberType');
 
         // 2. Get all APPROVED payments for this month/year

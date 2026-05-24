@@ -744,7 +744,7 @@ const ActivitiesTab = ({
             )}
 
             {/* Members List Directory & Directory Filters */}
-            <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '400px', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
+            <div className="glass-card-premium" style={{ padding: '0', overflow: 'visible', display: 'flex', flexDirection: 'column', minHeight: '400px', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
                 <div style={{ padding: '1.5rem', background: 'rgba(2, 21, 37, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <div style={{ position: 'relative', flex: '1 1 240px' }}>

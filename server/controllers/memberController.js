@@ -60,9 +60,13 @@ export const getMembers = async (req, res) => {
         }
 
         const members = await Member.find(query).sort({ name: 1 }).lean();
+        const memberRegNos = members.map(m => m.studentRegNo);
 
         // Enrich with attendance stats
         const attendanceStats = await Attendance.aggregate([
+            {
+                $match: { studentRegNo: { $in: memberRegNos } }
+            },
             {
                 $group: {
                     _id: "$studentRegNo",

@@ -46,7 +46,19 @@ export const runDatabaseBackup = async () => {
         const repo = process.env.GITHUB_BACKUP_REPO; // Format: username/repo-name
         
         if (!token || !repo) {
-            throw new Error('GITHUB_BACKUP_TOKEN or GITHUB_BACKUP_REPO missing in .env');
+            console.log('[GITHUB-BACKUP] GITHUB_BACKUP_TOKEN or GITHUB_BACKUP_REPO missing in .env. Falling back to local server file backup.');
+            
+            // Define server backups directory
+            const serverRootDir = path.resolve(__dirname, '..');
+            const backupsDir = path.join(serverRootDir, 'backups');
+            if (!fs.existsSync(backupsDir)) {
+                fs.mkdirSync(backupsDir, { recursive: true });
+            }
+            
+            const localFilePath = path.join(backupsDir, fileName);
+            fs.writeFileSync(localFilePath, JSON.stringify(backupData, null, 2));
+            console.log(`[GITHUB-BACKUP] SUCCESS! Saved local fallback snapshot as backups/${fileName}`);
+            return { success: true, local: true, path: `server/backups/${fileName}` };
         }
 
         const url = `https://api.github.com/repos/${repo}/contents/backups/${fileName}`;
@@ -85,6 +97,11 @@ export const runDatabaseBackup = async () => {
  * Initializes the Nightly Backup Cron Job
  */
 export const initBackupScheduler = () => {
+    if (process.env.NODE_ENV === 'production') {
+        console.log('[GITHUB-BACKUP] Nightly Scheduler disabled in production; backup will be triggered via route or platform cron.');
+        return;
+    }
+
     // Run every day at Midnight (00:00)
     cron.schedule('0 0 * * *', () => {
         runDatabaseBackup();

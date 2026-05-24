@@ -41,7 +41,7 @@ const SuperAdmin = () => {
             }
 
             try {
-                const res = await api.get('/auth/system-status');
+                const res = await api.get('/system/system-status');
                 setStatus(res.data);
                 setUnauthorized(false);
             } catch (err) {
@@ -82,7 +82,7 @@ const SuperAdmin = () => {
     const handleSaveConfig = async () => {
         setLoading(true);
         try {
-            await api.post('/auth/system-config', status);
+            await api.post('/system/system-config', status);
             setMessage({ type: 'success', text: 'Cluster Bridge Configuration Saved' });
         } catch (err) {
             setMessage({ type: 'error', text: 'Failed to update configuration' });
@@ -104,7 +104,7 @@ const SuperAdmin = () => {
         setMessage({ type: 'info', text: 'Merge initiated. Moving student data...' });
 
         try {
-            const res = await api.post('/auth/merge-clusters', { targetUri: status.targetClusterUri });
+            const res = await api.post('/system/merge-clusters', { targetUri: status.targetClusterUri });
             setMessage({ type: 'success', text: res.data.message });
         } catch (err) {
             setMessage({ type: 'error', text: err.response?.data?.message || "Merge process failed" });
@@ -118,7 +118,7 @@ const SuperAdmin = () => {
         setMessage({ type: 'info', text: 'Generating database dump...' });
         
         try {
-            const res = await api.post('/auth/manual-backup');
+            const res = await api.post('/system/manual-backup');
             setMessage({ type: 'success', text: res.data.message });
         } catch (err) {
             setMessage({ type: 'error', text: 'Cloud Backup failed. Try "Download Snapshot" below to save to your PC instead.' });
@@ -132,7 +132,7 @@ const SuperAdmin = () => {
         setMessage({ type: 'info', text: 'Preparing registry snapshot...' });
         
         try {
-            const res = await api.get('/auth/full-dump');
+            const res = await api.get('/system/full-dump');
             
             const backupData = {
                 timestamp: new Date().toISOString(),

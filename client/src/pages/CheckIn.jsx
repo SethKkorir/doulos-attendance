@@ -80,7 +80,7 @@ const CheckIn = () => {
                 const deviceId = getPersistentDeviceId();
                 const [meetingRes, statusRes] = await Promise.all([
                     api.get(`/meetings/code/${meetingCode}?deviceId=${deviceId}`),
-                    api.get('/auth/system-status')
+                    api.get('/system/system-status')
                 ]);
                 
                 const meetingData = meetingRes.data;

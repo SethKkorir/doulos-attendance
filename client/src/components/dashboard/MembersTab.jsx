@@ -3,7 +3,7 @@ import {
     Users, FileSpreadsheet, ChevronDown, Plus, Search, RotateCcw, 
     CheckCircle, Archive, GraduationCap, Trash2, ListChecks, X, Trophy, 
     Calendar, MapPin, Lightbulb, Settings as SettingsIcon,
-    Unlock, Award, Activity, ShieldAlert, Clock, User
+    Unlock, Award, Activity, ShieldAlert, Clock, User, LayoutGrid, List
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
@@ -24,6 +24,7 @@ const MembersTab = ({
     const [memberTypeFilter, setMemberTypeFilter] = useState('All');
     const [activeSemesterFilter, setActiveSemesterFilter] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
     
     // UI Modal Toggles
     const [showAddMenu, setShowAddMenu] = useState(false);
@@ -336,7 +337,15 @@ const MembersTab = ({
                 else if (type.toLowerCase().includes('recruit')) type = 'Recruit';
                 else if (type.toLowerCase().includes('visitor')) type = 'Visitor';
 
-                const campus = getVal(['campus', 'location']) || 'Athi River';
+                let campus = getVal(['campus', 'location']) || 'Athi River';
+                if (typeof campus === 'string') {
+                    const lowerCampus = campus.toLowerCase().trim();
+                    if (lowerCampus.includes('nairobi') || lowerCampus.includes('valley') || lowerCampus.includes('road')) {
+                        campus = 'Valley Road';
+                    } else {
+                        campus = 'Athi River';
+                    }
+                }
 
                 return { name, studentRegNo, memberType: type, campus };
             }).filter(m => m !== null);
@@ -486,335 +495,490 @@ const MembersTab = ({
     });
 
     return (
-        <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
-            
-            {/* Registry Header & Toolbar */}
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(2, 21, 37, 0.4)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Users size={24} /> Members Registry
-                        </h2>
-                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem', fontWeight: 600 }}>
-                            {members.length} members registered in the system
+        <>
+            <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
+                
+                {/* Registry Header & Toolbar */}
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(2, 21, 37, 0.4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#1da6d9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Users size={24} /> Members Registry
+                            </h2>
+                            <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem', fontWeight: 600 }}>
+                                {members.length} members registered in the system
+                            </div>
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                        <button
-                            className="btn"
-                            style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.85rem', padding: '0.6rem 1.2rem', border: '1px solid rgba(29,166,217,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
-                            onClick={downloadRegistryCSV}
-                            title="Export full registry to CSV"
-                        >
-                            <FileSpreadsheet size={16} /> Export CSV
-                        </button>
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                className="btn btn-primary"
-                                style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 800 }}
-                                onClick={() => { setShowAddMenu(!showAddMenu); setShowActionMenu(false); }}
-                            >
-                                <Plus size={18} /> Add Member <ChevronDown size={14} />
-                            </button>
-                            {showAddMenu && (
-                                <div className="glass-card-premium" style={{
-                                    position: 'absolute', top: '115%', right: 0, zIndex: 100,
-                                    background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
-                                    borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
-                                    gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
-                                }}>
-                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                        onClick={() => { setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' }); setShowAddMenu(false); }}>
-                                        <Users size={16} style={{ opacity: 0.7, color: '#1da6d9' }} /> Single Entry
-                                    </button>
-                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                        onClick={() => { document.getElementById('import-file-input').click(); setShowAddMenu(false); }}>
-                                        <FileSpreadsheet size={16} style={{ opacity: 0.7, color: '#34d399' }} /> Import Excel / CSV
-                                    </button>
-                                </div>
-                            )}
-                            <input type="file" id="import-file-input" hidden accept=".csv, .xlsx, .xls, .pdf, .doc, .docx" onChange={handleFileImport} />
-                        </div>
-
-                        {/* Action Center Dropdown */}
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
-                                onClick={() => { setShowActionMenu(!showActionMenu); setShowAddMenu(false); }}
+                                style={{ background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', fontSize: '0.85rem', padding: '0.6rem 1.2rem', border: '1px solid rgba(29,166,217,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
+                                onClick={downloadRegistryCSV}
+                                title="Export full registry to CSV"
                             >
-                                <SettingsIcon size={16} /> Admin Actions <ChevronDown size={14} />
+                                <FileSpreadsheet size={16} /> Export CSV
                             </button>
-                            {showActionMenu && (
-                                <div className="glass-card-premium" style={{
-                                    position: 'absolute', top: '115%', right: 0, zIndex: 100,
-                                    background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
-                                    borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
-                                    gap: '0.25rem', minWidth: '240px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
-                                }}>
-                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#22c55e', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                        onClick={() => { handleBulkEnroll(); setShowActionMenu(false); }}>
-                                        <CheckCircle size={14} /> Bulk Enroll This Sem
-                                    </button>
-                                    <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                        onClick={() => { handleSyncRegistry(); setShowActionMenu(false); }}>
-                                        <RotateCcw size={14} /> Sync from History
-                                    </button>
-                                    
-                                    {memberTypeFilter === 'Recruit' && (
-                                        <>
-                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#eab308', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                                onClick={() => { handleGraduateAll(); setShowActionMenu(false); }}>
-                                                <GraduationCap size={14} /> Graduate All Recruits
-                                            </button>
-                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#f87171', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                                onClick={() => { handleArchiveAllRecruits(); setShowActionMenu(false); }}>
-                                                <Archive size={14} /> Archive Rem. Recruits
-                                            </button>
-                                        </>
-                                    )}
-
-                                    {memberTypeFilter === 'Douloid' && (
-                                        <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#f87171', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                            onClick={() => { handleUndoGraduation(); setShowActionMenu(false); }}>
-                                            <RotateCcw size={14} /> Undo Graduation
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 800 }}
+                                    onClick={() => { setShowAddMenu(!showAddMenu); setShowActionMenu(false); }}
+                                >
+                                    <Plus size={18} /> Add Member <ChevronDown size={14} />
+                                </button>
+                                {showAddMenu && (
+                                    <div className="glass-card-premium" style={{
+                                        position: 'absolute', top: '115%', right: 0, zIndex: 100,
+                                        background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
+                                        borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
+                                        gap: '0.25rem', minWidth: '200px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+                                    }}>
+                                        <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                            onClick={() => { setEditingMember({ _id: 'NEW', name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' }); setShowAddMenu(false); }}>
+                                            <Users size={16} style={{ opacity: 0.7, color: '#1da6d9' }} /> Single Entry
                                         </button>
-                                    )}
+                                        <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem', fontSize: '0.9rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                            onClick={() => { document.getElementById('import-file-input').click(); setShowAddMenu(false); }}>
+                                            <FileSpreadsheet size={16} style={{ opacity: 0.7, color: '#34d399' }} /> Import Excel / CSV
+                                        </button>
+                                    </div>
+                                )}
+                                <input type="file" id="import-file-input" hidden accept=".csv, .xlsx, .xls, .pdf, .doc, .docx" onChange={handleFileImport} />
+                            </div>
 
-                                    {['developer', 'superadmin'].includes(userRole) && (
-                                        <>
-                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.25rem 0' }}></div>
-                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#1da6d9', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                                onClick={() => { setShowBulkListTool(true); setShowActionMenu(false); }}>
-                                                <ListChecks size={14} /> Bulk List Actions
+                            {/* Action Center Dropdown */}
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    className="btn"
+                                    style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', fontWeight: 700 }}
+                                    onClick={() => { setShowActionMenu(!showActionMenu); setShowAddMenu(false); }}
+                                >
+                                    <SettingsIcon size={16} /> Admin Actions <ChevronDown size={14} />
+                                </button>
+                                {showActionMenu && (
+                                    <div className="glass-card-premium" style={{
+                                        position: 'absolute', top: '115%', right: 0, zIndex: 100,
+                                        background: 'rgba(9, 29, 46, 0.95)', border: '1px solid rgba(29, 166, 217, 0.25)',
+                                        borderRadius: '0.75rem', padding: '0.5rem', display: 'flex', flexDirection: 'column',
+                                        gap: '0.25rem', minWidth: '240px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+                                    }}>
+                                        <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#22c55e', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                            onClick={() => { handleBulkEnroll(); setShowActionMenu(false); }}>
+                                            <CheckCircle size={14} /> Bulk Enroll This Sem
+                                        </button>
+                                        <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: 'white', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                            onClick={() => { handleSyncRegistry(); setShowActionMenu(false); }}>
+                                            <RotateCcw size={14} /> Sync from History
+                                        </button>
+                                        
+                                        {memberTypeFilter === 'Recruit' && (
+                                            <>
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#eab308', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                    onClick={() => { handleGraduateAll(); setShowActionMenu(false); }}>
+                                                    <GraduationCap size={14} /> Graduate All Recruits
+                                                </button>
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#f87171', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                    onClick={() => { handleArchiveAllRecruits(); setShowActionMenu(false); }}>
+                                                    <Archive size={14} /> Archive Rem. Recruits
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {memberTypeFilter === 'Douloid' && (
+                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#f87171', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                onClick={() => { handleUndoGraduation(); setShowActionMenu(false); }}>
+                                                <RotateCcw size={14} /> Undo Graduation
                                             </button>
-                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#1da6d9', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                                onClick={() => { handleSetupTestAccount(); setShowActionMenu(false); }}>
-                                                <SettingsIcon size={14} /> Setup Tester Account
-                                            </button>
-                                            <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#ef4444', fontWeight: 600, width: '100%', gap: '0.5rem' }}
-                                                onClick={() => { handleResetAllPoints(); setShowActionMenu(false); }}>
-                                                <Trash2 size={14} /> Reset All Points
-                                            </button>
-                                        </>
-                                    )}
+                                        )}
+
+                                        {['developer', 'superadmin'].includes(userRole) && (
+                                            <>
+                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.25rem 0' }}></div>
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#1da6d9', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                    onClick={() => { setShowBulkListTool(true); setShowActionMenu(false); }}>
+                                                    <ListChecks size={14} /> Bulk List Actions
+                                                </button>
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#1da6d9', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                    onClick={() => { handleSetupTestAccount(); setShowActionMenu(false); }}>
+                                                    <SettingsIcon size={14} /> Setup Tester Account
+                                                </button>
+                                                <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.6rem 0.75rem', fontSize: '0.85rem', background: 'transparent', border: 'none', textAlign: 'left', color: '#ef4444', fontWeight: 600, width: '100%', gap: '0.5rem' }}
+                                                    onClick={() => { handleResetAllPoints(); setShowActionMenu(false); }}>
+                                                    <Trash2 size={14} /> Reset All Points
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* Toolbar: Search & Filters */}
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ position: 'relative', flex: '1 1 300px' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
+                            <input
+                                placeholder="Search by name or admission number..."
+                                className="modern-input"
+                                style={{ paddingLeft: '3rem', width: '100%' }}
+                                value={memberSearch}
+                                onChange={e => setMemberSearch(e.target.value)}
+                            />
+                        </div>
+
+                        {/* View Switcher Segmented Control */}
+                        <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+                            <button onClick={() => setViewMode('grid')}
+                                style={{
+                                    padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                    background: viewMode === 'grid' ? 'rgba(29, 166, 217, 0.2)' : 'transparent',
+                                    color: viewMode === 'grid' ? '#1da6d9' : 'rgba(255,255,255,0.6)',
+                                    fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem', transition: 'all 0.2s'
+                                }}
+                                title="Grid View"
+                            >
+                                <LayoutGrid size={14} /> Cards
+                            </button>
+                            <button onClick={() => setViewMode('list')}
+                                style={{
+                                    padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                    background: viewMode === 'list' ? 'rgba(29, 166, 217, 0.2)' : 'transparent',
+                                    color: viewMode === 'list' ? '#1da6d9' : 'rgba(255,255,255,0.6)',
+                                    fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem', transition: 'all 0.2s'
+                                }}
+                                title="Table View"
+                            >
+                                <List size={14} /> Table
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+                            {['All', 'Athi River', 'Valley Road'].map(c => (
+                                <button key={c} onClick={() => setMemberCampusFilter(c)}
+                                    style={{
+                                        padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                        background: memberCampusFilter === c ? 'rgba(29, 166, 217, 0.2)' : 'transparent',
+                                        color: memberCampusFilter === c ? '#1da6d9' : 'rgba(255,255,255,0.6)',
+                                        fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
+                                    }}
+                                >{c === 'Valley Road' ? 'Nairobi' : c}</button>
+                            ))}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+                            {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
+                                <button key={t} onClick={() => setMemberTypeFilter(t)}
+                                    style={{
+                                        padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                        background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
+                                        color: memberTypeFilter === t ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                                        fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
+                                    }}
+                                >{t}</button>
+                            ))}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+                            <button onClick={() => setActiveSemesterFilter(!activeSemesterFilter)}
+                                style={{
+                                    padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                                    background: activeSemesterFilter ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
+                                    color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.6)',
+                                    fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s'
+                                }}
+                            >
+                                <CheckCircle size={14} style={{ color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Active This Sem
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Registry View Area */}
+                <div style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
+                    {loadingMembers ? (
+                        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                            <div className="loading-spinner-small" style={{ margin: '0 auto 1rem', width: '32px', height: '32px', borderTopColor: '#25AAE1' }}></div>
+                            Loading directory...
+                        </div>
+                    ) : filteredMembers.length === 0 ? (
+                        <div style={{ padding: '4rem', textAlign: 'center' }}>
+                            <div style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
+                                <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto', color: '#25AAE1' }} />
+                                <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
+                            </div>
+                            {!memberSearch && memberCampusFilter === 'All' && (
+                                <button className="btn btn-primary" onClick={handleSyncRegistry} style={{ borderRadius: '0.75rem', fontWeight: 800 }}>
+                                    Sync Registry from History
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {/* Select All Filtered Controls (Hidden in List View as it has its own thead checkbox) */}
+                            {viewMode === 'grid' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
+                                    <input
+                                        id="select-all-registry"
+                                        type="checkbox"
+                                        style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedMemberIds(filteredMembers.map(m => m._id));
+                                            } else {
+                                                setSelectedMemberIds([]);
+                                            }
+                                        }}
+                                        checked={selectedMemberIds.length > 0 && selectedMemberIds.length === filteredMembers.length}
+                                    />
+                                    <label htmlFor="select-all-registry" style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}>
+                                        Select All Filtered ({filteredMembers.length} members)
+                                    </label>
+                                </div>
+                            )}
+
+                            {viewMode === 'grid' ? (
+                                /* Modern Responsive Card Grid */
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                                    {filteredMembers.map((m, i) => {
+                                        const isSelected = selectedMemberIds.includes(m._id);
+                                        return (
+                                            <div
+                                                key={i}
+                                                className="glass-card-premium interactive"
+                                                style={{
+                                                    padding: '1.25rem',
+                                                    border: isSelected ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.04)',
+                                                    background: isSelected ? 'rgba(37, 170, 225, 0.05)' : '#0d111b',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '1rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.25s ease'
+                                                }}
+                                                onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
+                                            >
+                                                {/* Card Selection Checkbox & Category Tag */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
+                                                        checked={isSelected}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedMemberIds([...selectedMemberIds, m._id]);
+                                                            } else {
+                                                                setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="status-pill-modern" style={{
+                                                        background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
+                                                                    m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
+                                                                    m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
+                                                                    'rgba(255, 255, 255, 0.04)',
+                                                        color: m.memberType === 'Douloid' ? '#FFD700' :
+                                                               m.memberType === 'Recruit' ? '#25AAE1' :
+                                                               m.memberType === 'Exempted' ? '#f87171' :
+                                                               'rgba(255,255,255,0.5)',
+                                                        border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
+                                                                     m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
+                                                                     m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
+                                                                     '1px solid rgba(255, 255, 255, 0.05)',
+                                                        fontSize: '0.62rem',
+                                                        padding: '0.2rem 0.5rem',
+                                                        borderRadius: '1rem',
+                                                        fontWeight: 800,
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.5px'
+                                                    }}>
+                                                        {m.memberType}
+                                                    </span>
+                                                </div>
+
+                                                {/* Avatar & Profile Details */}
+                                                <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+                                                    <div style={{
+                                                        width: '42px', height: '42px', borderRadius: '50%',
+                                                        background: 'rgba(255, 255, 255, 0.02)',
+                                                        border: '1px solid rgba(255,255,255,0.05)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '1rem', fontWeight: 900, color: '#94a3b8', flexShrink: 0
+                                                    }}>
+                                                        {(m.name || 'U').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                                        <div style={{ fontWeight: 800, color: 'white', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {m.name}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem', fontWeight: 600 }}>
+                                                            {m.studentRegNo}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Campus Info & Trophy Points Badge */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem', fontWeight: 700 }}>
+                                                        <MapPin size={12} color="#25AAE1" />
+                                                        <span>{m.campus === 'Valley Road' ? 'Nairobi' : m.campus}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#fbbf24', fontWeight: 900, background: 'rgba(251, 191, 36, 0.08)', padding: '0.2rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.78rem', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
+                                                        <Trophy size={11} style={{ color: '#fbbf24', fill: '#fbbf24' }} /> {m.totalPoints || 0} pts
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions Footer */}
+                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
+                                                    <button
+                                                        className="btn"
+                                                        style={{ flex: 1, fontSize: '0.75rem', padding: '0.45rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.15)', borderRadius: '0.5rem', fontWeight: 700 }}
+                                                        onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
+                                                    >
+                                                        Insights
+                                                    </button>
+                                                    {['developer', 'superadmin'].includes(userRole) && (
+                                                        <button
+                                                            className="btn btn-sign-out"
+                                                            style={{ width: '34px', height: '34px', padding: 0, borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                            onClick={() => handleDeleteMember(m._id, m.name)}
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                /* High-Fidelity Glassmorphic HTML Table View (Columns/Rows) */
+                                <div style={{ overflowX: 'auto', background: 'rgba(2, 10, 20, 0.25)', borderRadius: '0.85rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(2, 21, 37, 0.4)' }}>
+                                                <th style={{ padding: '1rem', width: '40px', textAlign: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedMemberIds(filteredMembers.map(m => m._id));
+                                                            } else {
+                                                                setSelectedMemberIds([]);
+                                                            }
+                                                        }}
+                                                        checked={selectedMemberIds.length > 0 && selectedMemberIds.length === filteredMembers.length}
+                                                    />
+                                                </th>
+                                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Member</th>
+                                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Admission Number</th>
+                                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
+                                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Category</th>
+                                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Points</th>
+                                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center' }}>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredMembers.map((m, idx) => {
+                                                const isSelected = selectedMemberIds.includes(m._id);
+                                                return (
+                                                    <tr key={m._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: isSelected ? 'rgba(37, 170, 225, 0.04)' : 'transparent', transition: 'background-color 0.2s' }} className="table-row-hover">
+                                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                                            <input
+                                                                type="checkbox"
+                                                                style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
+                                                                checked={isSelected}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setSelectedMemberIds([...selectedMemberIds, m._id]);
+                                                                    } else {
+                                                                        setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '0.85rem 1rem', fontWeight: 800, color: 'white' }} onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}>
+                                                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', cursor: 'pointer' }}>
+                                                                <div style={{
+                                                                    width: '32px', height: '32px', borderRadius: '50%',
+                                                                    background: 'rgba(255, 255, 255, 0.02)',
+                                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    fontSize: '0.85rem', fontWeight: 900, color: '#94a3b8', flexShrink: 0
+                                                                }}>
+                                                                    {(m.name || 'U').charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div style={{ fontWeight: 800, color: 'white' }}>{m.name}</div>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontWeight: 700, color: '#94a3b8' }}>{m.studentRegNo}</td>
+                                                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                                <MapPin size={12} color="#25AAE1" />
+                                                                {m.campus === 'Valley Road' ? 'Nairobi' : m.campus}
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '0.85rem 1rem' }}>
+                                                            <span className="status-pill-modern" style={{
+                                                                background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
+                                                                            m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
+                                                                            m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
+                                                                            'rgba(255, 255, 255, 0.04)',
+                                                                color: m.memberType === 'Douloid' ? '#FFD700' :
+                                                                       m.memberType === 'Recruit' ? '#25AAE1' :
+                                                                       m.memberType === 'Exempted' ? '#f87171' :
+                                                                       'rgba(255,255,255,0.5)',
+                                                                border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
+                                                                             m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
+                                                                             m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
+                                                                             '1px solid rgba(255, 255, 255, 0.05)',
+                                                                fontSize: '0.62rem',
+                                                                padding: '0.2rem 0.5rem',
+                                                                borderRadius: '1rem',
+                                                                fontWeight: 800,
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                {m.memberType}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: '0.85rem 1rem' }}>
+                                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#fbbf24', fontWeight: 900, background: 'rgba(251, 191, 36, 0.08)', padding: '0.2rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.78rem', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
+                                                                <Trophy size={11} style={{ color: '#fbbf24', fill: '#fbbf24' }} /> {m.totalPoints || 0} pts
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '0.5rem 1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                <button
+                                                                    className="btn"
+                                                                    style={{ fontSize: '0.72rem', padding: '0.35rem 0.75rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.15)', borderRadius: '0.4rem', fontWeight: 700 }}
+                                                                    onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
+                                                                >
+                                                                    Insights
+                                                                </button>
+                                                                {['developer', 'superadmin'].includes(userRole) && (
+                                                                    <button
+                                                                        className="btn btn-sign-out"
+                                                                        style={{ width: '28px', height: '28px', padding: 0, borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                                        onClick={() => handleDeleteMember(m._id, m.name)}
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
                         </div>
-
-                    </div>
+                    )}
                 </div>
-
-                {/* Toolbar: Search & Filters */}
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ position: 'relative', flex: '1 1 300px' }}>
-                        <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
-                        <input
-                            placeholder="Search by name or admission number..."
-                            className="modern-input"
-                            style={{ paddingLeft: '3rem', width: '100%' }}
-                            value={memberSearch}
-                            onChange={e => setMemberSearch(e.target.value)}
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        {['All', 'Athi River', 'Valley Road'].map(c => (
-                            <button key={c} onClick={() => setMemberCampusFilter(c)}
-                                style={{
-                                    padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                    background: memberCampusFilter === c ? 'rgba(29, 166, 217, 0.2)' : 'transparent',
-                                    color: memberCampusFilter === c ? '#1da6d9' : 'rgba(255,255,255,0.6)',
-                                    fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
-                                }}
-                            >{c === 'Valley Road' ? 'Nairobi' : c}</button>
-                        ))}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
-                            <button key={t} onClick={() => setMemberTypeFilter(t)}
-                                style={{
-                                    padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                    background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
-                                    color: memberTypeFilter === t ? '#a78bfa' : 'rgba(255,255,255,0.6)',
-                                    fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
-                                }}
-                            >{t}</button>
-                        ))}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <button onClick={() => setActiveSemesterFilter(!activeSemesterFilter)}
-                            style={{
-                                padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                background: activeSemesterFilter ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-                                color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.6)',
-                                fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s'
-                            }}
-                        >
-                            <CheckCircle size={14} style={{ color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Active This Sem
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Registry Grid */}
-            <div style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
-                {loadingMembers ? (
-                    <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                        <div className="loading-spinner-small" style={{ margin: '0 auto 1rem', width: '32px', height: '32px', borderTopColor: '#25AAE1' }}></div>
-                        Loading directory...
-                    </div>
-                ) : filteredMembers.length === 0 ? (
-                    <div style={{ padding: '4rem', textAlign: 'center' }}>
-                        <div style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
-                            <Users size={48} style={{ opacity: 0.2, marginBottom: '1rem', margin: '0 auto', color: '#25AAE1' }} />
-                            <p>{memberSearch || memberCampusFilter !== 'All' ? 'No members match your filters.' : 'Registry is empty. Sync from history to populate it.'}</p>
-                        </div>
-                        {!memberSearch && memberCampusFilter === 'All' && (
-                            <button className="btn btn-primary" onClick={handleSyncRegistry} style={{ borderRadius: '0.75rem', fontWeight: 800 }}>
-                                Sync Registry from History
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {/* Select All Filtered Controls */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
-                            <input
-                                id="select-all-registry"
-                                type="checkbox"
-                                style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        setSelectedMemberIds(filteredMembers.map(m => m._id));
-                                    } else {
-                                        setSelectedMemberIds([]);
-                                    }
-                                }}
-                                checked={selectedMemberIds.length > 0 && selectedMemberIds.length === filteredMembers.length}
-                            />
-                            <label htmlFor="select-all-registry" style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}>
-                                Select All Filtered ({filteredMembers.length} members)
-                            </label>
-                        </div>
-
-                        {/* Modern Responsive Card Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                            {filteredMembers.map((m, i) => {
-                                const isSelected = selectedMemberIds.includes(m._id);
-                                return (
-                                    <div
-                                        key={i}
-                                        className="glass-card-premium interactive"
-                                        style={{
-                                            padding: '1.25rem',
-                                            border: isSelected ? '1px solid rgba(37, 170, 225, 0.3)' : '1px solid rgba(255,255,255,0.04)',
-                                            background: isSelected ? 'rgba(37, 170, 225, 0.05)' : '#0d111b',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '1rem',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.25s ease'
-                                        }}
-                                        onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
-                                    >
-                                        {/* Card Selection Checkbox & Category Tag */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                                            <input
-                                                type="checkbox"
-                                                style={{ width: '16px', height: '16px', accentColor: '#25AAE1', cursor: 'pointer' }}
-                                                checked={isSelected}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedMemberIds([...selectedMemberIds, m._id]);
-                                                    } else {
-                                                        setSelectedMemberIds(selectedMemberIds.filter(id => id !== m._id));
-                                                    }
-                                                }}
-                                            />
-                                            <span className="status-pill-modern" style={{
-                                                background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
-                                                            m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
-                                                            m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
-                                                            'rgba(255, 255, 255, 0.04)',
-                                                color: m.memberType === 'Douloid' ? '#FFD700' :
-                                                       m.memberType === 'Recruit' ? '#25AAE1' :
-                                                       m.memberType === 'Exempted' ? '#f87171' :
-                                                       'rgba(255,255,255,0.5)',
-                                                border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
-                                                             m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
-                                                             m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
-                                                             '1px solid rgba(255, 255, 255, 0.05)',
-                                                fontSize: '0.62rem',
-                                                padding: '0.2rem 0.5rem',
-                                                borderRadius: '1rem',
-                                                fontWeight: 800,
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px'
-                                            }}>
-                                                {m.memberType}
-                                            </span>
-                                        </div>
-
-                                        {/* Avatar & Profile Details */}
-                                        <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
-                                            <div style={{
-                                                width: '42px', height: '42px', borderRadius: '50%',
-                                                background: 'rgba(255, 255, 255, 0.02)',
-                                                border: '1px solid rgba(255,255,255,0.05)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '1rem', fontWeight: 900, color: '#94a3b8', flexShrink: 0
-                                            }}>
-                                                {(m.name || 'U').charAt(0).toUpperCase()}
-                                            </div>
-                                            <div style={{ minWidth: 0, flex: 1 }}>
-                                                <div style={{ fontWeight: 800, color: 'white', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {m.name}
-                                                </div>
-                                                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem', fontWeight: 600 }}>
-                                                    {m.studentRegNo}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Campus Info & Trophy Points Badge */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem', fontWeight: 700 }}>
-                                                <MapPin size={12} color="#25AAE1" />
-                                                <span>{m.campus === 'Valley Road' ? 'Nairobi' : m.campus}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#fbbf24', fontWeight: 900, background: 'rgba(251, 191, 36, 0.08)', padding: '0.2rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.78rem', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
-                                                <Trophy size={11} style={{ color: '#fbbf24', fill: '#fbbf24' }} /> {m.totalPoints || 0} pts
-                                            </div>
-                                        </div>
-
-                                        {/* Actions Footer */}
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                                            <button
-                                                className="btn"
-                                                style={{ flex: 1, fontSize: '0.75rem', padding: '0.45rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.15)', borderRadius: '0.5rem', fontWeight: 700 }}
-                                                onClick={() => { setEditingMember(m); fetchMemberInsights(m.studentRegNo); }}
-                                            >
-                                                Insights
-                                            </button>
-                                            {['developer', 'superadmin'].includes(userRole) && (
-                                                <button
-                                                    className="btn btn-sign-out"
-                                                    style={{ width: '34px', height: '34px', padding: 0, borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                    onClick={() => handleDeleteMember(m._id, m.name)}
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Member Profile/Insights Modal */}
@@ -1443,7 +1607,7 @@ const MembersTab = ({
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 };
 

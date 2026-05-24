@@ -1,1 +1,1 @@
-feat(ui): display centered glassmorphic registration modal immediately on check-in registry search 404 lookup failure
+feat: implement activities, groups auto-generator, watering commitments selector, and high-fidelity PDF/CSV reports
