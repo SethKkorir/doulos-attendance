@@ -20,7 +20,9 @@ const ActivitiesTab = ({
     api 
 }) => {
     const [subTab, setSubTab] = useState('groups'); // groups, watering
+    const [genMethod, setGenMethod] = useState('count'); // count, size
     const [groupCount, setGroupCount] = useState(3);
+    const [peoplePerGroup, setPeoplePerGroup] = useState(5);
     const [customNamesInput, setCustomNamesInput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     
@@ -29,6 +31,42 @@ const ActivitiesTab = ({
     const [campusFilter, setCampusFilter] = useState('All');
     const [categoryFilter, setCategoryFilter] = useState('All');
     const [dayFilter, setDayFilter] = useState('All');
+
+    // Watering day selector active state
+    const [wateringActive, setWateringActive] = useState(false);
+    const [isUpdatingWatering, setIsUpdatingWatering] = useState(false);
+
+    useEffect(() => {
+        const fetchWateringSetting = async () => {
+            try {
+                const res = await api.get('/settings/watering_selector_active');
+                if (res.data?.value) {
+                    setWateringActive(res.data.value === 'true');
+                }
+            } catch (err) {
+                console.error("Failed to fetch watering selector setting in ActivitiesTab:", err);
+            }
+        };
+        fetchWateringSetting();
+    }, [api]);
+
+    const handleToggleWatering = async () => {
+        if (isGuest) {
+            setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+            return;
+        }
+        setIsUpdatingWatering(true);
+        const newValue = !wateringActive;
+        try {
+            await api.patch('/settings/watering_selector_active', { value: String(newValue) });
+            setWateringActive(newValue);
+            setMsg({ type: 'success', text: `Watering selector is now ${newValue ? 'LIVE' : 'CLOSED'}` });
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to update watering selector.' });
+        } finally {
+            setIsUpdatingWatering(false);
+        }
+    };
 
     // Grouping calculations
     const activeMembers = members.filter(m => m.status === 'Active');
@@ -53,7 +91,20 @@ const ActivitiesTab = ({
         e.preventDefault();
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
 
-        const confirmMsg = `This will automatically redistribute all ${activeMembers.length} active members into ${groupCount} groups fairly (Douloids, Recruits, and Visitors balanced evenly). Proceed?`;
+        let calculatedGroupCount = parseInt(groupCount);
+        if (genMethod === 'size') {
+            const targetSize = parseInt(peoplePerGroup);
+            if (!targetSize || targetSize < 1) {
+                return setMsg({ type: 'error', text: 'Target size per group must be at least 1.' });
+            }
+            calculatedGroupCount = Math.ceil(activeMembers.length / targetSize);
+        }
+
+        if (!calculatedGroupCount || calculatedGroupCount < 1) {
+            return setMsg({ type: 'error', text: 'Number of groups must be at least 1.' });
+        }
+
+        const confirmMsg = `This will automatically redistribute all ${activeMembers.length} active members into ${calculatedGroupCount} groups fairly (Douloids, Recruits, and Visitors balanced evenly). Proceed?`;
         if (!window.confirm(confirmMsg)) return;
 
         setIsGenerating(true);
@@ -64,7 +115,7 @@ const ActivitiesTab = ({
                 .filter(Boolean);
 
             const res = await api.post('/members/auto-generate-groups', {
-                groupCount: parseInt(groupCount),
+                groupCount: calculatedGroupCount,
                 groupNames: customNames.length > 0 ? customNames : null
             });
 
@@ -423,7 +474,7 @@ const ActivitiesTab = ({
                         style={{
                             padding: '0.5rem 1.25rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
                             background: subTab === 'groups' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
-                            color: subTab === 'groups' ? '#25AAE1' : 'rgba(255,255,255,0.6)',
+                            color: subTab === 'groups' ? '#25AAE1' : 'var(--color-text-dim, rgba(255,255,255,0.6))',
                             fontSize: '0.8rem', fontWeight: 800, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.4rem'
                         }}
                     >
@@ -434,7 +485,7 @@ const ActivitiesTab = ({
                         style={{
                             padding: '0.5rem 1.25rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
                             background: subTab === 'watering' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-                            color: subTab === 'watering' ? '#10b981' : 'rgba(255,255,255,0.6)',
+                            color: subTab === 'watering' ? '#10b981' : 'var(--color-text-dim, rgba(255,255,255,0.6))',
                             fontSize: '0.8rem', fontWeight: 800, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.4rem'
                         }}
                     >
@@ -479,25 +530,62 @@ const ActivitiesTab = ({
                                 </p>
                                 <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                                     <div style={{ textAlign: 'center', padding: '0.85rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Active</div>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Active</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#25AAE1', marginTop: '0.15rem' }}>{activeMembers.length}</div>
                                     </div>
                                     <div style={{ textAlign: 'center', padding: '0.85rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned</div>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#4ade80', marginTop: '0.15rem' }}>{groupedMembers.length}</div>
                                     </div>
                                     <div style={{ textAlign: 'center', padding: '0.85rem 1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ungrouped</div>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ungrouped</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fb7185', marginTop: '0.15rem' }}>{ungroupedMembers.length}</div>
                                     </div>
                                 </div>
                             </div>
 
                             <form onSubmit={handleAutoGenerate} style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'rgba(2, 21, 37, 0.3)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
-                                <div className="form-group-premium">
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Number of Groups</label>
-                                    <input type="number" className="modern-input" min={1} max={15} value={groupCount} onChange={e => setGroupCount(e.target.value)} required style={{ width: '100%', marginTop: '0.35rem' }} />
+                                <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(0, 0, 0, 0.25)', padding: '0.25rem', borderRadius: '0.5rem', marginBottom: '0.25rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setGenMethod('count')}
+                                        style={{
+                                            flex: 1, padding: '0.4rem', borderRadius: '0.35rem', border: 'none', cursor: 'pointer',
+                                            background: genMethod === 'count' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
+                                            color: genMethod === 'count' ? '#25AAE1' : 'var(--color-text-dim, rgba(255,255,255,0.5))',
+                                            fontSize: '0.7rem', fontWeight: 800, transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        By Group Count
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setGenMethod('size')}
+                                        style={{
+                                            flex: 1, padding: '0.4rem', borderRadius: '0.35rem', border: 'none', cursor: 'pointer',
+                                            background: genMethod === 'size' ? 'rgba(37, 170, 225, 0.2)' : 'transparent',
+                                            color: genMethod === 'size' ? '#25AAE1' : 'var(--color-text-dim, rgba(255,255,255,0.5))',
+                                            fontSize: '0.7rem', fontWeight: 800, transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        By People per Group
+                                    </button>
                                 </div>
+
+                                {genMethod === 'count' ? (
+                                    <div className="form-group-premium">
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text, rgba(255,255,255,0.7))', textTransform: 'uppercase' }}>Number of Groups</label>
+                                        <input type="number" className="modern-input" min={1} max={15} value={groupCount} onChange={e => setGroupCount(e.target.value)} required style={{ width: '100%', marginTop: '0.35rem' }} />
+                                    </div>
+                                ) : (
+                                    <div className="form-group-premium">
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text, rgba(255,255,255,0.7))', textTransform: 'uppercase' }}>Target People per Group</label>
+                                        <input type="number" className="modern-input" min={1} max={100} value={peoplePerGroup} onChange={e => setPeoplePerGroup(e.target.value)} required style={{ width: '100%', marginTop: '0.35rem' }} />
+                                        <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.2rem', display: 'block' }}>
+                                            Will dynamically create approx. {peoplePerGroup > 0 ? Math.ceil(activeMembers.length / peoplePerGroup) : 0} groups
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="form-group-premium">
                                     <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Custom Group Names (Optional)</label>
                                     <textarea className="modern-input" style={{ width: '100%', minHeight: '60px', height: '60px', fontSize: '0.75rem', marginTop: '0.35rem', resize: 'none' }} placeholder="Type one name per line...&#10;e.g. Group Alpha&#10;Group Beta" value={customNamesInput} onChange={e => setCustomNamesInput(e.target.value)} />
@@ -524,7 +612,7 @@ const ActivitiesTab = ({
                                 const count = activeMembers.filter(m => m.groupName === name).length;
                                 return (
                                     <div key={name} className="glass-card-premium interactive" style={{ padding: '1.5rem', background: '#0d111b', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.1)', border: '1px solid rgba(37, 170, 225, 0.2)', display: 'flex', alignItems: 'center', justify_content: 'center', color: '#25AAE1', fontSize: '1.2rem', fontWeight: 900 }}>
+                                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.1)', border: '1px solid rgba(37, 170, 225, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25AAE1', fontSize: '1.2rem', fontWeight: 900 }}>
                                             {name.replace('Group ', '').charAt(0).toUpperCase()}
                                         </div>
                                         <div>
@@ -538,11 +626,11 @@ const ActivitiesTab = ({
                     )}
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.75rem' }}>
                     {/* Weekly Coverage Grid Heatmap */}
                     <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
                         <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Coverage Status</div>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.35rem', fontWeight: 900 }}>Weekly Watering Heatmap</h3>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-text, white)' }}>Weekly Watering Heatmap</h3>
                         
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.85rem' }}>
                             {wateringStats.map(s => {
@@ -555,17 +643,101 @@ const ActivitiesTab = ({
                                         border: '1px solid',
                                         borderColor: isCritical ? 'rgba(239, 68, 68, 0.15)' : isGood ? 'rgba(16, 185, 129, 0.15)' : 'rgba(234, 179, 8, 0.15)',
                                     }}>
-                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.day.slice(0, 3)}</div>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.day.slice(0, 3)}</div>
                                         <div style={{
                                             fontSize: '1.5rem', fontWeight: 900, marginTop: '0.35rem',
                                             color: isCritical ? '#ef4444' : isGood ? '#10b981' : '#eab308'
                                         }}>{s.count}</div>
-                                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.2rem', fontWeight: 700 }}>
+                                        <div style={{ fontSize: '0.6rem', color: 'var(--color-text-dim, rgba(255,255,255,0.3))', marginTop: '0.2rem', fontWeight: 700 }}>
                                             {isCritical ? 'CRITICAL ⚠️' : isGood ? 'STABLE ✓' : 'LOW COVER'}
                                         </div>
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+
+                    {/* Freedom Base Watering Commitment Selector Control Card */}
+                    <div className="glass-card-premium" style={{ 
+                        padding: '2rem', 
+                        background: '#0d111b', 
+                        borderLeft: '4px solid #10b981',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '1.25rem'
+                    }}>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Commitment Selector Mode</div>
+                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-text, white)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Sparkles size={20} color="#10b981" /> Freedom Selector Control
+                            </h3>
+                            <p style={{ color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.82rem', lineHeight: 1.5, margin: 0 }}>
+                                Toggle this option to allow or lock student watering day commitments. When live, students can select their watering days in the Student Portal. When closed, selection is restricted but existing assignments remain visible as read-only.
+                            </p>
+                        </div>
+
+                        <div style={{ 
+                            background: 'rgba(2, 21, 37, 0.3)', 
+                            padding: '1.25rem', 
+                            borderRadius: '1rem', 
+                            border: '1px solid rgba(255,255,255,0.04)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '1rem'
+                        }}>
+                            <div>
+                                <span style={{ 
+                                    fontSize: '0.65rem', 
+                                    fontWeight: 900, 
+                                    textTransform: 'uppercase', 
+                                    padding: '0.2rem 0.6rem', 
+                                    borderRadius: '1rem',
+                                    background: wateringActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                    color: wateringActive ? '#10b981' : '#ef4444',
+                                    border: `1px solid ${wateringActive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                    display: 'inline-block',
+                                    marginBottom: '0.4rem'
+                                }}>
+                                    {wateringActive ? '● Live / Open' : '○ Closed / Locked'}
+                                </span>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text, white)' }}>
+                                    {wateringActive ? 'Student Portal Selection Enabled' : 'Student Portal Selection Disabled'}
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleToggleWatering}
+                                disabled={isUpdatingWatering}
+                                className="btn"
+                                style={{
+                                    padding: '0.6rem 1.2rem',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 800,
+                                    borderRadius: '0.75rem',
+                                    cursor: 'pointer',
+                                    background: wateringActive 
+                                        ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%)' 
+                                        : 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.08) 100%)',
+                                    border: `1px solid ${wateringActive ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.35)'}`,
+                                    color: wateringActive ? '#f87171' : '#10b981',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                {isUpdatingWatering ? (
+                                    <RefreshCw className="animate-spin" size={14} />
+                                ) : wateringActive ? (
+                                    'Close Selector'
+                                ) : (
+                                    'Make Selector Live'
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -615,14 +787,14 @@ const ActivitiesTab = ({
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Student Name</th>
-                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Admission Number</th>
-                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
-                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Category</th>
+                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Student Name</th>
+                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Admission Number</th>
+                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
+                                <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Category</th>
                                 {subTab === 'groups' ? (
-                                    <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Assigned Fellowship Group</th>
+                                    <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Assigned Fellowship Group</th>
                                 ) : (
-                                    <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Watering Commitment</th>
+                                    <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Watering Commitment</th>
                                 )}
                             </tr>
                         </thead>
@@ -638,9 +810,9 @@ const ActivitiesTab = ({
                                     const tc = typeColors[m.memberType || 'Visitor'];
                                     return (
                                         <tr key={m._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background-color 0.2s' }} className="table-row-hover">
-                                            <td style={{ padding: '1rem', fontWeight: 800, color: 'white' }}>{m.name}</td>
+                                            <td style={{ padding: '1rem', fontWeight: 800, color: 'var(--color-text, white)' }}>{m.name}</td>
                                             <td style={{ padding: '1rem', fontFamily: 'monospace', fontWeight: 700, color: '#94a3b8' }}>{m.studentRegNo}</td>
-                                            <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{m.campus}</td>
+                                            <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim, rgba(255,255,255,0.6))', fontWeight: 600 }}>{m.campus}</td>
                                             <td style={{ padding: '1rem' }}>
                                                 <span style={{
                                                     padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.62rem', fontWeight: 900,
@@ -656,7 +828,7 @@ const ActivitiesTab = ({
                                                                 width: '100%', height: '34px', fontSize: '0.78rem', fontWeight: 700,
                                                                 background: m.groupName ? 'rgba(37,170,225,0.05)' : 'rgba(255,255,255,0.02)',
                                                                 borderColor: m.groupName ? 'rgba(37,170,225,0.25)' : 'rgba(255,255,255,0.08)',
-                                                                color: m.groupName ? '#25AAE1' : 'white',
+                                                                color: m.groupName ? '#25AAE1' : 'var(--color-text, white)',
                                                                 cursor: 'pointer', padding: '0 0.5rem'
                                                             }}
                                                             value={m.groupName || ''}
