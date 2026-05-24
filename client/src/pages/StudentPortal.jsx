@@ -734,6 +734,9 @@ const StudentPortal = () => {
     /* Tab nav handler */
     const goTab = (id) => {
         if (systemStatus.recoveryMode && id !== 'overview') { setComingSoon('Data Synchronization'); return; }
+        if (id === 'finance') {
+            showToast("Finance module is updating. Coming soon! 🚀", "info");
+        }
         setActiveTab(id);
         if (window.innerWidth <= 768) {
             setTimeout(() => {
@@ -830,7 +833,7 @@ const StudentPortal = () => {
                         </button>
                     </div>
 
-                    {/* Greeting + check-in */}
+                    {/* Greeting */}
                     <div style={{ marginBottom: '1.75rem' }}>
                         <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>{getTimeGreeting()} ✦</div>
                         <h1 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.03em', margin: '0 0 0.25rem' }}>
@@ -839,8 +842,6 @@ const StudentPortal = () => {
                         <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
                             {data.campus} · <span style={{ color: tc.color, fontWeight: 800 }}>{data.memberType}</span>
                         </p>
-
-
                     </div>
 
                     {/* Recovery mode banner */}
@@ -935,7 +936,7 @@ const StudentPortal = () => {
                                             <span style={{ fontSize: '1.25rem' }}>{isWatering ? '🌿' : isFinance ? '💳' : '⚠️'}</span>
                                         </div>
                                         <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{alert.message}</p>
-                                        <button onClick={() => { if (alert.action === 'ENROLL') handleEnroll(); if (alert.action === 'SCAN_QR') handleLogActivity('Tree Watering'); if (alert.action === 'PAY') setActiveTab('finance'); }}
+                                        <button onClick={() => { if (alert.action === 'ENROLL') handleEnroll(); if (alert.action === 'SCAN_QR') handleLogActivity('Tree Watering'); if (alert.action === 'PAY') goTab('finance'); }}
                                             style={{ width: '100%', padding: '0.6rem', background: `${ac}12`, border: `1px solid ${ac}40`, color: ac, borderRadius: '0.6rem', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s' }}
                                             onMouseEnter={e => { e.currentTarget.style.background = `${ac}22`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                                             onMouseLeave={e => { e.currentTarget.style.background = `${ac}12`; e.currentTarget.style.transform = 'translateY(0)'; }}>
@@ -956,14 +957,50 @@ const StudentPortal = () => {
                         {activeTab === 'overview' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                 {/* Quick stat cards row */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(250,204,21,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(250,204,21,0.18)' }}>
-                                        <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Standing Tier</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                    {/* Standing Tier */}
+                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(250,204,21,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(250,204,21,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.45rem' }}>Standing Tier</div>
                                         <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#facc15', letterSpacing: '-0.03em' }}>{data.stats.totalAttended > 5 ? '🥇 GOLD' : '🥈 SILVER'}</div>
                                     </div>
-                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(37,170,225,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(37,170,225,0.18)' }}>
-                                        <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Total Loyalty</div>
+
+                                    {/* Total Loyalty */}
+                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(37,170,225,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(37,170,225,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.45rem' }}>Total Loyalty</div>
                                         <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '-0.03em' }}>{data.stats.totalAttended}<span style={{ fontSize: '0.9rem', opacity: 0.5 }}> / {data.stats.totalMeetings}</span></div>
+                                    </div>
+
+                                    {/* Training Track */}
+                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(168,85,247,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Training Track</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7', letterSpacing: '-0.03em' }}>{systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)} sessions</div>
+                                        </div>
+                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.4, marginTop: '0.4rem' }}>
+                                            Attend training sessions to achieve leadership accreditation.
+                                        </div>
+                                    </div>
+
+                                    {/* Monthly Contribution */}
+                                    <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(245,158,11,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                        <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase' }}>Monthly Contribution</div>
+                                                <span style={{ fontSize: '0.9rem' }}>💳</span>
+                                            </div>
+                                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
+                                                May Pending
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.4rem' }}>
+                                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.4 }}>
+                                                Your contribution for May is currently pending.
+                                            </div>
+                                            <button onClick={() => goTab('finance')} style={{ alignSelf: 'flex-start', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '0.25rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                Pay Contribution <ArrowRight size={10} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
