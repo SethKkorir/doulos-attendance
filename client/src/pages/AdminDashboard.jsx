@@ -21,6 +21,7 @@ import MembersTab from '../components/dashboard/MembersTab';
 import SystemSettingsTab from '../components/dashboard/SystemSettingsTab';
 import SystemObservabilityTab from '../components/dashboard/SystemObservabilityTab';
 import ActivitiesTab from '../components/dashboard/ActivitiesTab';
+import ReportsTab from '../components/dashboard/ReportsTab';
 
 const AdminDashboard = () => {
     const location = useLocation();
@@ -594,13 +595,14 @@ const AdminDashboard = () => {
                             api={api}
                         />
                     ) : activeTab === 'reports' ? (
-                        <ReportsView
+                        <ReportsTab
                             meetings={meetings}
                             members={members}
-                            onViewAttendance={null}
-                            onDownload={null}
                             onDownloadCSV={downloadCSV}
                             onDownloadCumulativeCSV={downloadCumulativeCSV}
+                            isGuest={isGuest}
+                            api={api}
+                            setMsg={setMsg}
                         />
                     ) : activeTab === 'observability' ? (
                         <SystemObservabilityTab
@@ -774,204 +776,6 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, currentSeme
                     <ShieldAlert size={40} style={{ color: '#f87171', opacity: 0.3 }} />
                     <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Access Restricted</h3>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', maxWidth: '400px', lineHeight: 1.5 }}>Only Developers and SuperAdmins are authorized to manage administrative system accounts.</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const ReportsView = ({ meetings, members, onDownloadCSV, onDownloadCumulativeCSV }) => {
-    const [reportType, setReportType] = useState('summary'); 
-    const [filterSemester, setFilterSemester] = useState('Current');
-    const [filterCampus, setFilterCampus] = useState('All');
-
-    const getSemester = (date) => {
-        const d = new Date(date);
-        const month = d.getMonth(); 
-        const year = d.getFullYear();
-        if (month <= 4) return `Jan Semester ${year}`;
-        if (month <= 7) return `May Semester ${year}`;
-        return `Sept Semester ${year}`;
-    };
-
-    const currentSemester = getSemester(new Date());
-    const semesters = Array.from(new Set(meetings.map(m => getSemester(m.date))));
-    if (!semesters.includes(currentSemester)) semesters.push(currentSemester);
-
-    const filteredMeetings = meetings.filter(m => {
-        const semesterMatch = filterSemester === 'All' ||
-            (filterSemester === 'Current' ? getSemester(m.date) === currentSemester : getSemester(m.date) === filterSemester);
-        const campusMatch = filterCampus === 'All' || m.campus === filterCampus;
-        return semesterMatch && campusMatch;
-    });
-
-    const totalAttendance = filteredMeetings.reduce((acc, m) => acc + (m.attendees || 0), 0);
-    const averageAttendance = filteredMeetings.length > 0 ? (totalAttendance / filteredMeetings.length).toFixed(1) : 0;
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s ease-out' }}>
-            
-            {/* Header Card */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                            <FileSpreadsheet size={28} color="#25AAE1" />
-                        </div>
-                        <div>
-                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>Reports & Analytics</h2>
-                            <p style={{ margin: 0, color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem' }}>Compile, view, and export cumulative attendance statistics</p>
-                        </div>
-                    </div>
-                    
-                    {/* Filters dropdowns */}
-                    <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,0,0,0.2)', padding: '0.35rem', borderRadius: '0.75rem' }}>
-                        <select
-                            className="modern-input"
-                            style={{ padding: '0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.03)', fontSize: '0.8rem', fontWeight: 700 }}
-                            value={filterSemester}
-                            onChange={(e) => setFilterSemester(e.target.value)}
-                        >
-                            <option value="Current">This Semester</option>
-                            <option value="All">All Time</option>
-                            {semesters.filter(s => s !== currentSemester).map(s => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
-                        <select
-                            className="modern-input"
-                            style={{ padding: '0.5rem 1rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.03)', fontSize: '0.8rem', fontWeight: 700 }}
-                            value={filterCampus}
-                            onChange={(e) => setFilterCampus(e.target.value)}
-                        >
-                            <option value="All">All Campuses</option>
-                            <option value="Athi River">Athi River</option>
-                            <option value="Valley Road">Valley Road</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* Sub Tab Controls */}
-                <div style={{ display: 'flex', gap: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
-                    <button
-                        onClick={() => setReportType('summary')}
-                        style={{
-                            padding: '0.5rem 1.25rem',
-                            background: reportType === 'summary' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
-                            color: reportType === 'summary' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
-                            border: reportType === 'summary' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
-                            fontSize: '0.78rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s'
-                        }}
-                    >
-                        <FileText size={15} /> Sessions Summary
-                    </button>
-                    <button
-                        onClick={() => setReportType('cumulative')}
-                        style={{
-                            padding: '0.5rem 1.25rem',
-                            background: reportType === 'cumulative' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
-                            color: reportType === 'cumulative' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
-                            border: reportType === 'cumulative' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
-                            fontSize: '0.78rem', fontWeight: 800, borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s'
-                        }}
-                    >
-                        <Users size={15} /> Cumulative Rosters
-                    </button>
-                </div>
-            </div>
-
-            {reportType === 'summary' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-                    
-                    {/* Stat Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#0d111b' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>TOTAL ATTENDED</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>{totalAttendance}</div>
-                        </div>
-                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #a78bfa', background: '#0d111b' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>SESSIONS COUNT</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>{filteredMeetings.length}</div>
-                        </div>
-                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#0d111b' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>AVERAGE PARTICIPATION</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80', marginTop: '0.5rem' }}>{averageAttendance}</div>
-                        </div>
-                    </div>
-
-                    {/* Table View */}
-                    <div className="glass-card-premium" style={{ padding: '1.5rem', background: '#0d111b' }}>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Date</th>
-                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Session Title</th>
-                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
-                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Attendance</th>
-                                        <th style={{ padding: '0.85rem 1rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredMeetings.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
-                                                No reports available for the specified range.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filteredMeetings.map(m => (
-                                            <tr key={m._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                            >
-                                                <td style={{ padding: '1rem', fontWeight: 700, fontSize: '0.85rem' }}>{new Date(m.date).toLocaleDateString()}</td>
-                                                <td style={{ padding: '1rem', fontSize: '0.88rem', fontWeight: 600 }}>{m.name}</td>
-                                                <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>{m.campus}</td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <span style={{ color: '#25AAE1', fontWeight: 900, background: 'rgba(37,170,225,0.1)', border: '1px solid rgba(37,170,225,0.15)', padding: '0.25rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.8rem' }}>{m.attendees || 0}</span>
-                                                </td>
-                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                    <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: 'rgba(255,255,255,0.03)', color: 'white', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', fontWeight: 800, cursor: 'pointer' }}>
-                                                        Download CSV
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="glass-card-premium" style={{ background: '#0d111b', padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-                    <div style={{ maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.15)', borderRadius: '50%', color: '#4ade80' }}>
-                            <FileSpreadsheet size={40} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>Cumulative Term Report</h3>
-                            <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginTop: '0.5rem' }}>
-                                Compile all meeting attendance logs for the selected filters into a unified spreadsheet. Ideal for calculating student growth, term-end points, and honors.
-                            </p>
-                        </div>
-                        <button
-                            className="btn btn-primary"
-                            style={{
-                                background: 'linear-gradient(135deg, #4ade80 0%, #15803d 100%) !important',
-                                color: 'white', fontWeight: 800, padding: '0.85rem 2rem', width: '100%', borderRadius: '0.6rem',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                                border: '1px solid rgba(74, 222, 128, 0.3) !important',
-                                boxShadow: '0 8px 25px rgba(74, 222, 128, 0.15) !important'
-                            }}
-                            onClick={() => {
-                                onDownloadCumulativeCSV(members, filterSemester === 'Current' ? currentSemester : filterSemester);
-                            }}
-                        >
-                            <Download size={16} /> Compile & Export Cumulative Report
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
