@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
 import {
@@ -7,7 +7,7 @@ import {
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
     GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star,
-    Activity
+    Activity, LogOut
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
@@ -26,6 +26,9 @@ import ReportsTab from '../components/dashboard/ReportsTab';
 const AdminDashboard = () => {
     const location = useLocation();
     const isGuest = location.state?.isGuest || localStorage.getItem('isGuest') === 'true';
+
+    const mainContentRef = useRef(null);
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
 
     useEffect(() => {
         if (location.state?.isGuest) {
@@ -49,6 +52,12 @@ const AdminDashboard = () => {
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
     const [currentSemester, setCurrentSemester] = useState('MAY-AUG 2026');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+    useEffect(() => {
+        if (mainContentRef.current) {
+            mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         if (['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) {
@@ -493,7 +502,7 @@ const AdminDashboard = () => {
                 </aside>
 
                 {/* Main panel */}
-                <main className="main-content" style={{ flex: 1, padding: '2rem 3rem', overflowY: 'auto' }}>
+                <main className="main-content" ref={mainContentRef} style={{ flex: 1, padding: '2rem 3rem', overflowY: 'auto' }}>
                     {/* Header Controls */}
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>
@@ -657,6 +666,239 @@ const AdminDashboard = () => {
                                 {editingAdmin._id === 'NEW' ? 'Register Account' : 'Save Profiles'}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Premium Mobile Bottom Styles */}
+            <style>{`
+                @media (max-width: 768px) {
+                    .sidebar {
+                        display: none !important;
+                    }
+                    .dashboard-layout {
+                        flex-direction: column !important;
+                        min-height: 100vh !important;
+                    }
+                    .main-content {
+                        padding: 1.25rem 1rem 6.5rem !important;
+                        min-width: 0 !important;
+                        overflow-y: auto !important;
+                    }
+                    header {
+                        flex-direction: column !important;
+                        align-items: flex-start !important;
+                        gap: 0.75rem !important;
+                        margin-bottom: 1.5rem !important;
+                    }
+                    .admin-mobile-bottom-nav {
+                        display: flex !important;
+                        position: fixed !important;
+                        bottom: 0 !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        background: #090c14 !important;
+                        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+                        padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)) !important;
+                        justify-content: space-around !important;
+                        align-items: center !important;
+                        z-index: 1000 !important;
+                        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5) !important;
+                        backdrop-filter: blur(20px) !important;
+                        -webkit-backdrop-filter: blur(20px) !important;
+                    }
+                    .admin-mobile-tab-btn {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: center !important;
+                        gap: 0.25rem !important;
+                        background: none !important;
+                        border: none !important;
+                        color: rgba(255, 255, 255, 0.4) !important;
+                        cursor: pointer !important;
+                        font-size: 0.65rem !important;
+                        font-weight: 800 !important;
+                        letter-spacing: 0.5px !important;
+                        text-transform: uppercase !important;
+                        padding: 0.4rem 0.6rem !important;
+                        border-radius: 0.5rem !important;
+                        transition: all 0.2s !important;
+                        flex: 1 !important;
+                        font-family: 'Outfit', sans-serif !important;
+                    }
+                    .admin-mobile-tab-btn.active {
+                        color: #25AAE1 !important;
+                    }
+                    .admin-mobile-tab-btn:active {
+                        transform: scale(0.95) !important;
+                    }
+                }
+                @media (min-width: 769px) {
+                    .admin-mobile-bottom-nav {
+                        display: none !important;
+                    }
+                }
+            `}</style>
+
+            {/* Bottom Mobile Navbar */}
+            <div className="admin-mobile-bottom-nav">
+                <button 
+                    className={`admin-mobile-tab-btn ${activeTab === 'meetings' ? 'active' : ''}`} 
+                    onClick={() => {
+                        setActiveTab('meetings');
+                        setShowMoreMenu(false);
+                    }}
+                >
+                    <LayoutDashboard size={20} />
+                    <span>Meetings</span>
+                </button>
+                <button 
+                    className={`admin-mobile-tab-btn ${activeTab === 'members' ? 'active' : ''}`} 
+                    onClick={() => {
+                        setActiveTab('members');
+                        setShowMoreMenu(false);
+                    }}
+                >
+                    <Users size={20} />
+                    <span>Members</span>
+                </button>
+                <button 
+                    className={`admin-mobile-tab-btn ${activeTab === 'reports' ? 'active' : ''}`} 
+                    onClick={() => {
+                        setActiveTab('reports');
+                        setShowMoreMenu(false);
+                    }}
+                >
+                    <BarChart3 size={20} />
+                    <span>Reports</span>
+                </button>
+                <button 
+                    className={`admin-mobile-tab-btn ${['meetings', 'members', 'reports'].includes(activeTab) ? '' : 'active'}`} 
+                    onClick={() => setShowMoreMenu(true)}
+                >
+                    <SettingsIcon size={20} />
+                    <span>More</span>
+                </button>
+            </div>
+
+            {/* "More" Bottom Sheet Overlay Drawer */}
+            {showMoreMenu && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(5, 7, 12, 0.85)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        zIndex: 99999,
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'center',
+                        animation: 'fadeIn 0.25s ease-out'
+                    }}
+                    onClick={() => setShowMoreMenu(false)}
+                >
+                    <div 
+                        style={{
+                            width: '100%',
+                            maxWidth: '500px',
+                            background: '#0d111b',
+                            borderTopLeftRadius: '2rem',
+                            borderTopRightRadius: '2rem',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            borderBottom: 'none',
+                            padding: '2rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom))',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1.5rem',
+                            boxShadow: '0 -15px 40px rgba(0,0,0,0.6)',
+                            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1.5px', textTransform: 'uppercase' }}>G9 Control Panel</span>
+                                <h3 style={{ margin: '0.2rem 0 0', fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>More Management Tools</h3>
+                            </div>
+                            <button 
+                                onClick={() => setShowMoreMenu(false)}
+                                style={{
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    padding: '0.5rem',
+                                    borderRadius: '50%',
+                                    cursor: 'pointer',
+                                    display: 'flex'
+                                }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem', margin: '0.25rem 0' }}>
+                            {[
+                                { id: 'trainings', label: 'Trainings', icon: GraduationCap },
+                                { id: 'finance', label: 'Finance', icon: Wallet },
+                                { id: 'events', label: 'Events', icon: Calendar },
+                                { id: 'activities', label: 'Activities', icon: Activity },
+                                { id: 'feedback', label: 'Feedback', icon: MessageCircle },
+                                { id: 'admins', label: 'Admins', icon: ShieldAlert },
+                                { id: 'system', label: 'Settings', icon: SettingsIcon },
+                                ...( ['superadmin', 'developer'].includes(userRole?.toLowerCase()) ? [{ id: 'observability', label: 'Observe', icon: Activity }] : [] )
+                            ].map(item => {
+                                const isActive = activeTab === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => {
+                                            setActiveTab(item.id);
+                                            setShowMoreMenu(false);
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.8rem 0.5rem',
+                                            borderRadius: '1rem',
+                                            background: isActive ? 'rgba(37,170,225,0.12)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${isActive ? 'rgba(37,170,225,0.3)' : 'rgba(255,255,255,0.04)'}`,
+                                            color: isActive ? '#25AAE1' : '#94a3b8',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            fontFamily: "'Outfit', sans-serif"
+                                        }}
+                                    >
+                                        <item.icon size={20} style={{ color: isActive ? '#25AAE1' : '#64748b' }} />
+                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        
+                        <button 
+                            onClick={handleLogout}
+                            style={{
+                                width: '100%',
+                                padding: '0.85rem',
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                borderRadius: '0.85rem',
+                                color: '#f87171',
+                                fontSize: '0.82rem',
+                                fontWeight: 900,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                letterSpacing: '1px'
+                            }}
+                        >
+                            <LogOut size={15} /> SIGN OUT SYSTEM
+                        </button>
                     </div>
                 </div>
             )}
