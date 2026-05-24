@@ -957,13 +957,6 @@ const MeetingsTab = ({
                 </div>
             )}
 
-            {filteredHistory.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No past meetings found in this period.</div>
-            ) : (
-                <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                    {filteredHistory.map(m => renderMeetingCard(m))}
-                </div>
-            )}
 
             {/* Insights Modal */}
             {insightMeeting && (

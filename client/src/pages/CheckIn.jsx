@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star, Clock, Lock } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -8,6 +8,7 @@ import ValentineRain from '../components/ValentineRain';
 
 const CheckIn = () => {
     const params = useParams();
+    const navigate = useNavigate();
     const meetingCode = (params.meetingCode?.replace(/\/$/, '') || '').toLowerCase();
     const isTestMode = new URLSearchParams(window.location.search).get('test') === '1';
     const [meeting, setMeeting] = useState(null);
@@ -43,6 +44,24 @@ const CheckIn = () => {
         }
         return () => clearTimeout(timer);
     }, [msg]);
+
+    const [redirectCountdown, setRedirectCountdown] = useState(3);
+
+    useEffect(() => {
+        if (status === 'success') {
+            const interval = setInterval(() => {
+                setRedirectCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(interval);
+                        navigate('/portal');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [status, navigate]);
 
     const getPersistentDeviceId = () => {
         let deviceId = localStorage.getItem('doulos_device_id');
@@ -296,6 +315,7 @@ const CheckIn = () => {
                 registrationData: isNewMember ? registrationData : null
             });
             setStatus('success');
+            setIsNewMember(false);
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
             localStorage.setItem(`doulos_attendance_status_${meetingCode}`, 'success');
             // Show training celebration banner for training sessions
@@ -319,7 +339,7 @@ const CheckIn = () => {
                         reason: errorMsg,
                         timestamp: Date.now()
                     }));
-                    setTimeout(() => window.location.href = '/portal', 4000);
+                    setTimeout(() => navigate('/portal'), 4000);
                 }
                 setStatus('locked');
                 setMsg(errorMsg);
@@ -464,7 +484,7 @@ const CheckIn = () => {
 
                         <button
                             className="btn"
-                            onClick={() => window.location.href = '/portal'}
+                            onClick={() => navigate('/portal')}
                             style={{
                                 width: '100%',
                                 padding: '1rem',
@@ -729,7 +749,7 @@ const CheckIn = () => {
                                         )}
 
                                         <button
-                                            onClick={() => window.location.href = '/portal'}
+                                            onClick={() => navigate('/portal')}
                                             style={{
                                                 marginTop: '1.5rem',
                                                 background: 'transparent',
@@ -830,15 +850,37 @@ const CheckIn = () => {
                             <CheckCircle size={64} color="#4ade80" />
                         </div>
                         <h2 style={{ color: '#4ade80', marginBottom: '1rem', fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.05em' }}>CHECK-IN SUCCESSFUL</h2>
-                        <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', fontSize: '1.1rem' }}>
+                        <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', marginBottom: '2.5rem', fontSize: '1.1rem' }}>
                             Your attendance for <strong>{meeting?.name}</strong> has been successfully recorded.
                         </p>
+
+                        <div style={{
+                            margin: '0 auto 2.5rem',
+                            maxWidth: '280px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.75rem'
+                        }}>
+                            <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>
+                                Redirecting to your Portal in {redirectCountdown}s...
+                            </span>
+                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{
+                                    width: `${(redirectCountdown / 3) * 100}%`,
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #4ade80 0%, #22c55e 100%)',
+                                    borderRadius: '2px',
+                                    transition: 'width 1s linear'
+                                }}></div>
+                            </div>
+                        </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <button
                                 className="btn btn-primary"
                                 style={{ width: '100%', height: '60px', borderRadius: '1rem', fontSize: '1rem', fontWeight: 900 }}
-                                onClick={() => window.location.href = '/portal'}
+                                onClick={() => navigate('/portal')}
                             >
                                 GO TO DOULOS PORTAL
                             </button>
@@ -896,7 +938,7 @@ const CheckIn = () => {
 
                         <button
                             className="btn btn-primary"
-                            onClick={() => window.location.href = '/portal'}
+                            onClick={() => navigate('/portal')}
                             style={{
                                 width: '100%',
                                 padding: '1rem',
