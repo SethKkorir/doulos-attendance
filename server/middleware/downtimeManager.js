@@ -16,8 +16,11 @@ class DowntimeManager {
     }
 
     init() {
-        // Start periodic health check
-        setInterval(() => this.performHealthCheck(), this.checkInterval);
+        // Only run periodic background health check if not in serverless / production
+        const isServerless = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+        if (!isServerless) {
+            setInterval(() => this.performHealthCheck(), this.checkInterval);
+        }
         
         // Listen for connection events for immediate recovery
         mongoose.connection.on('connected', () => {
@@ -30,16 +33,14 @@ class DowntimeManager {
             this.status.isSystemCrashed = true;
             this.status.errors = [`Database error: ${err.message}`];
         });
-
-        // Initial check
-        this.performHealthCheck();
     }
 
     async performHealthCheck() {
         const errors = [];
         try {
-            // Check MongoDB Connection
-            if (mongoose.connection.readyState !== 1) {
+            // Check MongoDB Connection (State 1 = connected, 2 = connecting)
+            const isConnectingOrConnected = mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2;
+            if (!isConnectingOrConnected) {
                 errors.push('Database connection is not active');
             } else {
                 // If connected, fetch dynamic settings
@@ -64,7 +65,8 @@ class DowntimeManager {
             console.error(`Health check logic error: ${err.message}`);
         }
 
-        this.status.isSystemCrashed = errors.length > 0;
+        const isConnectingOrConnected = mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2;
+        this.status.isSystemCrashed = errors.length > 0 || !isConnectingOrConnected;
         this.status.errors = errors;
         this.status.lastChecked = new Date();
 
@@ -100,9 +102,29 @@ class DowntimeManager {
 
             // Quick Dependency Check (Fast property check)
             const isDbConnected = mongoose.connection.readyState === 1;
-            if (!isDbConnected && !this.status.isSystemCrashed) {
+            const isConnecting = mongoose.connection.readyState === 2;
+
+            if (isDbConnected) {
+                // Automatically clear system crashed status if database is connected
+                this.status.isSystemCrashed = false;
+                this.status.errors = [];
+            } else if (!isConnecting) {
+                // If not connected and not connecting, mark as system crashed
                 this.status.isSystemCrashed = true;
-                this.status.errors = ['Immediate detection: Database disconnected'];
+                if (this.status.errors.length === 0) {
+                    this.status.errors = ['Immediate detection: Database disconnected'];
+                }
+            }
+
+            // Dynamically refresh settings if database is connected and cache is expired
+            if (isDbConnected) {
+                const now = new Date();
+                const cacheDuration = 15000; // 15 seconds cache for settings check
+                if (!this.status.lastChecked || (now - this.status.lastChecked > cacheDuration)) {
+                    // Update lastChecked immediately to prevent concurrent requests from triggering checks
+                    this.status.lastChecked = now;
+                    this.performHealthCheck().catch(err => console.error('[HEALTH CHECK] Dynamic check error:', err));
+                }
             }
 
             // Manual Maintenance
