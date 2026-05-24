@@ -329,6 +329,7 @@ const StudentPortal = () => {
     const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'info' }
     const [selectedWateringDays, setSelectedWateringDays] = useState([]);
     const [isSavingWatering, setIsSavingWatering] = useState(false);
+    const [isEditingWatering, setIsEditingWatering] = useState(false);
     const navigate = useNavigate();
     const tabContentRef = useRef(null);
 
@@ -476,6 +477,7 @@ const StudentPortal = () => {
                 ...prev,
                 wateringDays: res.data.wateringDays
             }));
+            setIsEditingWatering(false);
             showToast("Watering commitments saved successfully! 🌿", "success");
         } catch (err) {
             showToast(err.response?.data?.message || "Failed to update watering commitments.", "error");
@@ -1123,66 +1125,116 @@ const StudentPortal = () => {
                                         </div>
 
                                         {data.wateringSelectorActive ? (
-                                            /* Interactive Selector Form */
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s' }}>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                                                        const isSelected = selectedWateringDays.includes(day);
-                                                        return (
-                                                            <button
-                                                                key={day}
-                                                                onClick={() => handleToggleDay(day)}
-                                                                style={{
-                                                                    padding: '0.5rem 0.85rem',
-                                                                    borderRadius: '0.6rem',
-                                                                    border: '1px solid',
-                                                                    borderColor: isSelected ? '#10b981' : 'rgba(255,255,255,0.06)',
-                                                                    background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.3)',
-                                                                    color: isSelected ? '#10b981' : 'rgba(255,255,255,0.6)',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: 800,
-                                                                    cursor: 'pointer',
-                                                                    transition: 'all 0.15s ease',
-                                                                }}
-                                                            >
-                                                                {day.slice(0, 3)}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
+                                            /* Selector Active: Can be in Edit mode or Display mode */
+                                            (!data.wateringDays || data.wateringDays.length === 0 || isEditingWatering) ? (
+                                                /* Interactive Selector Form */
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s' }}>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                                                            const isSelected = selectedWateringDays.includes(day);
+                                                            return (
+                                                                <button
+                                                                    key={day}
+                                                                    onClick={() => handleToggleDay(day)}
+                                                                    style={{
+                                                                        padding: '0.5rem 0.85rem',
+                                                                        borderRadius: '0.6rem',
+                                                                        border: '1px solid',
+                                                                        borderColor: isSelected ? '#10b981' : 'rgba(255,255,255,0.06)',
+                                                                        background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.3)',
+                                                                        color: isSelected ? '#10b981' : 'rgba(255,255,255,0.6)',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: 800,
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.15s ease',
+                                                                    }}
+                                                                >
+                                                                    {day.slice(0, 3)}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
 
-                                                <button
-                                                    onClick={handleSaveWateringDays}
-                                                    disabled={isSavingWatering}
-                                                    className="sp-checkin-btn"
-                                                    style={{
-                                                        width: '100%',
-                                                        background: 'linear-gradient(135deg, #10b981 0%, #064e3b 100%)',
-                                                        borderColor: 'rgba(16,185,129,0.3)',
-                                                        fontSize: '0.78rem',
-                                                        fontWeight: 900,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.4rem',
-                                                        boxShadow: 'none',
-                                                    }}
-                                                >
-                                                    {isSavingWatering ? (
-                                                        <><div className="loading-spinner-small" style={{ width: '13px', height: '13px' }} /> Saving Commitments...</>
-                                                    ) : (
-                                                        'Save Commitments 🌿'
-                                                    )}
-                                                </button>
-                                            </div>
+                                                    <button
+                                                        onClick={handleSaveWateringDays}
+                                                        disabled={isSavingWatering}
+                                                        className="sp-checkin-btn"
+                                                        style={{
+                                                            width: '100%',
+                                                            background: 'linear-gradient(135deg, #10b981 0%, #064e3b 100%)',
+                                                            borderColor: 'rgba(16,185,129,0.3)',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 900,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '0.4rem',
+                                                            boxShadow: 'none',
+                                                        }}
+                                                    >
+                                                        {isSavingWatering ? (
+                                                            <><div className="loading-spinner-small" style={{ width: '13px', height: '13px' }} /> Saving Commitments...</>
+                                                        ) : (
+                                                            'Save Commitments 🌿'
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                /* Show beautiful Days Display Card with option to Edit */
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+                                                    <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '0.75rem', padding: '1.25rem' }}>
+                                                        <div style={{ fontSize: '0.62rem', fontWeight: 950, color: '#10b981', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            <span>🟢 YOUR ACTIVE COMMITMENTS</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                                                            {data.wateringDays.map(day => (
+                                                                <span key={day} style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                                                                    {day}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', margin: '0.75rem 0 0 0', lineHeight: 1.4 }}>
+                                                            Your commitment is registered on the weekly heatmap. You can modify these days at any time while the schedule window is open.
+                                                        </p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedWateringDays(data.wateringDays || []);
+                                                            setIsEditingWatering(true);
+                                                        }}
+                                                        className="btn"
+                                                        style={{ 
+                                                            padding: '0.6rem 1rem', 
+                                                            fontSize: '0.75rem', 
+                                                            fontWeight: 800, 
+                                                            background: 'rgba(255,255,255,0.03)', 
+                                                            border: '1px solid rgba(255,255,255,0.08)', 
+                                                            color: 'white',
+                                                            borderRadius: '0.6rem',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '0.3rem',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        Modify Days ✏️
+                                                    </button>
+                                                </div>
+                                            )
                                         ) : (
                                             /* Static Commitments Info */
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
                                                 {data.wateringDays?.length > 0 ? (
                                                     <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '0.75rem', padding: '1rem' }}>
                                                         <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>YOUR SCHEDULE</div>
-                                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>
-                                                            {data.wateringDays.join(', ')}
+                                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white', display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>
+                                                            {data.wateringDays.map(day => (
+                                                                <span key={day} style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)', padding: '0.15rem 0.45rem', borderRadius: '0.35rem', fontSize: '0.7rem' }}>
+                                                                    {day}
+                                                                </span>
+                                                            ))}
                                                         </div>
                                                         <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', margin: '0.5rem 0 0 0', lineHeight: 1.35 }}>
                                                             The watering selector is currently closed. If you need to make changes, please contact your G9 leader.
