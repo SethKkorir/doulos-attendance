@@ -339,13 +339,29 @@ export const getStudentPortalData = async (req, res) => {
             });
         }
 
-        // 2. Get student's full attendance history
-        const attendanceRecords = await Attendance.find({ studentRegNo }).sort({ timestamp: -1 });
+        // 2. Fetch the active semester setting
+        const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
+        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
 
-        // 3. Get all meetings of the student's default campus
-        const campusMeetings = await Meeting.find({ campus: member.campus }).sort({ date: -1 });
+        // 3. Find IDs of all meetings and trainings within the current semester
+        const semMeetings = await Meeting.find({ semester: currentSemester }, '_id');
+        const semMeetingIds = semMeetings.map(m => m._id);
+        const semTrainings = await Training.find({ semester: currentSemester }, '_id');
+        const semTrainingIds = semTrainings.map(t => t._id);
 
-        // 4. Helper to get start of week (Sunday)
+        // 4. Query student's attendance records matching only this semester's sessions
+        const attendanceRecords = await Attendance.find({
+            studentRegNo,
+            $or: [
+                { meeting: { $in: semMeetingIds } },
+                { trainingId: { $in: semTrainingIds } }
+            ]
+        }).sort({ timestamp: -1 });
+
+        // 5. Get all meetings of the student's default campus for the current semester
+        const campusMeetings = await Meeting.find({ campus: member.campus, semester: currentSemester }).sort({ date: -1 });
+
+        // 6. Helper to get start of week (Sunday)
         const getWeekStart = (date) => {
             const d = new Date(date);
             const day = d.getDay();
@@ -355,7 +371,7 @@ export const getStudentPortalData = async (req, res) => {
             return start.getTime();
         };
 
-        // 5. Group by week (Mainly for Weekly Meetings)
+        // 7. Group by week (Mainly for Weekly Meetings)
         const weeklyData = new Map();
 
         // Initialize with campus meetings as 'ABSENT'
@@ -432,11 +448,10 @@ export const getStudentPortalData = async (req, res) => {
         const totalTrainingAttended = attendanceRecords.filter(a => a.trainingId).length;
         const totalValid = physicalAttended + exemptedCount;
 
-        // 6. Doulos Hours & Activity Check
-        const activityLogs = await ActivityLog.find({ studentRegNo }).sort({ timestamp: -1 }).limit(10);
+        // 8. Doulos Hours & Activity Check (filtered by current semester)
+        const activityLogs = await ActivityLog.find({ studentRegNo, semester: currentSemester }).sort({ timestamp: -1 }).limit(10);
 
-        // 7. Finance Check (Mock logic for now - check if paid for current month)
-        // In a real app, you'd check a Payments collection
+        // 9. Finance Check (Mock logic for now - check if paid for current month)
         const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
         const hasPaidThisMonth = await mongoose.model('Payment').findOne({
             studentRegNo,
@@ -444,12 +459,10 @@ export const getStudentPortalData = async (req, res) => {
             status: 'approved'
         });
 
-        // 8. Reminder Logic
+        // 10. Reminder Logic
         const alerts = [];
 
         // Semester Alert Settings Fetch
-        const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
-        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
         const themeSetting = await mongoose.model('Settings').findOne({ key: 'semester_theme' });
         const verseSetting = await mongoose.model('Settings').findOne({ key: 'semester_verse' });
         const semesterTheme = themeSetting ? themeSetting.value : '';

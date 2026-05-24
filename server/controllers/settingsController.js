@@ -38,6 +38,53 @@ export const rolloverSemester = async (req, res) => {
             return res.status(400).json({ message: 'New semester name is required' });
         }
 
+        // --- ATOMIC BACKUP BEFORE ROLLOVER ---
+        // 1. Fetch current settings before update
+        const oldSem = await Settings.findOne({ key: 'current_semester' });
+        const oldTheme = await Settings.findOne({ key: 'semester_theme' });
+        const oldVerse = await Settings.findOne({ key: 'semester_verse' });
+
+        // 2. Fetch currently active meetings and trainings
+        const activeMeetings = await Meeting.find({ isActive: true }, '_id');
+        const activeTrainings = await Training.find({ isActive: true }, '_id');
+
+        // 3. Fetch current member points mapping for non-test accounts
+        const membersWithPoints = await Member.find({ isTestAccount: { $ne: true } }, '_id totalPoints');
+        const pointsMap = membersWithPoints.map(m => ({ memberId: m._id, totalPoints: m.totalPoints || 0 }));
+
+        // 4. Save snapshots inside Settings
+        const backupMeta = {
+            current_semester: oldSem ? oldSem.value : '',
+            semester_theme: oldTheme ? oldTheme.value : '',
+            semester_verse: oldVerse ? oldVerse.value : '',
+            timestamp: Date.now(),
+            initiatedBy: req.user?.username || req.user?.email || 'Admin'
+        };
+
+        await Promise.all([
+            Settings.findOneAndUpdate(
+                { key: 'ROLLBACK_BACKUP_METADATA' },
+                { value: JSON.stringify(backupMeta) },
+                { upsert: true, new: true }
+            ),
+            Settings.findOneAndUpdate(
+                { key: 'ROLLBACK_BACKUP_ACTIVE_MEETINGS' },
+                { value: JSON.stringify(activeMeetings.map(m => m._id)) },
+                { upsert: true, new: true }
+            ),
+            Settings.findOneAndUpdate(
+                { key: 'ROLLBACK_BACKUP_ACTIVE_TRAININGS' },
+                { value: JSON.stringify(activeTrainings.map(t => t._id)) },
+                { upsert: true, new: true }
+            ),
+            Settings.findOneAndUpdate(
+                { key: 'ROLLBACK_BACKUP_MEMBER_POINTS' },
+                { value: JSON.stringify(pointsMap) },
+                { upsert: true, new: true }
+            )
+        ]);
+
+        // --- EXECUTE ROLLOVER RESET ---
         // 1. Update/Create Settings keys
         await Promise.all([
             Settings.findOneAndUpdate(
@@ -83,6 +130,97 @@ export const rolloverSemester = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const rollbackSemesterRollover = async (req, res) => {
+    // Security check: only superadmin or developer can rollback
+    const allowedRoles = ['superadmin', 'developer'];
+    if (!allowedRoles.includes(req.user?.role?.toLowerCase())) {
+        return res.status(403).json({ message: 'Forbidden: SuperAdmin or Developer permissions required for rollback.' });
+    }
+
+    try {
+        // 1. Fetch metadata backup setting
+        const backupMetaSetting = await Settings.findOne({ key: 'ROLLBACK_BACKUP_METADATA' });
+        if (!backupMetaSetting || !backupMetaSetting.value) {
+            return res.status(400).json({ message: 'No rollback backup available. Reversion not possible.' });
+        }
+
+        const backupMeta = JSON.parse(backupMetaSetting.value);
+
+        // 2. Restore primary settings keys
+        await Promise.all([
+            Settings.findOneAndUpdate({ key: 'current_semester' }, { value: backupMeta.current_semester }, { upsert: true }),
+            Settings.findOneAndUpdate({ key: 'semester_theme' }, { value: backupMeta.semester_theme }, { upsert: true }),
+            Settings.findOneAndUpdate({ key: 'semester_verse' }, { value: backupMeta.semester_verse }, { upsert: true })
+        ]);
+
+        // 3. Restore meetings active state
+        const backupMeetingsSetting = await Settings.findOne({ key: 'ROLLBACK_BACKUP_ACTIVE_MEETINGS' });
+        if (backupMeetingsSetting && backupMeetingsSetting.value) {
+            const activeIds = JSON.parse(backupMeetingsSetting.value);
+            if (activeIds.length > 0) {
+                await Meeting.updateMany({ _id: { $in: activeIds } }, { $set: { isActive: true } });
+            }
+        }
+
+        // 4. Restore trainings active state
+        const backupTrainingsSetting = await Settings.findOne({ key: 'ROLLBACK_BACKUP_ACTIVE_TRAININGS' });
+        if (backupTrainingsSetting && backupTrainingsSetting.value) {
+            const activeIds = JSON.parse(backupTrainingsSetting.value);
+            if (activeIds.length > 0) {
+                await Training.updateMany({ _id: { $in: activeIds } }, { $set: { isActive: true } });
+            }
+        }
+
+        // 5. Restore member points
+        const backupPointsSetting = await Settings.findOne({ key: 'ROLLBACK_BACKUP_MEMBER_POINTS' });
+        if (backupPointsSetting && backupPointsSetting.value) {
+            const pointsMap = JSON.parse(backupPointsSetting.value);
+            if (pointsMap.length > 0) {
+                const bulkOps = pointsMap.map(item => ({
+                    updateOne: {
+                        filter: { _id: item.memberId },
+                        update: { $set: { totalPoints: item.totalPoints } }
+                    }
+                }));
+                await Member.bulkWrite(bulkOps);
+            }
+        }
+
+        // 6. Log rollback in ActivityLog under student SYSTEM
+        const rollbackLog = new ActivityLog({
+            studentRegNo: 'SYSTEM',
+            type: 'Other',
+            semester: backupMeta.current_semester || 'SYSTEM',
+            pointsEarned: 0,
+            notes: `Semester Rollover to ${backupMeta.current_semester} successfully rolled back by SuperAdmin.`
+        });
+        await rollbackLog.save();
+
+        // 7. Clean up backup keys to prevent multiple restores
+        await Settings.deleteMany({
+            key: {
+                $in: [
+                    'ROLLBACK_BACKUP_METADATA',
+                    'ROLLBACK_BACKUP_ACTIVE_MEETINGS',
+                    'ROLLBACK_BACKUP_ACTIVE_TRAININGS',
+                    'ROLLBACK_BACKUP_MEMBER_POINTS'
+                ]
+            }
+        });
+
+        res.json({
+            message: `Successfully rolled back semester rollover! System restored to ${backupMeta.current_semester}.`,
+            settings: {
+                current_semester: backupMeta.current_semester,
+                semester_theme: backupMeta.semester_theme,
+                semester_verse: backupMeta.semester_verse
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Rollback operation failed.', error: error.message });
     }
 };
 

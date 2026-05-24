@@ -503,6 +503,35 @@ const AdminDashboard = () => {
 
                 {/* Main panel */}
                 <main className="main-content" ref={mainContentRef} style={{ flex: 1, padding: '2rem 3rem', overflowY: 'auto' }}>
+                    
+                    {/* Mobile-only header bar styled like student portal */}
+                    <div className="admin-mobile-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #25AAE1, #021525)', border: '2px solid rgba(37,170,225,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', color: 'white', flexShrink: 0 }}>
+                                {userRole.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {activeTab === 'meetings' ? 'Meetings & Scans' : 
+                                     activeTab === 'trainings' ? 'Trainings & Radius' : 
+                                     activeTab === 'members' ? 'Members Registry' : 
+                                     activeTab === 'reports' ? 'Reports & Analytics' : 
+                                     activeTab === 'finance' ? 'Financial Systems' : 
+                                     activeTab === 'events' ? 'Events Scheduler' : 
+                                     activeTab === 'activities' ? 'Activities & Groups' : 
+                                     activeTab === 'feedback' ? 'Community Feedback' : 
+                                     activeTab === 'admins' ? 'Staff Administrators' : 
+                                     activeTab === 'system' ? 'System Configurations' : 
+                                     activeTab === 'observability' ? 'System Observability' : 'Admin Panel'}
+                                </div>
+                                <div style={{ fontSize: '0.62rem', color: '#25AAE1', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{userRole} Mode</div>
+                            </div>
+                        </div>
+                        <button onClick={handleLogout} style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '0.5rem', color: '#f87171', padding: '0.4rem 0.75rem', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', letterSpacing: '0.5px', flexShrink: 0 }}>
+                            <LogOut size={12} /> SIGN OUT
+                        </button>
+                    </div>
+
                     {/* Header Controls */}
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <div>
@@ -602,6 +631,7 @@ const AdminDashboard = () => {
                             isGuest={isGuest}
                             setMsg={setMsg}
                             api={api}
+                            userRole={userRole}
                         />
                     ) : activeTab === 'reports' ? (
                         <ReportsTab
@@ -686,10 +716,23 @@ const AdminDashboard = () => {
                         overflow-y: auto !important;
                     }
                     header {
-                        flex-direction: column !important;
-                        align-items: flex-start !important;
-                        gap: 0.75rem !important;
+                        display: none !important; /* Hide desktop header on mobile */
+                    }
+                    .admin-mobile-header {
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        background: rgba(9, 29, 46, 0.85) !important;
+                        backdrop-filter: blur(15px) !important;
+                        -webkit-backdrop-filter: blur(15px) !important;
+                        padding: 0.75rem 1rem !important;
+                        border-radius: 1rem !important;
+                        border: 1px solid rgba(37, 170, 225, 0.15) !important;
                         margin-bottom: 1.5rem !important;
+                        position: sticky !important;
+                        top: 0 !important;
+                        z-index: 200 !important;
+                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
                     }
                     .admin-mobile-bottom-nav {
                         display: flex !important;
@@ -735,6 +778,9 @@ const AdminDashboard = () => {
                 }
                 @media (min-width: 769px) {
                     .admin-mobile-bottom-nav {
+                        display: none !important;
+                    }
+                    .admin-mobile-header {
                         display: none !important;
                     }
                 }

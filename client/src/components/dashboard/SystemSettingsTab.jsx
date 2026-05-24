@@ -9,7 +9,8 @@ const SystemSettingsTab = ({
     onUpdateSetting, 
     isGuest, 
     setMsg,
-    api 
+    api,
+    userRole
 }) => {
     const [semester, setSemester] = useState('MAY-AUG 2026');
     const [theme, setTheme] = useState('');
@@ -26,17 +27,23 @@ const SystemSettingsTab = ({
     const [confirmText, setConfirmText] = useState('');
     const [rolloverLoading, setRolloverLoading] = useState(false);
 
+    // Rollback backup state
+    const [hasBackup, setHasBackup] = useState(false);
+    const [backupInfo, setBackupInfo] = useState(null);
+    const [rollbackLoading, setRollbackLoading] = useState(false);
+
     useEffect(() => {
         const fetchSettings = async () => {
             setLoading(true);
             try {
-                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes] = await Promise.all([
+                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes, backupRes] = await Promise.all([
                     api.get('/settings/current_semester'),
                     api.get('/settings/guest_features'),
                     api.get('/settings/whatsapp_link'),
                     api.get('/settings/semester_theme'),
                     api.get('/settings/semester_verse'),
-                    api.get('/settings/watering_selector_active')
+                    api.get('/settings/watering_selector_active'),
+                    api.get('/settings/ROLLBACK_BACKUP_METADATA').catch(() => ({ data: { value: null } }))
                 ]);
                 if (semRes.data?.value) setSemester(semRes.data.value);
                 if (guestRes.data?.value) setGuestAccess(guestRes.data.value);
@@ -44,6 +51,18 @@ const SystemSettingsTab = ({
                 if (themeRes.data?.value) setTheme(themeRes.data.value);
                 if (verseRes.data?.value) setVerse(verseRes.data.value);
                 if (wateringRes.data?.value) setWateringActive(wateringRes.data.value === 'true');
+                
+                if (backupRes.data?.value) {
+                    setHasBackup(true);
+                    try {
+                        setBackupInfo(JSON.parse(backupRes.data.value));
+                    } catch (e) {
+                        console.error("Failed to parse backup metadata", e);
+                    }
+                } else {
+                    setHasBackup(false);
+                    setBackupInfo(null);
+                }
             } catch (err) {
                 console.error("Failed to fetch system settings", err);
             } finally {
@@ -52,6 +71,29 @@ const SystemSettingsTab = ({
         };
         fetchSettings();
     }, [api]);
+
+    const handleExecuteRollback = async () => {
+        if (isGuest) {
+            setMsg({ type: 'error', text: 'Rollback disabled in Guest Mode.' });
+            return;
+        }
+        if (!window.confirm("WARNING: Are you absolutely sure you want to rollback the last semester rollover? This will restore previous member points, reactivate previous meetings/trainings, and revert settings. This action is irreversible!")) {
+            return;
+        }
+        setRollbackLoading(true);
+        try {
+            const res = await api.post('/settings/rollback');
+            setMsg({ type: 'success', text: res.data.message });
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } catch (err) {
+            console.error("Rollback failed:", err);
+            alert(err.response?.data?.message || 'Rollback failed. Please try again.');
+        } finally {
+            setRollbackLoading(false);
+        }
+    };
 
     const handleToggleWatering = async () => {
         const newValue = !wateringActive;
@@ -324,6 +366,70 @@ const SystemSettingsTab = ({
                     </button>
                 </div>
             </div>
+
+            {/* SuperAdmin Rollover Reversion (Rollback) System */}
+            {hasBackup && ['superadmin', 'developer'].includes(userRole?.toLowerCase()) && (
+                <div className="glass-card-premium" style={{ 
+                    borderLeft: '4px solid #f97316', 
+                    background: '#0d111b',
+                    padding: '2rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
+                    marginTop: '1.5rem',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
+                        <div style={{ padding: '0.75rem', background: 'rgba(249, 115, 22, 0.12)', borderRadius: '0.75rem', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
+                            <ShieldAlert size={22} color="#f97316" />
+                        </div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>SuperAdmin Reversion Control</h3>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Revert and restore pre-rollover active meetings, trainings, settings, and member points</p>
+                        </div>
+                    </div>
+
+                    <div style={{ background: 'rgba(249, 115, 22, 0.04)', border: '1px solid rgba(249, 115, 22, 0.2)', borderRadius: '0.75rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#f97316', letterSpacing: '1px', textTransform: 'uppercase' }}>Available Restore Point</div>
+                        <div style={{ fontSize: '0.9rem', color: 'white', fontWeight: 800 }}>
+                            Last Semester: <span style={{ color: '#f97316' }}>{backupInfo?.current_semester || 'Unknown'}</span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45 }}>
+                            Rolled over by: <strong>{backupInfo?.initiatedBy || 'SYSTEM'}</strong>
+                            <br />
+                            Time: <strong>{backupInfo?.timestamp ? new Date(backupInfo.timestamp).toLocaleString() : 'N/A'}</strong>
+                        </div>
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                        Restoring this rollback point will instantly overwrite all current student point balances back to their pre-rollover states, reactivate all sessions that were live during the rollover, and set settings back.
+                    </p>
+
+                    <div>
+                        <button 
+                            onClick={handleExecuteRollback}
+                            disabled={rollbackLoading}
+                            className="btn"
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: 'linear-gradient(135deg, #f97316 0%, #a83a03 100%)',
+                                color: 'white',
+                                borderColor: 'rgba(249, 115, 22, 0.3)',
+                                fontWeight: 800,
+                                letterSpacing: '1px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.75rem',
+                                cursor: rollbackLoading ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            {rollbackLoading ? <Loader2 size={18} className="animate-spin" /> : <><RotateCcw size={18} /> Rollback Last Semester Rollover</>}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Multi-Step Rollover Wizard Modal overlay */}
             {showWizard && (
