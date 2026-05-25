@@ -28,6 +28,43 @@ const SuperAdmin = () => {
     const [newRole, setNewRole] = useState('admin');
     const [registering, setRegistering] = useState(false);
 
+    // Staff Registry States
+    const [staffList, setStaffList] = useState([]);
+    const [loadingStaff, setLoadingStaff] = useState(false);
+
+    const fetchStaffList = async () => {
+        setLoadingStaff(true);
+        try {
+            const res = await api.get('/auth/users');
+            setStaffList(res.data);
+        } catch (err) {
+            console.error("Failed to load staff list", err);
+        } finally {
+            setLoadingStaff(false);
+        }
+    };
+
+    const handleDeleteStaff = async (id, usernameToDelete) => {
+        const currentUsername = localStorage.getItem('username');
+        if (currentUsername && currentUsername.toLowerCase() === usernameToDelete.toLowerCase()) {
+            setMessage({ type: 'error', text: 'Access Denied: You cannot delete your own logged-in account!' });
+            return;
+        }
+
+        if (!window.confirm(`⚠️ WARNING: You are about to permanently delete the staff account "${usernameToDelete}". This cannot be undone.\n\nAre you sure you want to proceed?`)) {
+            return;
+        }
+
+        try {
+            await api.delete(`/auth/users/${id}`);
+            setMessage({ type: 'success', text: `Success! Staff account "${usernameToDelete}" removed successfully.` });
+            fetchStaffList();
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to delete staff account.' });
+        }
+    };
+
     const handleRegisterStaff = async (e) => {
         e.preventDefault();
         setRegistering(true);
@@ -44,6 +81,7 @@ const SuperAdmin = () => {
             setNewPassword('');
             setNewCampus('Athi River');
             setNewRole('admin');
+            fetchStaffList();
         } catch (err) {
             console.error(err);
             setMessage({ type: 'error', text: 'Registration failed: ' + (err.response?.data?.message || err.message) });
@@ -140,6 +178,7 @@ const SuperAdmin = () => {
                 setStatus(res.data);
                 setUnauthorized(false);
                 fetchCloudBackups();
+                fetchStaffList();
             } catch (err) {
                 console.error("System Offline");
                 if (err.response?.status === 401 || err.response?.status === 403) {
@@ -794,6 +833,140 @@ const SuperAdmin = () => {
                             </button>
                         </form>
                     </div>
+                </div>
+
+                {/* Staff Accounts Registry (Full Width Panel below the grids) */}
+                <div className="glass-panel" style={{
+                    marginTop: '2rem',
+                    padding: '2.5rem',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    borderRadius: '2rem',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <Lock size={24} color="#10b981" />
+                            <div>
+                                <h3 style={{ margin: 0, fontWeight: 800 }}>ACTIVE STAFF REGISTRY</h3>
+                                <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5, marginTop: '2px' }}>
+                                    Manage active administrators, super-administrators, and developers
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={fetchStaffList}
+                            disabled={loadingStaff}
+                            style={{
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'white',
+                                cursor: 'pointer',
+                                transition: '0.3s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        >
+                            <RefreshCw size={14} className={loadingStaff ? "animate-spin" : ""} />
+                            Sync Registry
+                        </button>
+                    </div>
+
+                    {loadingStaff ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 0', gap: '1rem' }}>
+                            <RefreshCw className="animate-spin" size={32} color="#10b981" />
+                            <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>Fetching remote credentials...</span>
+                        </div>
+                    ) : staffList.length === 0 ? (
+                        <div style={{
+                            padding: '3rem',
+                            background: 'rgba(0,0,0,0.2)',
+                            borderRadius: '1.5rem',
+                            border: '1px dashed rgba(255,255,255,0.05)',
+                            textAlign: 'center'
+                        }}>
+                            <Lock size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, opacity: 0.6 }}>No staff profiles found</p>
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '30%' }}>USERNAME</th>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '30%' }}>CAMPUS JURISDICTION</th>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '25%' }}>ROLE</th>
+                                        <th style={{ padding: '1rem 0.5rem', fontSize: '0.75rem', fontWeight: 800, opacity: 0.5, width: '15%', textAlign: 'right' }}>ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {staffList.map((user, idx) => {
+                                        const isProtected = ['superadmin', 'supersuperadmin'].includes(user.username.toLowerCase()) || user.role === 'superadmin';
+                                        return (
+                                            <tr key={idx} style={{ 
+                                                borderBottom: '1px solid rgba(255,255,255,0.03)', 
+                                                transition: '0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <td style={{ padding: '1.25rem 0.5rem', fontSize: '0.85rem', fontWeight: 700, color: '#e2e8f0' }}>
+                                                    {user.username}
+                                                </td>
+                                                <td style={{ padding: '1.25rem 0.5rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                                                    {user.campus || 'Athi River'}
+                                                </td>
+                                                <td style={{ padding: '1.25rem 0.5rem', fontSize: '0.8rem' }}>
+                                                    <span style={{ 
+                                                        background: user.role === 'superadmin' ? 'rgba(16, 185, 129, 0.1)' : user.role === 'developer' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
+                                                        color: user.role === 'superadmin' ? '#10b981' : user.role === 'developer' ? '#a78bfa' : '#60a5fa', 
+                                                        border: `1px solid ${user.role === 'superadmin' ? 'rgba(16, 185, 129, 0.2)' : user.role === 'developer' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`,
+                                                        fontSize: '0.7rem', 
+                                                        fontWeight: 900, 
+                                                        padding: '0.25rem 0.6rem', 
+                                                        borderRadius: '6px',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.5px'
+                                                    }}>
+                                                        {user.role}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1.25rem 0.5rem', textAlign: 'right' }}>
+                                                    <button 
+                                                        onClick={() => handleDeleteStaff(user._id, user.username)}
+                                                        disabled={isProtected}
+                                                        style={{
+                                                            background: isProtected ? 'rgba(255,255,255,0.02)' : 'rgba(239, 68, 68, 0.12)',
+                                                            border: isProtected ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(239, 68, 68, 0.25)',
+                                                            borderRadius: '8px',
+                                                            color: isProtected ? 'rgba(255,255,255,0.2)' : '#f87171',
+                                                            padding: '0.4rem 0.8rem',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 800,
+                                                            cursor: isProtected ? 'not-allowed' : 'pointer',
+                                                            transition: '0.3s'
+                                                        }}
+                                                        onMouseEnter={(e) => { if (!isProtected) { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; } }}
+                                                        onMouseLeave={(e) => { if (!isProtected) { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.color = '#f87171'; } }}
+                                                    >
+                                                        {isProtected ? 'PROTECTED' : 'DELETE'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* Cloud Backups Registry (Full Width Panel below the grids) */}
