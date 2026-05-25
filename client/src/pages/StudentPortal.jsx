@@ -1022,12 +1022,12 @@ const StudentPortal = () => {
                                                 <span style={{ fontSize: '0.9rem' }}>🌿</span>
                                             </div>
                                             <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '-0.02em', fontStyle: 'italic' }}>
-                                                "{data.semesterTheme || 'Set Apart'}"
+                                                "{data.semesterTheme || 'Theme Not Configured'}"
                                             </div>
                                         </div>
                                         <div style={{ marginTop: '0.4rem' }}>
                                             <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.4, borderLeft: '2px solid rgba(56,189,248,0.4)', paddingLeft: '0.5rem', fontStyle: 'italic' }}>
-                                                {data.semesterVerse || 'Be holy in all you do.'}
+                                                {data.semesterVerse || 'Verse Not Configured'}
                                             </div>
                                         </div>
                                     </div>
