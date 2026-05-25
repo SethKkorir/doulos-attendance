@@ -3,14 +3,29 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 export const register = async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, role, campus } = req.body;
+    
+    // Only SuperAdmins and Developers can create admin/superadmin accounts
+    const allowedCreatorRoles = ['superadmin', 'developer'];
+    if (!req.user || !allowedCreatorRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: 'Access Denied: Only SuperAdmins and Developers can create admin or superadmin accounts.' });
+    }
+
     try {
         const existingUser = await User.findOne({ username });
         if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
-        const user = new User({ username, password });
+        // Validate and assign target role (default to 'admin')
+        const targetRole = role && ['admin', 'superadmin', 'developer'].includes(role) ? role : 'admin';
+
+        const user = new User({ 
+            username, 
+            password, 
+            role: targetRole,
+            campus: campus || 'Athi River'
+        });
         await user.save();
-        res.status(201).json({ message: 'Admin registered successfully' });
+        res.status(201).json({ message: 'Account registered successfully', user: { username: user.username, role: user.role } });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -89,18 +104,36 @@ export const updateUser = async (req, res) => {
     const { username, role, campus, password } = req.body;
 
     try {
-        const updateData = { username, role, campus };
+        const targetUser = await User.findById(id);
+        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+
+        // Security check: Only SuperAdmins and Developers can change roles or update a SuperAdmin account
+        const allowedEditorRoles = ['superadmin', 'developer'];
+        
+        // 1. If trying to edit a superadmin/developer account
+        const isTargetSuper = ['superadmin', 'developer'].includes(targetUser.role);
+        if (isTargetSuper && (!req.user || !allowedEditorRoles.includes(req.user.role))) {
+            return res.status(403).json({ message: 'Access Denied: Only SuperAdmins and Developers can modify a SuperAdmin or Developer account.' });
+        }
+
+        // 2. If trying to promote someone to superadmin/developer
+        const isPromotingToSuper = role && ['superadmin', 'developer'].includes(role);
+        if (isPromotingToSuper && (!req.user || !allowedEditorRoles.includes(req.user.role))) {
+            return res.status(403).json({ message: 'Access Denied: Only SuperAdmins and Developers can assign SuperAdmin or Developer privileges.' });
+        }
+
+        const updateData = { username, campus };
+        if (role) {
+            updateData.role = role;
+        }
         if (password) {
             updateData.password = password; // Pre-save hook will hash it
         }
 
-        const user = await User.findById(id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        Object.assign(targetUser, updateData);
+        await targetUser.save();
 
-        Object.assign(user, updateData);
-        await user.save();
-
-        res.json({ message: 'User updated successfully', user: { _id: user._id, username: user.username, role: user.role, campus: user.campus } });
+        res.json({ message: 'User updated successfully', user: { _id: targetUser._id, username: targetUser.username, role: targetUser.role, campus: targetUser.campus } });
     } catch (error) {
         res.status(500).json({ message: 'Error updating user', error: error.message });
     }
