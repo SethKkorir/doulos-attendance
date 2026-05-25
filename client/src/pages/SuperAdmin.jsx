@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Database, Zap, RefreshCw, AlertTriangle, Key, ArrowRight, Settings, Server, Lock, Globe, Plus, X } from 'lucide-react';
+import { Shield, Database, Zap, RefreshCw, AlertTriangle, Key, ArrowRight, Settings, Server, Lock, Globe, Plus, X, UserPlus } from 'lucide-react';
 import api from '../api';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
@@ -20,6 +20,37 @@ const SuperAdmin = () => {
     const [cloudBackups, setCloudBackups] = useState([]);
     const [loadingBackups, setLoadingBackups] = useState(false);
     const navigate = useNavigate();
+
+    // Staff Registration States
+    const [newUsername, setNewUsername] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [newCampus, setNewCampus] = useState('Athi River');
+    const [newRole, setNewRole] = useState('admin');
+    const [registering, setRegistering] = useState(false);
+
+    const handleRegisterStaff = async (e) => {
+        e.preventDefault();
+        setRegistering(true);
+        setMessage({ type: 'info', text: 'Registering account...' });
+        try {
+            await api.post('/auth/register', {
+                username: newUsername.trim(),
+                password: newPassword.trim(),
+                campus: newCampus,
+                role: newRole
+            });
+            setMessage({ type: 'success', text: `Success! Registered '${newUsername.trim()}' as a ${newRole}.` });
+            setNewUsername('');
+            setNewPassword('');
+            setNewCampus('Athi River');
+            setNewRole('admin');
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: 'error', text: 'Registration failed: ' + (err.response?.data?.message || err.message) });
+        } finally {
+            setRegistering(false);
+        }
+    };
 
     const fetchCloudBackups = async () => {
         setLoadingBackups(true);
@@ -623,6 +654,145 @@ const SuperAdmin = () => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Staff Account Registration Panel */}
+                    <div className="glass-panel" style={{
+                        padding: '2rem',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '2rem',
+                        backdropFilter: 'blur(20px)',
+                        transition: 'border-color 0.3s'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                            <UserPlus size={24} color="#10b981" />
+                            <h3 style={{ margin: 0, fontWeight: 800 }}>REGISTER STAFF ACCOUNT</h3>
+                        </div>
+
+                        <form onSubmit={handleRegisterStaff} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>Username</label>
+                                <input 
+                                    type="text" 
+                                    value={newUsername} 
+                                    onChange={(e) => setNewUsername(e.target.value)}
+                                    placeholder="Enter new username" 
+                                    required 
+                                    style={{
+                                        width: '100%',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px',
+                                        padding: '0.75rem 1rem',
+                                        color: 'white',
+                                        fontSize: '0.85rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s'
+                                    }}
+                                    onFocus={(e) => { e.target.style.borderColor = 'rgba(16, 185, 129, 0.5)'; }}
+                                    onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>Password</label>
+                                <input 
+                                    type="password" 
+                                    value={newPassword} 
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="Enter password" 
+                                    required 
+                                    style={{
+                                        width: '100%',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px',
+                                        padding: '0.75rem 1rem',
+                                        color: 'white',
+                                        fontSize: '0.85rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s'
+                                    }}
+                                    onFocus={(e) => { e.target.style.borderColor = 'rgba(16, 185, 129, 0.5)'; }}
+                                    onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>Campus Jurisdiction</label>
+                                <select 
+                                    value={newCampus} 
+                                    onChange={(e) => setNewCampus(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px',
+                                        padding: '0.75rem 1rem',
+                                        color: 'white',
+                                        fontSize: '0.85rem',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                    onFocus={(e) => { e.target.style.borderColor = 'rgba(16, 185, 129, 0.5)'; }}
+                                    onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                >
+                                    <option value="Athi River" style={{ background: '#090d16', color: 'white' }}>Athi River</option>
+                                    <option value="Valley Road" style={{ background: '#090d16', color: 'white' }}>Valley Road</option>
+                                    <option value="All" style={{ background: '#090d16', color: 'white' }}>All Campuses (Global)</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>System Role</label>
+                                <select 
+                                    value={newRole} 
+                                    onChange={(e) => setNewRole(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px',
+                                        padding: '0.75rem 1rem',
+                                        color: 'white',
+                                        fontSize: '0.85rem',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                    onFocus={(e) => { e.target.style.borderColor = 'rgba(16, 185, 129, 0.5)'; }}
+                                    onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                >
+                                    <option value="admin" style={{ background: '#090d16', color: 'white' }}>Admin</option>
+                                    <option value="superadmin" style={{ background: '#090d16', color: 'white' }}>SuperAdmin</option>
+                                    <option value="developer" style={{ background: '#090d16', color: 'white' }}>Developer</option>
+                                </select>
+                            </div>
+                            <button 
+                                type="submit"
+                                disabled={registering}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '1rem',
+                                    padding: '1.05rem',
+                                    background: '#10b981',
+                                    border: 'none',
+                                    borderRadius: '1rem',
+                                    color: 'white',
+                                    fontWeight: 800,
+                                    letterSpacing: '1px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)',
+                                    transition: 'all 0.3s'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.boxShadow = '0 15px 25px rgba(5, 150, 105, 0.35)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(16, 185, 129, 0.2)'; }}
+                            >
+                                {registering ? <RefreshCw className="animate-spin" size={18} /> : <UserPlus size={18} />}
+                                REGISTER ACCOUNT
+                            </button>
+                        </form>
                     </div>
                 </div>
 
