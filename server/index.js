@@ -78,13 +78,16 @@ const connectDB = async () => {
                 await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
             }
 
-            const superAdminExists = await User.findOne({ role: 'superadmin' });
+            const superAdminExists = await User.findOne({ username: 'superadmin' });
             if (!superAdminExists) {
-                const adminExists = await User.findOne({ username: 'supersuperadmin' });
-                if (!adminExists) {
-                    await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
-                    console.log('✅ Premium Super Admin account initialized: supersuperadmin');
-                }
+                await new User({ username: 'superadmin', password: process.env.SUPERADMIN_PASSWORD || 'superadmin123', role: 'superadmin' }).save();
+                console.log('✅ Premium Super Admin account initialized: superadmin');
+            }
+
+            const superSuperAdminExists = await User.findOne({ username: 'supersuperadmin' });
+            if (!superSuperAdminExists) {
+                await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
+                console.log('✅ Premium Super Admin account initialized: supersuperadmin');
             }
         })().catch(err => console.error('Seeding Error:', err.message));
 

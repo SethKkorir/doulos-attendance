@@ -109,8 +109,14 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
     const { id } = req.params;
     try {
+        const targetUser = await User.findById(id);
+        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+
+        if (targetUser.role === 'superadmin' || targetUser.username.toLowerCase() === 'superadmin' || targetUser.username.toLowerCase() === 'supersuperadmin') {
+            return res.status(403).json({ message: 'Access Denied: The SuperAdmin account is protected and cannot be deleted under any circumstances.' });
+        }
+
         const user = await User.findByIdAndDelete(id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ message: 'User deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting user', error: error.message });
