@@ -98,10 +98,10 @@ const CheckIn = () => {
 
                 const userRole = localStorage.getItem('role');
                 const isSuperUser = ['developer', 'superadmin'].includes(userRole);
-                const bypassLocks = isSuperUser || isTestMode;
+                const bypassLocks = isSuperUser || isTestMode || meetingData.isTestMeeting;
 
                 // --- DUPLICATE CHECK-IN DETECTION ---
-                // Check both LocalStorage AND Server-Side Record
+                // Check both LocalStorage AND Server-Side Record (DeviceId)
                 const localStatus = localStorage.getItem(`doulos_attendance_status_${meetingCode}`);
                 const serverHasAttended = meetingData.hasAttended;
 
@@ -386,13 +386,13 @@ const CheckIn = () => {
                     animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                     border: '1px solid rgba(255, 255, 255, 0.2)'
                 }}>
-                    {hasAlreadyCheckedIn ? <Clock size={24} /> : <XCircle size={24} />}
-                    <div style={{ flex: 1 }}>
+                    {hasAlreadyCheckedIn ? <Clock size={24} style={{ flexShrink: 0 }} /> : <XCircle size={24} style={{ flexShrink: 0 }} />}
+                    <div style={{ flex: 1, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', fontSize: '0.9rem', lineHeight: '1.4' }}>
                         {hasAlreadyCheckedIn ? "Double check-in detected! You've already marked attendance." : msg}
                     </div>
                     <button
                         onClick={() => { setMsg(''); setHasAlreadyCheckedIn(false); }}
-                        style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.7 }}
+                        style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '0.25rem' }}
                     >
                         ✕
                     </button>
@@ -1094,7 +1094,7 @@ const CheckIn = () => {
                             boxShadow: '0 0 30px rgba(37, 170, 225, 0.15)',
                             animation: 'bounce 2.5s infinite'
                         }}>
-                            <BookOpen size={36} />
+                            <Logo size={50} showText={false} />
                         </div>
 
                         <h2 style={{

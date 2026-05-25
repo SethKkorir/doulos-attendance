@@ -226,7 +226,7 @@ export const getMeetingByCode = async (req, res) => {
 
         // Check if this device has already attended
         let hasAttended = false;
-        if (req.query.deviceId) {
+        if (req.query.deviceId && !isSuperUser && !meeting.isTestMeeting) {
             const query = isTraining ? { trainingId: meeting._id } : { meeting: meeting._id };
             const existingRecord = await Attendance.findOne({
                 ...query,

@@ -97,7 +97,7 @@ export const getTrainingByCode = async (req, res) => {
         }
 
         let hasAttended = false;
-        if (req.query.deviceId) {
+        if (req.query.deviceId && !isSuperUser && !training.isTestMeeting) {
             const existingRecord = await Attendance.findOne({ trainingId: training._id, deviceId: req.query.deviceId });
             if (existingRecord) hasAttended = true;
         }

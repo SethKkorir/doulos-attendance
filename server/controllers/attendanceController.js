@@ -161,7 +161,7 @@ export const submitAttendance = async (req, res) => {
             if (!member.linkedDeviceId && deviceId) {
                 member.linkedDeviceId = deviceId;
                 await member.save();
-            } else if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser) {
+            } else if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
                 await logScanError(studentRegNo, 'Device Signature Mismatch', `Attempted check-in on a second phone without resetting device link lock. Device ID: ${deviceId}`, meeting.campus);
                 return res.status(403).json({ message: 'Device Lock Error: This account is linked to another device. Please request a device reset from a G9 administrator.' });
             }
@@ -169,7 +169,7 @@ export const submitAttendance = async (req, res) => {
 
 
         // 8. Anti-Proxy Check (One check-in per device per session)
-        if (deviceId && !isSuperUser) {
+        if (deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount) {
             const deviceQuery = isTrainingSession
                 ? { trainingId: meeting._id, deviceId }
                 : { meeting: meeting._id, deviceId };
@@ -185,13 +185,13 @@ export const submitAttendance = async (req, res) => {
             ? { trainingId: meeting._id, studentRegNo }
             : { meeting: meeting._id, studentRegNo };
         const existing = await Attendance.findOne(dupQuery);
-        if (existing) {
+        if (existing && !member?.isTestAccount) {
             await logScanError(studentRegNo, 'Duplicate Check-In', `Attempted duplicate scan for session: ${meeting.name}`, meeting.campus);
             return res.status(409).json({ message: 'You have already signed in for this session.' });
         }
 
         // 9.5. Weekly Check-In Restriction — MEETINGS ONLY (Trainings are exempt)
-        if (!isSuperUser && !meeting.isTestMeeting && !isTrainingSession) {
+        if (!isSuperUser && !meeting.isTestMeeting && !isTrainingSession && !member?.isTestAccount) {
             const mDate = new Date(meeting.date);
             const startOfWeek = new Date(mDate);
             startOfWeek.setDate(mDate.getDate() - mDate.getDay()); // Sunday

@@ -32,18 +32,63 @@ const SystemSettingsTab = ({
     const [backupInfo, setBackupInfo] = useState(null);
     const [rollbackLoading, setRollbackLoading] = useState(false);
 
+    // 14-Week Semester Countdown State
+    const [rolloverDate, setRolloverDate] = useState(null);
+    const [timeRemaining, setTimeRemaining] = useState(0);
+
+    // Auto-generate semester dropdown choices
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear + 1];
+    const semesterOptions = [];
+    years.forEach(yr => {
+        semesterOptions.push({ label: `Jan-April ${yr}`, value: `JAN-APR ${yr}` });
+        semesterOptions.push({ label: `May-August ${yr}`, value: `MAY-AUG ${yr}` });
+        semesterOptions.push({ label: `Sep-Dec ${yr}`, value: `SEP-DEC ${yr}` });
+    });
+
+    useEffect(() => {
+        if (!rolloverDate) {
+            setTimeRemaining(0);
+            return;
+        }
+        const updateTimer = () => {
+            const endOfSemester = rolloverDate + (14 * 7 * 24 * 60 * 60 * 1000); // 14 weeks
+            const remaining = endOfSemester - Date.now();
+            setTimeRemaining(remaining > 0 ? remaining : 0);
+        };
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [rolloverDate]);
+
+    const formatTimeRemaining = (ms) => {
+        const totalSecs = Math.floor(ms / 1000);
+        const totalMins = Math.floor(totalSecs / 60);
+        const totalHours = Math.floor(totalMins / 60);
+        const totalDays = Math.floor(totalHours / 24);
+        const weeks = Math.floor(totalDays / 7);
+        
+        const days = totalDays % 7;
+        const hours = totalHours % 24;
+        const mins = totalMins % 60;
+        const secs = totalSecs % 60;
+
+        return { weeks, days, hours, mins, secs };
+    };
+
     useEffect(() => {
         const fetchSettings = async () => {
             setLoading(true);
             try {
-                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes, backupRes] = await Promise.all([
+                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes, backupRes, rolloverDateRes] = await Promise.all([
                     api.get('/settings/current_semester'),
                     api.get('/settings/guest_features'),
                     api.get('/settings/whatsapp_link'),
                     api.get('/settings/semester_theme'),
                     api.get('/settings/semester_verse'),
                     api.get('/settings/watering_selector_active'),
-                    api.get('/settings/ROLLBACK_BACKUP_METADATA').catch(() => ({ data: { value: null } }))
+                    api.get('/settings/ROLLBACK_BACKUP_METADATA').catch(() => ({ data: { value: null } })),
+                    api.get('/settings/semester_rollover_date').catch(() => ({ data: { value: null } }))
                 ]);
                 if (semRes.data?.value) setSemester(semRes.data.value);
                 if (guestRes.data?.value) setGuestAccess(guestRes.data.value);
@@ -51,6 +96,7 @@ const SystemSettingsTab = ({
                 if (themeRes.data?.value) setTheme(themeRes.data.value);
                 if (verseRes.data?.value) setVerse(verseRes.data.value);
                 if (wateringRes.data?.value) setWateringActive(wateringRes.data.value === 'true');
+                if (rolloverDateRes.data?.value) setRolloverDate(Number(rolloverDateRes.data.value));
                 
                 if (backupRes.data?.value) {
                     setHasBackup(true);
@@ -123,7 +169,15 @@ const SystemSettingsTab = ({
             return;
         }
         if (!semester.trim()) {
-            alert('Please specify the new Semester Name first.');
+            alert('Please select the new Semester Name first.');
+            return;
+        }
+        if (!theme.trim()) {
+            alert('Please specify a Spiritual Theme for the new semester first.');
+            return;
+        }
+        if (!verse.trim()) {
+            alert('Please specify a Scriptural Verse for the new semester first.');
             return;
         }
         setWizardStep(1);
@@ -306,14 +360,18 @@ const SystemSettingsTab = ({
                         <label style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--color-text-dim)' }}>
                             New Semester Name
                         </label>
-                        <input
+                        <select
                             className="modern-input"
                             value={semester}
                             onChange={(e) => setSemester(e.target.value)}
-                            placeholder="e.g. SEP-DEC 2026"
-                            style={{ width: '100%', border: '1px solid rgba(37,170,225,0.15)' }}
-                        />
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Use standard academic formatting</span>
+                            style={{ width: '100%', border: '1px solid rgba(37,170,225,0.15)', height: '45px', cursor: 'pointer' }}
+                        >
+                            <option value="">-- Select Semester --</option>
+                            {semesterOptions.map((opt, idx) => (
+                                <option key={idx} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Select the upcoming term from the options</span>
                     </div>
 
                     <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -346,24 +404,65 @@ const SystemSettingsTab = ({
                 </div>
 
                 <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.5rem' }}>
-                    <button 
-                        onClick={handleStartRollover}
-                        className="btn btn-primary"
-                        style={{
-                            width: '100%',
-                            padding: '1rem',
-                            background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
-                            fontWeight: 800,
-                            letterSpacing: '1px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.75rem',
-                            boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important'
-                        }}
-                    >
-                        <RotateCcw size={18} /> Initiate Semester Rollover Wizard
-                    </button>
+                    {rolloverDate && timeRemaining > 0 ? (
+                        <div style={{
+                            padding: '1.5rem',
+                            background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.06) 0%, rgba(139, 92, 246, 0.06) 100%)',
+                            border: '1px solid rgba(37, 170, 225, 0.25)',
+                            borderRadius: '1rem',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                                ⏳ Active Semester Countdown (14-Week Term)
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                                {[
+                                    { label: 'WEEKS', val: formatTimeRemaining(timeRemaining).weeks },
+                                    { label: 'DAYS', val: formatTimeRemaining(timeRemaining).days },
+                                    { label: 'HOURS', val: formatTimeRemaining(timeRemaining).hours },
+                                    { label: 'MINS', val: formatTimeRemaining(timeRemaining).mins },
+                                    { label: 'SECS', val: formatTimeRemaining(timeRemaining).secs }
+                                ].map((t, idx) => (
+                                    <div key={idx} style={{
+                                        minWidth: '60px',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.04)',
+                                        borderRadius: '0.75rem',
+                                        padding: '0.6rem 0.5rem'
+                                    }}>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
+                                            {String(t.val).padStart(2, '0')}
+                                        </div>
+                                        <div style={{ fontSize: '0.55rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginTop: '0.35rem', letterSpacing: '0.5px' }}>
+                                            {t.label}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: '1.25rem', marginBottom: 0, fontWeight: 600 }}>
+                                Semester Rollover is locked until this 14-week term ends. Only SuperAdmins can roll back this state.
+                            </p>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={handleStartRollover}
+                            className="btn btn-primary"
+                            style={{
+                                width: '100%',
+                                padding: '1rem',
+                                background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
+                                fontWeight: 800,
+                                letterSpacing: '1px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.75rem',
+                                boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important'
+                            }}
+                        >
+                            <RotateCcw size={18} /> Initiate Semester Rollover Wizard
+                        </button>
+                    )}
                 </div>
             </div>
 

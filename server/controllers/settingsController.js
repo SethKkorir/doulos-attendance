@@ -37,6 +37,12 @@ export const rolloverSemester = async (req, res) => {
         if (!current_semester) {
             return res.status(400).json({ message: 'New semester name is required' });
         }
+        if (!semester_theme || !semester_theme.trim()) {
+            return res.status(400).json({ message: 'Semester Theme is required for rollover.' });
+        }
+        if (!semester_verse || !semester_verse.trim()) {
+            return res.status(400).json({ message: 'Scriptural Verse is required for rollover.' });
+        }
 
         // --- ATOMIC BACKUP BEFORE ROLLOVER ---
         // 1. Fetch current settings before update
@@ -101,6 +107,11 @@ export const rolloverSemester = async (req, res) => {
                 { key: 'semester_verse' },
                 { value: (semester_verse || '').trim() },
                 { upsert: true, new: true }
+            ),
+            Settings.findOneAndUpdate(
+                { key: 'semester_rollover_date' },
+                { value: String(Date.now()) },
+                { upsert: true, new: true }
             )
         ]);
 
@@ -113,6 +124,13 @@ export const rolloverSemester = async (req, res) => {
             { isTestAccount: { $ne: true } },
             { $set: { totalPoints: 0 } }
         );
+
+        // 3.5. Reset all device locks & clear scan errors under the hood
+        await Member.updateMany({}, { $set: { linkedDeviceId: null } });
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.db.collection('scanerrors').deleteMany({});
+        }
+
 
         // 4. Log the rollover in ActivityLog using a dummy studentRegNo "SYSTEM"
         const log = new ActivityLog({
@@ -206,7 +224,8 @@ export const rollbackSemesterRollover = async (req, res) => {
                     'ROLLBACK_BACKUP_METADATA',
                     'ROLLBACK_BACKUP_ACTIVE_MEETINGS',
                     'ROLLBACK_BACKUP_ACTIVE_TRAININGS',
-                    'ROLLBACK_BACKUP_MEMBER_POINTS'
+                    'ROLLBACK_BACKUP_MEMBER_POINTS',
+                    'semester_rollover_date'
                 ]
             }
         });
