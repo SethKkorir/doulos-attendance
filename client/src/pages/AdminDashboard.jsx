@@ -620,10 +620,13 @@ const AdminDashboard = () => {
                             loading={loadingAdmins}
                             onEdit={setEditingAdmin}
                             onDelete={handleDeleteAdmin}
-                            onRegister={() => setEditingAdmin({ _id: 'NEW', username: '', role: 'admin', campus: 'Athi River' })}
                             guestFeaturesEnabled={guestFeaturesEnabled}
                             currentSemester={currentSemester}
                             onUpdateSetting={handleSaveSetting}
+                            api={api}
+                            setMsg={setMsg}
+                            fetchAdmins={fetchAdmins}
+                            isGuest={isGuest}
                         />
                     ) : activeTab === 'system' ? (
                         <SystemSettingsTab
@@ -954,14 +957,52 @@ const AdminDashboard = () => {
 
 /* --- BOTTOM HELPER VIEWS --- */
 
-const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, currentSemester }) => {
+const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, setMsg, fetchAdmins, isGuest }) => {
     const userRole = localStorage.getItem('role')?.toLowerCase();
     const canManageAdmins = ['developer', 'superadmin'].includes(userRole);
+
+    const [newUsername, setNewUsername] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [newCampus, setNewCampus] = useState('Athi River');
+    const [newRole, setNewRole] = useState('admin');
+    const [registering, setRegistering] = useState(false);
 
     const roleColors = {
         developer: { bg: 'rgba(167, 139, 250, 0.12)', color: '#a78bfa', border: 'rgba(167, 139, 250, 0.2)' },
         superadmin: { bg: 'rgba(248, 113, 113, 0.12)', color: '#f87171', border: 'rgba(248, 113, 113, 0.2)' },
         admin: { bg: 'rgba(37, 170, 225, 0.12)', color: '#25AAE1', border: 'rgba(37, 170, 225, 0.2)' },
+    };
+
+    const handleCreateAdmin = async (e) => {
+        e.preventDefault();
+        if (isGuest) {
+            setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+            return;
+        }
+        if (!newUsername.trim() || !newPassword.trim()) {
+            alert('Username and Password are required.');
+            return;
+        }
+        setRegistering(true);
+        try {
+            await api.post('/auth/register', {
+                username: newUsername.trim(),
+                password: newPassword.trim(),
+                campus: newCampus,
+                role: newRole
+            });
+            setMsg({ type: 'success', text: 'New Administrator registered!' });
+            setNewUsername('');
+            setNewPassword('');
+            setNewCampus('Athi River');
+            setNewRole('admin');
+            fetchAdmins();
+        } catch (err) {
+            console.error("Failed to create admin:", err);
+            alert(err.response?.data?.message || 'Failed to create administrator account.');
+        } finally {
+            setRegistering(false);
+        }
     };
 
     return (
@@ -980,84 +1021,177 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, onRegister, currentSeme
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>Manage access privileges, credentials, and roles for Doulos</p>
                         </div>
                     </div>
-                    {canManageAdmins && (
-                        <button className="btn btn-primary" onClick={onRegister} style={{
-                            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem',
-                            background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
-                            color: 'white', border: '1px solid rgba(37, 170, 225, 0.3) !important', borderRadius: '0.6rem',
-                            fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important'
-                        }}>
-                            <Plus size={18} /> Register Admin
-                        </button>
-                    )}
                 </div>
             </div>
 
             {canManageAdmins ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ padding: '0.5rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} accounts</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.75rem', alignItems: 'start' }}>
+                    
+                    {/* Active Staff List (Left/Main Column) */}
+                    <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ padding: '0.5rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} accounts</span>
+                        </div>
+
+                        {loading ? (
+                            <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Syncing staff registry...</div>
+                        ) : admins.length === 0 ? (
+                            <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                                No administrators registered yet.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                                {admins.map(a => {
+                                    const rc = roleColors[a.role] || roleColors.admin;
+                                    return (
+                                        <div key={a._id} className="glass-card-premium" style={{
+                                            background: '#0d111b',
+                                            borderLeft: `4px solid ${rc.color}`,
+                                            padding: '1.5rem',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '1.25rem',
+                                            transition: 'all 0.2s'
+                                        }}
+                                            onMouseEnter={el => { el.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                            onMouseLeave={el => { el.currentTarget.style.transform = 'translateY(0)'; }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: rc.bg, border: `1px solid ${rc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 900, color: rc.color }}>
+                                                        {a.username?.charAt(0)?.toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{a.username}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, marginTop: '2px' }}>{a.campus || 'All Campuses'}</div>
+                                                    </div>
+                                                </div>
+                                                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    {a.role}
+                                                </span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.25rem' }}>
+                                                <button className="btn" onClick={() => onEdit(a)} style={{
+                                                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                                                    padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', color: 'white',
+                                                    border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', cursor: 'pointer'
+                                                }}>
+                                                    <Pencil size={13} /> Edit Profile
+                                                </button>
+                                                <button className="btn" onClick={() => onDelete(a._id)} style={{
+                                                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                                                    padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(239, 68, 68, 0.05)', color: '#f87171',
+                                                    border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem', cursor: 'pointer'
+                                                }}>
+                                                    <Trash2 size={13} /> Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
-                    {loading ? (
-                        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Syncing staff registry...</div>
-                    ) : admins.length === 0 ? (
-                        <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)' }}>
-                            No administrators registered yet.
+                    {/* Embedded Registration Form Card (Right Column) */}
+                    <div className="glass-card-premium" style={{ 
+                        flex: '1 1 340px', 
+                        maxWidth: '450px',
+                        background: '#0d111b', 
+                        padding: '2rem', 
+                        border: '1px solid rgba(37, 170, 225, 0.25)',
+                        borderRadius: '1.25rem',
+                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '1.25rem' 
+                    }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>Register Staff Account</h3>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>Create system credentials for Doulos leaders</p>
                         </div>
-                    ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
-                            {admins.map(a => {
-                                const rc = roleColors[a.role] || roleColors.admin;
-                                return (
-                                    <div key={a._id} className="glass-card-premium" style={{
-                                        background: '#0d111b',
-                                        borderLeft: `4px solid ${rc.color}`,
-                                        padding: '1.5rem',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '1.25rem',
-                                        transition: 'all 0.2s'
-                                    }}
-                                        onMouseEnter={el => { el.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                        onMouseLeave={el => { el.currentTarget.style.transform = 'translateY(0)'; }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: rc.bg, border: `1px solid ${rc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 900, color: rc.color }}>
-                                                    {a.username?.charAt(0)?.toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{a.username}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, marginTop: '2px' }}>{a.campus || 'All Campuses'}</div>
-                                                </div>
-                                            </div>
-                                            <span style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                {a.role}
-                                            </span>
-                                        </div>
 
-                                        <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.25rem' }}>
-                                            <button className="btn" onClick={() => onEdit(a)} style={{
-                                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-                                                padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', color: 'white',
-                                                border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', cursor: 'pointer'
-                                            }}>
-                                                <Pencil size={13} /> Edit Profile
-                                            </button>
-                                            <button className="btn" onClick={() => onDelete(a._id)} style={{
-                                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-                                                padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(239, 68, 68, 0.05)', color: '#f87171',
-                                                border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem', cursor: 'pointer'
-                                            }}>
-                                                <Trash2 size={13} /> Remove
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                        <form onSubmit={handleCreateAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>Username</label>
+                                <input 
+                                    className="modern-input" 
+                                    value={newUsername} 
+                                    onChange={e => setNewUsername(e.target.value)} 
+                                    required 
+                                    placeholder="e.g. john_doe"
+                                    style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                            </div>
+                            
+                            <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>Password</label>
+                                <input 
+                                    className="modern-input" 
+                                    type="password" 
+                                    value={newPassword} 
+                                    onChange={e => setNewPassword(e.target.value)} 
+                                    required 
+                                    placeholder="••••••••"
+                                    style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                            </div>
+
+                            <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>Campus Jurisdiction</label>
+                                <select 
+                                    className="modern-input" 
+                                    value={newCampus} 
+                                    onChange={e => setNewCampus(e.target.value)}
+                                    style={{ width: '100%', boxSizing: 'border-box', height: '42px', cursor: 'pointer' }}
+                                >
+                                    <option value="Athi River">Athi River</option>
+                                    <option value="Valley Road">Valley Road</option>
+                                    <option value="All">All Campuses (Global)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>System Role</label>
+                                <select 
+                                    className="modern-input" 
+                                    value={newRole} 
+                                    onChange={e => setNewRole(e.target.value)}
+                                    style={{ width: '100%', boxSizing: 'border-box', height: '42px', cursor: 'pointer' }}
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="superadmin">SuperAdmin</option>
+                                    <option value="developer">Developer</option>
+                                </select>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                className="btn btn-primary" 
+                                disabled={registering}
+                                style={{ 
+                                    width: '100%', 
+                                    height: '45px', 
+                                    borderRadius: '0.6rem', 
+                                    fontWeight: 800,
+                                    background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
+                                    color: 'white',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    boxShadow: '0 8px 25px rgba(37, 170, 225, 0.2) !important',
+                                    marginTop: '0.5rem'
+                                }}
+                            >
+                                {registering ? 'Registering...' : <><Plus size={16} /> Register Account</>}
+                            </button>
+                        </form>
+                    </div>
+
                 </div>
             ) : (
                 <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
