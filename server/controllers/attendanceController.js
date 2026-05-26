@@ -84,28 +84,23 @@ export const submitAttendance = async (req, res) => {
 
             // 2. Same Day Timing
             if (todayStr === meetingStr) {
-                // Grace period: 60 mins before start
-                if (currentMinutes < (startTotalMinutes - 60)) {
+                // Strict check: Scan before start time is blocked
+                if (currentMinutes < startTotalMinutes) {
                     await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Early scan window locked for meeting: ${meeting.name}`, meeting.campus);
-                    return res.status(403).json({ message: `This meeting has not yet started. It starts at ${meeting.startTime} EAT.` });
+                    return res.status(403).json({ message: `ACCESS DENIED: This meeting has not yet started. It starts at ${meeting.startTime} EAT.` });
                 }
 
-                // End period: 30 mins after end (to allow for final scans)
-                if (currentMinutes > (endTotalMinutes + 30)) {
+                // Strict check: Scan after end time is blocked
+                if (currentMinutes > endTotalMinutes) {
                     await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Late scan attempted. Session closed for meeting: ${meeting.name}`, meeting.campus);
-                    return res.status(403).json({ message: `This meeting has already ended. It ended at ${meeting.endTime} EAT.` });
+                    return res.status(403).json({ message: `ACCESS DENIED: This meeting ended at ${meeting.endTime} EAT.` });
                 }
             }
 
-            // 3. Past Day Block (Lock after 48 hours for general safety)
+            // 3. Past Day Block (Lock immediately if date is past)
             if (todayStr > meetingStr) {
-                const meetingEnd = new Date(meetingDate);
-                meetingEnd.setHours(endHours, endMinutes, 0, 0);
-                const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
-                if (hoursSinceEnd > 24) {
-                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Stale scan attempted more than 24h after end of ${meeting.name}`, meeting.campus);
-                    return res.status(403).json({ message: 'Attendance window closed.' });
-                }
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Stale scan attempted after date of ${meeting.name}`, meeting.campus);
+                return res.status(403).json({ message: 'ACCESS DENIED: Attendance window closed.' });
             }
         }
 
