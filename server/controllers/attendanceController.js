@@ -201,9 +201,10 @@ export const submitAttendance = async (req, res) => {
             endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
             endOfWeek.setHours(23, 59, 59, 999);
 
-            // Find all meetings this week
+            // Find all meetings on the SAME campus this week
             const meetingsThisWeek = await Meeting.find({
                 date: { $gte: startOfWeek, $lte: endOfWeek },
+                campus: meeting.campus,
                 _id: { $ne: meeting._id } // Exclude current meeting
             }).select('_id name campus');
 
