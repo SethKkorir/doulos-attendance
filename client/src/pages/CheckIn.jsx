@@ -165,7 +165,7 @@ const CheckIn = () => {
         setIsLookingUp(true);
         try {
             const res = await api.get(`/attendance/student/${regNo}`);
-            if (res.data && res.data.stats.percentage !== undefined) {
+            if (res.data && res.data.stats && res.data.stats.percentage !== undefined) {
                 const name = res.data.memberName || 'Member';
                 setMemberInfo({ name, type: res.data.memberType });
 
@@ -186,6 +186,9 @@ const CheckIn = () => {
                     });
                     return updated;
                 });
+            } else if (res.data && res.data.registrationRequired) {
+                setIsNewMember(true);
+                setRegStep(1);
             } else {
                 setMemberInfo(null);
             }
@@ -1273,18 +1276,22 @@ const CheckIn = () => {
 
                         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                             <div style={{
-                                width: '56px', height: '56px',
+                                width: '80px',
+                                height: '80px',
                                 borderRadius: '50%',
-                                background: 'rgba(37, 170, 225, 0.15)',
+                                background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.2) 0%, rgba(37, 170, 225, 0.05) 100%)',
+                                border: '1px solid rgba(37, 170, 225, 0.3)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                margin: '0 auto 1rem',
-                                border: '1px solid rgba(37, 170, 225, 0.3)'
+                                margin: '0 auto 1.5rem',
+                                color: '#25AAE1',
+                                boxShadow: '0 0 30px rgba(37, 170, 225, 0.15)',
+                                animation: 'bounce 2.5s infinite'
                             }}>
-                                <span style={{ fontSize: '1.75rem' }}>🌱</span>
+                                <Logo size={50} showText={false} />
                             </div>
-                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-0.5px', color: 'white' }}>Welcome New Douloid!</h2>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-0.5px', color: 'white' }}>Welcome Back Douloid!</h2>
                             <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)', fontWeight: 600, lineHeight: 1.4 }}>
                                 We couldn't find your Admission Number in our registry. Let's get you set up for this semester!
                             </p>

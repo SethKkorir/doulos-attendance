@@ -22,7 +22,7 @@ const MembersTab = ({
     const [memberSearch, setMemberSearch] = useState('');
     const [memberCampusFilter, setMemberCampusFilter] = useState('All');
     const [memberTypeFilter, setMemberTypeFilter] = useState('All');
-    const [activeSemesterFilter, setActiveSemesterFilter] = useState(false);
+    const [showAllSemesters, setShowAllSemesters] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
     
@@ -39,11 +39,11 @@ const MembersTab = ({
     const [isEditingMemberProfile, setIsEditingMemberProfile] = useState(false);
     
     const [importLoading, setImportLoading] = useState(false);
-
+ 
     // Fetch members on filters change
     useEffect(() => {
-        fetchMembers();
-    }, [memberCampusFilter, memberTypeFilter, activeSemesterFilter]);
+        fetchMembers({ activeThisSemester: !showAllSemesters });
+    }, [memberCampusFilter, memberTypeFilter, showAllSemesters]);
 
     const downloadRegistryCSV = () => {
         try {
@@ -681,15 +681,16 @@ const MembersTab = ({
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
-                            <button onClick={() => setActiveSemesterFilter(!activeSemesterFilter)}
+                            <button onClick={() => setShowAllSemesters(!showAllSemesters)}
                                 style={{
                                     padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                    background: activeSemesterFilter ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-                                    color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.6)',
+                                    background: showAllSemesters ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
+                                    color: showAllSemesters ? '#22c55e' : 'rgba(255,255,255,0.6)',
                                     fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.2s'
                                 }}
+                                title="Unchecked shows only members active in the current semester. Checked shows all members from all semesters."
                             >
-                                <CheckCircle size={14} style={{ color: activeSemesterFilter ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Active This Sem
+                                <CheckCircle size={14} style={{ color: showAllSemesters ? '#22c55e' : 'rgba(255,255,255,0.4)' }} /> Show All Semesters
                             </button>
                         </div>
                     </div>

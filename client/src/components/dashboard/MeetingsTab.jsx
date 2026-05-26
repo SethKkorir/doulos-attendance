@@ -250,94 +250,238 @@ const MeetingsTab = ({
                             margin: 0; padding: 0; background: #ffffff;
                             -webkit-print-color-adjust: exact !important;
                             print-color-adjust: exact !important;
-                            color: #0f172a;
+                            color: #0c1c36;
                         }
                         .page {
                             width: 210mm; height: 297mm; position: relative;
-                            background: #ffffff; overflow: hidden;
+                            background: radial-gradient(circle at 10% 20%, rgba(240, 245, 255, 0.6) 0%, #ffffff 80%); 
+                            overflow: hidden;
                             display: flex; flex-direction: column; align-items: center; justify-content: center;
                             box-sizing: border-box;
-                            border: 12px solid #0f172a;
+                            border: 1px solid rgba(15, 23, 42, 0.08);
                         }
-                        .page-inner-border {
+                        /* Light subtle geometric mesh in the background */
+                        .page::before {
+                            content: '';
                             position: absolute;
-                            inset: 8px;
-                            border: 2px solid rgba(15, 23, 42, 0.1);
+                            inset: 0;
+                            background-image: radial-gradient(rgba(37, 170, 225, 0.02) 1.5px, transparent 1.5px);
+                            background-size: 24px 24px;
                             pointer-events: none;
                         }
                         .content {
                             position: relative; z-index: 10; width: 100%; height: 100%;
                             display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-                            padding: 22mm 20mm; box-sizing: border-box;
+                            padding: 20mm 18mm; box-sizing: border-box;
                         }
-                        .header { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-                        .logo-img { width: 95px; height: 95px; object-fit: contain; margin-bottom: 0.2rem; }
-                        .meeting-title { font-size: 2.5rem; font-weight: 900; line-height: 1.1; color: #0f172a; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
-                        .meeting-meta { font-size: 1.25rem; color: #25AAE1; margin-top: 5px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: flex; align-items: center; gap: 10px; }
-                        .meeting-meta-dot { color: rgba(15, 23, 42, 0.2); }
-                        .qr-outer-container { position: relative; padding: 12px; background: white; border-radius: 36px; border: 4px solid #0f172a; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
-                        .qr-inner-wrapper { padding: 25px; background: white; border-radius: 28px; }
-                        .scan-badge { position: absolute; top: -18px; right: -22px; background: #ef4444; color: white; font-weight: 900; padding: 10px 22px; border-radius: 50px; transform: rotate(10deg); box-shadow: 0 10px 20px rgba(239, 68, 68, 0.25); font-size: 1.1rem; border: 3px solid white; text-transform: uppercase; letter-spacing: 1px; }
-                        .footer { width: 100%; border-top: 2px solid #f1f5f9; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-                        .instruction { text-align: left; }
-                        .instruction h3 { font-size: 1.35rem; color: #25AAE1; margin: 0 0 4px 0; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; }
-                        .instruction p { font-size: 0.95rem; color: #64748b; margin: 0; max-width: 380px; font-weight: 500; }
+                        .header { display: flex; flex-direction: column; align-items: center; text-align: center; }
+                        .logo-img { width: 110px; height: 110px; object-fit: contain; margin-bottom: 0.5rem; }
+                        .meeting-title { font-size: 3.2rem; font-weight: 900; line-height: 1.1; color: #0c1c36; margin: 0; font-family: 'Outfit', sans-serif; letter-spacing: -1px; }
+                        .meeting-title span { color: #0066cc; }
+                        
+                        .meeting-meta-pill { 
+                            display: flex; 
+                            align-items: center; 
+                            gap: 15px; 
+                            background: #ffffff; 
+                            padding: 8px 24px; 
+                            border-radius: 50px; 
+                            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.05); 
+                            border: 1px solid rgba(0, 102, 204, 0.12);
+                            margin-top: 1.25rem;
+                        }
+                        .meta-item {
+                            font-size: 0.95rem; font-weight: 800; color: #0c1c36; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; text-transform: uppercase;
+                        }
+                        .meta-item svg { color: #0066cc; }
+                        .meta-divider { color: rgba(12, 28, 54, 0.15); font-weight: 300; }
+
+                        /* QR Outer Shell Container with beautiful shadow */
+                        .qr-outer-container { 
+                            position: relative; 
+                            padding: 16px; 
+                            background: #ffffff; 
+                            border-radius: 32px; 
+                            box-shadow: 0 20px 50px rgba(12, 28, 54, 0.08); 
+                            border: 1px solid rgba(0, 102, 204, 0.08);
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 14px;
+                        }
+                        .qr-inner-wrapper { 
+                            padding: 12px; 
+                            background: #ffffff; 
+                            border-radius: 20px; 
+                        }
+                        .scan-btn-pill {
+                            background: #0066cc;
+                            color: #ffffff;
+                            font-weight: 800;
+                            font-size: 0.95rem;
+                            padding: 10px 28px;
+                            border-radius: 50px;
+                            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.2);
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            border: none;
+                        }
+
+                        /* Premium White Card theme section */
                         .theme-section { 
-                            margin: 15px 0; 
-                            padding: 24px 30px; 
-                            background: linear-gradient(135deg, rgba(37, 170, 225, 0.03) 0%, rgba(139, 92, 246, 0.03) 100%);
-                            border: 1px solid rgba(37, 170, 225, 0.15); 
+                            margin: 10px 0; 
+                            padding: 24px 28px; 
+                            background: #ffffff;
+                            border: 1px solid rgba(0, 102, 204, 0.08); 
                             border-radius: 24px; 
                             max-width: 90%; 
                             width: 100%;
                             box-sizing: border-box;
                             text-align: center;
-                            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+                            box-shadow: 0 10px 30px rgba(12, 28, 54, 0.04);
+                            position: relative;
                         }
-                        .theme-title { font-size: 0.9rem; font-weight: 900; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
-                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #0f172a; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.3px; line-height: 1.25; }
-                        .theme-verse { font-size: 1.05rem; color: #475569; font-weight: 600; line-height: 1.5; margin-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.05); padding-top: 10px; }
-                        .theme-verse strong { color: #0f172a; font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; }
-                        .meta { text-align: right; font-size: 0.95rem; color: #64748b; font-weight: 700; line-height: 1.4; }
-                        .meta-system { font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+                        .theme-pill-tag {
+                            position: absolute;
+                            top: -12px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            background: #0066cc;
+                            color: #ffffff;
+                            font-weight: 800;
+                            font-size: 0.68rem;
+                            padding: 4px 18px;
+                            border-radius: 50px;
+                            letter-spacing: 1.5px;
+                            text-transform: uppercase;
+                        }
+                        .theme-text { font-size: 2.2rem; font-weight: 900; color: #0c1c36; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; line-height: 1.2; }
+                        
+                        .theme-verse-ref {
+                            display: inline-block;
+                            background: rgba(0, 102, 204, 0.06);
+                            color: #0066cc;
+                            font-weight: 800;
+                            font-size: 0.72rem;
+                            padding: 4px 16px;
+                            border-radius: 50px;
+                            letter-spacing: 0.5px;
+                            text-transform: uppercase;
+                            margin: 8px 0;
+                        }
+                        .theme-verse-text { font-size: 0.95rem; color: #4b5563; font-weight: 600; line-height: 1.6; margin: 5px 0 0 0; }
+
+                        /* Footer Layout styling */
+                        .footer { 
+                            width: 100%; 
+                            border-top: 1px solid rgba(12, 28, 54, 0.06); 
+                            padding-top: 18px; 
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 20px;
+                            align-items: center;
+                        }
+                        .info-block {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            text-align: left;
+                        }
+                        .info-icon-circle {
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 50%;
+                            background: rgba(0, 102, 204, 0.06);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: #0066cc;
+                            flex-shrink: 0;
+                        }
+                        .info-details h4 {
+                            margin: 0 0 2px 0;
+                            font-size: 0.88rem;
+                            font-weight: 800;
+                            color: #0c1c36;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        .info-details p {
+                            margin: 0;
+                            font-size: 0.78rem;
+                            color: #6b7280;
+                            font-weight: 500;
+                            line-height: 1.3;
+                        }
+                        .meta-brand {
+                            text-align: right;
+                            font-size: 0.85rem;
+                            color: #6b7280;
+                            font-weight: 700;
+                            letter-spacing: 1px;
+                            text-transform: uppercase;
+                        }
+                        .meta-brand span {
+                            color: #0c1c36;
+                            font-weight: 900;
+                        }
                         @media print { body { background: none; } .page { box-shadow: none; margin: 0; width: 100%; height: 100%; } }
                     </style>
                 </head>
                 <body>
                     <div class="page">
-                        <div class="page-inner-border"></div>
                         <div class="content">
                             <div class="header">
                                 <img src="/logo.png" class="logo-img" alt="Logo" />
-                                <h1 class="meeting-title">${meeting.name}</h1>
-                                <div class="meeting-meta">
-                                    <span>${meeting.campus.toUpperCase()} CAMPUS</span>
-                                    <span class="meeting-meta-dot">•</span>
-                                    <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                <h1 class="meeting-title">Doulos Meeting <span>${meeting.name.toUpperCase().replace('DOULOS MEETING', '').replace('DOULOS', '').trim()}</span></h1>
+                                <div class="meeting-meta-pill">
+                                    <div class="meta-item">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        <span>${meeting.campus}</span>
+                                    </div>
+                                    <div class="meta-divider">|</div>
+                                    <div class="meta-item">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                        <span>${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
                                 </div>
                             </div>
+                            
                             <div class="qr-outer-container">
-                                <div class="scan-badge">SCAN ME!</div>
                                 <div class="qr-inner-wrapper">
                                     ${new XMLSerializer().serializeToString(qrSvg)}
                                 </div>
+                                <button class="scan-btn-pill">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                    <span>Scan to Check In</span>
+                                </button>
                             </div>
+                            
                             <div class="theme-section">
-                                <div class="theme-title">Semester Theme</div>
-                                <div class="theme-text">"${semesterTheme || 'Trust the designer He knows the journey'}"</div>
-                                <div class="theme-verse">
-                                    <strong>${splitVerse(semesterVerse).ref}</strong><br/>
+                                <div class="theme-pill-tag">Semester Theme</div>
+                                <div class="theme-text">"${semesterTheme || 'Transforming Grace'}"</div>
+                                
+                                <div class="theme-verse-ref">${splitVerse(semesterVerse).ref}</div>
+                                <div class="theme-verse-text">
                                     "${splitVerse(semesterVerse).text}"
                                 </div>
                             </div>
+                            
                             <div class="footer">
-                                <div class="instruction">
-                                    <h3>Quick Check-In</h3>
-                                    <p>Open your camera or QR scanner to mark your attendance instantly.</p>
+                                <div class="info-block">
+                                    <div class="info-icon-circle">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                                    </div>
+                                    <div class="info-details">
+                                        <h4>Quick Check-In</h4>
+                                        <p>Open camera or scanner to mark your attendance.</p>
+                                    </div>
                                 </div>
-                                <div class="meta">
-                                    ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>
-                                    <span class="meta-system">Leaders In Service System</span>
+                                <div class="meta-brand">
+                                    Leaders In Service <span>System</span>
                                 </div>
                             </div>
                         </div>

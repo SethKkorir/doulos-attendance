@@ -1531,8 +1531,20 @@ const StudentPortal = () => {
                         <div style={{ position: 'relative', zIndex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                 <Sparkles size={28} color="#FFD700" style={{ animation: 'bounce 2s infinite' }} />
-                                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(37,170,225,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(37,170,225,0.2)' }}>
-                                    <BookOpen size={24} color="#25AAE1" />
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.2) 0%, rgba(37, 170, 225, 0.05) 100%)',
+                                    border: '1px solid rgba(37, 170, 225, 0.3)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#25AAE1',
+                                    boxShadow: '0 0 30px rgba(37, 170, 225, 0.15)',
+                                    animation: 'bounce 2.5s infinite'
+                                }}>
+                                    <Logo size={50} showText={false} />
                                 </div>
                                 <Sparkles size={28} color="#FFD700" style={{ animation: 'bounce 2s infinite 1s' }} />
                             </div>

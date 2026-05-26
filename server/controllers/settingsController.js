@@ -307,12 +307,25 @@ export const getObservabilityTelemetry = async (req, res) => {
             }
         ]);
 
+        // Find registration numbers of students who successfully checked in to active sessions
+        const activeMeetingIds = activeMeetingsList.map(m => m._id);
+        const activeTrainingIds = activeTrainingsList.map(t => t._id);
+        const checkedInRegNos = await Attendance.distinct('studentRegNo', {
+            $or: [
+                { meeting: { $in: activeMeetingIds } },
+                { trainingId: { $in: activeTrainingIds } }
+            ]
+        });
+
         // 6. Real Recent Check-In Failures scoped to current semester (since last rollover)
         let scanErrors = [];
         if (mongoose.connection.readyState === 1) {
             scanErrors = await mongoose.connection.db.collection('scanerrors')
                 .aggregate([
-                    { $match: { timestamp: { $gte: semesterUpdatedTime } } },
+                    { $match: { 
+                        timestamp: { $gte: semesterUpdatedTime },
+                        studentRegNo: { $nin: checkedInRegNos }
+                    } },
                     { $sort: { timestamp: -1 } },
                     { $limit: 10 },
                     {

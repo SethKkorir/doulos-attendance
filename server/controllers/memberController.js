@@ -536,14 +536,6 @@ export const updateWateringDays = async (req, res) => {
 export const selfRegisterMember = async (req, res) => {
     const { studentRegNo, name, campus, memberType } = req.body;
     try {
-        // Only allow in Recovery Mode
-        const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
-        const isRecovery = recoverySetting?.value === 'true';
-
-        if (!isRecovery) {
-            return res.status(403).json({ message: 'Self-registration is only allowed during System Recovery.' });
-        }
-
         const regNo = String(studentRegNo).trim().toUpperCase();
         const exists = await Member.findOne({ studentRegNo: regNo });
         if (exists) return res.status(400).json({ message: 'Member record already exists.' });

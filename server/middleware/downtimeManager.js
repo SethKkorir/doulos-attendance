@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import '../models/Settings.js'; // Ensure model is registered
+import { sendSystemAlert } from '../utils/emailService.js';
 
 class DowntimeManager {
     constructor() {
@@ -10,6 +11,7 @@ class DowntimeManager {
             lastChecked: null,
             errors: []
         };
+        this.hasSentCrashAlert = false; // Anti-spam state variable
         this.adminBypassHeader = 'X-Admin-Bypass';
         this.adminIPs = (process.env.ADMIN_IPS || '').split(',').map(ip => ip.trim()).filter(Boolean);
         this.checkInterval = 30000; // 30 seconds
@@ -25,15 +27,40 @@ class DowntimeManager {
         
         // Listen for connection events for immediate recovery
         mongoose.connection.on('connected', () => {
+            const wasCrashed = this.status.isSystemCrashed || this.hasSentCrashAlert;
             this.status.isSystemCrashed = false;
             this.status.errors = [];
             console.log('[HEALTH CHECK] System recovered: Database connected.');
+
+            if (wasCrashed && this.hasSentCrashAlert) {
+                this.hasSentCrashAlert = false;
+                sendSystemAlert('RECOVERY', 'Doulos System Fully Recovered', {
+                    'Status': 'NOMINAL',
+                    'Database': 'CONNECTED',
+                    'Timestamp': new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }) + ' EAT',
+                    'Info': 'The connection to MongoDB Atlas has been successfully re-established. All check-in services are now fully operational.'
+                }).catch(err => console.error('Alert Recovery Email Error:', err));
+            }
         });
 
         mongoose.connection.on('error', (err) => {
             this.status.isSystemCrashed = true;
             this.status.errors = [`Database error: ${err.message}`];
+            this.triggerCrashAlert('Database Connection Error', err.message);
         });
+    }
+
+    triggerCrashAlert(reason, details) {
+        if (!this.hasSentCrashAlert) {
+            this.hasSentCrashAlert = true;
+            sendSystemAlert('CRITICAL', 'Doulos System Downtime Detected', {
+                'Status': 'CRITICAL / DOWNTIME',
+                'Event': reason,
+                'Details': details,
+                'Timestamp': new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }) + ' EAT',
+                'Diagnosis': 'Database connection failed. Please ensure the MONGO_URI is correct and IP whitelisting is allowed in MongoDB Atlas.'
+            }).catch(err => console.error('Alert Crash Email Error:', err));
+        }
     }
 
     async performHealthCheck() {
@@ -121,14 +148,25 @@ class DowntimeManager {
 
             if (isDbConnected) {
                 // Automatically clear system crashed status if database is connected
+                const wasCrashed = this.status.isSystemCrashed || this.hasSentCrashAlert;
                 this.status.isSystemCrashed = false;
                 this.status.errors = [];
+                if (wasCrashed && this.hasSentCrashAlert) {
+                    this.hasSentCrashAlert = false;
+                    sendSystemAlert('RECOVERY', 'Doulos System Fully Recovered', {
+                        'Status': 'NOMINAL',
+                        'Database': 'CONNECTED',
+                        'Timestamp': new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }) + ' EAT',
+                        'Info': 'The connection to MongoDB Atlas has been successfully re-established. All check-in services are now fully operational.'
+                    }).catch(err => console.error('Alert Recovery Email Error:', err));
+                }
             } else if (!isConnecting) {
                 // If not connected and not connecting, mark as system crashed
                 this.status.isSystemCrashed = true;
                 if (this.status.errors.length === 0) {
                     this.status.errors = ['Immediate detection: Database disconnected'];
                 }
+                this.triggerCrashAlert('Immediate Database Disconnection', 'Middleware detected Mongoose is disconnected and not currently connecting.');
             }
 
             // Dynamically refresh settings if database is connected and cache is expired
@@ -330,6 +368,17 @@ class DowntimeManager {
     getErrorInterceptor() {
         return (err, req, res, next) => {
             console.error(`[UNEXPECTED CRASH] ${err.message}`);
+            
+            // Dispatch intelligent alert for unhandled exception
+            sendSystemAlert('EXCEPTION', 'Unhandled Express Runtime Exception', {
+                'Status': 'UNHANDLED EXCEPTION',
+                'Error Message': err.message || 'Unknown Error',
+                'Request Path': req.originalUrl || req.path || 'N/A',
+                'Request Method': req.method || 'N/A',
+                'Timestamp': new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }) + ' EAT',
+                'Stack Trace': err.stack ? err.stack.substring(0, 450) + '...' : 'N/A'
+            }).catch(e => console.error('Alert Exception Email Error:', e));
+
             // If it's a critical error not caught elsewhere
             this.renderDowntime(
                 res, 
