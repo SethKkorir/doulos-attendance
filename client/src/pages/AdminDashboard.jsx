@@ -153,7 +153,7 @@ const AdminDashboard = () => {
         }
     };
 
-    const fetchMembers = async () => {
+    const fetchMembers = async (options = {}) => {
         setLoadingMembers(true);
         if (isGuest) {
             setMembers([
@@ -165,7 +165,11 @@ const AdminDashboard = () => {
             return;
         }
         try {
-            const res = await api.get('/members');
+            const params = {};
+            if (options.activeThisSemester !== undefined) {
+                params.activeThisSemester = options.activeThisSemester;
+            }
+            const res = await api.get('/members', { params });
             setMembers(res.data);
         } catch (err) {
             setMsg({ type: 'error', text: 'Failed to fetch members registry' });

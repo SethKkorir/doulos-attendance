@@ -316,19 +316,11 @@ export const getStudentPortalData = async (req, res) => {
         const member = await Member.findOne({ studentRegNo });
 
         if (!member) {
-            // Check if we are in recovery mode
-            const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
-            const isRecovery = recoverySetting?.value === 'true';
-
-            if (isRecovery) {
-                return res.status(200).json({ 
-                    registrationRequired: true, 
-                    message: "Access Denied: You must be a registered member to access the Doulos Portal. Since we are in Recovery Mode, you can register below.",
-                    studentRegNo
-                });
-            }
-
-            return res.status(404).json({ message: "Access Denied: You must be a registered member to access the Doulos Portal. Please see an admin to be added to the registry." });
+            return res.status(200).json({ 
+                registrationRequired: true, 
+                message: "We couldn't find your Admission Number in our registry. Please complete your registration below to create your Doulos Portal account.",
+                studentRegNo
+            });
         }
 
         // 1.1 Status Block
@@ -617,6 +609,13 @@ export const manualCheckIn = async (req, res) => {
 
         // Award Points
         await Member.findOneAndUpdate({ studentRegNo: regNo }, { $inc: { totalPoints: 10 } });
+
+        // Clear database scan errors for this student since check-in was successful
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.db.collection('scanerrors').deleteMany({
+                studentRegNo: regNo
+            });
+        }
 
         res.status(201).json({ message: 'Admin checked-in student successfully', record: attendance });
     } catch (error) {
