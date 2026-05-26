@@ -201,10 +201,9 @@ export const submitAttendance = async (req, res) => {
             endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
             endOfWeek.setHours(23, 59, 59, 999);
 
-            // Find all meetings on the SAME campus this week
+            // Find all meetings this week globally (all campuses)
             const meetingsThisWeek = await Meeting.find({
                 date: { $gte: startOfWeek, $lte: endOfWeek },
-                campus: meeting.campus,
                 _id: { $ne: meeting._id } // Exclude current meeting
             }).select('_id name campus');
 
@@ -218,8 +217,9 @@ export const submitAttendance = async (req, res) => {
 
                 if (attendedOther) {
                     await logScanError(studentRegNo, 'Weekly Restriction', `Duplicate weekly attendance: Already signed in to ${attendedOther.meeting.name} (${attendedOther.meeting.campus})`, meeting.campus);
+                    const campusName = attendedOther.meeting.campus === 'Valley Road' ? 'Nairobi' : attendedOther.meeting.campus;
                     return res.status(403).json({
-                        message: `Thank you for attending, but you already checked in to the ${attendedOther.meeting.name} (${attendedOther.meeting.campus}) meeting this week.`
+                        message: `ACCESS DENIED: You have already attended ${campusName} this week.`
                     });
                 }
             }
