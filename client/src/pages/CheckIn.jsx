@@ -1291,7 +1291,7 @@ const CheckIn = () => {
                             }}>
                                 <Logo size={50} showText={false} />
                             </div>
-                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-0.5px', color: 'white' }}>Welcome New Douloid!</h2>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-0.5px', color: 'white' }}>Welcome Back Douloid!</h2>
                             <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)', fontWeight: 600, lineHeight: 1.4 }}>
                                 We couldn't find your Admission Number in our registry. Let's get you set up for this semester!
                             </p>
