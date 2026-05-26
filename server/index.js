@@ -52,7 +52,14 @@ import './models/Payment.js';
 import './models/Training.js';
 
 const connectDB = async () => {
-    if (cachedConnection) return cachedConnection;
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+        return cachedConnection;
+    }
+
+    if (cachedConnection && mongoose.connection.readyState !== 1) {
+        console.log('🔄 Stale MongoDB connection detected. Clearing cache and reconnecting...');
+        cachedConnection = null;
+    }
 
     console.log('--- Database Connection Attempt ---');
     const primaryUri = process.env.MONGO_URI || 'mongodb://localhost:27017/doulos-attendance';
