@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import '../models/Settings.js'; // Ensure model is registered
 
 class DowntimeManager {
@@ -88,6 +89,20 @@ class DowntimeManager {
         const clientIP = req.ip || req.connection.remoteAddress;
         if (this.adminIPs.includes(clientIP)) {
             return true;
+        }
+
+        // Check JWT token role (allows logged-in admins/developers to manage the system during maintenance)
+        const token = req.headers['authorization']?.split(' ')[1];
+        if (token) {
+            try {
+                const verified = jwt.verify(token, process.env.JWT_SECRET);
+                const allowedRoles = ['admin', 'superadmin', 'developer'];
+                if (verified && verified.role && allowedRoles.includes(verified.role.toLowerCase())) {
+                    return true;
+                }
+            } catch (err) {
+                // Ignore invalid or expired tokens
+            }
         }
 
         return false;
