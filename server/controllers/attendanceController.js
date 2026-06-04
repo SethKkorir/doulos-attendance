@@ -96,9 +96,7 @@ export const submitAttendance = async (req, res) => {
 
         console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.getHours()}:${now.getMinutes()} vs Start=${meeting.startTime} End=${meeting.endTime}`);
 
-        // Training sessions span multiple days (Fri–Sun) — skip all time-window checks.
-        // The only gate is isActive. Admins can also manually check in anyone at any time.
-        if (!isTrainingSession && !isSuperUser && !meeting.isTestMeeting) {
+        if (!isSuperUser && !meeting.isTestMeeting) {
             // 1. Future Day Block
             if (todayStr < meetingStr) {
                 await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Timing Violation', `Early scan attempted for scheduled meeting: ${meeting.name}`, meeting.campus);

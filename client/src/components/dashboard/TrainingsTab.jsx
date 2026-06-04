@@ -536,197 +536,232 @@ const TrainingsTab = ({
             </div>
 
             {showCreateTraining && (
-                <div className="glass-card-premium" style={{ marginBottom: '2rem', maxWidth: '800px', position: 'relative', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#34d399', fontWeight: 800 }}>
-                            <GraduationCap size={22} style={{ color: '#34d399' }} /> Create Training Session
-                        </h3>
+                <div className="glass-card-premium" style={{ marginBottom: '2.5rem', maxWidth: '850px', position: 'relative', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '2.25rem', background: '#0a0d16', borderRadius: '24px' }}>
+                    
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                            <div style={{ background: 'rgba(52, 211, 153, 0.1)', padding: '0.6rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <GraduationCap size={24} style={{ color: '#34d399' }} />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#34d399', fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
+                                    Create Training Session
+                                </h3>
+                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                                    Setup a new training, configure geofences and check-in polls.
+                                </p>
+                            </div>
+                        </div>
                         <button 
                             onClick={() => setShowCreateTraining(false)} 
                             style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-dim)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', transition: 'background-color 0.2s' }}
                         >
-                            <X size={20} />
+                            <X size={18} />
                         </button>
                     </div>
-                    <form onSubmit={handleCreateTraining} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
-                        
-                        <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <SettingsIcon size={14} /> Training Setup
-                            </span>
-                        </div>
-                        
-                        <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                            <label>Training Name</label>
-                            <input className="modern-input" value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} placeholder="e.g. Leadership Foundations" required />
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> Date</label>
-                            <input type="date" className="modern-input" value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
-                            <select className="modern-input" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
-                                <option value="Both">Both Campuses</option>
-                                <option value="Athi River">Athi River Only</option>
-                                <option value="Valley Road">Valley Road Only</option>
-                            </select>
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> Start Time</label>
-                            <input type="time" className="modern-input" value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
-                            <input type="time" className="modern-input" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
-                        </div>
 
-                        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }} className="form-group-premium">
-                            <div>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question Type</label>
-                                <select 
-                                    className="modern-input"
-                                    value={trainingFormData.questionType || 'text'}
-                                    onChange={e => {
-                                        const type = e.target.value;
-                                        setTrainingFormData(prev => ({
-                                            ...prev,
-                                            questionType: type,
-                                            questionOptions: (type === 'multiple_choice' || type === 'checkboxes') ? ['', ''] : []
-                                        }));
-                                    }}
-                                >
-                                    <option value="text">Open Ended (Text)</option>
-                                    <option value="yes_no">Yes / No</option>
-                                    <option value="multiple_choice">Multiple Choice (Single Select)</option>
-                                    <option value="checkboxes">Select Multiple (Checkboxes)</option>
-                                    <option value="rating">Rating Scale (1-5 Stars)</option>
-                                </select>
+                    <form onSubmit={handleCreateTraining} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                        
+                        {/* SECTION 1: Identity & Schedule */}
+                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
+                                <SettingsIcon size={14} style={{ color: '#34d399' }} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>General Details</span>
                             </div>
-                            <div>
-                                <label>Question Wording</label>
-                                <input 
-                                    type="text"
-                                    className="modern-input"
-                                    value={trainingFormData.questionOfDay}
-                                    onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })}
-                                    placeholder="e.g. Rate your week / Choose an option"
-                                />
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem' }}>
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Training Name</label>
+                                    <input className="modern-input" style={{ width: '100%' }} value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} placeholder="e.g. Leadership Foundations" required />
+                                </div>
+                                
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Target Campus</label>
+                                    <select className="modern-input" style={{ width: '100%' }} value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
+                                        <option value="Both">Both Campuses</option>
+                                        <option value="Athi River">Athi River Only</option>
+                                        <option value="Valley Road">Valley Road Only</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}><Calendar size={13} style={{ color: '#34d399' }} /> Date</label>
+                                    <input type="date" className="modern-input" style={{ width: '100%' }} value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
+                                </div>
+
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}><Clock size={13} style={{ color: '#34d399' }} /> Start Time</label>
+                                    <input type="time" className="modern-input" style={{ width: '100%' }} value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
+                                </div>
+
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}><Clock size={13} style={{ color: '#34d399' }} /> End Time</label>
+                                    <input type="time" className="modern-input" style={{ width: '100%' }} value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
+                                </div>
                             </div>
                         </div>
 
-                        {(trainingFormData.questionType === 'multiple_choice' || trainingFormData.questionType === 'checkboxes') && (
-                            <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.25rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Poll Choices / Options</span>
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.2)', cursor: 'pointer', borderRadius: '0.5rem', fontWeight: 800 }}
-                                        onClick={() => {
+                        {/* SECTION 2: Interaction / Poll */}
+                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
+                                <Lightbulb size={14} style={{ color: '#34d399' }} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Check-In Engagement Poll</span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Question Type</label>
+                                    <select 
+                                        className="modern-input"
+                                        style={{ width: '100%' }}
+                                        value={trainingFormData.questionType || 'text'}
+                                        onChange={e => {
+                                            const type = e.target.value;
                                             setTrainingFormData(prev => ({
                                                 ...prev,
-                                                questionOptions: [...prev.questionOptions, '']
+                                                questionType: type,
+                                                questionOptions: (type === 'multiple_choice' || type === 'checkboxes') ? ['', ''] : []
                                             }));
                                         }}
                                     >
-                                        + Add Option
-                                    </button>
+                                        <option value="text">Open Ended (Text Input)</option>
+                                        <option value="yes_no">Yes / No Toggle</option>
+                                        <option value="multiple_choice">Multiple Choice (Single Select)</option>
+                                        <option value="checkboxes">Multiple Choice (Checkboxes)</option>
+                                        <option value="rating">Rating Scale (1 - 5 Stars)</option>
+                                    </select>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {trainingFormData.questionOptions.map((opt, idx) => (
-                                        <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.82rem', fontWeight: 700, opacity: 0.5, minWidth: '20px' }}>{idx + 1}.</span>
-                                            <input
-                                                type="text"
-                                                className="modern-input"
-                                                style={{ flex: 1, height: '38px', minHeight: '38px', padding: '0.5rem 0.75rem' }}
-                                                value={opt}
-                                                placeholder={`Option ${idx + 1}`}
-                                                required
-                                                onChange={e => {
-                                                    const newOpts = [...trainingFormData.questionOptions];
-                                                    newOpts[idx] = e.target.value;
-                                                    setTrainingFormData({ ...trainingFormData, questionOptions: newOpts });
-                                                }}
-                                            />
-                                            {trainingFormData.questionOptions.length > 2 && (
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger"
-                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                    onClick={() => {
-                                                        const newOpts = trainingFormData.questionOptions.filter((_, i) => i !== idx);
+
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Question Wording</label>
+                                    <input 
+                                        type="text"
+                                        className="modern-input"
+                                        style={{ width: '100%' }}
+                                        value={trainingFormData.questionOfDay}
+                                        onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })}
+                                        placeholder="e.g. Share one takeaway from today's session"
+                                    />
+                                </div>
+                            </div>
+
+                            {(trainingFormData.questionType === 'multiple_choice' || trainingFormData.questionType === 'checkboxes') && (
+                                <div style={{ background: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', marginTop: '0.25rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Poll Options List</span>
+                                        <button
+                                            type="button"
+                                            className="btn"
+                                            style={{ padding: '0.35rem 0.85rem', fontSize: '0.72rem', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.15)', cursor: 'pointer', borderRadius: '6px', fontWeight: 800 }}
+                                            onClick={() => {
+                                                setTrainingFormData(prev => ({
+                                                    ...prev,
+                                                    questionOptions: [...prev.questionOptions, '']
+                                                }));
+                                            }}
+                                        >
+                                            + Add Option
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {trainingFormData.questionOptions.map((opt, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.78rem', fontWeight: 700, opacity: 0.4, minWidth: '20px' }}>Option {idx + 1}</span>
+                                                <input
+                                                    type="text"
+                                                    className="modern-input"
+                                                    style={{ flex: 1, height: '38px', minHeight: '38px', padding: '0.5rem 0.75rem' }}
+                                                    value={opt}
+                                                    placeholder={`Enter value for Option ${idx + 1}`}
+                                                    required
+                                                    onChange={e => {
+                                                        const newOpts = [...trainingFormData.questionOptions];
+                                                        newOpts[idx] = e.target.value;
                                                         setTrainingFormData({ ...trainingFormData, questionOptions: newOpts });
                                                     }}
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
+                                                />
+                                                {trainingFormData.questionOptions.length > 2 && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger"
+                                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.72rem', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        onClick={() => {
+                                                            const newOpts = trainingFormData.questionOptions.filter((_, i) => i !== idx);
+                                                            setTrainingFormData({ ...trainingFormData, questionOptions: newOpts });
+                                                        }}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* SECTION 3: Venue & Geofencing */}
+                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
+                                <MapPin size={14} style={{ color: '#34d399' }} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Venue & Geofencing</span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem' }}>
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Venue Name *</label>
+                                    <input className="modern-input" style={{ width: '100%' }} placeholder="e.g. Athi River Guest House" value={trainingFormData.location.name}
+                                        onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
+                                </div>
+                                
+                                <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Geofence Radius (meters)</label>
+                                    <input type="number" className="modern-input" style={{ width: '100%' }} value={trainingFormData.location.radius}
+                                        onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} placeholder="200" />
                                 </div>
                             </div>
-                        )}
 
-                        <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <MapPin size={14} /> Venue & Geofencing
-                            </span>
-                        </div>
-
-                        <div style={{ gridColumn: '1 / -1' }} className="form-group-premium">
-                            <label>Venue Name *</label>
-                            <input className="modern-input" placeholder="e.g. AR Guest House" value={trainingFormData.location.name}
-                                onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
-                        </div>
-                        
-                        <div className="form-group-premium">
-                            <label>Geofence Radius (meters)</label>
-                            <input type="number" className="modern-input" value={trainingFormData.location.radius}
-                                onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} placeholder="200" />
-                        </div>
-
-                        <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(52, 211, 153, 0.05)', border: '1px solid rgba(52, 211, 153, 0.15)', borderRadius: '1rem', padding: '1.25rem', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <MapPin size={16} /> GPS Geofence Link
-                                </span>
-                                {trainingFormData.location.latitude && trainingFormData.location.longitude ? (
-                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                                        ✓ Coordinates captured: {trainingFormData.location.latitude.toFixed(5)}, {trainingFormData.location.longitude.toFixed(5)}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'rgba(52, 211, 153, 0.03)', border: '1px solid rgba(52, 211, 153, 0.12)', borderRadius: '12px', padding: '1.25rem', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <MapPin size={15} /> Current Geofence Coordinates
                                     </span>
-                                ) : (
-                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
-                                        Capture the current coordinates for device check-in verification.
-                                    </span>
-                                )}
+                                    {trainingFormData.location.latitude && trainingFormData.location.longitude ? (
+                                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                                            ✓ Captured: {trainingFormData.location.latitude.toFixed(6)}°, {trainingFormData.location.longitude.toFixed(6)}°
+                                        </span>
+                                    ) : (
+                                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                                            Verify check-in device coordinates by fetching current GPS location.
+                                        </span>
+                                    )}
+                                </div>
+                                <button 
+                                    type="button" 
+                                    className="btn" 
+                                    style={{ background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.15) 0%, rgba(10, 77, 104, 0.25) 100%)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.15rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+                                    onClick={() => {
+                                        navigator.geolocation.getCurrentPosition(pos => {
+                                            setTrainingFormData(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
+                                            setMsg({ type: 'success', text: `GPS captured!` });
+                                        }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
+                                    }}
+                                >
+                                    <MapPin size={14} /> Capture GPS
+                                </button>
                             </div>
-                            <button 
-                                type="button" 
-                                className="btn" 
-                                style={{ background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(10, 77, 104, 0.3) 100%)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', fontWeight: 700 }}
-                                onClick={() => {
-                                    navigator.geolocation.getCurrentPosition(pos => {
-                                        setTrainingFormData(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
-                                        setMsg({ type: 'success', text: `GPS captured!` });
-                                    }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
-                                }}
-                            >
-                                <MapPin size={16} /> Capture GPS
-                            </button>
                         </div>
 
-                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        {/* Submit Button */}
+                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
                             <button 
                                 type="submit" 
                                 className="btn btn-primary" 
                                 disabled={importLoading} 
-                                style={{ background: '#34d399', padding: '1rem 2.5rem', color: 'black', fontWeight: 800, borderRadius: '0.75rem', width: '100%', letterSpacing: '0.5px' }}
+                                style={{ background: '#34d399', padding: '0.9rem 2.25rem', color: 'black', fontWeight: 800, borderRadius: '12px', width: '100%', letterSpacing: '0.5px', cursor: 'pointer', border: 'none' }}
                             >
                                 {importLoading ? 'CREATING...' : 'CREATE TRAINING SESSION'}
                             </button>
