@@ -117,9 +117,9 @@ const AdminDashboard = () => {
     const fetchMeetings = async () => {
         if (isGuest) {
             setMeetings([
-                { _id: '1', name: 'Weekly Fellowship', date: new Date().toISOString(), isActive: true, campus: 'Valley Road', attendees: 45 },
-                { _id: '2', name: 'Leadership Summit', date: new Date(Date.now() - 86400000 * 7).toISOString(), isActive: false, campus: 'Valley Road', attendees: 120 },
-                { _id: '3', name: 'Prayer Night', date: new Date(Date.now() - 86400000 * 14).toISOString(), isActive: false, campus: 'Athi River', attendees: 30 }
+                { _id: '1', name: 'Weekly Fellowship', date: new Date().toISOString(), isActive: true, campus: 'Valley Road', attendees: 45, attendanceCount: 45 },
+                { _id: '2', name: 'Leadership Summit', date: new Date(Date.now() - 86400000 * 7).toISOString(), isActive: false, campus: 'Valley Road', attendees: 120, attendanceCount: 120 },
+                { _id: '3', name: 'Prayer Night', date: new Date(Date.now() - 86400000 * 14).toISOString(), isActive: false, campus: 'Athi River', attendees: 30, attendanceCount: 30 }
             ]);
             return;
         }

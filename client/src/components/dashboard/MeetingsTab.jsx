@@ -24,7 +24,9 @@ const MeetingsTab = ({
     fetchMembers 
 }) => {
     const [showCreate, setShowCreate] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState(null);
+    const [showSemesterQR, setShowSemesterQR] = useState(false);
     const [insightMeeting, setInsightMeeting] = useState(null);
     const [importLoading, setImportLoading] = useState(false);
     const [meetingSemesterFilter, setMeetingSemesterFilter] = useState('Current');
@@ -79,6 +81,8 @@ const MeetingsTab = ({
             { label: 'Admission Number', key: 'studentRegNo', required: true }
         ],
         questionOfDay: '',
+        questionType: 'text',
+        questionOptions: [],
         location: {
             name: '',
             latitude: null,
@@ -227,6 +231,261 @@ const MeetingsTab = ({
         } else {
             setMsg({ type: 'error', text: `Admission number "${reg}" not found in registry.` });
         }
+    };
+
+    const handlePrintSemesterQR = () => {
+        const qrSvg = document.querySelector('.semester-qr-container svg');
+        if (!qrSvg) return;
+
+        const printHtml = `
+            <html>
+                <head>
+                    <title>Doulos Semester QR - Athi River</title>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+                        @page { size: A4; margin: 0; }
+                        body { 
+                            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+                            margin: 0; padding: 0; background: #ffffff;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                            color: #0c1c36;
+                        }
+                        .page {
+                            width: 210mm; height: 297mm; position: relative;
+                            background: radial-gradient(circle at 10% 20%, rgba(240, 245, 255, 0.6) 0%, #ffffff 80%); 
+                            overflow: hidden;
+                            display: flex; flex-direction: column; align-items: center; justify-content: center;
+                            box-sizing: border-box;
+                            border: 10px solid #0c1c36;
+                        }
+                        .content {
+                            position: relative; z-index: 10; width: 100%; height: 100%;
+                            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+                            padding: 20mm 15mm; box-sizing: border-box;
+                        }
+                        .header { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+                        .logo-img { width: 85px; height: 85px; object-fit: contain; }
+                        .meeting-title { font-size: 2.2rem; font-weight: 900; line-height: 1.1; color: #0c1c36; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
+                        .meeting-title span { color: #0066cc; }
+                        
+                        .meeting-meta-pill {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 12px;
+                            background: rgba(12, 28, 54, 0.03);
+                            border: 1px solid rgba(12, 28, 54, 0.05);
+                            padding: 6px 18px;
+                            border-radius: 50px;
+                            font-size: 0.88rem;
+                            font-weight: 800;
+                            color: #0c1c36;
+                            letter-spacing: 0.5px;
+                        }
+                        .meta-item {
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                        }
+                        .meta-divider {
+                            color: rgba(12, 28, 54, 0.15);
+                            font-weight: 300;
+                        }
+                        
+                        .qr-outer-container {
+                            position: relative;
+                            padding: 10px;
+                            background: #ffffff;
+                            border-radius: 28px;
+                            border: 3.5px solid #0c1c36;
+                            box-shadow: 0 15px 35px rgba(12, 28, 54, 0.05);
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 14px;
+                        }
+                        .qr-inner-wrapper { 
+                            padding: 12px; 
+                            background: #ffffff; 
+                            border-radius: 20px; 
+                        }
+                        .scan-btn-pill {
+                            background: #0066cc;
+                            color: #ffffff;
+                            font-weight: 800;
+                            font-size: 0.95rem;
+                            padding: 10px 28px;
+                            border-radius: 50px;
+                            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.2);
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            border: none;
+                        }
+
+                        .theme-section { 
+                            margin: 10px 0; 
+                            padding: 24px 28px; 
+                            background: #ffffff;
+                            border: 1px solid rgba(0, 102, 204, 0.08); 
+                            border-radius: 24px; 
+                            max-width: 90%; 
+                            width: 100%;
+                            box-sizing: border-box;
+                            text-align: center;
+                            box-shadow: 0 10px 30px rgba(12, 28, 54, 0.04);
+                            position: relative;
+                        }
+                        .theme-pill-tag {
+                            position: absolute;
+                            top: -12px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            background: #0066cc;
+                            color: #ffffff;
+                            font-weight: 800;
+                            font-size: 0.68rem;
+                            padding: 4px 18px;
+                            border-radius: 50px;
+                            letter-spacing: 1.5px;
+                            text-transform: uppercase;
+                        }
+                        .theme-text { font-size: 2.2rem; font-weight: 900; color: #0c1c36; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; line-height: 1.2; }
+                        
+                        .theme-verse-ref {
+                            display: inline-block;
+                            background: rgba(0, 102, 204, 0.06);
+                            color: #0066cc;
+                            font-weight: 800;
+                            font-size: 0.72rem;
+                            padding: 4px 16px;
+                            border-radius: 50px;
+                            letter-spacing: 0.5px;
+                            text-transform: uppercase;
+                            margin: 8px 0;
+                        }
+                        .theme-verse-text { font-size: 0.95rem; color: #4b5563; font-weight: 600; line-height: 1.6; margin: 5px 0 0 0; }
+
+                        .footer { 
+                            width: 100%; 
+                            border-top: 1px solid rgba(12, 28, 54, 0.06); 
+                            padding-top: 18px; 
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 20px;
+                            align-items: center;
+                        }
+                        .info-block {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            text-align: left;
+                        }
+                        .info-icon-circle {
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 50%;
+                            background: rgba(0, 102, 204, 0.06);
+                            display: flex;
+                            align-items: center;
+                            justifyContent: center;
+                            color: #0066cc;
+                            flex-shrink: 0;
+                        }
+                        .info-details h4 {
+                            margin: 0 0 2px 0;
+                            font-size: 0.88rem;
+                            font-weight: 800;
+                            color: #0c1c36;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        .info-details p {
+                            margin: 0;
+                            font-size: 0.78rem;
+                            color: #6b7280;
+                            font-weight: 500;
+                            line-height: 1.3;
+                        }
+                        .meta-brand {
+                            text-align: right;
+                            font-size: 0.85rem;
+                            color: #6b7280;
+                            font-weight: 700;
+                            letter-spacing: 1px;
+                            text-transform: uppercase;
+                        }
+                        .meta-brand span {
+                            color: #0c1c36;
+                            font-weight: 900;
+                        }
+                        @media print { body { background: none; } .page { box-shadow: none; margin: 0; width: 100%; height: 100%; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="page">
+                        <div class="content">
+                            <div class="header">
+                                <img src="/logo.png" class="logo-img" alt="Logo" />
+                                <h1 class="meeting-title">Doulos Meeting <span>ATHI RIVER</span></h1>
+                                <div class="meeting-meta-pill">
+                                    <div class="meta-item">
+                                        <span>PERMANENT SEMESTER QR</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="qr-outer-container">
+                                <div class="qr-inner-wrapper">
+                                    ${new XMLSerializer().serializeToString(qrSvg)}
+                                </div>
+                                <button class="scan-btn-pill">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                    <span>Scan to Check In</span>
+                                </button>
+                            </div>
+                            
+                            <div class="theme-section">
+                                <div class="theme-pill-tag">Semester Theme</div>
+                                <div class="theme-text">"${semesterTheme || 'Transforming Grace'}"</div>
+                                
+                                <div class="theme-verse-ref">${splitVerse(semesterVerse).ref}</div>
+                                <div class="theme-verse-text">
+                                    "${splitVerse(semesterVerse).text}"
+                                </div>
+                            </div>
+                            
+                            <div class="footer">
+                                <div class="info-block">
+                                    <div class="info-icon-circle">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                                    </div>
+                                    <div class="info-details">
+                                        <h4>Quick Check-In</h4>
+                                        <p>Open camera or scanner to mark your attendance.</p>
+                                    </div>
+                                </div>
+                                <div class="meta-brand">
+                                    Leaders In Service <span>System</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = () => {
+                            setTimeout(() => {
+                                window.print();
+                            }, 500); 
+                        };
+                    </script>
+                </body>
+            </html>
+        `;
+        const win = window.open('', '_blank');
+        win.document.write(printHtml);
+        win.document.close();
     };
 
     const handlePrintQR = () => {
@@ -623,11 +882,11 @@ const MeetingsTab = ({
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
                         <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
-                        <span style={{ color: isActuallyLive ? '#22c55e' : '#1da6d9' }}>{m.attendees || 0} checked-in</span>
+                        <span style={{ color: isActuallyLive ? '#22c55e' : '#1da6d9' }}>{m.attendanceCount || 0} checked-in</span>
                     </div>
                     <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                         <div style={{
-                            width: `${Math.min(100, ((m.attendees || 0) / 100) * 100)}%`,
+                            width: `${Math.min(100, ((m.attendanceCount || 0) / 100) * 100)}%`,
                             height: '100%',
                             background: isActuallyLive ? 'linear-gradient(90deg, #22c55e, #4ade80)' : 'linear-gradient(90deg, #1da6d9, #0ea5e9)',
                             borderRadius: '10px',
@@ -759,27 +1018,9 @@ const MeetingsTab = ({
                         <BarChart3 size={14} /> Insights
                     </button>
 
-                    <button 
-                        className="btn" 
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            background: 'rgba(255,255,255,0.03)',
-                            color: 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: '0.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                        onClick={() => handleToggleStatus(m)}
-                    >
-                        {m.isActive ? <X size={14} title="Close Meeting" /> : <RotateCcw size={14} title="Reopen Meeting" />}
-                    </button>
-
-                    {['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
-                        <button
-                            className="btn"
+                    {m.isActive ? (
+                        <button 
+                            className="btn" 
                             style={{
                                 width: '36px',
                                 height: '36px',
@@ -791,9 +1032,54 @@ const MeetingsTab = ({
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}
+                            onClick={() => handleToggleStatus(m)}
+                            title="Close Session"
+                        >
+                            <X size={14} />
+                        </button>
+                    ) : (
+                        <button 
+                            className="btn" 
+                            style={{
+                                flex: 1.2,
+                                background: 'rgba(34, 197, 94, 0.1)',
+                                color: '#4ade80',
+                                border: '1px solid rgba(34, 197, 94, 0.2)',
+                                fontSize: '0.75rem',
+                                padding: '0.55rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.35rem'
+                            }}
+                            onClick={() => handleToggleStatus(m)}
+                        >
+                            <RotateCcw size={14} /> Reopen
+                        </button>
+                    )}
+
+                    {!m.isActive && ['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
+                        <button
+                            className="btn"
+                            style={{
+                                flex: 0.8,
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                fontSize: '0.75rem',
+                                padding: '0.55rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.35rem'
+                            }}
                             onClick={() => handleDeleteMeeting(m._id, m.name)}
                         >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} /> Delete
                         </button>
                     )}
                 </div>
@@ -824,11 +1110,17 @@ const MeetingsTab = ({
 
     return (
         <>
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-                    <Plus size={20} /> New Meeting Session
-                </button>
+            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+                        <Plus size={20} /> New Meeting Session
+                    </button>
+                    <button className="btn" onClick={() => setShowSemesterQR(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                        <QrIcon size={20} /> Print Athi River Semester QR
+                    </button>
+                </div>
             </div>
 
             {showCreate && (
@@ -879,16 +1171,93 @@ const MeetingsTab = ({
                             <input type="time" className="modern-input" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
                         </div>
 
-                        <div style={{ gridColumn: 'span 12' }} className="form-group-premium">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day</label>
-                            <textarea
-                                className="modern-input"
-                                style={{ width: '100%', minHeight: '44px', height: '44px', resize: 'vertical' }}
-                                value={formData.questionOfDay}
-                                onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
-                                placeholder="e.g. What are you most grateful for this week?"
-                            />
+                        <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }} className="form-group-premium">
+                            <div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question Type</label>
+                                <select 
+                                    className="modern-input"
+                                    value={formData.questionType || 'text'}
+                                    onChange={e => {
+                                        const type = e.target.value;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            questionType: type,
+                                            questionOptions: (type === 'multiple_choice' || type === 'checkboxes') ? ['', ''] : []
+                                        }));
+                                    }}
+                                >
+                                    <option value="text">Open Ended (Text)</option>
+                                    <option value="yes_no">Yes / No</option>
+                                    <option value="multiple_choice">Multiple Choice (Single Select)</option>
+                                    <option value="checkboxes">Select Multiple (Checkboxes)</option>
+                                    <option value="rating">Rating Scale (1-5 Stars)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Question Wording</label>
+                                <input 
+                                    type="text"
+                                    className="modern-input"
+                                    value={formData.questionOfDay}
+                                    onChange={e => setFormData({ ...formData, questionOfDay: e.target.value })}
+                                    placeholder="e.g. Rate your week / Choose an option"
+                                />
+                            </div>
                         </div>
+
+                        {(formData.questionType === 'multiple_choice' || formData.questionType === 'checkboxes') && (
+                            <div style={{ gridColumn: 'span 12', background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Poll Choices / Options</span>
+                                    <button
+                                        type="button"
+                                        className="btn"
+                                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', background: 'rgba(29, 166, 217, 0.1)', color: '#1da6d9', border: '1px solid rgba(29, 166, 217, 0.2)', cursor: 'pointer', borderRadius: '0.5rem', fontWeight: 800 }}
+                                        onClick={() => {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                questionOptions: [...prev.questionOptions, '']
+                                            }));
+                                        }}
+                                    >
+                                        + Add Option
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {formData.questionOptions.map((opt, idx) => (
+                                        <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.82rem', fontWeight: 700, opacity: 0.5, minWidth: '20px' }}>{idx + 1}.</span>
+                                            <input
+                                                type="text"
+                                                className="modern-input"
+                                                style={{ flex: 1, height: '38px', minHeight: '38px', padding: '0.5rem 0.75rem' }}
+                                                value={opt}
+                                                placeholder={`Option ${idx + 1}`}
+                                                required
+                                                onChange={e => {
+                                                    const newOpts = [...formData.questionOptions];
+                                                    newOpts[idx] = e.target.value;
+                                                    setFormData({ ...formData, questionOptions: newOpts });
+                                                }}
+                                            />
+                                            {formData.questionOptions.length > 2 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger"
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    onClick={() => {
+                                                        const newOpts = formData.questionOptions.filter((_, i) => i !== idx);
+                                                        setFormData({ ...formData, questionOptions: newOpts });
+                                                    }}
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div style={{ gridColumn: 'span 12', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.25rem', marginTop: '0.25rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#1da6d9', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -983,51 +1352,81 @@ const MeetingsTab = ({
                 </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                <h3 style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Archived History</h3>
-                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem' }}>
-                    <button
-                        onClick={() => setMeetingSemesterFilter('Current')}
-                        style={{
-                            padding: '0.5rem 1rem', borderRadius: '0.5rem',
-                            background: meetingSemesterFilter === 'Current' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
-                            color: meetingSemesterFilter === 'Current' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
-                            border: meetingSemesterFilter === 'Current' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
-                            fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
-                        }}
-                    >Current</button>
-                    {semesters.filter(s => s !== currentSem).map(s => (
-                        <button
-                            key={s}
-                            onClick={() => setMeetingSemesterFilter(s)}
-                            style={{
-                                padding: '0.5rem 1rem', borderRadius: '0.5rem',
-                                background: meetingSemesterFilter === s ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
-                                color: meetingSemesterFilter === s ? '#25AAE1' : 'rgba(255,255,255,0.4)',
-                                border: meetingSemesterFilter === s ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
-                                fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
-                            }}
-                        >{s}</button>
-                    ))}
-                    <button
-                        onClick={() => setMeetingSemesterFilter('All')}
-                        style={{
-                            padding: '0.5rem 1rem', borderRadius: '0.5rem',
-                            background: meetingSemesterFilter === 'All' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
-                            color: meetingSemesterFilter === 'All' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
-                            border: meetingSemesterFilter === 'All' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
-                            fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
-                        }}
-                    >All Time</button>
+            <div 
+                style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '1.5rem', 
+                    marginTop: '2.5rem',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    padding: '1rem 1.5rem',
+                    borderRadius: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+                onClick={() => setShowHistory(!showHistory)}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Calendar size={18} style={{ color: '#a78bfa' }} />
+                    <h3 style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'white' }}>
+                        Archived History ({filteredHistory.length} Sessions)
+                    </h3>
                 </div>
+                <span style={{ fontSize: '0.75rem', color: '#a78bfa', fontWeight: 800 }}>
+                    {showHistory ? 'HIDE HISTORY ▲' : 'SHOW HISTORY ▼'}
+                </span>
             </div>
 
-            {filteredHistory.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No past meetings found in this period.</div>
-            ) : (
-                <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                    {filteredHistory.map(m => renderMeetingCard(m))}
-                </div>
+            {showHistory && (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem' }}>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setMeetingSemesterFilter('Current'); }}
+                                style={{
+                                    padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                                    background: meetingSemesterFilter === 'Current' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
+                                    color: meetingSemesterFilter === 'Current' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
+                                    border: meetingSemesterFilter === 'Current' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
+                                    fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
+                                }}
+                            >Current</button>
+                            {semesters.filter(s => s !== currentSem).map(s => (
+                                <button
+                                    key={s}
+                                    onClick={(e) => { e.stopPropagation(); setMeetingSemesterFilter(s); }}
+                                    style={{
+                                        padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                                        background: meetingSemesterFilter === s ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
+                                        color: meetingSemesterFilter === s ? '#25AAE1' : 'rgba(255,255,255,0.4)',
+                                        border: meetingSemesterFilter === s ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
+                                        fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
+                                    }}
+                                >{s}</button>
+                            ))}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setMeetingSemesterFilter('All'); }}
+                                style={{
+                                    padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                                    background: meetingSemesterFilter === 'All' ? 'rgba(37, 170, 225, 0.12)' : 'transparent',
+                                    color: meetingSemesterFilter === 'All' ? '#25AAE1' : 'rgba(255,255,255,0.4)',
+                                    border: meetingSemesterFilter === 'All' ? '1px solid rgba(37, 170, 225, 0.2)' : '1px solid transparent',
+                                    fontSize: '0.75rem', fontWeight: 750, cursor: 'pointer', transition: 'all 0.2s'
+                                }}
+                            >All Time</button>
+                        </div>
+                    </div>
+
+                    {filteredHistory.length === 0 ? (
+                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>No past meetings found in this period.</div>
+                    ) : (
+                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                            {filteredHistory.map(m => renderMeetingCard(m))}
+                        </div>
+                    )}
+                </>
             )}
 
             {/* QR Modal for Meeting */}
@@ -1097,6 +1496,66 @@ const MeetingsTab = ({
                             )}
                         </div>
                         <p style={{ marginTop: '1.5rem', opacity: 0.4, fontSize: '0.75rem' }}>Click anywhere outside to close</p>
+                    </div>
+                </div>
+            )}
+
+
+            {/* Semester QR Modal for Athi River */}
+            {showSemesterQR && (
+                <div style={{ 
+                    position: 'fixed', inset: 0, 
+                    background: 'rgba(2, 6, 12, 0.75)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                    zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' 
+                }}
+                    onClick={() => setShowSemesterQR(false)}>
+                    <div className="glass-card-premium" style={{ 
+                        padding: '2.5rem 2rem', 
+                        textAlign: 'center', 
+                        maxWidth: '400px', 
+                        width: '100%', 
+                        background: '#090d16',
+                        borderRadius: '1.25rem',
+                        border: '1px solid rgba(29, 166, 217, 0.2)',
+                        boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
+                        animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginBottom: '0.5rem', color: 'white' }}>Scan Athi River Semester QR</h3>
+
+                        <div className="semester-qr-container" style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '1.5rem' }}>
+                            <QRCode value={`${window.location.origin}/check-in/athi-river`} size={220} level="H" />
+                        </div>
+
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>STATIC CODE</div>
+                            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', lineHeight: 1 }}>
+                                ATHI-RIVER
+                            </div>
+                        </div>
+
+                        <h4 style={{ margin: '0 0 0.25rem', color: 'white' }}>Permanent Semester QR</h4>
+                        <p style={{ opacity: 0.5, marginBottom: '1.5rem', fontSize: '0.85rem' }}>Athi River Campus | Active meetings only</p>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                className="btn btn-primary"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                                onClick={() => handlePrintSemesterQR()}
+                            >
+                                <Download size={14} style={{ marginRight: '0.4rem' }} /> Print QR
+                            </button>
+                            <button
+                                className="btn"
+                                style={{ background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                onClick={() => {
+                                    const link = `${window.location.origin}/check-in/athi-river`;
+                                    navigator.clipboard.writeText(link);
+                                    setMsg({ type: 'success', text: 'Link copied!' });
+                                }}
+                            >
+                                <LinkIcon size={14} style={{ marginRight: '0.4rem' }} /> Copy Link
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

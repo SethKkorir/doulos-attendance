@@ -9,12 +9,12 @@ import { getKenyanTime } from '../utils/kenyanTime.js';
 
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay } = req.body;
+    const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions } = req.body;
 
     try {
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay
+            name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions
         });
         await meeting.save();
         res.status(201).json(meeting);
@@ -163,11 +163,30 @@ export const setMeetingLocation = async (req, res) => {
 export const getMeetingByCode = async (req, res) => {
     try {
         let isTraining = false;
-        let meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
+        const meetingCode = req.params.code;
+        let meeting;
 
-        if (!meeting) {
-            meeting = await Training.findOne({ code: { $regex: new RegExp(`^${req.params.code}$`, 'i') } });
-            if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
+        if (meetingCode.toLowerCase() === 'athi-river') {
+            meeting = await Meeting.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
+            if (!meeting) {
+                meeting = await Training.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
+                if (meeting) {
+                    isTraining = true;
+                }
+            }
+            if (!meeting) {
+                return res.status(404).json({ message: 'No active meeting or training found for Athi River campus.' });
+            }
+        } else {
+            meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+            if (!meeting) {
+                meeting = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+                if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
+                isTraining = true;
+            }
+        }
+
+        if (meeting && meeting.category === 'Training') {
             isTraining = true;
         }
 

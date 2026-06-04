@@ -274,80 +274,87 @@ export const getObservabilityTelemetry = async (req, res) => {
         const activeTrainingsList = await Training.find({ isActive: true }).select('_id name campus').lean();
         const activeSessions = activeMeetingsList.length + activeTrainingsList.length;
 
-        // 5. Real Recent Successful Check-Ins scoped to current semester
-        const recentCheckins = await Attendance.aggregate([
-            {
-                $match: {
-                    $or: [
-                        { meeting: { $in: semMeetingIds } },
-                        { trainingId: { $in: semTrainingIds } }
-                    ]
-                }
-            },
-            { $sort: { timestamp: -1 } },
-            { $limit: 10 },
-            {
-                $lookup: {
-                    from: "members",
-                    localField: "studentRegNo",
-                    foreignField: "studentRegNo",
-                    as: "memberInfo"
-                }
-            },
-            {
-                $project: {
-                    studentRegNo: 1,
-                    campus: 1,
-                    meetingName: 1,
-                    timestamp: 1,
-                    isExempted: 1,
-                    memberType: 1,
-                    studentName: { $arrayElemAt: ["$memberInfo.name", 0] }
-                }
-            }
-        ]);
-
-        // Find registration numbers of students who successfully checked in to active sessions
         const activeMeetingIds = activeMeetingsList.map(m => m._id);
         const activeTrainingIds = activeTrainingsList.map(t => t._id);
-        const checkedInRegNos = await Attendance.distinct('studentRegNo', {
-            $or: [
-                { meeting: { $in: activeMeetingIds } },
-                { trainingId: { $in: activeTrainingIds } }
-            ]
-        });
+        const activeCampuses = [...new Set([...activeMeetingsList.map(m => m.campus), ...activeTrainingsList.map(t => t.campus)])];
 
-        // 6. Real Recent Check-In Failures scoped to current semester (since last rollover)
+        let recentCheckins = [];
         let scanErrors = [];
-        if (mongoose.connection.readyState === 1) {
-            scanErrors = await mongoose.connection.db.collection('scanerrors')
-                .aggregate([
-                    { $match: { 
-                        timestamp: { $gte: semesterUpdatedTime },
-                        studentRegNo: { $nin: checkedInRegNos }
-                    } },
-                    { $sort: { timestamp: -1 } },
-                    { $limit: 10 },
-                    {
-                        $lookup: {
-                            from: "members",
-                            localField: "studentRegNo",
-                            foreignField: "studentRegNo",
-                            as: "memberInfo"
-                        }
-                    },
-                    {
-                        $project: {
-                            studentRegNo: 1,
-                            campus: 1,
-                            error: 1,
-                            desc: 1,
-                            timestamp: 1,
-                            studentName: { $arrayElemAt: ["$memberInfo.name", 0] },
-                            studentId: { $arrayElemAt: ["$memberInfo._id", 0] }
-                        }
+
+        if (activeMeetingIds.length > 0 || activeTrainingIds.length > 0) {
+            // 5. Real Recent Successful Check-Ins scoped to active sessions
+            recentCheckins = await Attendance.aggregate([
+                {
+                    $match: {
+                        $or: [
+                            { meeting: { $in: activeMeetingIds } },
+                            { trainingId: { $in: activeTrainingIds } }
+                        ]
                     }
-                ]).toArray();
+                },
+                { $sort: { timestamp: -1 } },
+                { $limit: 10 },
+                {
+                    $lookup: {
+                        from: "members",
+                        localField: "studentRegNo",
+                        foreignField: "studentRegNo",
+                        as: "memberInfo"
+                    }
+                },
+                {
+                    $project: {
+                        studentRegNo: 1,
+                        campus: 1,
+                        meetingName: 1,
+                        timestamp: 1,
+                        isExempted: 1,
+                        memberType: 1,
+                        studentName: { $arrayElemAt: ["$memberInfo.name", 0] }
+                    }
+                }
+            ]);
+
+            // Find registration numbers of students who successfully checked in to active sessions
+            const checkedInRegNos = await Attendance.distinct('studentRegNo', {
+                $or: [
+                    { meeting: { $in: activeMeetingIds } },
+                    { trainingId: { $in: activeTrainingIds } }
+                ]
+            });
+
+            // 6. Real Recent Check-In Failures scoped to active session campuses in the last 12 hours
+            if (mongoose.connection.readyState === 1) {
+                scanErrors = await mongoose.connection.db.collection('scanerrors')
+                    .aggregate([
+                        { $match: { 
+                            campus: { $in: activeCampuses },
+                            timestamp: { $gte: new Date(Date.now() - 12 * 60 * 60 * 1000) },
+                            studentRegNo: { $nin: checkedInRegNos }
+                        } },
+                        { $sort: { timestamp: -1 } },
+                        { $limit: 10 },
+                        {
+                            $lookup: {
+                                from: "members",
+                                localField: "studentRegNo",
+                                foreignField: "studentRegNo",
+                                as: "memberInfo"
+                            }
+                        },
+                        {
+                            $project: {
+                                studentRegNo: 1,
+                                campus: 1,
+                                error: 1,
+                                desc: 1,
+                                timestamp: 1,
+                                studentName: { $arrayElemAt: ["$memberInfo.name", 0] },
+                                studentId: { $arrayElemAt: ["$memberInfo._id", 0] }
+                            }
+                        }
+                    ]).toArray();
+            }
         }
 
         res.json({

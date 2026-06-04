@@ -669,3 +669,40 @@ export const updateSelfWateringDays = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const blockMemberByReg = async (req, res) => {
+    let { studentRegNo, name, campus } = req.body;
+    if (!studentRegNo) {
+        return res.status(400).json({ message: 'studentRegNo is required' });
+    }
+
+    studentRegNo = studentRegNo.trim().toUpperCase();
+
+    try {
+        let member = await Member.findOne({ studentRegNo });
+        if (member) {
+            member.isActive = false;
+            await member.save();
+        } else {
+            member = new Member({
+                studentRegNo,
+                name: name || 'Legacy Student',
+                campus: campus || 'Athi River',
+                memberType: 'Visitor',
+                status: 'Active',
+                isActive: false
+            });
+            await member.save();
+        }
+
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.db.collection('scanerrors').deleteMany({
+                studentRegNo: studentRegNo
+            });
+        }
+
+        res.json({ message: `Student ${studentRegNo} has been blocked successfully.`, member });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

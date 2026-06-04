@@ -28,6 +28,12 @@ const trainingSchema = new mongoose.Schema({
     },
     isTestMeeting: { type: Boolean, default: false },
     questionOfDay: { type: String, default: '' },
+    questionType: {
+        type: String,
+        enum: ['text', 'yes_no', 'multiple_choice', 'checkboxes', 'rating'],
+        default: 'text'
+    },
+    questionOptions: { type: [String], default: [] },
     location: {
         name: { type: String, default: '' },
         latitude: { type: Number },

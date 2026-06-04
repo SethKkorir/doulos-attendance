@@ -28,19 +28,42 @@ export const submitAttendance = async (req, res) => {
     const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong } = req.body;
 
     try {
-        // 1. Find in Meeting collection first, then Training collection
-        let meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+        let meeting;
+        let isTrainingModel = false;
         let isTrainingSession = false;
 
-        if (!meeting) {
-            // Check Training collection
-            const training = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
-            if (!training) {
-                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Code', `Attempted check-in with invalid meeting code: ${meetingCode}`, 'Athi River');
-                return res.status(404).json({ message: 'Invalid Meeting/Training Code' });
+        if (meetingCode.toLowerCase() === 'athi-river') {
+            meeting = await Meeting.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
+            if (!meeting) {
+                meeting = await Training.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
+                if (meeting) {
+                    isTrainingModel = true;
+                    isTrainingSession = true;
+                }
             }
-            // Wrap training as a meeting-like object so downstream logic works
-            meeting = training;
+            if (!meeting) {
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Code', `Attempted check-in to Athi River but no active session found`, 'Athi River');
+                return res.status(404).json({ message: 'No active meeting or training found for Athi River campus.' });
+            }
+        } else {
+            // Find in Meeting collection first, then Training collection
+            meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+
+            if (!meeting) {
+                // Check Training collection
+                const training = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+                if (!training) {
+                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Code', `Attempted check-in with invalid meeting code: ${meetingCode}`, 'Athi River');
+                    return res.status(404).json({ message: 'Invalid Meeting/Training Code' });
+                }
+                // Wrap training as a meeting-like object so downstream logic works
+                meeting = training;
+                isTrainingModel = true;
+                isTrainingSession = true;
+            }
+        }
+
+        if (meeting && meeting.category === 'Training') {
             isTrainingSession = true;
         }
 
@@ -124,6 +147,11 @@ export const submitAttendance = async (req, res) => {
         // 6. Member Registry Lookup
         let member = await Member.findOne({ studentRegNo });
 
+        if (member && member.isActive === false) {
+            await logScanError(studentRegNo, 'Account Blocked', `Attempted check-in by blocked student: ${member.name}`, meeting.campus);
+            return res.status(403).json({ message: 'ACCESS DENIED: Your account is suspended/blocked. Please contact the administrator.' });
+        }
+
         // 7. Location Check (Geofence)
         if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTrainingSession) {
             if (!userLat || !userLong) {
@@ -165,7 +193,7 @@ export const submitAttendance = async (req, res) => {
 
         // 8. Anti-Proxy Check (One check-in per device per session)
         if (deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount) {
-            const deviceQuery = isTrainingSession
+            const deviceQuery = isTrainingModel
                 ? { trainingId: meeting._id, deviceId }
                 : { meeting: meeting._id, deviceId };
             const deviceUsed = await Attendance.findOne(deviceQuery);
@@ -176,7 +204,7 @@ export const submitAttendance = async (req, res) => {
         }
 
         // 9. Duplicate check (This session)
-        const dupQuery = isTrainingSession
+        const dupQuery = isTrainingModel
             ? { trainingId: meeting._id, studentRegNo }
             : { meeting: meeting._id, studentRegNo };
         const existing = await Attendance.findOne(dupQuery);
@@ -247,8 +275,8 @@ export const submitAttendance = async (req, res) => {
         // 11. Record Attendance (Skip if Test Account)
         if (!member.isTestAccount) {
             const attendance = new Attendance({
-                meeting: isTrainingSession ? undefined : meeting._id,
-                trainingId: isTrainingSession ? meeting._id : undefined,
+                meeting: isTrainingModel ? undefined : meeting._id,
+                trainingId: isTrainingModel ? meeting._id : undefined,
                 meetingName: meeting.name,
                 campus: meeting.campus,
                 studentRegNo,
@@ -408,6 +436,21 @@ export const getStudentPortalData = async (req, res) => {
 
             const meeting = attendedMeetings.find(m => m._id.toString() === record.meeting?.toString());
             if (!meeting) return;
+
+            const isTrainingMeeting = meeting.category === 'Training';
+
+            if (isTrainingMeeting) {
+                trainingHistory.push({
+                    _id: meeting._id,
+                    name: meeting.name,
+                    date: meeting.date,
+                    campus: meeting.campus,
+                    attended: true,
+                    isTraining: true,
+                    attendanceTime: record.timestamp
+                });
+                return;
+            }
 
             const weekKey = getWeekStart(meeting.date);
             weeklyData.set(weekKey, {

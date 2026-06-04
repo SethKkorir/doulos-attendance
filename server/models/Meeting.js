@@ -30,6 +30,12 @@ const meetingSchema = new mongoose.Schema({
     devotion: { type: String, default: '' },
     announcements: { type: String, default: '' },
     questionOfDay: { type: String, default: '' },
+    questionType: {
+        type: String,
+        enum: ['text', 'yes_no', 'multiple_choice', 'checkboxes', 'rating'],
+        default: 'text'
+    },
+    questionOptions: { type: [String], default: [] },
     category: {
         type: String,
         enum: ['Meeting', 'Training'],

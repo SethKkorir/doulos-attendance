@@ -4,12 +4,103 @@ import {
     BarChart3, Activity, Users, Search, X, ShieldAlert as Ghost, Trash2,
     MessageSquare, UserX, Clock, HelpCircle
 } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [insightSearch, setInsightSearch] = useState('');
     const [activeTab, setActiveTab] = useState('answers'); // Default to answers first!
+
+    const getPollData = () => {
+        if (!stats || !meeting?.questionOfDay) return { data: [], totalVotes: 0, averageRating: 0 };
+        
+        const qType = meeting.questionType || 'text';
+        const options = meeting.questionOptions || [];
+        const presentList = stats.presentList || [];
+        
+        let totalVotes = 0;
+        
+        if (qType === 'yes_no') {
+            const counts = { 'Yes': 0, 'No': 0 };
+            presentList.forEach(a => {
+                const answer = a.questionOfDay || a.responses?.dailyQuestionAnswer || a.responses?.['dailyQuestionAnswer'] || '';
+                const cleanAns = String(answer).trim().toLowerCase();
+                if (cleanAns === 'yes') counts['Yes']++;
+                else if (cleanAns === 'no') counts['No']++;
+            });
+            totalVotes = counts['Yes'] + counts['No'];
+            return {
+                totalVotes,
+                data: [
+                    { name: 'Yes', value: counts['Yes'] },
+                    { name: 'No', value: counts['No'] }
+                ]
+            };
+        }
+        
+        if (qType === 'multiple_choice') {
+            const counts = {};
+            options.forEach(opt => { counts[opt] = 0; });
+            presentList.forEach(a => {
+                const answer = a.questionOfDay || a.responses?.dailyQuestionAnswer || a.responses?.['dailyQuestionAnswer'] || '';
+                const cleanAns = String(answer).trim();
+                if (counts[cleanAns] !== undefined) {
+                    counts[cleanAns]++;
+                    totalVotes++;
+                }
+            });
+            return {
+                totalVotes,
+                data: Object.keys(counts).map(opt => ({ name: opt, value: counts[opt] }))
+            };
+        }
+        
+        if (qType === 'checkboxes') {
+            const counts = {};
+            options.forEach(opt => { counts[opt] = 0; });
+            presentList.forEach(a => {
+                const answer = a.questionOfDay || a.responses?.dailyQuestionAnswer || a.responses?.['dailyQuestionAnswer'] || '';
+                const selections = String(answer).split(', ').map(s => s.trim());
+                selections.forEach(sel => {
+                    if (counts[sel] !== undefined) {
+                        counts[sel]++;
+                        totalVotes++;
+                    }
+                });
+            });
+            return {
+                totalVotes,
+                data: Object.keys(counts).map(opt => ({ name: opt, value: counts[opt] }))
+            };
+        }
+        
+        if (qType === 'rating') {
+            const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+            let sum = 0;
+            let count = 0;
+            presentList.forEach(a => {
+                const answer = a.questionOfDay || a.responses?.dailyQuestionAnswer || a.responses?.['dailyQuestionAnswer'] || '';
+                const score = parseInt(answer);
+                if (score >= 1 && score <= 5) {
+                    counts[String(score)]++;
+                    sum += score;
+                    count++;
+                }
+            });
+            const averageRating = count > 0 ? (sum / count).toFixed(1) : '0.0';
+            return {
+                totalVotes: count,
+                averageRating,
+                data: Object.keys(counts).map(star => ({ name: `${star} Star`, value: counts[star] }))
+            };
+        }
+        
+        return { data: [], totalVotes: 0, averageRating: 0 };
+    };
 
     useEffect(() => {
         const fetchInsights = async () => {
@@ -473,6 +564,108 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                             })}
                         </div>
                     </div>
+
+                    {meeting.questionOfDay && meeting.questionType !== 'text' && (() => {
+                        const { data, totalVotes, averageRating } = getPollData();
+                        const qType = meeting.questionType || 'text';
+                        const COLORS = ['#25AAE1', '#4ade80', '#facc15', '#f87171', '#a78bfa', '#f472b6', '#38bdf8'];
+                        
+                        return (
+                            <div className="glass-panel" style={{ padding: '1.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.04)', marginTop: '1.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    <div>
+                                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'white', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                            Poll Analytics & Feedback
+                                        </h4>
+                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>
+                                            Question: "{meeting.questionOfDay}"
+                                        </p>
+                                    </div>
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 900, background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px', border: '1px solid rgba(37, 170, 225, 0.15)' }}>
+                                        {qType.replace('_', ' ')} &bull; {totalVotes} Responses
+                                    </span>
+                                </div>
+                                
+                                {totalVotes === 0 ? (
+                                    <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem', color: 'white' }}>
+                                        No poll responses recorded yet.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
+                                        
+                                        {/* Left: Recharts visualization */}
+                                        <div style={{ height: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                            {qType === 'rating' || qType === 'checkboxes' ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={data} layout="vertical">
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
+                                                        <XAxis type="number" stroke="rgba(255,255,255,0.4)" fontSize={9} />
+                                                        <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.4)" fontSize={9} width={80} />
+                                                        <Tooltip contentStyle={{ background: '#0d111b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
+                                                        <Bar dataKey="value" fill="#25AAE1" radius={[0, 4, 4, 0]}>
+                                                            {data.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Bar>
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={data}
+                                                            innerRadius={50}
+                                                            outerRadius={75}
+                                                            paddingAngle={4}
+                                                            dataKey="value"
+                                                        >
+                                                            {data.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ background: '#0d111b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
+                                                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px' }} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Right: Text breakdown & stats */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                            {qType === 'rating' && (
+                                                <div style={{ background: 'rgba(250, 204, 21, 0.05)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(250, 204, 21, 0.15)', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                                                    <div style={{ fontSize: '2rem', color: '#facc15', lineHeight: 1 }}>⭐</div>
+                                                    <div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{averageRating} / 5.0</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontWeight: 800, marginTop: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Average Session Rating</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {data.map((item, idx) => {
+                                                    const percent = totalVotes > 0 ? Math.round((item.value / totalVotes) * 100) : 0;
+                                                    const barColor = COLORS[idx % COLORS.length];
+                                                    return (
+                                                        <div key={item.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                                                                <span>{item.name}</span>
+                                                                <span style={{ color: 'white', fontWeight: 900 }}>{item.value} ({percent}%)</span>
+                                                            </div>
+                                                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                                <div style={{ width: `${percent}%`, height: '100%', background: barColor, borderRadius: '2px' }}></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 

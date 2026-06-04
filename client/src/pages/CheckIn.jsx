@@ -204,10 +204,216 @@ const CheckIn = () => {
         }
     };
 
-
+    const renderQuestionInput = () => {
+        const type = meeting?.questionType || 'text';
+        const options = meeting?.questionOptions || [];
+        
+        switch (type) {
+            case 'yes_no':
+                return (
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        {['Yes', 'No'].map(opt => {
+                            const isSelected = responses.dailyQuestionAnswer === opt;
+                            return (
+                                <button
+                                    key={opt}
+                                    type="button"
+                                    className="btn"
+                                    disabled={status === 'submitting'}
+                                    onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: opt }))}
+                                    style={{
+                                        flex: 1,
+                                        height: '46px',
+                                        borderRadius: '0.75rem',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 800,
+                                        background: isSelected ? 'rgba(37, 170, 225, 0.2)' : 'rgba(0,0,0,0.25)',
+                                        color: isSelected ? '#25AAE1' : 'var(--color-text-dim)',
+                                        border: isSelected ? '2px solid #25AAE1' : '1px solid rgba(255,255,255,0.06)',
+                                        transition: 'all 0.2s ease',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            case 'multiple_choice':
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+                        {options.map(opt => {
+                            const isSelected = responses.dailyQuestionAnswer === opt;
+                            return (
+                                <button
+                                    key={opt}
+                                    type="button"
+                                    className="btn"
+                                    disabled={status === 'submitting'}
+                                    onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: opt }))}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '0.75rem',
+                                        textAlign: 'left',
+                                        fontSize: '0.88rem',
+                                        fontWeight: 700,
+                                        background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'rgba(0,0,0,0.25)',
+                                        color: isSelected ? 'white' : 'var(--color-text-dim)',
+                                        border: isSelected ? '2px solid #25AAE1' : '1px solid rgba(255,255,255,0.05)',
+                                        transition: 'all 0.2s ease',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        borderRadius: '50%',
+                                        border: '2px solid',
+                                        borderColor: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.3)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: isSelected ? '#25AAE1' : 'transparent',
+                                        transition: 'all 0.2s'
+                                    }}>
+                                        {isSelected && (
+                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'black' }} />
+                                        )}
+                                    </div>
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            case 'checkboxes':
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+                        {options.map(opt => {
+                            const currentSelections = responses.dailyQuestionAnswer ? responses.dailyQuestionAnswer.split(', ') : [];
+                            const isSelected = currentSelections.includes(opt);
+                            return (
+                                <button
+                                    key={opt}
+                                    type="button"
+                                    className="btn"
+                                    disabled={status === 'submitting'}
+                                    onClick={() => {
+                                        let nextSelections;
+                                        if (isSelected) {
+                                            nextSelections = currentSelections.filter(s => s !== opt);
+                                        } else {
+                                            nextSelections = [...currentSelections, opt];
+                                        }
+                                        setResponses(prev => ({ ...prev, dailyQuestionAnswer: nextSelections.join(', ') }));
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '0.75rem',
+                                        textAlign: 'left',
+                                        fontSize: '0.88rem',
+                                        fontWeight: 700,
+                                        background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'rgba(0,0,0,0.25)',
+                                        color: isSelected ? 'white' : 'var(--color-text-dim)',
+                                        border: isSelected ? '2px solid #25AAE1' : '1px solid rgba(255,255,255,0.05)',
+                                        transition: 'all 0.2s ease',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        borderRadius: '4px',
+                                        border: '2px solid',
+                                        borderColor: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.3)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: isSelected ? '#25AAE1' : 'transparent',
+                                        transition: 'all 0.2s'
+                                    }}>
+                                        {isSelected && (
+                                            <span style={{ color: 'black', fontSize: '10px', fontWeight: 900 }}>✓</span>
+                                        )}
+                                    </div>
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            case 'rating':
+                return (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', margin: '0.75rem 0' }}>
+                        {[1, 2, 3, 4, 5].map(star => {
+                            const ratingVal = parseInt(responses.dailyQuestionAnswer) || 0;
+                            const isActive = star <= ratingVal;
+                            return (
+                                <button
+                                    key={star}
+                                    type="button"
+                                    disabled={status === 'submitting'}
+                                    onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: String(star) }))}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        outline: 'none',
+                                        fontSize: '2rem',
+                                        transition: 'all 0.2s ease',
+                                        transform: isActive ? 'scale(1.15)' : 'scale(1.0)',
+                                        color: isActive ? '#facc15' : 'rgba(255,255,255,0.15)'
+                                    }}
+                                >
+                                    ★
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            case 'text':
+            default:
+                return (
+                    <textarea
+                        className="input-field"
+                        placeholder="Type your answer here..."
+                        style={{
+                            width: '100%',
+                            minHeight: '70px',
+                            fontSize: '0.88rem',
+                            fontWeight: 700,
+                            padding: '0.75rem',
+                            background: 'rgba(0,0,0,0.2)',
+                            borderRadius: '0.75rem',
+                            transition: 'all 0.3s ease'
+                        }}
+                        value={responses.dailyQuestionAnswer || ''}
+                        onChange={e => setResponses(prev => ({ ...prev, dailyQuestionAnswer: e.target.value }))}
+                        required
+                        disabled={status === 'submitting'}
+                    />
+                );
+        }
+    };
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
+
+        // Validate Question of the Day response if present
+        if (meeting?.questionOfDay && !responses.dailyQuestionAnswer) {
+            setStatus('error');
+            setMsg("Please answer the Question of the Day before submitting.");
+            return;
+        }
 
         // 1. Intercept for Semester Rollover Welcome Modal
         if (memberInfo && lastActiveSemester !== currentSemester && currentSemester && !showWelcomeModal) {
@@ -634,44 +840,27 @@ const CheckIn = () => {
                                         </button>
                                     )}
                                 </div>
+                                {meeting?.questionOfDay && memberInfo && (
+                                 <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+                                     <label style={{
+                                         display: 'block',
+                                         marginTop: '1.5rem',
+                                         marginBottom: '0.75rem',
+                                         fontSize: '0.75rem',
+                                         fontWeight: 900,
+                                         letterSpacing: '1px',
+                                         textTransform: 'uppercase',
+                                         color: 'hsl(var(--color-primary))'
+                                     }}>
+                                         Question of the Day <span style={{ color: '#ef4444' }}>*</span>
+                                     </label>
+                                     <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
+                                         "{meeting.questionOfDay}"
+                                     </p>
+                                     {renderQuestionInput()}
+                                 </div>
+                             )}
                             </div>
-
-                            {meeting?.questionOfDay && memberInfo && (
-                                <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '0.75rem',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 900,
-                                        letterSpacing: '1px',
-                                        textTransform: 'uppercase',
-                                        color: 'hsl(var(--color-primary))'
-                                    }}>
-                                        Question of the Day <span style={{ color: '#ef4444' }}>*</span>
-                                    </label>
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
-                                        "{meeting.questionOfDay}"
-                                    </p>
-                                    <textarea
-                                        className="input-field"
-                                        placeholder="Type your answer here..."
-                                        style={{
-                                            width: '100%',
-                                            minHeight: '80px',
-                                            fontSize: '0.9rem',
-                                            fontWeight: 700,
-                                            padding: '1rem',
-                                            background: 'rgba(0,0,0,0.2)',
-                                            borderRadius: '0.75rem',
-                                            transition: 'all 0.3s ease'
-                                        }}
-                                        value={responses.dailyQuestionAnswer || ''}
-                                        onChange={e => setResponses({ ...responses, dailyQuestionAnswer: e.target.value })}
-                                        required
-                                        disabled={status === 'submitting'}
-                                    />
-                                </div>
-                            )}
 
                             <button
                                 type="submit"
@@ -1436,65 +1625,47 @@ const CheckIn = () => {
                                         </select>
                                     </div>
 
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                            CATEGORY <span style={{ color: '#ef4444' }}>*</span>
-                                        </label>
-                                        <select
-                                            className="input-field"
-                                            style={{
-                                                height: '44px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                paddingLeft: '1rem',
-                                                background: 'rgba(0,0,0,0.25)',
-                                                borderColor: 'var(--glass-border)',
-                                                borderRadius: '0.75rem',
-                                                color: 'white',
-                                                width: '100%',
-                                                cursor: 'pointer'
-                                            }}
-                                            value={registrationData.memberType || 'Douloid'}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                setRegistrationData(prev => ({ ...prev, memberType: val }));
-                                            }}
-                                            required
-                                        >
-                                            <option value="Douloid">Douloid</option>
-                                            <option value="Recruit">Recruit</option>
-                                            <option value="Visitor">Visitor</option>
-                                        </select>
-                                    </div>
-
-                                    {meeting?.questionOfDay && (
-                                        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
-                                                Question of the Day <span style={{ color: '#ef4444' }}>*</span>
+                                    {!(meeting?.category === 'Training' || meeting?.isTraining) && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                                                CATEGORY <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
-                                            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', marginBottom: '0.5rem', fontWeight: 600, lineHeight: 1.3 }}>
-                                                "{meeting.questionOfDay}"
-                                            </p>
-                                            <textarea
+                                            <select
                                                 className="input-field"
-                                                placeholder="Type your answer here..."
                                                 style={{
-                                                    width: '100%',
-                                                    minHeight: '60px',
-                                                    fontSize: '0.88rem',
+                                                    height: '44px',
+                                                    fontSize: '0.9rem',
                                                     fontWeight: 700,
-                                                    padding: '0.6rem 0.8rem',
+                                                    paddingLeft: '1rem',
                                                     background: 'rgba(0,0,0,0.25)',
                                                     borderColor: 'var(--glass-border)',
                                                     borderRadius: '0.75rem',
-                                                    transition: 'all 0.3s',
-                                                    color: 'white'
+                                                    color: 'white',
+                                                    width: '100%',
+                                                    cursor: 'pointer'
                                                 }}
-                                                value={responses.dailyQuestionAnswer || ''}
-                                                onChange={e => setResponses(prev => ({ ...prev, dailyQuestionAnswer: e.target.value }))}
+                                                value={registrationData.memberType || 'Douloid'}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setRegistrationData(prev => ({ ...prev, memberType: val }));
+                                                }}
                                                 required
-                                                disabled={status === 'submitting'}
-                                            />
+                                            >
+                                                <option value="Douloid">Douloid</option>
+                                                <option value="Recruit">Recruit</option>
+                                                <option value="Visitor">Visitor</option>
+                                            </select>
+                                            {meeting?.questionOfDay && (
+                                         <div style={{ animation: 'fadeIn 0.3s ease-out', marginTop: '1.25rem' }}>
+                                             <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
+                                                 Question of the Day <span style={{ color: '#ef4444' }}>*</span>
+                                             </label>
+                                             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', marginBottom: '0.5rem', fontWeight: 600, lineHeight: 1.3 }}>
+                                                 "{meeting.questionOfDay}"
+                                             </p>
+                                             {renderQuestionInput()}
+                                         </div>
+                                     )}
                                         </div>
                                     )}
 

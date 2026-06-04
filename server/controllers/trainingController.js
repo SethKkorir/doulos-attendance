@@ -6,11 +6,11 @@ import crypto from 'crypto';
 import { getKenyanTime, getKenyanDate } from '../utils/kenyanTime.js';
 
 export const createTraining = async (req, res) => {
-    const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay } = req.body;
+    const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions } = req.body;
     try {
         const code = 'T-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const training = new Training({
-            name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay
+            name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions
         });
         await training.save();
         res.status(201).json(training);

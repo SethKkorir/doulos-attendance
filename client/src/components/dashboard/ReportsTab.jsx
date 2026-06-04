@@ -36,7 +36,7 @@ const ReportsTab = ({
         const d = new Date(date);
         const month = d.getMonth(); 
         const year = d.getFullYear();
-        if (month <= 4) return `Jan Semester ${year}`;
+        if (month <= 3) return `Jan Semester ${year}`;
         if (month <= 7) return `May Semester ${year}`;
         return `Sept Semester ${year}`;
     };
@@ -60,7 +60,7 @@ const ReportsTab = ({
     });
 
     // Stats calculations
-    const totalAttendanceCount = filteredMeetings.reduce((acc, m) => acc + (m.attendees || 0), 0);
+    const totalAttendanceCount = filteredMeetings.reduce((acc, m) => acc + (m.attendanceCount || 0), 0);
     const averageAttendance = filteredMeetings.length > 0 ? (totalAttendanceCount / filteredMeetings.length).toFixed(1) : 0;
 
     // Fetch finance stats dynamically
@@ -177,7 +177,7 @@ const ReportsTab = ({
                                     <td style="font-family: monospace; font-weight: 700; color: #021525">${new Date(m.date).toLocaleDateString()}</td>
                                     <td style="font-weight: 700;">${m.name}</td>
                                     <td>${m.campus}</td>
-                                    <td style="font-weight: 800; color: #25AAE1">${m.attendees || 0} checked</td>
+                                    <td style="font-weight: 800; color: #25AAE1">${m.attendanceCount || 0} checked</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -624,7 +624,7 @@ const ReportsTab = ({
                     `"${new Date(m.date).toLocaleDateString()}"`,
                     `"${m.name || 'Session'}"`,
                     `"${m.campus}"`,
-                    m.attendees || 0
+                    m.attendanceCount || 0
                 ].join(','))
             ].join('\n');
 
@@ -820,8 +820,8 @@ const ReportsTab = ({
                                 }}>
                                     {filteredMeetings.slice(-8).map((m, idx) => {
                                         // Find max to scale relatively
-                                        const maxAttended = Math.max(...filteredMeetings.map(x => x.attendees || 1));
-                                        const barHeightPct = ((m.attendees || 0) / maxAttended) * 80 + 5; // offset slightly
+                                        const maxAttended = Math.max(...filteredMeetings.map(x => x.attendanceCount || 1));
+                                        const barHeightPct = ((m.attendanceCount || 0) / maxAttended) * 80 + 5; // offset slightly
                                         return (
                                             <div 
                                                 key={m._id || idx} 
@@ -842,7 +842,7 @@ const ReportsTab = ({
                                                     border: '1px solid rgba(37, 170, 225, 0.3)', color: 'white', borderRadius: '0.35rem',
                                                     padding: '0.3rem 0.5rem', fontSize: '0.62rem', fontWeight: 900, whiteSpace: 'nowrap', zIndex: 10
                                                 }}>
-                                                    {m.name}: {m.attendees} Checked
+                                                    {m.name}: {m.attendanceCount || 0} Checked
                                                 </div>
 
                                                 <div style={{ 
@@ -873,8 +873,8 @@ const ReportsTab = ({
                             </div>
 
                             {(() => {
-                                const athiTotal = filteredMeetings.filter(m => m.campus === 'Athi River').reduce((acc, m) => acc + (m.attendees || 0), 0);
-                                const vrTotal = filteredMeetings.filter(m => m.campus === 'Valley Road').reduce((acc, m) => acc + (m.attendees || 0), 0);
+                                const athiTotal = filteredMeetings.filter(m => m.campus === 'Athi River').reduce((acc, m) => acc + (m.attendanceCount || 0), 0);
+                                const vrTotal = filteredMeetings.filter(m => m.campus === 'Valley Road').reduce((acc, m) => acc + (m.attendanceCount || 0), 0);
                                 const combined = athiTotal + vrTotal || 1;
                                 const athiPct = ((athiTotal / combined) * 100).toFixed(0);
                                 const vrPct = ((vrTotal / combined) * 100).toFixed(0);
@@ -946,7 +946,7 @@ const ReportsTab = ({
                                                 <td style={{ padding: '1rem', fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text, white)' }}>{m.name}</td>
                                                 <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--color-text-dim, rgba(255,255,255,0.5))' }}>{m.campus}</td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <span style={{ color: '#25AAE1', fontWeight: 900, background: 'rgba(37,170,225,0.1)', border: '1px solid rgba(37,170,225,0.15)', padding: '0.25rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.8rem' }}>{m.attendees || 0}</span>
+                                                    <span style={{ color: '#25AAE1', fontWeight: 900, background: 'rgba(37,170,225,0.1)', border: '1px solid rgba(37,170,225,0.15)', padding: '0.25rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.8rem' }}>{m.attendanceCount || 0}</span>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                     <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: 'rgba(255,255,255,0.03)', color: 'white', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', fontWeight: 800, cursor: 'pointer' }}>

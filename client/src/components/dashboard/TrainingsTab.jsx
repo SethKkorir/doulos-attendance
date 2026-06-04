@@ -77,6 +77,8 @@ const TrainingsTab = ({
             { label: 'Admission Number', key: 'studentRegNo', required: true }
         ],
         questionOfDay: '',
+        questionType: 'text',
+        questionOptions: [],
         location: { name: '', latitude: null, longitude: null, radius: 200 }
     });
 
@@ -581,12 +583,94 @@ const TrainingsTab = ({
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Clock size={14} /> End Time</label>
                             <input type="time" className="modern-input" value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
                         </div>
-                        
-                        <div className="form-group-premium" style={{ gridColumn: '1 / -1' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question of the Day (optional)</label>
-                            <input className="modern-input" placeholder="e.g. What is your takeaway?" value={trainingFormData.questionOfDay}
-                                onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })} />
+
+                        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }} className="form-group-premium">
+                            <div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Lightbulb size={14} /> Question Type</label>
+                                <select 
+                                    className="modern-input"
+                                    value={trainingFormData.questionType || 'text'}
+                                    onChange={e => {
+                                        const type = e.target.value;
+                                        setTrainingFormData(prev => ({
+                                            ...prev,
+                                            questionType: type,
+                                            questionOptions: (type === 'multiple_choice' || type === 'checkboxes') ? ['', ''] : []
+                                        }));
+                                    }}
+                                >
+                                    <option value="text">Open Ended (Text)</option>
+                                    <option value="yes_no">Yes / No</option>
+                                    <option value="multiple_choice">Multiple Choice (Single Select)</option>
+                                    <option value="checkboxes">Select Multiple (Checkboxes)</option>
+                                    <option value="rating">Rating Scale (1-5 Stars)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Question Wording</label>
+                                <input 
+                                    type="text"
+                                    className="modern-input"
+                                    value={trainingFormData.questionOfDay}
+                                    onChange={e => setTrainingFormData({ ...trainingFormData, questionOfDay: e.target.value })}
+                                    placeholder="e.g. Rate your week / Choose an option"
+                                />
+                            </div>
                         </div>
+
+                        {(trainingFormData.questionType === 'multiple_choice' || trainingFormData.questionType === 'checkboxes') && (
+                            <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Poll Choices / Options</span>
+                                    <button
+                                        type="button"
+                                        className="btn"
+                                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.2)', cursor: 'pointer', borderRadius: '0.5rem', fontWeight: 800 }}
+                                        onClick={() => {
+                                            setTrainingFormData(prev => ({
+                                                ...prev,
+                                                questionOptions: [...prev.questionOptions, '']
+                                            }));
+                                        }}
+                                    >
+                                        + Add Option
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {trainingFormData.questionOptions.map((opt, idx) => (
+                                        <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.82rem', fontWeight: 700, opacity: 0.5, minWidth: '20px' }}>{idx + 1}.</span>
+                                            <input
+                                                type="text"
+                                                className="modern-input"
+                                                style={{ flex: 1, height: '38px', minHeight: '38px', padding: '0.5rem 0.75rem' }}
+                                                value={opt}
+                                                placeholder={`Option ${idx + 1}`}
+                                                required
+                                                onChange={e => {
+                                                    const newOpts = [...trainingFormData.questionOptions];
+                                                    newOpts[idx] = e.target.value;
+                                                    setTrainingFormData({ ...trainingFormData, questionOptions: newOpts });
+                                                }}
+                                            />
+                                            {trainingFormData.questionOptions.length > 2 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger"
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    onClick={() => {
+                                                        const newOpts = trainingFormData.questionOptions.filter((_, i) => i !== idx);
+                                                        setTrainingFormData({ ...trainingFormData, questionOptions: newOpts });
+                                                    }}
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div style={{ gridColumn: '1 / -1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
