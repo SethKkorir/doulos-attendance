@@ -5,7 +5,7 @@ const trainingSchema = new mongoose.Schema({
     date: { type: Date, required: true },
     campus: {
         type: String,
-        enum: ['Athi River', 'Valley Road'],
+        enum: ['Athi River', 'Valley Road', 'Both'],
         required: true
     },
     startTime: { type: String, required: true }, // e.g., "14:00"

@@ -908,7 +908,10 @@ const StudentPortal = () => {
                         </div>
                         {data.memberType === 'Douloid' && (
                             <div className="sp-stat-pill" style={{ borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.05)' }}>
-                                <div className="sp-stat-num" style={{ color: '#f59e0b' }}>{systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)}</div>
+                                <div className="sp-stat-num" style={{ color: '#f59e0b' }}>
+                                    {systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)}
+                                    <span style={{ fontSize: '0.9rem', opacity: 0.5 }}> / {data.stats.totalTrainings || 0}</span>
+                                </div>
                                 <div className="sp-stat-label" style={{ color: '#f59e0b' }}>Training</div>
                             </div>
                         )}
@@ -1007,7 +1010,10 @@ const StudentPortal = () => {
                                     <div className="sp-card" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(2,21,37,0.8) 100%)', borderColor: 'rgba(168,85,247,0.18)', minHeight: '130px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                                         <div>
                                             <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Training Track</div>
-                                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7', letterSpacing: '-0.03em' }}>{systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)} sessions</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7', letterSpacing: '-0.03em' }}>
+                                                {systemStatus.recoveryMode ? 0 : (data.stats.trainingAttended || 0)}
+                                                <span style={{ fontSize: '1rem', opacity: 0.5 }}> / {data.stats.totalTrainings || 0}</span> sessions
+                                            </div>
                                         </div>
                                         <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.4, marginTop: '0.4rem' }}>
                                             Attend training sessions to achieve leadership accreditation.

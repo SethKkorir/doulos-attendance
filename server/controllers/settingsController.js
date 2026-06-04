@@ -276,7 +276,23 @@ export const getObservabilityTelemetry = async (req, res) => {
 
         const activeMeetingIds = activeMeetingsList.map(m => m._id);
         const activeTrainingIds = activeTrainingsList.map(t => t._id);
-        const activeCampuses = [...new Set([...activeMeetingsList.map(m => m.campus), ...activeTrainingsList.map(t => t.campus)])];
+        
+        let activeCampuses = [];
+        activeMeetingsList.forEach(m => {
+            if (m.campus === 'Both') {
+                activeCampuses.push('Athi River', 'Valley Road');
+            } else {
+                activeCampuses.push(m.campus);
+            }
+        });
+        activeTrainingsList.forEach(t => {
+            if (t.campus === 'Both') {
+                activeCampuses.push('Athi River', 'Valley Road');
+            } else {
+                activeCampuses.push(t.campus);
+            }
+        });
+        activeCampuses = [...new Set(activeCampuses)];
 
         let recentCheckins = [];
         let scanErrors = [];

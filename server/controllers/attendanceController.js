@@ -35,7 +35,7 @@ export const submitAttendance = async (req, res) => {
         if (meetingCode.toLowerCase() === 'athi-river') {
             meeting = await Meeting.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
             if (!meeting) {
-                meeting = await Training.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
+                meeting = await Training.findOne({ campus: { $in: ['Athi River', 'Both'] }, isActive: true }).sort({ date: -1 });
                 if (meeting) {
                     isTrainingModel = true;
                     isTrainingSession = true;
@@ -362,7 +362,7 @@ export const getStudentPortalData = async (req, res) => {
         // 3. Find IDs of all meetings and trainings within the current semester
         const semMeetings = await Meeting.find({ semester: currentSemester }, '_id');
         const semMeetingIds = semMeetings.map(m => m._id);
-        const semTrainings = await Training.find({ semester: currentSemester }, '_id');
+        const semTrainings = await Training.find({ semester: currentSemester, campus: { $in: [member.campus, 'Both'] } });
         const semTrainingIds = semTrainings.map(t => t._id);
 
         // 4. Query student's attendance records matching only this semester's sessions
@@ -408,20 +408,29 @@ export const getStudentPortalData = async (req, res) => {
             });
         });
 
+        // Initialize all semester trainings as 'ABSENT'
+        const trainingMap = new Map();
+        semTrainings.forEach(t => {
+            trainingMap.set(t._id.toString(), {
+                _id: t._id,
+                name: t.name,
+                date: t.date,
+                campus: t.campus,
+                attended: false,
+                isTraining: true,
+                attendanceTime: null
+            });
+        });
+
         // Overlay with actual attendance
         const attendedMeetingIds = attendanceRecords.filter(a => a.meeting).map(a => a.meeting);
         const attendedMeetings = await Meeting.find({ _id: { $in: attendedMeetingIds } });
 
-        const attendedTrainingIds = attendanceRecords.filter(a => a.trainingId).map(a => a.trainingId);
-        const attendedTrainings = await Training.find({ _id: { $in: attendedTrainingIds } });
-
-        const trainingHistory = [];
-
         attendanceRecords.forEach(record => {
             if (record.trainingId) {
-                const training = attendedTrainings.find(t => t._id.toString() === record.trainingId.toString());
+                const training = semTrainings.find(t => t._id.toString() === record.trainingId.toString());
                 if (training) {
-                    trainingHistory.push({
+                    trainingMap.set(training._id.toString(), {
                         _id: training._id,
                         name: training.name,
                         date: training.date,
@@ -440,7 +449,7 @@ export const getStudentPortalData = async (req, res) => {
             const isTrainingMeeting = meeting.category === 'Training';
 
             if (isTrainingMeeting) {
-                trainingHistory.push({
+                trainingMap.set(meeting._id.toString(), {
                     _id: meeting._id,
                     name: meeting.name,
                     date: meeting.date,
@@ -470,13 +479,31 @@ export const getStudentPortalData = async (req, res) => {
 
         // Convert Map to sorted array and merge with trainings
         const meetingHistory = Array.from(weeklyData.values());
+        const trainingHistory = Array.from(trainingMap.values());
         const history = [...meetingHistory, ...trainingHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // Stats calculation
+        // Stats calculation (separate meetings from trainings)
+        const meetingRecords = attendanceRecords.filter(a => {
+            if (a.meeting) {
+                const meeting = attendedMeetings.find(m => m._id.toString() === a.meeting.toString());
+                return meeting && meeting.category !== 'Training';
+            }
+            return false;
+        });
+
+        const trainingRecords = attendanceRecords.filter(a => {
+            if (a.trainingId) return true;
+            if (a.meeting) {
+                const meeting = attendedMeetings.find(m => m._id.toString() === a.meeting.toString());
+                return meeting && meeting.category === 'Training';
+            }
+            return false;
+        });
+
         const totalMeetings = campusMeetings.length;
-        const physicalAttended = attendanceRecords.filter(a => !a.isExempted).length;
-        const exemptedCount = attendanceRecords.filter(a => a.isExempted).length;
-        const totalTrainingAttended = attendanceRecords.filter(a => a.trainingId).length;
+        const physicalAttended = meetingRecords.filter(a => !a.isExempted).length;
+        const exemptedCount = meetingRecords.filter(a => a.isExempted).length;
+        const totalTrainingAttended = trainingRecords.length;
         const totalValid = physicalAttended + exemptedCount;
 
         // 8. Doulos Hours & Activity Check (filtered by current semester)
@@ -570,6 +597,7 @@ export const getStudentPortalData = async (req, res) => {
                 physicalAttended,
                 exemptedCount,
                 trainingAttended: totalTrainingAttended,
+                totalTrainings: semTrainings.length,
                 totalAttended: totalValid,
                 percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },

@@ -749,8 +749,8 @@ const CheckIn = () => {
                                     <Trophy size={20} />
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1px', textTransform: 'uppercase' }}>Verified Member</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{memberInfo.name}</div>
+                                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'white' }}>{memberInfo.name}</div>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '0.15rem' }}>Verified Member</div>
                                 </div>
                             </div>
                         )}
@@ -1655,7 +1655,10 @@ const CheckIn = () => {
                                                 <option value="Recruit">Recruit</option>
                                                 <option value="Visitor">Visitor</option>
                                             </select>
-                                            {meeting?.questionOfDay && (
+                                        </div>
+                                    )}
+
+                                    {meeting?.questionOfDay && (
                                          <div style={{ animation: 'fadeIn 0.3s ease-out', marginTop: '1.25rem' }}>
                                              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
                                                  Question of the Day <span style={{ color: '#ef4444' }}>*</span>
@@ -1666,8 +1669,6 @@ const CheckIn = () => {
                                              {renderQuestionInput()}
                                          </div>
                                      )}
-                                        </div>
-                                    )}
 
                                     <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                                         <button

@@ -68,7 +68,7 @@ const TrainingsTab = ({
     const [trainingFormData, setTrainingFormData] = useState({
         name: 'Doulos Training',
         date: new Date().toISOString().split('T')[0],
-        campus: 'Athi River',
+        campus: 'Both',
         startTime: '14:00',
         endTime: '17:00',
         semester: currentSemester || 'MAY-AUG 2026',
@@ -569,8 +569,9 @@ const TrainingsTab = ({
                         <div className="form-group-premium">
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Users size={14} /> Campus</label>
                             <select className="modern-input" value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
-                                <option value="Athi River">Athi River</option>
-                                <option value="Valley Road">Valley Road</option>
+                                <option value="Both">Both Campuses</option>
+                                <option value="Athi River">Athi River Only</option>
+                                <option value="Valley Road">Valley Road Only</option>
                             </select>
                         </div>
                         
