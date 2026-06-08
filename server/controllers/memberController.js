@@ -32,6 +32,7 @@ export const importMembers = async (req, res) => {
 
 export const getMembers = async (req, res) => {
     try {
+        const { search, campus, memberType, includeArchived, activeThisSemester } = req.query;
         const queryConditions = [];
 
         if (search) {
