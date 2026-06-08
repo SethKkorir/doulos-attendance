@@ -32,31 +32,48 @@ export const importMembers = async (req, res) => {
 
 export const getMembers = async (req, res) => {
     try {
-        const { search, campus, memberType, includeArchived, activeThisSemester } = req.query;
-        let query = {};
+        const queryConditions = [];
 
         if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { studentRegNo: { $regex: search, $options: 'i' } }
-            ];
+            queryConditions.push({
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { studentRegNo: { $regex: search, $options: 'i' } }
+                ]
+            });
         }
-        if (campus && campus !== 'All') query.campus = campus;
-        if (memberType && memberType !== 'All') query.memberType = memberType;
+        if (campus && campus !== 'All') queryConditions.push({ campus });
+        
+        if (memberType && memberType !== 'All') {
+            if (memberType === 'Blocked') {
+                queryConditions.push({
+                    $or: [
+                        { isActive: false },
+                        { linkedDeviceId: { $ne: null, $ne: "" } }
+                    ]
+                });
+            } else {
+                queryConditions.push({ memberType });
+            }
+        }
 
         // Never show test accounts in the main registry
-        query.isTestAccount = { $ne: true };
+        queryConditions.push({ isTestAccount: { $ne: true } });
 
         // Active this semester filter
         if (activeThisSemester === 'true') {
             const semesterSetting = await Settings.findOne({ key: 'current_semester' });
             const currentSemester = semesterSetting ? semesterSetting.value : 'MAY-AUG 2026';
-            query.lastActiveSemester = currentSemester;
+            queryConditions.push({ lastActiveSemester: currentSemester });
         }
 
         // Exclude archived members unless explicitly requested
         if (includeArchived !== 'true') {
-            query.status = { $ne: 'Archived' };
+            queryConditions.push({ status: { $ne: 'Archived' } });
+        }
+
+        if (queryConditions.length > 0) {
+            query = { $and: queryConditions };
         }
 
         const members = await Member.find(query).sort({ name: 1 }).lean();

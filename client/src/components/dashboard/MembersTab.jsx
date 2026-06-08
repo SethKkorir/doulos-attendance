@@ -490,7 +490,9 @@ const MembersTab = ({
 
         const matchesSearch = !memberSearch || cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
         const matchesCampus = memberCampusFilter === 'All' || m.campus === memberCampusFilter;
-        const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
+        const matchesType = memberTypeFilter === 'All' || 
+            (memberTypeFilter === 'Blocked' && (m.isActive === false || m.linkedDeviceId)) ||
+            m.memberType === memberTypeFilter;
         return matchesSearch && matchesCampus && matchesType;
     });
 
@@ -668,12 +670,16 @@ const MembersTab = ({
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(2, 21, 37, 0.4)', padding: '0.35rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
-                            {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(t => (
+                            {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted', 'Blocked'].map(t => (
                                 <button key={t} onClick={() => setMemberTypeFilter(t)}
                                     style={{
                                         padding: '0.4rem 0.85rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-                                        background: memberTypeFilter === t ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
-                                        color: memberTypeFilter === t ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                                        background: memberTypeFilter === t 
+                                            ? (t === 'Blocked' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(167, 139, 250, 0.2)')
+                                            : 'transparent',
+                                        color: memberTypeFilter === t 
+                                            ? (t === 'Blocked' ? '#f87171' : '#a78bfa') 
+                                            : 'rgba(255,255,255,0.6)',
                                         fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s'
                                     }}
                                 >{t}</button>
@@ -774,28 +780,60 @@ const MembersTab = ({
                                                             }
                                                         }}
                                                     />
-                                                    <span className="status-pill-modern" style={{
-                                                        background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
-                                                                    m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
-                                                                    m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
-                                                                    'rgba(255, 255, 255, 0.04)',
-                                                        color: m.memberType === 'Douloid' ? '#FFD700' :
-                                                               m.memberType === 'Recruit' ? '#25AAE1' :
-                                                               m.memberType === 'Exempted' ? '#f87171' :
-                                                               'rgba(255,255,255,0.5)',
-                                                        border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
-                                                                     m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
-                                                                     m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
-                                                                     '1px solid rgba(255, 255, 255, 0.05)',
-                                                        fontSize: '0.62rem',
-                                                        padding: '0.2rem 0.5rem',
-                                                        borderRadius: '1rem',
-                                                        fontWeight: 800,
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.5px'
-                                                    }}>
-                                                        {m.memberType}
-                                                    </span>
+                                                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                                        <span className="status-pill-modern" style={{
+                                                            background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
+                                                                        m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
+                                                                        m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
+                                                                        'rgba(255, 255, 255, 0.04)',
+                                                            color: m.memberType === 'Douloid' ? '#FFD700' :
+                                                                   m.memberType === 'Recruit' ? '#25AAE1' :
+                                                                   m.memberType === 'Exempted' ? '#f87171' :
+                                                                   'rgba(255,255,255,0.5)',
+                                                            border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
+                                                                         m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
+                                                                         m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
+                                                                         '1px solid rgba(255, 255, 255, 0.05)',
+                                                            fontSize: '0.62rem',
+                                                            padding: '0.2rem 0.5rem',
+                                                            borderRadius: '1rem',
+                                                            fontWeight: 800,
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                            {m.memberType}
+                                                        </span>
+                                                        {m.isActive === false && (
+                                                            <span className="status-pill-modern" style={{
+                                                                background: 'rgba(239, 68, 68, 0.15)',
+                                                                color: '#ef4444',
+                                                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                                fontSize: '0.62rem',
+                                                                padding: '0.2rem 0.5rem',
+                                                                borderRadius: '1rem',
+                                                                fontWeight: 800,
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                BLOCKED
+                                                            </span>
+                                                        )}
+                                                        {m.linkedDeviceId && (
+                                                            <span className="status-pill-modern" style={{
+                                                                background: 'rgba(59, 130, 246, 0.15)',
+                                                                color: '#3b82f6',
+                                                                border: '1px solid rgba(59, 130, 246, 0.25)',
+                                                                fontSize: '0.62rem',
+                                                                padding: '0.2rem 0.5rem',
+                                                                borderRadius: '1rem',
+                                                                fontWeight: 800,
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                DEVICE LOCKED
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
 
                                                 {/* Avatar & Profile Details */}
@@ -922,28 +960,60 @@ const MembersTab = ({
                                                             </div>
                                                         </td>
                                                         <td style={{ padding: '0.85rem 1rem' }}>
-                                                            <span className="status-pill-modern" style={{
-                                                                background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
-                                                                            m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
-                                                                            m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
-                                                                            'rgba(255, 255, 255, 0.04)',
-                                                                color: m.memberType === 'Douloid' ? '#FFD700' :
-                                                                       m.memberType === 'Recruit' ? '#25AAE1' :
-                                                                       m.memberType === 'Exempted' ? '#f87171' :
-                                                                       'rgba(255,255,255,0.5)',
-                                                                border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
-                                                                             m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
-                                                                             m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
-                                                                             '1px solid rgba(255, 255, 255, 0.05)',
-                                                                fontSize: '0.62rem',
-                                                                padding: '0.2rem 0.5rem',
-                                                                borderRadius: '1rem',
-                                                                fontWeight: 800,
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.5px'
-                                                            }}>
-                                                                {m.memberType}
-                                                            </span>
+                                                            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                                                <span className="status-pill-modern" style={{
+                                                                    background: m.memberType === 'Douloid' ? 'rgba(255, 215, 0, 0.08)' :
+                                                                                m.memberType === 'Recruit' ? 'rgba(37, 170, 225, 0.08)' :
+                                                                                m.memberType === 'Exempted' ? 'rgba(239, 68, 68, 0.08)' :
+                                                                                'rgba(255, 255, 255, 0.04)',
+                                                                    color: m.memberType === 'Douloid' ? '#FFD700' :
+                                                                           m.memberType === 'Recruit' ? '#25AAE1' :
+                                                                           m.memberType === 'Exempted' ? '#f87171' :
+                                                                           'rgba(255,255,255,0.5)',
+                                                                    border: m.memberType === 'Douloid' ? '1px solid rgba(255, 215, 0, 0.15)' :
+                                                                                 m.memberType === 'Recruit' ? '1px solid rgba(37, 170, 225, 0.15)' :
+                                                                                 m.memberType === 'Exempted' ? '1px solid rgba(239, 68, 68, 0.15)' :
+                                                                                 '1px solid rgba(255, 255, 255, 0.05)',
+                                                                    fontSize: '0.62rem',
+                                                                    padding: '0.2rem 0.5rem',
+                                                                    borderRadius: '1rem',
+                                                                    fontWeight: 800,
+                                                                    textTransform: 'uppercase',
+                                                                    letterSpacing: '0.5px'
+                                                                }}>
+                                                                    {m.memberType}
+                                                                </span>
+                                                                {m.isActive === false && (
+                                                                    <span className="status-pill-modern" style={{
+                                                                        background: 'rgba(239, 68, 68, 0.15)',
+                                                                        color: '#ef4444',
+                                                                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                                        fontSize: '0.62rem',
+                                                                        padding: '0.2rem 0.5rem',
+                                                                        borderRadius: '1rem',
+                                                                        fontWeight: 800,
+                                                                        textTransform: 'uppercase',
+                                                                        letterSpacing: '0.5px'
+                                                                    }}>
+                                                                        BLOCKED
+                                                                    </span>
+                                                                )}
+                                                                {m.linkedDeviceId && (
+                                                                    <span className="status-pill-modern" style={{
+                                                                        background: 'rgba(59, 130, 246, 0.15)',
+                                                                        color: '#3b82f6',
+                                                                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                                                                        fontSize: '0.62rem',
+                                                                        padding: '0.2rem 0.5rem',
+                                                                        borderRadius: '1rem',
+                                                                        fontWeight: 800,
+                                                                        textTransform: 'uppercase',
+                                                                        letterSpacing: '0.5px'
+                                                                    }}>
+                                                                        DEVICE LOCKED
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td style={{ padding: '0.85rem 1rem' }}>
                                                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#fbbf24', fontWeight: 900, background: 'rgba(251, 191, 36, 0.08)', padding: '0.2rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.78rem', border: '1px solid rgba(251, 191, 36, 0.15)' }}>
