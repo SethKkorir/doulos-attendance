@@ -19,9 +19,29 @@ const attendanceSchema = new mongoose.Schema({
 });
 
 // Prevent duplicate check-ins for same meeting (regular)
-attendanceSchema.index({ meeting: 1, studentRegNo: 1 }, { unique: true, sparse: true });
+attendanceSchema.index(
+    { meeting: 1, studentRegNo: 1 },
+    { 
+        unique: true, 
+        partialFilterExpression: { meeting: { $type: "objectId" } } 
+    }
+);
+
 // Prevent duplicate check-ins for same training
-attendanceSchema.index({ trainingId: 1, studentRegNo: 1 }, { unique: true, sparse: true });
+attendanceSchema.index(
+    { trainingId: 1, studentRegNo: 1 },
+    { 
+        unique: true, 
+        partialFilterExpression: { trainingId: { $type: "objectId" } } 
+    }
+);
+
 attendanceSchema.index({ studentRegNo: 1 });
 
-export default mongoose.model('Attendance', attendanceSchema);
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+// Drop old faulty indexes on startup so mongoose can re-create them with partial filters
+Attendance.collection.dropIndex('meeting_1_studentRegNo_1').catch(() => {});
+Attendance.collection.dropIndex('trainingId_1_studentRegNo_1').catch(() => {});
+
+export default Attendance;
