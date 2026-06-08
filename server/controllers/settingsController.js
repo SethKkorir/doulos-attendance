@@ -297,19 +297,40 @@ export const getObservabilityTelemetry = async (req, res) => {
         let recentCheckins = [];
         let scanErrors = [];
 
-        if (activeMeetingIds.length > 0 || activeTrainingIds.length > 0) {
-            // 5. Real Recent Successful Check-Ins scoped to active sessions
+        let targetMeetingIds = [...activeMeetingIds];
+        let targetTrainingIds = [...activeTrainingIds];
+        let targetCampuses = [...activeCampuses];
+
+        if (targetMeetingIds.length === 0 && targetTrainingIds.length === 0) {
+            // Fallback to most recent meeting and training in the current semester
+            const lastMeeting = await Meeting.findOne({ semester: currentSemester }).sort({ date: -1, updatedAt: -1 }).select('_id campus').lean();
+            const lastTraining = await Training.findOne({ semester: currentSemester }).sort({ date: -1, updatedAt: -1 }).select('_id campus').lean();
+            if (lastMeeting) {
+                targetMeetingIds.push(lastMeeting._id);
+                targetCampuses.push(lastMeeting.campus === 'Both' ? 'Athi River' : lastMeeting.campus);
+                if (lastMeeting.campus === 'Both') targetCampuses.push('Valley Road');
+            }
+            if (lastTraining) {
+                targetTrainingIds.push(lastTraining._id);
+                targetCampuses.push(lastTraining.campus === 'Both' ? 'Athi River' : lastTraining.campus);
+                if (lastTraining.campus === 'Both') targetCampuses.push('Valley Road');
+            }
+            targetCampuses = [...new Set(targetCampuses)];
+        }
+
+        if (targetMeetingIds.length > 0 || targetTrainingIds.length > 0) {
+            // 5. Real Recent Successful Check-Ins scoped to target sessions
             recentCheckins = await Attendance.aggregate([
                 {
                     $match: {
                         $or: [
-                            { meeting: { $in: activeMeetingIds } },
-                            { trainingId: { $in: activeTrainingIds } }
+                            { meeting: { $in: targetMeetingIds } },
+                            { trainingId: { $in: targetTrainingIds } }
                         ]
                     }
                 },
                 { $sort: { timestamp: -1 } },
-                { $limit: 10 },
+                { $limit: 20 },
                 {
                     $lookup: {
                         from: "members",
@@ -331,25 +352,25 @@ export const getObservabilityTelemetry = async (req, res) => {
                 }
             ]);
 
-            // Find registration numbers of students who successfully checked in to active sessions
+            // Find registration numbers of students who successfully checked in to target sessions
             const checkedInRegNos = await Attendance.distinct('studentRegNo', {
                 $or: [
-                    { meeting: { $in: activeMeetingIds } },
-                    { trainingId: { $in: activeTrainingIds } }
+                    { meeting: { $in: targetMeetingIds } },
+                    { trainingId: { $in: targetTrainingIds } }
                 ]
             });
 
-            // 6. Real Recent Check-In Failures scoped to active session campuses in the last 12 hours
+            // 6. Real Recent Check-In Failures scoped to target session campuses in the last 24 hours
             if (mongoose.connection.readyState === 1) {
                 scanErrors = await mongoose.connection.db.collection('scanerrors')
                     .aggregate([
                         { $match: { 
-                            campus: { $in: activeCampuses },
-                            timestamp: { $gte: new Date(Date.now() - 12 * 60 * 60 * 1000) },
+                            campus: { $in: targetCampuses },
+                            timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
                             studentRegNo: { $nin: checkedInRegNos }
                         } },
                         { $sort: { timestamp: -1 } },
-                        { $limit: 10 },
+                        { $limit: 20 },
                         {
                             $lookup: {
                                 from: "members",

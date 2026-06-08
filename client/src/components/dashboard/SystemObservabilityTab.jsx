@@ -277,6 +277,7 @@ const SystemObservabilityTab = ({
 
 
     const hasActiveSession = activeSessionsData.meetings.length > 0 || activeSessionsData.trainings.length > 0;
+    const showTelemetry = hasActiveSession || activities.length > 0 || errors.length > 0;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
@@ -332,7 +333,7 @@ const SystemObservabilityTab = ({
                 </div>
             </div>
 
-            {hasActiveSession ? (
+            {showTelemetry ? (
                 <>
                     {/* Core Metrics Observability Dashboard Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
