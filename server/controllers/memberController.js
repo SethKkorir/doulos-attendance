@@ -34,6 +34,7 @@ export const getMembers = async (req, res) => {
     try {
         const { search, campus, memberType, includeArchived, activeThisSemester } = req.query;
         const queryConditions = [];
+        let query = {};
 
         if (search) {
             queryConditions.push({
