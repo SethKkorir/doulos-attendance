@@ -20,6 +20,7 @@ const SystemSettingsTab = ({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState({});
     const [wateringActive, setWateringActive] = useState(false);
+    const [bypassDeviceLock, setBypassDeviceLock] = useState(false);
 
     // Rollover Console Wizard state
     const [showWizard, setShowWizard] = useState(false);
@@ -80,7 +81,7 @@ const SystemSettingsTab = ({
         const fetchSettings = async () => {
             setLoading(true);
             try {
-                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes, backupRes, rolloverDateRes] = await Promise.all([
+                const [semRes, guestRes, waRes, themeRes, verseRes, wateringRes, backupRes, rolloverDateRes, bypassDeviceLockRes] = await Promise.all([
                     api.get('/settings/current_semester'),
                     api.get('/settings/guest_features'),
                     api.get('/settings/whatsapp_link'),
@@ -88,7 +89,8 @@ const SystemSettingsTab = ({
                     api.get('/settings/semester_verse'),
                     api.get('/settings/watering_selector_active'),
                     api.get('/settings/ROLLBACK_BACKUP_METADATA').catch(() => ({ data: { value: null } })),
-                    api.get('/settings/semester_rollover_date').catch(() => ({ data: { value: null } }))
+                    api.get('/settings/semester_rollover_date').catch(() => ({ data: { value: null } })),
+                    api.get('/settings/bypass_device_lock').catch(() => ({ data: { value: 'false' } }))
                 ]);
                 if (semRes.data?.value) setSemester(semRes.data.value);
                 if (guestRes.data?.value) setGuestAccess(guestRes.data.value);
@@ -97,6 +99,7 @@ const SystemSettingsTab = ({
                 if (verseRes.data?.value) setVerse(verseRes.data.value);
                 if (wateringRes.data?.value) setWateringActive(wateringRes.data.value === 'true');
                 if (rolloverDateRes.data?.value) setRolloverDate(Number(rolloverDateRes.data.value));
+                if (bypassDeviceLockRes.data?.value) setBypassDeviceLock(bypassDeviceLockRes.data.value === 'true');
                 
                 if (backupRes.data?.value) {
                     setHasBackup(true);
@@ -145,6 +148,12 @@ const SystemSettingsTab = ({
         const newValue = !wateringActive;
         setWateringActive(newValue);
         await handleSave('watering_selector_active', String(newValue));
+    };
+
+    const handleToggleBypassDeviceLock = async () => {
+        const newValue = !bypassDeviceLock;
+        setBypassDeviceLock(newValue);
+        await handleSave('bypass_device_lock', String(newValue));
     };
 
     const handleSave = async (key, value) => {
@@ -329,6 +338,51 @@ const SystemSettingsTab = ({
                             }}
                         >
                             {saving.watering_selector_active ? <Loader2 size={13} className="animate-spin" /> : wateringActive ? 'Close Selector' : 'Make Selector Live'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Device Signature Lock Bypass Card */}
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #25AAE1', background: '#0d111b', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
+                        <div style={{ padding: '0.7rem', background: 'rgba(37, 170, 225, 0.08)', borderRadius: '0.75rem', border: '1px solid rgba(37, 170, 225, 0.15)' }}>
+                            <LinkIcon size={20} color="#25AAE1" />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>Device Link Protection</div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Bypass device sign-in locks globally</div>
+                        </div>
+                    </div>
+                    
+                    <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45, margin: '0 0 1.25rem 0' }}>
+                        When <strong>Bypassed</strong>, students can check in from any device even if their account is linked to another phone. Handy during emergencies or lockout issues.
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: bypassDeviceLock ? '#f87171' : '#10b981', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: bypassDeviceLock ? '#f87171' : '#10b981', display: 'inline-block', boxShadow: bypassDeviceLock ? '0 0 10px #f87171' : '0 0 10px #10b981' }}></span>
+                            {bypassDeviceLock ? 'STATUS: LOCKS BYPASSED' : 'STATUS: SECURITY ACTIVE'}
+                        </span>
+
+                        <button
+                            onClick={handleToggleBypassDeviceLock}
+                            disabled={saving.bypass_device_lock}
+                            style={{
+                                border: 'none',
+                                background: bypassDeviceLock ? '#f87171' : 'rgba(255,255,255,0.1)',
+                                color: bypassDeviceLock ? '#021525' : 'rgba(255,255,255,0.4)',
+                                padding: '0.45rem 1rem',
+                                borderRadius: '0.5rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem'
+                            }}
+                        >
+                            {saving.bypass_device_lock ? <Loader2 size={13} className="animate-spin" /> : bypassDeviceLock ? 'Enforce Locks' : 'Bypass Locks'}
                         </button>
                     </div>
                 </div>

@@ -179,12 +179,17 @@ export const submitAttendance = async (req, res) => {
 
         // 8. Device Handcuff Logic (Locking student to one phone)
         if (member) {
-            if (!member.linkedDeviceId && deviceId) {
-                member.linkedDeviceId = deviceId;
-                await member.save();
-            } else if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
-                await logScanError(studentRegNo, 'Device Signature Mismatch', `Attempted check-in on a second phone without resetting device link lock. Device ID: ${deviceId}`, meeting.campus);
-                return res.status(403).json({ message: 'Device Lock Error: This account is linked to another device. Please request a device reset from a G9 administrator.' });
+            const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
+            const isBypassed = bypassSetting?.value === 'true';
+
+            if (!isBypassed) {
+                if (!member.linkedDeviceId && deviceId) {
+                    member.linkedDeviceId = deviceId;
+                    await member.save();
+                } else if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
+                    await logScanError(studentRegNo, 'Device Signature Mismatch', `Attempted check-in on a second phone without resetting device link lock. Device ID: ${deviceId}`, meeting.campus);
+                    return res.status(403).json({ message: 'Device Lock Error: This account is linked to another device. Please request a device reset from a G9 administrator.' });
+                }
             }
         }
 
@@ -672,8 +677,11 @@ export const manualCheckIn = async (req, res) => {
 
         await attendance.save();
 
-        // Award Points
-        await Member.findOneAndUpdate({ studentRegNo: regNo }, { $inc: { totalPoints: 10 } });
+        // Award Points and reset device lock on manual override
+        await Member.findOneAndUpdate({ studentRegNo: regNo }, { 
+            $inc: { totalPoints: 10 },
+            $set: { linkedDeviceId: null }
+        });
 
         // Clear database scan errors for this student since check-in was successful
         if (mongoose.connection.readyState === 1) {
