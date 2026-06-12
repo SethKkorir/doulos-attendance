@@ -9,18 +9,144 @@ import {
     PieChart, Pie, Cell, Legend
 } from 'recharts';
 
-const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
-    const [stats, setStats] = useState(null);
+const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) => {
+    const [currentMeeting, setCurrentMeeting] = useState(meeting);
+    const [attendanceRecords, setAttendanceRecords] = useState([]);
+    const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [insightSearch, setInsightSearch] = useState('');
     const [activeTab, setActiveTab] = useState('answers'); // Default to answers first!
+    const [selectedDay, setSelectedDay] = useState(meeting.activeDay || 1);
+    const [togglingRegDay, setTogglingRegDay] = useState(null);
+
+    useEffect(() => {
+        setCurrentMeeting(meeting);
+        setSelectedDay(meeting.activeDay || 1);
+    }, [meeting]);
+
+    useEffect(() => {
+        const fetchInsights = async () => {
+            setLoading(true);
+            try {
+                // Fetch attendance for this meeting
+                const attRes = await api.get(`/attendance/${meeting._id}`);
+                setAttendanceRecords(attRes.data);
+
+                // Fetch all members for this campus
+                const memRes = await api.get(`/members?campus=${meeting.campus}`);
+                setAllMembers(memRes.data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInsights();
+    }, [meeting, api]);
+
+    const handleActiveDayChange = async (day) => {
+        try {
+            const res = await api.patch(`/trainings/${currentMeeting._id}`, { activeDay: day });
+            setCurrentMeeting(res.data);
+            setSelectedDay(day);
+        } catch (err) {
+            console.error("Failed to update active day", err);
+            alert(err.response?.data?.message || "Failed to update active day");
+        }
+    };
+
+    const handleToggleDay = async (member, day) => {
+        const key = `${member.studentRegNo}_${day}`;
+        setTogglingRegDay(key);
+        try {
+            const record = attendanceRecords.find(a => 
+                String(a.studentRegNo).trim().toUpperCase() === String(member.studentRegNo).trim().toUpperCase() &&
+                (a.trainingDay || 1) === day
+            );
+
+            if (record) {
+                await api.delete(`/attendance/${record._id}`);
+                setAttendanceRecords(prev => prev.filter(a => a._id !== record._id));
+            } else {
+                const res = await api.post('/attendance/manual', {
+                    meetingId: currentMeeting._id,
+                    studentRegNo: member.studentRegNo,
+                    name: member.name,
+                    trainingDay: day
+                });
+                setAttendanceRecords(prev => [res.data, ...prev]);
+            }
+        } catch (err) {
+            console.error("Failed to toggle attendance", err);
+            alert(err.response?.data?.message || "Operation failed");
+        } finally {
+            setTogglingRegDay(null);
+        }
+    };
+
+    const handleSingleCheckIn = async (regNo, name) => {
+        try {
+            const res = await api.post('/attendance/manual', {
+                meetingId: currentMeeting._id,
+                studentRegNo: regNo,
+                name: name,
+                trainingDay: isTraining ? selectedDay : undefined
+            });
+            setAttendanceRecords(prev => [res.data, ...prev]);
+        } catch (err) {
+            console.error("Check-in failed", err);
+            alert(err.response?.data?.message || 'Check-in failed');
+        }
+    };
+
+    const handleRemoveCheckIn = async (recordId, regNo, memberName) => {
+        if (!window.confirm(`⚠️ DANGER: Remove check-in for ${memberName || regNo}?\n\nThis will also automatically decrement 10 points from their profile.`)) {
+            return;
+        }
+        try {
+            await api.delete(`/attendance/${recordId}`);
+            setAttendanceRecords(prev => prev.filter(a => a._id !== recordId));
+        } catch (err) {
+            console.error("Failed to delete check-in", err);
+            alert(err.response?.data?.message || 'Failed to remove check-in record.');
+        }
+    };
+
+    // Derived stats
+    const presentList = isTraining 
+        ? attendanceRecords.filter(a => (a.trainingDay || 1) === selectedDay)
+        : attendanceRecords;
+
+    const presentRegNos = new Set(presentList.map(a => String(a.studentRegNo).trim().toUpperCase()));
+
+    const absentList = allMembers.filter(m => !presentRegNos.has(String(m.studentRegNo).trim().toUpperCase()));
+
+    const presentCount = presentList.length;
+    const absentCount = absentList.length;
+    const totalEligible = allMembers.length;
+
+    const recruitsCount = presentList.filter(a => a.memberType === 'Recruit').length;
+
+    const breakdown = presentList.reduce((acc, curr) => {
+        acc[curr.memberType] = (acc[curr.memberType] || 0) + 1;
+        return acc;
+    }, { 'Douloid': 0, 'Recruit': 0, 'Visitor': 0 });
+
+    const stats = {
+        presentCount,
+        absentCount,
+        absentList,
+        presentList,
+        breakdown,
+        recruitsCount,
+        totalEligible
+    };
 
     const getPollData = () => {
         if (!stats || !meeting?.questionOfDay) return { data: [], totalVotes: 0, averageRating: 0 };
         
         const qType = meeting.questionType || 'text';
         const options = meeting.questionOptions || [];
-        const presentList = stats.presentList || [];
         
         let totalVotes = 0;
         
@@ -102,100 +228,6 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
         return { data: [], totalVotes: 0, averageRating: 0 };
     };
 
-    useEffect(() => {
-        const fetchInsights = async () => {
-            setLoading(true);
-            try {
-                // Fetch attendance for this meeting
-                const attRes = await api.get(`/attendance/${meeting._id}`);
-                const attendance = attRes.data;
-
-                // Fetch all members for this campus
-                const memRes = await api.get(`/members?campus=${meeting.campus}`);
-                const allMembers = memRes.data;
-
-                // present reg nos (Normalized)
-                const presentRegNos = new Set(attendance.map(a => String(a.studentRegNo).trim().toUpperCase()));
-
-                // absent members (Normalized Check)
-                const absent = allMembers.filter(m => !presentRegNos.has(String(m.studentRegNo).trim().toUpperCase()));
-
-                // breakdown
-                const breakdown = attendance.reduce((acc, curr) => {
-                    acc[curr.memberType] = (acc[curr.memberType] || 0) + 1;
-                    return acc;
-                }, {});
-
-                // Recruits (First timers) in this meeting
-                const recruitsCount = attendance.filter(a => a.memberType === 'Recruit').length;
-
-                setStats({
-                    presentCount: attendance.length,
-                    absentCount: absent.length,
-                    absentList: absent,
-                    presentList: attendance,
-                    breakdown,
-                    recruitsCount,
-                    totalEligible: allMembers.length
-                });
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchInsights();
-    }, [meeting, api]);
-
-    const handleRemoveCheckIn = async (recordId, regNo, memberName) => {
-        if (!window.confirm(`⚠️ DANGER: Remove check-in for ${memberName || regNo}?\n\nThis will also automatically decrement 10 points from their profile.`)) {
-            return;
-        }
-        try {
-            await api.delete(`/attendance/${recordId}`);
-            // Update stats state locally
-            setStats(prev => {
-                if (!prev) return prev;
-                // Find the removed participant from the presentList
-                const removed = prev.presentList.find(a => a._id === recordId);
-                const updatedPresentList = prev.presentList.filter(a => a._id !== recordId);
-                
-                // Add back to absentList
-                let updatedAbsentList = [...prev.absentList];
-                if (removed) {
-                    const alreadyAbsent = prev.absentList.some(m => String(m.studentRegNo).trim().toUpperCase() === String(regNo).trim().toUpperCase());
-                    if (!alreadyAbsent) {
-                        const restoredMember = {
-                            _id: removed._id || Math.random().toString(),
-                            studentRegNo: regNo,
-                            name: memberName || 'Member',
-                            memberType: removed.memberType || 'Douloid',
-                            campus: meeting.campus
-                        };
-                        updatedAbsentList.push(restoredMember);
-                        // Sort alphabetically
-                        updatedAbsentList.sort((a, b) => a.name.localeCompare(b.name));
-                    }
-                }
-
-                // Recalculate recruits count
-                const recruitsCount = updatedPresentList.filter(a => a.memberType === 'Recruit').length;
-
-                return {
-                    ...prev,
-                    presentCount: updatedPresentList.length,
-                    absentCount: updatedAbsentList.length,
-                    presentList: updatedPresentList,
-                    absentList: updatedAbsentList,
-                    recruitsCount
-                };
-            });
-        } catch (err) {
-            console.error("Failed to delete check-in", err);
-            alert(err.response?.data?.message || 'Failed to remove check-in record.');
-        }
-    };
-
     if (loading) return (
         <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '50px', height: '50px', borderTopColor: 'hsl(var(--color-primary))' }}></div>
@@ -222,6 +254,13 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
         return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch) || answerText.includes(cleanSearch);
     });
 
+    const filteredMembers = allMembers.filter(m => {
+        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
+    }).sort((a, b) => a.name.localeCompare(b.name));
+
     return (
         <div className="glass-card-premium" style={{
             padding: '2rem',
@@ -241,7 +280,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                     <div>
                         <h2 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 950, letterSpacing: '-0.75px', color: 'white' }}>Meeting Insights</h2>
                         <p style={{ color: 'rgba(255,255,255,0.45)', margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: '0.88rem' }}>
-                            {meeting.name} • {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            {currentMeeting.name} • {new Date(currentMeeting.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                     </div>
                 </div>
@@ -267,6 +306,59 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                 </button>
             </div>
 
+            {isTraining && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    padding: '1rem 1.5rem',
+                    borderRadius: '1.5rem',
+                    marginBottom: '1.5rem',
+                    flexWrap: 'wrap',
+                    gap: '1rem'
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                            Live Check-in Control
+                        </span>
+                        <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
+                            Select which day is currently active/live for QR scans.
+                        </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {[1, 2, 3].map(day => {
+                            const isActiveDay = currentMeeting.activeDay === day;
+                            return (
+                                <button
+                                    key={day}
+                                    onClick={() => handleActiveDayChange(day)}
+                                    style={{
+                                        padding: '0.55rem 1.25rem',
+                                        background: isActiveDay ? 'linear-gradient(135deg, #34d399, #059669)' : 'rgba(255, 255, 255, 0.03)',
+                                        border: isActiveDay ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.08)',
+                                        borderRadius: '0.75rem',
+                                        color: isActiveDay ? 'black' : 'white',
+                                        fontWeight: 800,
+                                        fontSize: '0.78rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem'
+                                    }}
+                                >
+                                    {isActiveDay && <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'black', animation: 'pulse 1.5s infinite' }} />}
+                                    Day {day} {isActiveDay ? ' (LIVE)' : ''}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* Glowing Question of the Day Callout Header */}
             {meeting.questionOfDay && (
                 <div style={{
@@ -288,8 +380,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
             )}
 
             {/* Smart Keyword & Registry Search */}
-            <div style={{ marginBottom: '1.75rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ marginBottom: '1.75rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
                     <Search
                         size={18}
                         style={{
@@ -338,6 +430,34 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                         </button>
                     )}
                 </div>
+
+                {isTraining && activeTab !== 'ticker' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '0.35rem 0.5rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', padding: '0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Viewing:</span>
+                        {[1, 2, 3].map(day => {
+                            const isSelected = selectedDay === day;
+                            return (
+                                <button
+                                    key={day}
+                                    onClick={() => setSelectedDay(day)}
+                                    style={{
+                                        padding: '0.45rem 1rem',
+                                        background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '0.75rem',
+                                        color: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.5)',
+                                        fontWeight: 800,
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Day {day}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Premium Tab Navigation Switcher Bar */}
@@ -354,7 +474,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                     { id: 'answers', label: 'Answers Board', icon: MessageSquare, badge: filteredPresent.length },
                     { id: 'analytics', label: 'Analytics & Stats', icon: BarChart3 },
                     { id: 'present', label: 'Participants List', icon: Users, badge: filteredPresent.length },
-                    { id: 'absent', label: 'Missed Registry', icon: UserX, badge: filteredAbsent.length }
+                    { id: 'absent', label: 'Missed Registry', icon: UserX, badge: filteredAbsent.length },
+                    ...(isTraining ? [{ id: 'ticker', label: '3-Day Ticker', icon: Activity }] : [])
                 ].map(tab => {
                     const ActiveIcon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -813,7 +934,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => onQuickCheckIn && onQuickCheckIn(meeting._id, m.studentRegNo)}
+                                        onClick={() => handleSingleCheckIn(m.studentRegNo, m.name)}
                                         className="btn btn-primary"
                                         style={{
                                             padding: '0.5rem 0.85rem',
@@ -834,6 +955,100 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn }) => {
                                     </button>
                                 </div>
                             ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* 5. 3-Day Ticker Tab */}
+            {isTraining && activeTab === 'ticker' && (
+                <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                    {filteredMembers.length === 0 ? (
+                        <div style={{ 
+                            padding: '5rem 2rem', 
+                            textAlign: 'center', 
+                            background: 'rgba(255,255,255,0.01)', 
+                            borderRadius: '1.5rem', 
+                            border: '1px dashed rgba(255,255,255,0.06)' 
+                        }}>
+                            <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
+                            <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members matching your search</h4>
+                            <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }} className="glass-panel">
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '40%' }}>MEMBER NAME</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '24%' }}>ADMISSION NUMBER</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '12%', textAlign: 'center' }}>DAY 1</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '12%', textAlign: 'center' }}>DAY 2</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '12%', textAlign: 'center' }}>DAY 3</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredMembers.map((m, idx) => (
+                                        <tr key={idx} style={{ 
+                                            borderBottom: '1px solid rgba(255,255,255,0.03)', 
+                                            transition: '0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <td style={{ padding: '1rem', fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span>{m.name}</span>
+                                                    <span style={{ fontSize: '0.65rem', color: '#34d399', fontWeight: 700, textTransform: 'uppercase', marginTop: '0.15rem' }}>{m.memberType}</span>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1rem', fontSize: '0.85rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                                {m.studentRegNo}
+                                            </td>
+                                            {[1, 2, 3].map(day => {
+                                                const record = attendanceRecords.find(a => 
+                                                    String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
+                                                    (a.trainingDay || 1) === day
+                                                );
+                                                const isChecked = !!record;
+                                                const isToggling = togglingRegDay === `${m.studentRegNo}_${day}`;
+
+                                                return (
+                                                    <td key={day} style={{ padding: '1rem', textAlign: 'center' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                            <button
+                                                                onClick={() => handleToggleDay(m, day)}
+                                                                disabled={isToggling}
+                                                                style={{
+                                                                    background: isChecked ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                                                                    border: isChecked ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                                                    borderRadius: '0.5rem',
+                                                                    width: '36px',
+                                                                    height: '36px',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    cursor: isToggling ? 'not-allowed' : 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.2)'
+                                                                }}
+                                                            >
+                                                                {isToggling ? (
+                                                                    <div className="loading-spinner-small" style={{ width: '14px', height: '14px', borderTopColor: '#34d399' }} />
+                                                                ) : isChecked ? (
+                                                                    <span style={{ fontWeight: 900, fontSize: '1rem' }}>✓</span>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.2 }}>-</span>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>

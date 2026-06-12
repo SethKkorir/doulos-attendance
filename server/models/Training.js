@@ -39,7 +39,8 @@ const trainingSchema = new mongoose.Schema({
         latitude: { type: Number },
         longitude: { type: Number },
         radius: { type: Number, default: 200 } // meters
-    }
+    },
+    activeDay: { type: Number, default: 1, min: 1, max: 3 }
 }, { timestamps: true });
 
 export default mongoose.model('Training', trainingSchema);

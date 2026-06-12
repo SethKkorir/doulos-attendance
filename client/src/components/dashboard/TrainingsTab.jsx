@@ -906,6 +906,7 @@ const TrainingsTab = ({
                             meeting={insightMeeting} 
                             onClose={() => setInsightMeeting(null)} 
                             api={api} 
+                            isTraining={true}
                             onQuickCheckIn={async (meetingId, regNo) => {
                                 setQuickCheckInLoading(true);
                                 try {

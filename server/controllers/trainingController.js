@@ -83,7 +83,11 @@ export const getTrainingByCode = async (req, res) => {
         const now = getKenyanTime();
         const tDate = new Date(training.date);
         const todayStr = getKenyanDate();
-        const tStr = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}-${String(tDate.getDate()).padStart(2, '0')}`;
+        
+        const activeDay = training.activeDay || 1;
+        const targetDate = new Date(tDate);
+        targetDate.setDate(targetDate.getDate() + (activeDay - 1));
+        const tStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
 
         const [startH, startM] = training.startTime.split(':').map(Number);
         const [endH, endM] = training.endTime.split(':').map(Number);
@@ -91,14 +95,14 @@ export const getTrainingByCode = async (req, res) => {
 
         if (!isSuperUser && !training.isTestMeeting) {
             if (!training.isActive) return res.status(403).json({ message: 'This training session is closed.' });
-            if (todayStr !== tStr) return res.status(403).json({ message: `This training is scheduled for ${tDate.toLocaleDateString()}.` });
+            if (todayStr !== tStr) return res.status(403).json({ message: `This training is scheduled for ${targetDate.toLocaleDateString()}.` });
             if (currentMinutes < (startH * 60 + startM - 60)) return res.status(403).json({ message: `Training starts at ${training.startTime} EAT.` });
             if (currentMinutes > (endH * 60 + endM + 30)) return res.status(403).json({ message: `This training ended at ${training.endTime} EAT.` });
         }
 
         let hasAttended = false;
         if (req.query.deviceId && !isSuperUser && !training.isTestMeeting) {
-            const existingRecord = await Attendance.findOne({ trainingId: training._id, deviceId: req.query.deviceId });
+            const existingRecord = await Attendance.findOne({ trainingId: training._id, deviceId: req.query.deviceId, trainingDay: activeDay });
             if (existingRecord) hasAttended = true;
         }
 

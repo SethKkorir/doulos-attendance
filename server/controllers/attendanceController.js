@@ -197,7 +197,7 @@ export const submitAttendance = async (req, res) => {
         // 8. Anti-Proxy Check (One check-in per device per session)
         if (deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount) {
             const deviceQuery = isTrainingModel
-                ? { trainingId: meeting._id, deviceId }
+                ? { trainingId: meeting._id, deviceId, trainingDay: meeting.activeDay || 1 }
                 : { meeting: meeting._id, deviceId };
             const deviceUsed = await Attendance.findOne(deviceQuery);
             if (deviceUsed) {
@@ -208,7 +208,7 @@ export const submitAttendance = async (req, res) => {
 
         // 9. Duplicate check (This session)
         const dupQuery = isTrainingModel
-            ? { trainingId: meeting._id, studentRegNo }
+            ? { trainingId: meeting._id, studentRegNo, trainingDay: meeting.activeDay || 1 }
             : { meeting: meeting._id, studentRegNo };
         const existing = await Attendance.findOne(dupQuery);
         if (existing && !member?.isTestAccount) {
@@ -286,7 +286,8 @@ export const submitAttendance = async (req, res) => {
                 memberType: member.memberType,
                 responses: responses || { studentName: data.studentName, studentRegNo },
                 questionOfDay: responses?.dailyQuestionAnswer || '',
-                deviceId
+                deviceId,
+                trainingDay: isTrainingModel ? (meeting.activeDay || 1) : undefined
             });
             await attendance.save();
 
@@ -411,16 +412,47 @@ export const getStudentPortalData = async (req, res) => {
             });
         });
 
-        // Initialize all semester trainings as 'ABSENT'
+        // Initialize all semester trainings as 'ABSENT' for each of the 3 days
         const trainingMap = new Map();
         semTrainings.forEach(t => {
-            trainingMap.set(t._id.toString(), {
+            const tDate = new Date(t.date);
+            
+            const friDate = new Date(tDate);
+            
+            const satDate = new Date(tDate);
+            satDate.setDate(tDate.getDate() + 1);
+            
+            const sunDate = new Date(tDate);
+            sunDate.setDate(tDate.getDate() + 2);
+
+            trainingMap.set(t._id.toString() + '_1', {
                 _id: t._id,
-                name: t.name,
-                date: t.date,
+                name: `${t.name} (Day 1)`,
+                date: friDate,
                 campus: t.campus,
                 attended: false,
                 isTraining: true,
+                trainingDay: 1,
+                attendanceTime: null
+            });
+            trainingMap.set(t._id.toString() + '_2', {
+                _id: t._id,
+                name: `${t.name} (Day 2)`,
+                date: satDate,
+                campus: t.campus,
+                attended: false,
+                isTraining: true,
+                trainingDay: 2,
+                attendanceTime: null
+            });
+            trainingMap.set(t._id.toString() + '_3', {
+                _id: t._id,
+                name: `${t.name} (Day 3)`,
+                date: sunDate,
+                campus: t.campus,
+                attended: false,
+                isTraining: true,
+                trainingDay: 3,
                 attendanceTime: null
             });
         });
@@ -431,17 +463,12 @@ export const getStudentPortalData = async (req, res) => {
 
         attendanceRecords.forEach(record => {
             if (record.trainingId) {
-                const training = semTrainings.find(t => t._id.toString() === record.trainingId.toString());
-                if (training) {
-                    trainingMap.set(training._id.toString(), {
-                        _id: training._id,
-                        name: training.name,
-                        date: training.date,
-                        campus: training.campus,
-                        attended: true,
-                        isTraining: true,
-                        attendanceTime: record.timestamp
-                    });
+                const dayNum = record.trainingDay || 1;
+                const mapKey = record.trainingId.toString() + '_' + dayNum;
+                const existingEntry = trainingMap.get(mapKey);
+                if (existingEntry) {
+                    existingEntry.attended = true;
+                    existingEntry.attendanceTime = record.timestamp;
                 }
                 return;
             }
@@ -452,15 +479,22 @@ export const getStudentPortalData = async (req, res) => {
             const isTrainingMeeting = meeting.category === 'Training';
 
             if (isTrainingMeeting) {
-                trainingMap.set(meeting._id.toString(), {
-                    _id: meeting._id,
-                    name: meeting.name,
-                    date: meeting.date,
-                    campus: meeting.campus,
-                    attended: true,
-                    isTraining: true,
-                    attendanceTime: record.timestamp
-                });
+                const mapKey = meeting._id.toString() + '_1';
+                const existingEntry = trainingMap.get(mapKey);
+                if (existingEntry) {
+                    existingEntry.attended = true;
+                    existingEntry.attendanceTime = record.timestamp;
+                } else {
+                    trainingMap.set(meeting._id.toString(), {
+                        _id: meeting._id,
+                        name: meeting.name,
+                        date: meeting.date,
+                        campus: meeting.campus,
+                        attended: true,
+                        isTraining: true,
+                        attendanceTime: record.timestamp
+                    });
+                }
                 return;
             }
 
@@ -600,7 +634,7 @@ export const getStudentPortalData = async (req, res) => {
                 physicalAttended,
                 exemptedCount,
                 trainingAttended: totalTrainingAttended,
-                totalTrainings: semTrainings.length,
+                totalTrainings: semTrainings.length * 3,
                 totalAttended: totalValid,
                 percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
             },
@@ -615,15 +649,9 @@ export const getStudentPortalData = async (req, res) => {
 };
 
 export const manualCheckIn = async (req, res) => {
-    const { meetingId, studentRegNo, name } = req.body;
+    const { meetingId, studentRegNo, name, trainingDay } = req.body;
     try {
         const regNo = studentRegNo.trim().toUpperCase();
-
-        const existing = await Attendance.findOne({
-            $or: [{ meeting: meetingId }, { trainingId: meetingId }],
-            studentRegNo: regNo
-        });
-        if (existing) return res.status(409).json({ message: 'Already checked in' });
 
         let meeting = await Meeting.findById(meetingId);
         let isTraining = false;
@@ -633,6 +661,15 @@ export const manualCheckIn = async (req, res) => {
             if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
             isTraining = true;
         }
+
+        const targetDay = isTraining ? (Number(trainingDay) || meeting.activeDay || 1) : undefined;
+
+        const dupQuery = isTraining
+            ? { trainingId: meetingId, studentRegNo: regNo, trainingDay: targetDay }
+            : { meeting: meetingId, studentRegNo: regNo };
+
+        const existing = await Attendance.findOne(dupQuery);
+        if (existing) return res.status(409).json({ message: 'Already checked in' });
 
         // Security: Lock manual check-in after 24-48 hours (Bypass for SuperAdmin)
         // Exempt training from strict lock for flexibility
@@ -672,7 +709,8 @@ export const manualCheckIn = async (req, res) => {
             campus: meeting.campus,
             studentRegNo: regNo,
             memberType: member.memberType,
-            responses: { studentName: member.name }
+            responses: { studentName: member.name },
+            trainingDay: isTraining ? targetDay : undefined
         });
 
         await attendance.save();

@@ -15,6 +15,7 @@ const attendanceSchema = new mongoose.Schema({
     questionOfDay: { type: String },
     deviceId: { type: String }, // Fingerprint
     isExempted: { type: Boolean, default: false },
+    trainingDay: { type: Number, default: 1 },
     timestamp: { type: Date, default: Date.now }
 });
 
@@ -27,9 +28,9 @@ attendanceSchema.index(
     }
 );
 
-// Prevent duplicate check-ins for same training
+// Prevent duplicate check-ins for same training per day
 attendanceSchema.index(
-    { trainingId: 1, studentRegNo: 1 },
+    { trainingId: 1, studentRegNo: 1, trainingDay: 1 },
     { 
         unique: true, 
         partialFilterExpression: { trainingId: { $type: "objectId" } } 
@@ -43,5 +44,6 @@ const Attendance = mongoose.model('Attendance', attendanceSchema);
 // Drop old faulty indexes on startup so mongoose can re-create them with partial filters
 Attendance.collection.dropIndex('meeting_1_studentRegNo_1').catch(() => {});
 Attendance.collection.dropIndex('trainingId_1_studentRegNo_1').catch(() => {});
+Attendance.collection.dropIndex('trainingId_1_studentRegNo_1_trainingDay_1').catch(() => {});
 
 export default Attendance;
