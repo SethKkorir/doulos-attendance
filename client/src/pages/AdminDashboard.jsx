@@ -330,6 +330,18 @@ const AdminDashboard = () => {
     const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
     const [bottomSheetType, setBottomSheetType] = useState(null); // 'add_member' | 'create_training' | 'filter_members' | 'qr_view'
     const [activeMeetingForQR, setActiveMeetingForQR] = useState(null);
+    const [meetingStatusFilter, setMeetingStatusFilter] = useState('All');
+    const [selectedMemberInsights, setSelectedMemberInsights] = useState(null);
+    const [loadingMemberInsights, setLoadingMemberInsights] = useState(false);
+    const [mobMeetingForm, setMobMeetingForm] = useState({
+        name: 'Weekly Fellowship',
+        date: new Date().toISOString().split('T')[0],
+        campus: 'Valley Road',
+        startTime: '17:30',
+        endTime: '20:30',
+        semester: currentSemester || 'MAY-AUG 2026',
+        location: { name: '', latitude: null, longitude: null, radius: 200 }
+    });
 
     // Form inputs for mobile sheets
     const [mobMemberForm, setMobMemberForm] = useState({ name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' });
@@ -428,6 +440,77 @@ const AdminDashboard = () => {
         });
     };
 
+    const handleToggleTrainingStatus = async (id, currentActive) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        try {
+            await api.patch(`/trainings/${id}`, { isActive: !currentActive });
+            setMsg({ type: 'success', text: `Training session ${!currentActive ? 'reopened' : 'finalized'} successfully!` });
+            fetchTrainings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to update training session' });
+        }
+    };
+
+    const handleToggleMeetingStatus = async (id, currentActive) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        try {
+            await api.patch(`/meetings/${id}`, { isActive: !currentActive });
+            setMsg({ type: 'success', text: `Meeting ${!currentActive ? 'reopened' : 'closed'} successfully!` });
+            fetchMeetings();
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to update meeting status' });
+        }
+    };
+
+    const submitMobileMeeting = async (e) => {
+        e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        if (!mobMeetingForm.location.name) return setMsg({ type: 'error', text: 'Venue name is required.' });
+        try {
+            await api.post('/meetings', mobMeetingForm);
+            setMsg({ type: 'success', text: 'Fellowship meeting session scheduled!' });
+            setBottomSheetOpen(false);
+            fetchMeetings();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create meeting' });
+        }
+    };
+
+    const openMemberInsights = async (member) => {
+        triggerHaptic(15);
+        setBottomSheetType('member_insights');
+        setBottomSheetOpen(true);
+        setLoadingMemberInsights(true);
+        setSelectedMemberInsights(null);
+        try {
+            const res = await api.get(`/attendance/student/${member.studentRegNo}`);
+            setSelectedMemberInsights({
+                ...member,
+                stats: res.data.stats,
+                history: res.data.history
+            });
+        } catch (err) {
+            setSelectedMemberInsights({
+                ...member,
+                stats: { percentage: Math.round(((member.totalAttended || 0) / 15) * 100), physicalAttended: member.totalAttended || 0, totalMeetings: 15 },
+                history: []
+            });
+        } finally {
+            setLoadingMemberInsights(false);
+        }
+    };
+
+    const getFilteredMobileMeetings = () => {
+        return meetings.filter(m => {
+            const matchesSearch = !searchQuery || m.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCampus = campusFilter === 'All' || m.campus === campusFilter;
+            
+            if (meetingStatusFilter === 'Active') return matchesSearch && matchesCampus && m.isActive;
+            if (meetingStatusFilter === 'Closed') return matchesSearch && matchesCampus && !m.isActive;
+            return matchesSearch && matchesCampus;
+        });
+    };
+
     if (isMobile) {
         return (
             <div style={{ position: 'relative', minHeight: '100vh', background: '#07090e', color: '#ffffff', overflowX: 'hidden' }}>
@@ -447,7 +530,7 @@ const AdminDashboard = () => {
                         <div className="mobile-search-bar" style={{ width: '100%', display: 'flex', gap: '8px' }}>
                             <input 
                                 type="text" 
-                                placeholder={activeTab === 'members' ? "Search members..." : "Search trainings..."} 
+                                placeholder={activeTab === 'members' ? "Search members..." : activeTab === 'trainings' ? "Search trainings..." : "Search meetings..."} 
                                 value={searchQuery} 
                                 onChange={(e) => setSearchQuery(e.target.value)} 
                                 autoFocus
@@ -465,7 +548,7 @@ const AdminDashboard = () => {
                                 {activeTab}
                             </div>
                             <div className="mobile-header-actions">
-                                {['members', 'trainings'].includes(activeTab) && (
+                                {['members', 'trainings', 'meetings'].includes(activeTab) && (
                                     <button className="mobile-icon-btn" onClick={() => { triggerHaptic(10); setSearchActive(true); }}>
                                         <Search size={18} />
                                     </button>
@@ -494,6 +577,98 @@ const AdminDashboard = () => {
                 <div style={{ paddingBottom: '90px' }}>
                     
                     {/* Render corresponding active tabs */}
+                    {activeTab === 'meetings' && (
+                        <div>
+                            {/* Campus Filter Chips */}
+                            <div className="mobile-filters">
+                                {['All', 'Athi River', 'Valley Road'].map(campus => (
+                                    <button 
+                                        key={campus} 
+                                        className={`mobile-chip ${campusFilter === campus ? 'active' : ''}`}
+                                        onClick={() => { triggerHaptic(10); setCampusFilter(campus); }}
+                                    >
+                                        {campus === 'Valley Road' ? 'Nairobi' : campus}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {/* Meeting Status Filter Chips */}
+                            <div className="mobile-filters" style={{ borderTop: '0.5px solid rgba(255,255,255,0.03)', paddingTop: '6px' }}>
+                                {['All', 'Active', 'Closed'].map(status => (
+                                    <button 
+                                        key={status} 
+                                        className={`mobile-chip ${meetingStatusFilter === status ? 'active' : ''}`}
+                                        onClick={() => { triggerHaptic(10); setMeetingStatusFilter(status); }}
+                                    >
+                                        {status}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Meetings Mobile List */}
+                            <div className="mobile-trainings-list">
+                                {getFilteredMobileMeetings().map(m => {
+                                    const mDate = new Date(m.date);
+                                    return (
+                                        <div key={m._id} className="mobile-training-card">
+                                            <div className="mobile-training-header">
+                                                <div className="mobile-training-title">{m.name}</div>
+                                                <div className="mobile-training-status" style={{
+                                                    background: m.isActive ? 'rgba(52, 211, 153, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                    color: m.isActive ? '#34d399' : '#f87171'
+                                                }}>
+                                                    {m.isActive ? 'Live' : 'Closed'}
+                                                </div>
+                                            </div>
+                                            <div className="mobile-training-meta">
+                                                <span>{m.campus}</span>
+                                                <span>•</span>
+                                                <span>{mDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
+                                                <span>•</span>
+                                                <span>{m.startTime} - {m.endTime}</span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '12px', opacity: 0.8 }}>
+                                                <span>Attendees Registered:</span>
+                                                <strong style={{ color: '#25AAE1' }}>{m.attendanceCount || 0} attendees</strong>
+                                            </div>
+
+                                            <div className="mobile-training-actions">
+                                                <button 
+                                                    className="mobile-action-btn"
+                                                    onClick={() => {
+                                                        triggerHaptic(15);
+                                                        setActiveMeetingForQR(m);
+                                                        setBottomSheetType('qr_view');
+                                                        setBottomSheetOpen(true);
+                                                    }}
+                                                >
+                                                    View QR Code
+                                                </button>
+                                                <button 
+                                                    className="mobile-action-btn"
+                                                    onClick={() => {
+                                                        triggerHaptic(15);
+                                                        handleToggleMeetingStatus(m._id, m.isActive);
+                                                    }}
+                                                >
+                                                    {m.isActive ? 'Close Scan' : 'Reopen'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {getFilteredMobileMeetings().length === 0 && (
+                                    <div className="mobile-empty-state">
+                                        <div className="mobile-empty-icon"><LayoutDashboard size={32} /></div>
+                                        <div className="mobile-empty-title">No Meetings Found</div>
+                                        <div className="mobile-empty-subtitle">Try scheduling a new fellowship meeting</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'members' && (
                         <div>
                             {/* Campus Filter Chips */}
@@ -528,11 +703,7 @@ const AdminDashboard = () => {
                                     <div 
                                         key={m._id} 
                                         className="mobile-member-card"
-                                        onClick={() => {
-                                            triggerHaptic(15);
-                                            // Open Profile info or trigger actions
-                                            setMsg({ type: 'success', text: `Loaded insights for ${m.name}` });
-                                        }}
+                                        onClick={() => openMemberInsights(m)}
                                     >
                                         <div className="mobile-member-avatar">
                                             {m.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
@@ -669,6 +840,7 @@ const AdminDashboard = () => {
                                     { id: 'feedback', label: 'Feedbacks Hub', icon: MessageCircle },
                                     { id: 'admins', label: 'Staff Admins', icon: ShieldAlert },
                                     { id: 'system', label: 'Settings', icon: SettingsIcon },
+                                    { id: 'profile', label: 'My Profile', icon: Star },
                                     ...( ['superadmin', 'developer'].includes(userRole?.toLowerCase()) ? [{ id: 'observability', label: 'Observability', icon: Activity }] : [] )
                                 ].map(item => (
                                     <button 
@@ -738,7 +910,7 @@ const AdminDashboard = () => {
                     )}
 
                     {/* Subpage views mapping from More tab */}
-                    {!['members', 'trainings', 'reports', 'more', 'profile'].includes(activeTab) && (
+                    {!['meetings', 'members', 'trainings', 'reports', 'more', 'profile'].includes(activeTab) && (
                         <div style={{ padding: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                                 <button 
@@ -800,12 +972,12 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* FAB (Floating Action Button) */}
-                {['members', 'trainings'].includes(activeTab) && (
+                {['members', 'trainings', 'meetings'].includes(activeTab) && (
                     <button 
                         className="mobile-fab" 
                         onClick={() => {
                             triggerHaptic(20);
-                            setBottomSheetType(activeTab === 'members' ? 'add_member' : 'create_training');
+                            setBottomSheetType(activeTab === 'members' ? 'add_member' : activeTab === 'trainings' ? 'create_training' : 'create_meeting');
                             setBottomSheetOpen(true);
                         }}
                     >
@@ -945,6 +1117,159 @@ const AdminDashboard = () => {
                             </div>
                         )}
 
+                        {bottomSheetType === 'create_meeting' && (
+                            <div>
+                                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>Schedule Meeting</h3>
+                                <form onSubmit={submitMobileMeeting}>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Meeting Title</label>
+                                        <input 
+                                            type="text" 
+                                            className="mobile-form-input" 
+                                            placeholder="e.g. Weekly Fellowship" 
+                                            value={mobMeetingForm.name} 
+                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Date</label>
+                                        <input 
+                                            type="date" 
+                                            className="mobile-form-input" 
+                                            value={mobMeetingForm.date} 
+                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, date: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div>
+                                            <label className="mobile-form-label">Start Time</label>
+                                            <input 
+                                                type="time" 
+                                                className="mobile-form-input" 
+                                                value={mobMeetingForm.startTime} 
+                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, startTime: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mobile-form-label">End Time</label>
+                                            <input 
+                                                type="time" 
+                                                className="mobile-form-input" 
+                                                value={mobMeetingForm.endTime} 
+                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, endTime: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Campus</label>
+                                        <select 
+                                            className="mobile-form-select" 
+                                            value={mobMeetingForm.campus}
+                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, campus: e.target.value })}
+                                        >
+                                            <option value="Valley Road">Valley Road (Nairobi)</option>
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Both">Both</option>
+                                        </select>
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Venue Location Name</label>
+                                        <input 
+                                            type="text" 
+                                            className="mobile-form-input" 
+                                            placeholder="e.g. Valley Road DAC Auditorium" 
+                                            value={mobMeetingForm.location.name} 
+                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, name: e.target.value } })}
+                                            required
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
+                                        Schedule Fellowship
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {bottomSheetType === 'member_insights' && selectedMemberInsights && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px 0 24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '48px', height: '48px', borderRadius: '24px', background: 'linear-gradient(135deg, #25AAE1, #1a7ca3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}>
+                                        {selectedMemberInsights.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>{selectedMemberInsights.name}</h3>
+                                        <div style={{ opacity: 0.6, fontSize: '12px' }}>Reg: {selectedMemberInsights.studentRegNo} • {selectedMemberInsights.campus}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '8px' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fellowships</div>
+                                        <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px' }}>{selectedMemberInsights.stats?.physicalAttended || 0} / {selectedMemberInsights.stats?.totalMeetings || 0}</div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trainings</div>
+                                        <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px' }}>{selectedMemberInsights.stats?.trainingAttended || 0} / {selectedMemberInsights.stats?.totalTrainings || 0}</div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Points Tally</div>
+                                        <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px', color: '#fbbf24' }}>{selectedMemberInsights.totalPoints || 0} pts</div>
+                                    </div>
+                                </div>
+
+                                {selectedMemberInsights.stats && (
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                            <span>Attendance Rate</span>
+                                            <strong style={{
+                                                color: selectedMemberInsights.stats.percentage > 75 ? '#4ade80' : selectedMemberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444'
+                                            }}>{selectedMemberInsights.stats.percentage}%</strong>
+                                        </div>
+                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${selectedMemberInsights.stats.percentage}%`,
+                                                background: selectedMemberInsights.stats.percentage > 75 ? '#4ade80' : selectedMemberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444'
+                                            }} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedMemberInsights.history && selectedMemberInsights.history.length > 0 && (
+                                    <div>
+                                        <h4 style={{ margin: '8px 0 8px 0', fontSize: '14px', fontWeight: '700' }}>Recent Logs</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                                            {selectedMemberInsights.history.slice(0, 5).map((log, index) => (
+                                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                                                        <span style={{ fontWeight: '600' }}>{log.name || log.meetingName}</span>
+                                                        <span style={{ fontSize: '10px', opacity: 0.5, color: log.isTraining ? '#1da6d9' : '#34d399' }}>
+                                                            {log.isTraining ? 'Leadership Training' : 'Fellowship Meeting'}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                                                        <span style={{ opacity: 0.6 }}>{new Date(log.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
+                                                        <span style={{ fontSize: '10px', color: log.attended ? '#34d399' : '#f87171', fontWeight: 'bold' }}>
+                                                            {log.attended ? 'Present' : 'Absent'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {bottomSheetType === 'member_insights' && loadingMemberInsights && (
+                            <div style={{ padding: '32px 0', textAlign: 'center', opacity: 0.7 }}>
+                                Loading insights...
+                            </div>
+                        )}
+
                         {bottomSheetType === 'qr_view' && activeMeetingForQR && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '12px 0 24px' }}>
                                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', textAlign: 'center' }}>
@@ -969,25 +1294,25 @@ const AdminDashboard = () => {
 
                 {/* Mobile Bottom Tab Bar */}
                 <div className="mobile-bottom-tabs">
-                    <button className={`mobile-tab-item ${activeTab === 'members' ? 'active' : ''}`} onClick={() => handleMobileTabChange('members')}>
-                        <Users size={20} />
-                        <span>MEMBERS</span>
+                    <button className={`mobile-tab-item ${activeTab === 'meetings' ? 'active' : ''}`} onClick={() => handleMobileTabChange('meetings')}>
+                        <LayoutDashboard size={20} />
+                        <span>MEETINGS</span>
                     </button>
                     <button className={`mobile-tab-item ${activeTab === 'trainings' ? 'active' : ''}`} onClick={() => handleMobileTabChange('trainings')}>
                         <GraduationCap size={20} />
                         <span>TRAININGS</span>
                     </button>
+                    <button className={`mobile-tab-item ${activeTab === 'members' ? 'active' : ''}`} onClick={() => handleMobileTabChange('members')}>
+                        <Users size={20} />
+                        <span>MEMBERS</span>
+                    </button>
                     <button className={`mobile-tab-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => handleMobileTabChange('reports')}>
                         <BarChart3 size={20} />
                         <span>REPORTS</span>
                     </button>
-                    <button className={`mobile-tab-item ${['members', 'trainings', 'reports', 'profile'].includes(activeTab) ? '' : 'active'}`} onClick={() => handleMobileTabChange('more')}>
+                    <button className={`mobile-tab-item ${!['meetings', 'trainings', 'members', 'reports'].includes(activeTab) ? 'active' : ''}`} onClick={() => handleMobileTabChange('more')}>
                         <SettingsIcon size={20} />
                         <span>MORE</span>
-                    </button>
-                    <button className={`mobile-tab-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleMobileTabChange('profile')}>
-                        <ShieldAlert size={20} />
-                        <span>PROFILE</span>
                     </button>
                 </div>
             </div>
