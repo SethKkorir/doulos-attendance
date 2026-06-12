@@ -134,8 +134,8 @@ const GGenericDashboard = ({ roleId }) => {
 
     // Filter members based on search
     const filteredMembers = members.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.studentRegNo.toLowerCase().includes(searchTerm.toLowerCase())
+        (m.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.studentRegNo || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
 

@@ -452,8 +452,8 @@ const ActivitiesTab = ({
     // Filtering logic
     const filteredMembers = activeMembers.filter(m => {
         const cleanSearch = searchTerm.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = (m.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = (m.studentRegNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
         const matchesSearch = !searchTerm || cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
         const matchesCampus = campusFilter === 'All' || m.campus === campusFilter;

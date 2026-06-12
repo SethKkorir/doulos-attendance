@@ -288,8 +288,8 @@ const G5TrainingDashboard = () => {
                                         <tr><td colSpan="5" style={{ padding: '2rem', textAlign: 'center' }}>Loading...</td></tr>
                                     ) : (
                                         members.filter(m =>
-                                            m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                                            m.studentRegNo.toLowerCase().includes(memberSearch.toLowerCase())
+                                            (m.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                            (m.studentRegNo || '').toLowerCase().includes(memberSearch.toLowerCase())
                                         ).slice(0, 50).map(m => ( // Limit to 50 for performance
                                             <tr key={m._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                                 <td style={{ padding: '1rem' }}>{m.name}</td>

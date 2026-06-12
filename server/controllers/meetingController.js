@@ -244,13 +244,17 @@ export const getMeetingByCode = async (req, res) => {
         }
 
         // Check if this device has already attended
+        // For trainings: scope the check to the CURRENT activeDay so Day 1 check-in doesn't block Day 2/3
         let hasAttended = false;
         if (req.query.deviceId && !isSuperUser && !meeting.isTestMeeting) {
-            const query = isTraining ? { trainingId: meeting._id } : { meeting: meeting._id };
-            const existingRecord = await Attendance.findOne({
-                ...query,
-                deviceId: req.query.deviceId
-            });
+            let query;
+            if (isTraining) {
+                const activeDay = meeting.activeDay || 1;
+                query = { trainingId: meeting._id, deviceId: req.query.deviceId, trainingDay: activeDay };
+            } else {
+                query = { meeting: meeting._id, deviceId: req.query.deviceId };
+            }
+            const existingRecord = await Attendance.findOne(query);
             if (existingRecord) hasAttended = true;
         }
 

@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+﻿/* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
 import {
     BarChart3, Activity, Users, Search, X, ShieldAlert as Ghost, Trash2,
@@ -32,23 +32,32 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     }, [meeting]);
 
     useEffect(() => {
+        let isFirstLoad = true;
         const fetchInsights = async () => {
-            setLoading(true);
+            if (isFirstLoad) setLoading(true);
             try {
                 // Fetch attendance for this meeting
                 const attRes = await api.get(`/attendance/${meeting._id}`);
                 setAttendanceRecords(attRes.data);
 
                 // Fetch all members for this campus
-                const memRes = await api.get(`/members?campus=${meeting.campus === 'Both' ? 'All' : meeting.campus}`);
-                setAllMembers(memRes.data);
+                if (isFirstLoad) {
+                    const memRes = await api.get(`/members?campus=${meeting.campus === 'Both' ? 'All' : meeting.campus}`);
+                    setAllMembers(memRes.data);
+                }
             } catch (err) {
                 console.error(err);
             } finally {
-                setLoading(false);
+                if (isFirstLoad) {
+                    setLoading(false);
+                    isFirstLoad = false;
+                }
             }
         };
         fetchInsights();
+
+        const interval = setInterval(fetchInsights, 3000);
+        return () => clearInterval(interval);
     }, [meeting, api]);
 
     const handleActiveDayChange = async (day) => {
@@ -477,7 +486,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     )}
                 </div>
 
-                {isTraining && activeTab !== 'ticker' && (
+                {isTraining && (
                     <div style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
@@ -678,179 +687,135 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
             )}
 
             {/* 2. Manual Checklist Tab (For Regular Meetings) */}
-            {!isTraining && activeTab === 'manual_checkin' && (
-                <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
-                    {filteredMembers.length === 0 ? (
-                        <div style={{ 
-                            padding: '5rem 2rem', 
-                            textAlign: 'center', 
-                            background: 'rgba(255,255,255,0.01)', 
-                            borderRadius: '1.5rem', 
-                            border: '1px dashed rgba(255,255,255,0.06)' 
+            {!isTraining && activeTab === 'manual_checkin' && (() => {
+                const toCheckIn = filteredMembers.filter(m => 
+                    !attendanceRecords.some(a => String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase())
+                );
+                const checkedIn = filteredMembers.filter(m => 
+                    attendanceRecords.some(a => String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase())
+                );
+                
+                const renderMemberCard = (m, isPresent) => {
+                    const record = attendanceRecords.find(a => String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase());
+                    const isToggling = togglingRegDay === `${m.studentRegNo}_regular`;
+                    return (
+                        <div key={m._id || m.studentRegNo} style={{
+                            padding: isMobile ? '0.9rem 1rem' : '0.85rem 1.25rem',
+                            background: isPresent ? 'rgba(52, 211, 153, 0.04)' : 'rgba(255,255,255,0.01)',
+                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.04)'}`,
+                            borderRadius: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1rem',
+                            transition: 'all 0.2s'
                         }}>
-                            <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
-                            <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members matching your search</h4>
-                            <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
-                        </div>
-                    ) : isMobile ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                            {filteredMembers.map((m, idx) => {
-                                const record = attendanceRecords.find(a => 
-                                    String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase()
-                                );
-                                const isChecked = !!record;
-                                const isToggling = togglingRegDay === `${m.studentRegNo}_regular`;
-
-                                return (
-                                    <div key={idx} className="glass-panel" style={{
-                                        padding: '1rem',
-                                        background: isChecked ? 'rgba(52, 211, 153, 0.02)' : 'rgba(255, 255, 255, 0.01)',
-                                        border: isChecked ? '1px solid rgba(52, 211, 153, 0.15)' : '1px solid rgba(255,255,255,0.04)',
-                                        borderRadius: '1rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: '0.75rem'
-                                    }}>
-                                        <div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>
-                                                {m.name}
-                                            </div>
-                                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
-                                                {m.studentRegNo}
-                                            </div>
-                                            <div style={{ marginTop: '0.4rem' }}>
-                                                <span style={{
-                                                    background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
-                                                    color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
-                                                    border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
-                                                    fontSize: '0.58rem',
-                                                    fontWeight: 900,
-                                                    padding: '0.15rem 0.4rem',
-                                                    borderRadius: '0.35rem',
-                                                    textTransform: 'uppercase'
-                                                }}>
-                                                    {m.memberType}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => handleToggleRegular(m)}
-                                            disabled={isToggling}
-                                            style={{
-                                                padding: '0.55rem 1rem',
-                                                background: isChecked ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                                                border: isChecked ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                                                borderRadius: '0.75rem',
-                                                color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.4)',
-                                                fontWeight: 800,
-                                                fontSize: '0.75rem',
-                                                cursor: isToggling ? 'not-allowed' : 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.35rem',
-                                                transition: 'all 0.2s',
-                                                minWidth: '100px',
-                                                justifyContent: 'center'
-                                            }}
-                                        >
-                                            {isToggling ? (
-                                                <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: '#34d399' }} />
-                                            ) : isChecked ? (
-                                                <><span>✓</span> Present</>
-                                            ) : (
-                                                <><span>-</span> Absent</>
-                                            )}
-                                        </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                    width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                                    background: isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.05)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: isPresent ? '#34d399' : 'rgba(255,255,255,0.3)',
+                                    fontSize: '0.85rem', fontWeight: 900
+                                }}>
+                                    {isPresent ? '✓' : (m.name || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {m.name || 'Unknown'}
                                     </div>
-                                );
-                            })}
+                                    <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.1rem' }}>
+                                        {m.studentRegNo}
+                                        {isPresent && record && (
+                                            <span style={{ marginLeft: '0.5rem', color: '#34d399', fontSize: '0.62rem' }}>
+                                                • {new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                <span style={{
+                                    background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
+                                    color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
+                                    border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
+                                    fontSize: '0.58rem', fontWeight: 900, padding: '0.15rem 0.4rem',
+                                    borderRadius: '0.35rem', textTransform: 'uppercase'
+                                }}>{m.memberType}</span>
+                                <button
+                                    onClick={() => handleToggleRegular(m)}
+                                    disabled={isToggling}
+                                    style={{
+                                        padding: '0.45rem 0.85rem',
+                                        background: isPresent ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.15)',
+                                        border: isPresent ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(37, 170, 225, 0.3)',
+                                        borderRadius: '0.6rem',
+                                        color: isPresent ? '#f87171' : '#25AAE1',
+                                        fontWeight: 800, fontSize: '0.72rem',
+                                        cursor: isToggling ? 'not-allowed' : 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                        transition: 'all 0.2s', whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    {isToggling ? (
+                                        <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: 'currentColor' }} />
+                                    ) : isPresent ? (
+                                        <><span>✕</span> Remove</>
+                                    ) : (
+                                        <><span>✓</span> Check In</>
+                                    )}
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }} className="glass-panel">
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '40%' }}>MEMBER NAME</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '25%' }}>ADMISSION NUMBER</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '20%' }}>MEMBER TYPE</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '15%', textAlign: 'center' }}>ATTENDANCE</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredMembers.map((m, idx) => {
-                                        const record = attendanceRecords.find(a => 
-                                            String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase()
-                                        );
-                                        const isChecked = !!record;
-                                        const isToggling = togglingRegDay === `${m.studentRegNo}_regular`;
+                    );
+                };
+                
+                return (
+                    <div style={{ animation: 'fadeIn 0.4s ease-out', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {filteredMembers.length === 0 ? (
+                            <div style={{ padding: '5rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '1.5rem', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                                <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
+                                <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members found</h4>
+                                <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your search.</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* TO CHECK IN */}
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In</div>
+                                        <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                    </div>
+                                    {toCheckIn.length === 0 ? (
+                                        <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(52, 211, 153, 0.03)', border: '1px dashed rgba(52, 211, 153, 0.15)', borderRadius: '1rem' }}>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#34d399', fontWeight: 700 }}>✓ All members accounted for!</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {toCheckIn.map(m => renderMemberCard(m, false))}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* CHECKED IN */}
+                                {checkedIn.length > 0 && (
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Checked In</div>
+                                            <span style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{checkedIn.length}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {checkedIn.map(m => renderMemberCard(m, true))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                );
+            })()}
 
-                                        return (
-                                            <tr key={idx} style={{ 
-                                                borderBottom: '1px solid rgba(255,255,255,0.03)', 
-                                                transition: '0.2s'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                            >
-                                                <td style={{ padding: '1rem', fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
-                                                    {m.name}
-                                                </td>
-                                                <td style={{ padding: '1rem', fontSize: '0.85rem', color: '#94a3b8', fontFamily: 'monospace' }}>
-                                                    {m.studentRegNo}
-                                                </td>
-                                                <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                    <span style={{ 
-                                                        background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)', 
-                                                        color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1', 
-                                                        border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
-                                                        fontSize: '0.65rem', 
-                                                        fontWeight: 900, 
-                                                        padding: '0.25rem 0.5rem', 
-                                                        borderRadius: '6px',
-                                                        textTransform: 'uppercase'
-                                                    }}>
-                                                        {m.memberType}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                                        <button
-                                                            onClick={() => handleToggleRegular(m)}
-                                                            disabled={isToggling}
-                                                            style={{
-                                                                background: isChecked ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                                                                border: isChecked ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                                                                borderRadius: '0.5rem',
-                                                                width: '36px',
-                                                                height: '36px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                cursor: isToggling ? 'not-allowed' : 'pointer',
-                                                                transition: 'all 0.2s',
-                                                                color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.2)'
-                                                            }}
-                                                        >
-                                                            {isToggling ? (
-                                                                <div className="loading-spinner-small" style={{ width: '14px', height: '14px', borderTopColor: '#34d399' }} />
-                                                            ) : isChecked ? (
-                                                                <span style={{ fontWeight: 900, fontSize: '1rem' }}>✓</span>
-                                                            ) : (
-                                                                <span style={{ fontSize: '0.8rem', opacity: 0.2 }}>-</span>
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
+
 
             {/* 3. Participants Registry List */}
             {activeTab === 'present' && (
@@ -1083,183 +1048,145 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
             )}
 
             {/* 5. 3-Day Ticker Tab */}
-            {isTraining && activeTab === 'ticker' && (
-                <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
-                    {filteredMembers.length === 0 ? (
-                        <div style={{ 
-                            padding: '5rem 2rem', 
-                            textAlign: 'center', 
-                            background: 'rgba(255,255,255,0.01)', 
-                            borderRadius: '1.5rem', 
-                            border: '1px dashed rgba(255,255,255,0.06)' 
+            {isTraining && activeTab === 'ticker' && (() => {
+                const toCheckIn = filteredMembers.filter(m =>
+                    !attendanceRecords.some(a =>
+                        String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
+                        (a.trainingDay || 1) === selectedDay
+                    )
+                );
+                const checkedIn = filteredMembers.filter(m =>
+                    attendanceRecords.some(a =>
+                        String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
+                        (a.trainingDay || 1) === selectedDay
+                    )
+                );
+
+                const renderTrainingCard = (m, isPresent) => {
+                    const record = attendanceRecords.find(a =>
+                        String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
+                        (a.trainingDay || 1) === selectedDay
+                    );
+                    const isToggling = togglingRegDay === `${m.studentRegNo}_${selectedDay}`;
+                    return (
+                        <div key={m._id || m.studentRegNo} style={{
+                            padding: isMobile ? '0.9rem 1rem' : '0.85rem 1.25rem',
+                            background: isPresent ? 'rgba(52, 211, 153, 0.04)' : 'rgba(255,255,255,0.01)',
+                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.04)'}`,
+                            borderRadius: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1rem',
+                            transition: 'all 0.2s'
                         }}>
-                            <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
-                            <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members matching your search</h4>
-                            <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
-                        </div>
-                    ) : isMobile ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                            {filteredMembers.map((m, idx) => (
-                                <div key={idx} className="glass-panel" style={{
-                                    padding: '1rem',
-                                    background: 'rgba(255, 255, 255, 0.01)',
-                                    border: '1px solid rgba(255,255,255,0.04)',
-                                    borderRadius: '1rem',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '0.75rem'
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                    width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                                    background: isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.05)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: isPresent ? '#34d399' : 'rgba(255,255,255,0.3)',
+                                    fontSize: '0.85rem', fontWeight: 900
                                 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>
-                                                {m.name}
-                                            </div>
-                                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
-                                                {m.studentRegNo}
-                                            </div>
-                                        </div>
-                                        <span style={{
-                                            background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
-                                            color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
-                                            border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
-                                            fontSize: '0.6rem',
-                                            fontWeight: 900,
-                                            padding: '0.2rem 0.45rem',
-                                            borderRadius: '0.4rem',
-                                            textTransform: 'uppercase'
-                                        }}>
-                                            {m.memberType}
-                                        </span>
+                                    {isPresent ? '✓' : (m.name || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {m.name || 'Unknown'}
                                     </div>
-                                    <div style={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: 'repeat(3, 1fr)', 
-                                        gap: '0.4rem', 
-                                        borderTop: '1px solid rgba(255,255,255,0.03)', 
-                                        paddingTop: '0.75rem' 
-                                    }}>
-                                        {[1, 2, 3].map(day => {
-                                            const record = attendanceRecords.find(a => 
-                                                String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
-                                                (a.trainingDay || 1) === day
-                                            );
-                                            const isChecked = !!record;
-                                            const isToggling = togglingRegDay === `${m.studentRegNo}_${day}`;
-                                            return (
-                                                <button
-                                                    key={day}
-                                                    onClick={() => handleToggleDay(m, day)}
-                                                    disabled={isToggling}
-                                                    style={{
-                                                        padding: '0.5rem 0',
-                                                        background: isChecked ? 'rgba(52, 211, 153, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                                                        border: isChecked ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
-                                                        borderRadius: '0.55rem',
-                                                        color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.4)',
-                                                        fontWeight: 800,
-                                                        fontSize: '0.72rem',
-                                                        cursor: isToggling ? 'not-allowed' : 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.25rem',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                >
-                                                    {isToggling ? (
-                                                        <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: '#34d399' }} />
-                                                    ) : isChecked ? (
-                                                        <><span>✓</span> Day {day}</>
-                                                    ) : (
-                                                        <><span>-</span> Day {day}</>
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
+                                    <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.1rem' }}>
+                                        {m.studentRegNo}
+                                        {isPresent && record && (
+                                            <span style={{ marginLeft: '0.5rem', color: '#34d399', fontSize: '0.62rem' }}>
+                                                • {new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                            ))}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                <span style={{
+                                    background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
+                                    color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
+                                    border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
+                                    fontSize: '0.58rem', fontWeight: 900, padding: '0.15rem 0.4rem',
+                                    borderRadius: '0.35rem', textTransform: 'uppercase'
+                                }}>{m.memberType}</span>
+                                <button
+                                    onClick={() => handleToggleDay(m, selectedDay)}
+                                    disabled={isToggling}
+                                    style={{
+                                        padding: '0.45rem 0.85rem',
+                                        background: isPresent ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 170, 225, 0.15)',
+                                        border: isPresent ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(37, 170, 225, 0.3)',
+                                        borderRadius: '0.6rem',
+                                        color: isPresent ? '#f87171' : '#25AAE1',
+                                        fontWeight: 800, fontSize: '0.72rem',
+                                        cursor: isToggling ? 'not-allowed' : 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                        transition: 'all 0.2s', whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    {isToggling ? (
+                                        <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: 'currentColor' }} />
+                                    ) : isPresent ? (
+                                        <><span>✕</span> Remove</>
+                                    ) : (
+                                        <><span>+</span> Day {selectedDay}</>
+                                    )}
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }} className="glass-panel">
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '40%' }}>MEMBER NAME</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '24%' }}>ADMISSION NUMBER</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '12%', textAlign: 'center' }}>DAY 1</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '12%', textAlign: 'center' }}>DAY 2</th>
-                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '12%', textAlign: 'center' }}>DAY 3</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredMembers.map((m, idx) => (
-                                        <tr key={idx} style={{ 
-                                            borderBottom: '1px solid rgba(255,255,255,0.03)', 
-                                            transition: '0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            <td style={{ padding: '1rem', fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
-                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span>{m.name}</span>
-                                                    <span style={{ fontSize: '0.65rem', color: '#34d399', fontWeight: 700, textTransform: 'uppercase', marginTop: '0.15rem' }}>{m.memberType}</span>
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.85rem', color: '#94a3b8', fontFamily: 'monospace' }}>
-                                                {m.studentRegNo}
-                                            </td>
-                                            {[1, 2, 3].map(day => {
-                                                const record = attendanceRecords.find(a => 
-                                                    String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
-                                                    (a.trainingDay || 1) === day
-                                                );
-                                                const isChecked = !!record;
-                                                const isToggling = togglingRegDay === `${m.studentRegNo}_${day}`;
+                    );
+                };
 
-                                                return (
-                                                    <td key={day} style={{ padding: '1rem', textAlign: 'center' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                                            <button
-                                                                onClick={() => handleToggleDay(m, day)}
-                                                                disabled={isToggling}
-                                                                style={{
-                                                                    background: isChecked ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                                                                    border: isChecked ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                                                                    borderRadius: '0.5rem',
-                                                                    width: '36px',
-                                                                    height: '36px',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    cursor: isToggling ? 'not-allowed' : 'pointer',
-                                                                    transition: 'all 0.2s',
-                                                                    color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.2)'
-                                                                }}
-                                                            >
-                                                                {isToggling ? (
-                                                                    <div className="loading-spinner-small" style={{ width: '14px', height: '14px', borderTopColor: '#34d399' }} />
-                                                                ) : isChecked ? (
-                                                                    <span style={{ fontWeight: 900, fontSize: '1rem' }}>✓</span>
-                                                                ) : (
-                                                                    <span style={{ fontSize: '0.8rem', opacity: 0.2 }}>-</span>
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
+                return (
+                    <div style={{ animation: 'fadeIn 0.4s ease-out', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {filteredMembers.length === 0 ? (
+                            <div style={{ padding: '5rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '1.5rem', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                                <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
+                                <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members found</h4>
+                                <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your search.</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* TO CHECK IN - Day N */}
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In — Day {selectedDay}</div>
+                                        <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                    </div>
+                                    {toCheckIn.length === 0 ? (
+                                        <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(52, 211, 153, 0.03)', border: '1px dashed rgba(52, 211, 153, 0.15)', borderRadius: '1rem' }}>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#34d399', fontWeight: 700 }}>✓ All members checked in for Day {selectedDay}!</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {toCheckIn.map(m => renderTrainingCard(m, false))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* CHECKED IN - Day N */}
+                                {checkedIn.length > 0 && (
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Checked In — Day {selectedDay}</div>
+                                            <span style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{checkedIn.length}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {checkedIn.map(m => renderTrainingCard(m, true))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                );
+            })()}
         </div>
     );
 };
 
 export default MeetingInsights;
+

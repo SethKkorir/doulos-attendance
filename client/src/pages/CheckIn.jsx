@@ -101,8 +101,16 @@ const CheckIn = () => {
                 const bypassLocks = isSuperUser || isTestMode || meetingData.isTestMeeting;
 
                 // --- DUPLICATE CHECK-IN DETECTION ---
-                // Check both LocalStorage AND Server-Side Record (DeviceId)
-                const localStatus = localStorage.getItem(`doulos_attendance_status_${meetingCode}`);
+                // For trainings, use a per-day key so Day 1 lock doesn't block Day 2/3
+                const isTrainingSession = meetingData.isTraining || meetingData.category === 'Training';
+                const activeDay = meetingData.activeDay || 1;
+                const localStatusKey = isTrainingSession
+                    ? `doulos_attendance_status_${meetingCode}_day${activeDay}`
+                    : `doulos_attendance_status_${meetingCode}`;
+                const localLockKey = isTrainingSession
+                    ? `doulos_attendance_lock_${meetingCode}_day${activeDay}`
+                    : `doulos_attendance_lock_${meetingCode}`;
+                const localStatus = localStorage.getItem(localStatusKey);
                 const serverHasAttended = meetingData.hasAttended;
 
                 if ((localStatus === 'success' || serverHasAttended) && !bypassLocks) {
@@ -117,7 +125,7 @@ const CheckIn = () => {
                 // --- STRICT LOCK CHECK (Security Layer) ---
                 // Superusers and test mode bypass the localStorage lock entirely
                 if (!bypassLocks) {
-                    const lockData = localStorage.getItem(`doulos_attendance_lock_${meetingCode}`);
+                    const lockData = localStorage.getItem(localLockKey);
                     if (lockData) {
                         const { reason } = JSON.parse(lockData);
                         setStatus('locked');
@@ -526,9 +534,15 @@ const CheckIn = () => {
             setStatus('success');
             setIsNewMember(false);
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
-            localStorage.setItem(`doulos_attendance_status_${meetingCode}`, 'success');
+            // Use per-day key for trainings to avoid blocking future days
+            const isTrainingNow = meeting?.isTraining || meeting?.category === 'Training';
+            const dayNow = meeting?.activeDay || 1;
+            const successKey = isTrainingNow
+                ? `doulos_attendance_status_${meetingCode}_day${dayNow}`
+                : `doulos_attendance_status_${meetingCode}`;
+            localStorage.setItem(successKey, 'success');
             // Show training celebration banner for training sessions
-            if (meeting?.isTraining || meeting?.category === 'Training') {
+            if (isTrainingNow) {
                 setShowTrainingBanner(true);
                 setTimeout(() => setShowTrainingBanner(false), 5000);
             }
@@ -544,7 +558,13 @@ const CheckIn = () => {
             if (status === 403 || status === 409) {
                 // Don't write the lock in test/superuser mode so retesting works
                 if (!isTestMode && !['developer', 'superadmin'].includes(localStorage.getItem('role'))) {
-                    localStorage.setItem(`doulos_attendance_lock_${meetingCode}`, JSON.stringify({
+                    // Use per-day lock key for trainings
+                    const isTrainingErr = meeting?.isTraining || meeting?.category === 'Training';
+                    const dayErr = meeting?.activeDay || 1;
+                    const lockKey = isTrainingErr
+                        ? `doulos_attendance_lock_${meetingCode}_day${dayErr}`
+                        : `doulos_attendance_lock_${meetingCode}`;
+                    localStorage.setItem(lockKey, JSON.stringify({
                         reason: errorMsg,
                         timestamp: Date.now()
                     }));

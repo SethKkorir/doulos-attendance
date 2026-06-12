@@ -418,8 +418,8 @@ const AdminDashboard = () => {
     const getFilteredMobileMembers = () => {
         return members.filter(m => {
             const matchesSearch = !searchQuery || 
-                m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                m.studentRegNo.toLowerCase().includes(searchQuery.toLowerCase());
+                (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                (m.studentRegNo || '').toLowerCase().includes(searchQuery.toLowerCase());
             const matchesCampus = campusFilter === 'All' || m.campus === campusFilter;
             const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
             return matchesSearch && matchesCampus && matchesType;
@@ -428,7 +428,7 @@ const AdminDashboard = () => {
 
     const getFilteredMobileTrainings = () => {
         return trainings.filter(t => {
-            const matchesSearch = !searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = !searchQuery || (t.name || '').toLowerCase().includes(searchQuery.toLowerCase());
             const now = new Date();
             const tDate = new Date(t.date);
             const [endH, endMin] = t.endTime.split(':').map(Number);
@@ -504,7 +504,7 @@ const AdminDashboard = () => {
 
     const getFilteredMobileMeetings = () => {
         return meetings.filter(m => {
-            const matchesSearch = !searchQuery || m.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = !searchQuery || (m.name || '').toLowerCase().includes(searchQuery.toLowerCase());
             const matchesCampus = campusFilter === 'All' || m.campus === campusFilter;
             
             if (meetingStatusFilter === 'Active') return matchesSearch && matchesCampus && m.isActive;
