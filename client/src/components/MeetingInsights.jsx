@@ -368,8 +368,14 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
             borderRadius: isMobile ? '1.25rem' : '2rem',
             animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            border: '1px solid rgba(255,255,255,0.05)'
+            border: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: isMobile ? '92vh' : '88vh',
+            boxSizing: 'border-box',
+            overflow: 'hidden'
         }}>
+
             <style>{`
                 .no-scrollbar::-webkit-scrollbar {
                     display: none !important;
@@ -650,9 +656,19 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 })}
             </div>
 
-            {/* TAB PANELS RENDERING */}
-
-            {/* 1. Answers Board Tab */}
+            {/* Scrollable Tab Panels Container */}
+            <div className="no-scrollbar" style={{
+                flex: 1,
+                overflowY: 'auto',
+                paddingRight: '0.25rem',
+                minHeight: 0,
+                WebkitOverflowScrolling: 'touch',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                marginBottom: '0.5rem'
+            }}>
+                {/* 1. Answers Board Tab */}
             {activeTab === 'answers' && (
                 <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
                     {filteredPresent.length === 0 ? (
@@ -1371,6 +1387,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     </div>
                 );
             })()}
+            </div>
+
 
             {selectedRegs.size > 0 && (
                 <div style={{

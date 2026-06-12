@@ -924,8 +924,9 @@ const TrainingsTab = ({
 
             {/* Insights Modal */}
             {insightMeeting && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
-                    <div style={{ width: '100%', maxWidth: '1000px' }} onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.5rem' : '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
+                    <div style={{ width: '100%', maxWidth: '1000px', maxHeight: '100%' }} onClick={e => e.stopPropagation()}>
+
                         <MeetingInsights 
                             meeting={insightMeeting} 
                             onClose={() => setInsightMeeting(null)} 
