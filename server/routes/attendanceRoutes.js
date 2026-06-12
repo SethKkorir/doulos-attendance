@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitAttendance, getAttendance, deleteAttendance, getStudentPortalData, manualCheckIn, toggleExemption } from '../controllers/attendanceController.js';
+import { submitAttendance, getAttendance, deleteAttendance, getStudentPortalData, manualCheckIn, bulkManualCheckIn, toggleExemption } from '../controllers/attendanceController.js';
 import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -15,6 +15,8 @@ import Attendance from '../models/Attendance.js';
 // Protected route for admins to view
 router.get('/:meetingId', verifyAdmin, getAttendance);
 router.post('/manual', verifyAdmin, manualCheckIn);
+router.post('/manual/bulk', verifyAdmin, bulkManualCheckIn);
+
 
 // Member Insights (Unique members, total attendance, last seen)
 router.get('/insights/members', verifyAdmin, async (req, res) => {

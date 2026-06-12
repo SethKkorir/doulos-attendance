@@ -734,6 +734,106 @@ export const manualCheckIn = async (req, res) => {
     }
 };
 
+export const bulkManualCheckIn = async (req, res) => {
+    const { meetingId, members, trainingDay } = req.body;
+    try {
+        if (!meetingId || !Array.isArray(members) || members.length === 0) {
+            return res.status(400).json({ message: 'Invalid request: meetingId and members array are required' });
+        }
+
+        let meeting = await Meeting.findById(meetingId);
+        let isTraining = false;
+
+        if (!meeting) {
+            meeting = await Training.findById(meetingId);
+            if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
+            isTraining = true;
+        }
+
+        const targetDay = isTraining ? (Number(trainingDay) || meeting.activeDay || 1) : undefined;
+
+        const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+        if (!isSuperUser && !isTraining) {
+            const now = new Date();
+            const meetingDate = new Date(meeting.date);
+            const [endH, endM] = meeting.endTime.split(':').map(Number);
+            const meetingEnd = new Date(meetingDate);
+            meetingEnd.setHours(endH, endM, 0, 0);
+            const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
+
+            if (hoursSinceEnd > 48) {
+                return res.status(403).json({ message: 'Manual check-in locked. 48 hours have passed since this meeting ended.' });
+            }
+        }
+
+        const records = [];
+        const skipped = [];
+
+        for (const m of members) {
+            if (!m.studentRegNo) continue;
+            const regNo = String(m.studentRegNo).trim().toUpperCase();
+
+            const dupQuery = isTraining
+                ? { trainingId: meetingId, studentRegNo: regNo, trainingDay: targetDay }
+                : { meeting: meetingId, studentRegNo: regNo };
+
+            const existing = await Attendance.findOne(dupQuery);
+            if (existing) {
+                skipped.push(regNo);
+                continue;
+            }
+
+            let dbMember = await Member.findOne({ studentRegNo: regNo });
+            if (!dbMember) {
+                dbMember = new Member({
+                    studentRegNo: regNo,
+                    name: m.name || 'Manual Bulk Entry',
+                    memberType: m.memberType || 'Visitor',
+                    campus: m.campus || meeting.campus,
+                    status: 'Active'
+                });
+                await dbMember.save();
+            }
+
+            const attendance = new Attendance({
+                meeting: isTraining ? undefined : meetingId,
+                trainingId: isTraining ? meetingId : undefined,
+                meetingName: meeting.name,
+                campus: meeting.campus,
+                studentRegNo: regNo,
+                memberType: dbMember.memberType,
+                responses: { studentName: dbMember.name },
+                trainingDay: isTraining ? targetDay : undefined
+            });
+
+            await attendance.save();
+
+            await Member.findOneAndUpdate({ studentRegNo: regNo }, { 
+                $inc: { totalPoints: 10 },
+                $set: { linkedDeviceId: null }
+            });
+
+            if (mongoose.connection.readyState === 1) {
+                await mongoose.connection.db.collection('scanerrors').deleteMany({
+                    studentRegNo: regNo
+                });
+            }
+
+            records.push(attendance);
+        }
+
+        res.status(201).json({
+            message: `Successfully checked in ${records.length} students.`,
+            checkedCount: records.length,
+            skippedCount: skipped.length,
+            records
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
 export const deleteAttendance = async (req, res) => {
     const { id } = req.params;
     try {

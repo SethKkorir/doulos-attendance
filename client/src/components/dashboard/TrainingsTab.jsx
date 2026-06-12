@@ -3,7 +3,7 @@ import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, 
     BarChart3, Trash2, Link as LinkIcon, 
     ExternalLink, RotateCcw, X, Settings as SettingsIcon, Lightbulb, 
-    GraduationCap, Users 
+    GraduationCap, Users, Search 
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import MeetingInsights from '../MeetingInsights';
@@ -26,8 +26,10 @@ const TrainingsTab = ({
     const [showCreateTraining, setShowCreateTraining] = useState(false);
     const [selectedTraining, setSelectedTraining] = useState(null);
     const [insightMeeting, setInsightMeeting] = useState(null);
+    const [rosterTraining, setRosterTraining] = useState(null);
     const [importLoading, setImportLoading] = useState(false);
     const [trainingSemesterFilter, setTrainingSemesterFilter] = useState('Current');
+
 
     const [semesterTheme, setSemesterTheme] = useState('');
     const [semesterVerse, setSemesterVerse] = useState('');
@@ -446,6 +448,27 @@ const TrainingsTab = ({
                         className="btn" 
                         style={{
                             flex: 1,
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            color: '#60a5fa',
+                            border: '1px solid rgba(59, 130, 246, 0.2)',
+                            fontSize: '0.75rem',
+                            padding: '0.55rem',
+                            fontWeight: 800,
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
+                        }}
+                        onClick={() => setRosterTraining(t)}
+                    >
+                        <Users size={14} /> Roster
+                    </button>
+
+                    <button 
+                        className="btn" 
+                        style={{
+                            flex: 1,
                             background: 'rgba(167, 139, 250, 0.1)',
                             color: '#c084fc',
                             border: '1px solid rgba(167, 139, 250, 0.2)',
@@ -462,6 +485,7 @@ const TrainingsTab = ({
                     >
                         <BarChart3 size={14} /> Insights
                     </button>
+
 
                     <button 
                         className="btn" 
@@ -927,8 +951,253 @@ const TrainingsTab = ({
                     </div>
                 </div>
             )}
+
+            {/* Roster Modal */}
+            {rosterTraining && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setRosterTraining(null)}>
+                    <div className="glass-card-premium" style={{ width: '100%', maxWidth: '650px', background: '#090d16', borderRadius: '1.25rem', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '2rem', maxHeight: '90vh', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'popScale 0.3s' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ margin: 0 }}>Manage Training Roster</h3>
+                                <p style={{ margin: '0.25rem 0 0 0', opacity: 0.5, fontSize: '0.85rem' }}>{rosterTraining.name} ({rosterTraining.campus})</p>
+                            </div>
+                            <button className="btn" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)', borderRadius: '50%' }} onClick={() => setRosterTraining(null)}>
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <RosterManagerInner training={rosterTraining} members={members} api={api} onSave={() => {
+                            setRosterTraining(null);
+                            fetchTrainings();
+                        }} setMsg={setMsg} />
+                    </div>
+                </div>
+            )}
         </>
     );
 };
 
+const RosterManagerInner = ({ training, members, api, onSave, setMsg }) => {
+    const [roster, setRoster] = useState(training.roster || []);
+    const [mode, setMode] = useState('view');
+    const [pasteText, setPasteText] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [pastePreview, setPastePreview] = useState([]);
+    const [nonMatches, setNonMatches] = useState([]);
+    const [saving, setSaving] = useState(false);
+
+    const handleSaveRoster = async (newRoster) => {
+        setSaving(true);
+        try {
+            await api.patch(`/trainings/${training._id}`, { roster: newRoster });
+            setMsg({ type: 'success', text: 'Training roster updated!' });
+            onSave();
+        } catch (err) {
+            console.error(err);
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to update roster' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRemoveFromRoster = (regNo) => {
+        const updated = roster.filter(r => String(r.studentRegNo).trim().toUpperCase() !== String(regNo).trim().toUpperCase());
+        setRoster(updated);
+        handleSaveRoster(updated);
+    };
+
+    const handleParsePaste = () => {
+        if (!pasteText.trim()) return;
+        const lines = pasteText.split('\n');
+        const matched = [];
+        const unmatched = [];
+        const seenRegs = new Set(roster.map(r => String(r.studentRegNo).trim().toUpperCase()));
+
+        const normalize = (s) => String(s).replace(/[^A-Z0-9]/gi, '').toUpperCase();
+
+        lines.forEach(line => {
+            const cleanLine = line.trim();
+            if (!cleanLine) return;
+
+            const tokens = cleanLine.split(/[\t,]/).map(t => t.trim()).filter(Boolean);
+
+            let found = null;
+            for (const token of tokens) {
+                const tokenNorm = normalize(token);
+                if (!tokenNorm) continue;
+
+                found = members.find(m => {
+                    const mRegNorm = normalize(m.studentRegNo);
+                    const mNameNorm = normalize(m.name);
+                    return tokenNorm === mRegNorm || mNameNorm.includes(tokenNorm);
+                });
+                if (found) break;
+            }
+
+            if (!found) {
+                const lineNorm = normalize(cleanLine);
+                found = members.find(m => {
+                    const mRegNorm = normalize(m.studentRegNo);
+                    const mNameNorm = normalize(m.name);
+                    return lineNorm.includes(mRegNorm) || mNameNorm.includes(lineNorm);
+                });
+            }
+
+            if (found) {
+                const regUpper = String(found.studentRegNo).trim().toUpperCase();
+                if (!seenRegs.has(regUpper)) {
+                    seenRegs.add(regUpper);
+                    matched.push({
+                        studentRegNo: found.studentRegNo,
+                        name: found.name,
+                        memberType: found.memberType || 'Recruit',
+                        campus: found.campus
+                    });
+                }
+            } else {
+                unmatched.push(cleanLine);
+            }
+        });
+
+        setPastePreview(matched);
+        setNonMatches(unmatched);
+    };
+
+    const handleConfirmPaste = () => {
+        const updated = [...roster, ...pastePreview];
+        setRoster(updated);
+        setPasteText('');
+        setPastePreview([]);
+        setNonMatches([]);
+        setMode('view');
+        handleSaveRoster(updated);
+    };
+
+    const filteredRoster = roster.filter(r => {
+        const clean = searchTerm.toLowerCase();
+        return (r.name || '').toLowerCase().includes(clean) || (r.studentRegNo || '').toLowerCase().includes(clean);
+    });
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                <button className="btn" style={{
+                    background: mode === 'view' ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                    color: mode === 'view' ? '#60a5fa' : 'rgba(255,255,255,0.4)',
+                    border: mode === 'view' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid transparent',
+                    fontSize: '0.8rem', padding: '0.4rem 1rem', borderRadius: '0.5rem'
+                }} onClick={() => setMode('view')}>
+                    Roster ({roster.length})
+                </button>
+                <button className="btn" style={{
+                    background: mode === 'paste' ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                    color: mode === 'paste' ? '#60a5fa' : 'rgba(255,255,255,0.4)',
+                    border: mode === 'paste' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid transparent',
+                    fontSize: '0.8rem', padding: '0.4rem 1rem', borderRadius: '0.5rem'
+                }} onClick={() => setMode('paste')}>
+                    Import from Spreadsheet
+                </button>
+            </div>
+
+            {mode === 'view' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, minHeight: 0 }}>
+                    <div className="search-box-container" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.75rem', padding: '0.5rem 0.75rem' }}>
+                        <Search size={14} style={{ color: 'rgba(255,255,255,0.4)', marginRight: '0.5rem' }} />
+                        <input
+                            type="text"
+                            placeholder="Search roster..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', width: '100%', fontSize: '0.85rem' }}
+                        />
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.25rem' }}>
+                        {filteredRoster.length === 0 ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>
+                                {searchTerm ? 'No matching members found.' : 'Roster is empty. Import sign-ups to begin.'}
+                            </div>
+                        ) : (
+                            filteredRoster.map(r => (
+                                <div key={r.studentRegNo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', padding: '0.65rem 0.85rem', borderRadius: '0.75rem' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 800, color: 'white', fontSize: '0.85rem' }}>{r.name}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
+                                            {r.studentRegNo} <span style={{ opacity: 0.4 }}>•</span> {r.memberType}
+                                        </div>
+                                    </div>
+                                    <button className="btn" style={{ padding: '0.4rem', background: 'rgba(239, 68, 68, 0.08)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem' }} onClick={() => handleRemoveFromRoster(r.studentRegNo)}>
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {mode === 'paste' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+                        Copy columns directly from Excel or Google Sheets (containing Admission Numbers/Names) and paste them below.
+                    </div>
+                    <textarea
+                        rows={6}
+                        placeholder="Paste list here...&#10;COM/0023/21&#10;John Doe&#10;BICT-01-0988/2022"
+                        value={pasteText}
+                        onChange={e => setPasteText(e.target.value)}
+                        style={{
+                            width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: '0.75rem', color: 'white', padding: '0.75rem', outline: 'none',
+                            fontSize: '0.85rem', fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box'
+                        }}
+                    />
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.8rem' }} onClick={handleParsePaste}>
+                            Parse & Match
+                        </button>
+                        {pastePreview.length > 0 && (
+                            <button className="btn" style={{ background: 'rgba(52, 211, 153, 0.12)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.5rem 1.25rem', fontSize: '0.8rem' }} onClick={handleConfirmPaste} disabled={saving}>
+                                {saving ? 'Saving...' : `Import ${pastePreview.length} matched`}
+                            </button>
+                        )}
+                    </div>
+
+                    {(pastePreview.length > 0 || nonMatches.length > 0) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                            {pastePreview.length > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#34d399', marginBottom: '0.4rem' }}>Matched ({pastePreview.length}):</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '120px', overflowY: 'auto', background: 'rgba(52, 211, 153, 0.02)', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(52, 211, 153, 0.08)' }}>
+                                        {pastePreview.map((p, idx) => (
+                                            <span key={idx} style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', display: 'inline-flex', alignItems: 'center' }}>
+                                                {p.name} ({p.studentRegNo})
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {nonMatches.length > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f87171', marginBottom: '0.4rem' }}>Could Not Match ({nonMatches.length}):</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '120px', overflowY: 'auto', background: 'rgba(239, 68, 68, 0.02)', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(239, 68, 68, 0.08)' }}>
+                                        {nonMatches.map((n, idx) => (
+                                            <span key={idx} style={{ fontSize: '0.7rem', color: '#f87171', background: 'rgba(239, 68, 68, 0.05)', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', fontFamily: 'monospace' }}>
+                                                {n}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default TrainingsTab;
+

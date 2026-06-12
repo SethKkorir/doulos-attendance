@@ -1,4 +1,4 @@
-﻿/* eslint-disable react/prop-types */
+/* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
 import {
     BarChart3, Activity, Users, Search, X, ShieldAlert as Ghost, Trash2,
@@ -19,6 +19,9 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     const [selectedDay, setSelectedDay] = useState(meeting.activeDay || 1);
     const [togglingRegDay, setTogglingRegDay] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [selectedRegs, setSelectedRegs] = useState(new Set());
+    const [bulkChecking, setBulkChecking] = useState(false);
+
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -32,6 +35,11 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     }, [meeting]);
 
     useEffect(() => {
+        setSelectedRegs(new Set());
+    }, [activeTab, selectedDay]);
+
+
+    useEffect(() => {
         let isFirstLoad = true;
         const fetchInsights = async () => {
             if (isFirstLoad) setLoading(true);
@@ -39,6 +47,12 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 // Fetch attendance for this meeting
                 const attRes = await api.get(`/attendance/${meeting._id}`);
                 setAttendanceRecords(attRes.data);
+
+                // Fetch latest training details for roster
+                if (isTraining) {
+                    const trRes = await api.get(`/trainings/code/${meeting.code}`);
+                    setCurrentMeeting(trRes.data);
+                }
 
                 // Fetch all members for this campus
                 if (isFirstLoad) {
@@ -58,7 +72,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
 
         const interval = setInterval(fetchInsights, 3000);
         return () => clearInterval(interval);
-    }, [meeting, api]);
+    }, [meeting, api, isTraining]);
+
 
     const handleActiveDayChange = async (day) => {
         try {
@@ -155,18 +170,59 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
         }
     };
 
+    const handleBulkCheckIn = async () => {
+        if (selectedRegs.size === 0) return;
+        const confirmMsg = `Are you sure you want to manually check-in all ${selectedRegs.size} selected members?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        setBulkChecking(true);
+        try {
+            const selectedMembersList = eligibleMembers
+                .filter(m => selectedRegs.has(String(m.studentRegNo).trim().toUpperCase()))
+                .map(m => ({
+                    studentRegNo: m.studentRegNo,
+                    name: m.name,
+                    memberType: m.memberType || 'Recruit',
+                    campus: m.campus
+                }));
+
+            const res = await api.post('/attendance/manual/bulk', {
+                meetingId: currentMeeting._id,
+                members: selectedMembersList,
+                trainingDay: isTraining ? selectedDay : undefined
+            });
+
+            if (res.data?.records) {
+                setAttendanceRecords(prev => [...res.data.records, ...prev]);
+            }
+            setSelectedRegs(new Set());
+            alert(res.data.message || `Checked in ${selectedMembersList.length} members successfully.`);
+        } catch (err) {
+            console.error("Bulk check-in failed", err);
+            alert(err.response?.data?.message || 'Bulk check-in failed.');
+        } finally {
+            setBulkChecking(false);
+        }
+    };
+
+
     // Derived stats
+    const eligibleMembers = (isTraining && currentMeeting.roster && currentMeeting.roster.length > 0)
+        ? currentMeeting.roster
+        : allMembers;
+
     const presentList = isTraining 
         ? attendanceRecords.filter(a => (a.trainingDay || 1) === selectedDay)
         : attendanceRecords;
 
     const presentRegNos = new Set(presentList.map(a => String(a.studentRegNo).trim().toUpperCase()));
 
-    const absentList = allMembers.filter(m => !presentRegNos.has(String(m.studentRegNo).trim().toUpperCase()));
+    const absentList = eligibleMembers.filter(m => !presentRegNos.has(String(m.studentRegNo).trim().toUpperCase()));
 
     const presentCount = presentList.length;
     const absentCount = absentList.length;
-    const totalEligible = allMembers.length;
+    const totalEligible = eligibleMembers.length;
+
 
     const recruitsCount = presentList.filter(a => a.memberType === 'Recruit').length;
 
@@ -297,12 +353,13 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
         return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch) || answerText.includes(cleanSearch);
     });
 
-    const filteredMembers = allMembers.filter(m => {
+    const filteredMembers = eligibleMembers.filter(m => {
         const cleanSearch = (insightSearch || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanName = (m.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanReg = (m.studentRegNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
     }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
 
     return (
         <div className="glass-card-premium" style={{
@@ -698,11 +755,25 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 const renderMemberCard = (m, isPresent) => {
                     const record = attendanceRecords.find(a => String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase());
                     const isToggling = togglingRegDay === `${m.studentRegNo}_regular`;
+                    const regUpper = String(m.studentRegNo).trim().toUpperCase();
+                    const isSelected = selectedRegs.has(regUpper);
+
+                    const toggleSelect = (e) => {
+                        e.stopPropagation();
+                        const next = new Set(selectedRegs);
+                        if (next.has(regUpper)) {
+                            next.delete(regUpper);
+                        } else {
+                            next.add(regUpper);
+                        }
+                        setSelectedRegs(next);
+                    };
+
                     return (
                         <div key={m._id || m.studentRegNo} style={{
                             padding: isMobile ? '0.9rem 1rem' : '0.85rem 1.25rem',
-                            background: isPresent ? 'rgba(52, 211, 153, 0.04)' : 'rgba(255,255,255,0.01)',
-                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.04)'}`,
+                            background: isPresent ? 'rgba(52, 211, 153, 0.04)' : isSelected ? 'rgba(59, 130, 246, 0.04)' : 'rgba(255,255,255,0.01)',
+                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : isSelected ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.04)'}`,
                             borderRadius: '0.85rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -711,6 +782,27 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             transition: 'all 0.2s'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                                {!isPresent && (
+                                    <div 
+                                        onClick={toggleSelect}
+                                        style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            borderRadius: '4px',
+                                            border: isSelected ? '2px solid #34d399' : '2px solid rgba(255,255,255,0.2)',
+                                            background: isSelected ? '#34d399' : 'transparent',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            marginRight: '0.25rem',
+                                            flexShrink: 0,
+                                            transition: 'all 0.15s'
+                                        }}
+                                    >
+                                        {isSelected && <span style={{ color: 'black', fontSize: '0.7rem', fontWeight: 900 }}>✓</span>}
+                                    </div>
+                                )}
                                 <div style={{
                                     width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
                                     background: isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.05)',
@@ -782,10 +874,40 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             <>
                                 {/* TO CHECK IN */}
                                 <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In</div>
-                                        <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In</div>
+                                            <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                        </div>
+                                        {toCheckIn.length > 0 && (
+                                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ background: 'transparent', border: 'none', color: '#34d399', fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        const next = new Set(selectedRegs);
+                                                        toCheckIn.forEach(m => next.add(String(m.studentRegNo).trim().toUpperCase()));
+                                                        setSelectedRegs(next);
+                                                    }}
+                                                >
+                                                    Select All
+                                                </button>
+                                                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.7rem' }}>|</span>
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        const next = new Set(selectedRegs);
+                                                        toCheckIn.forEach(m => next.delete(String(m.studentRegNo).trim().toUpperCase()));
+                                                        setSelectedRegs(next);
+                                                    }}
+                                                >
+                                                    Deselect All
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
+
                                     {toCheckIn.length === 0 ? (
                                         <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(52, 211, 153, 0.03)', border: '1px dashed rgba(52, 211, 153, 0.15)', borderRadius: '1rem' }}>
                                             <p style={{ margin: 0, fontSize: '0.8rem', color: '#34d399', fontWeight: 700 }}>✓ All members accounted for!</p>
@@ -1068,11 +1190,25 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         (a.trainingDay || 1) === selectedDay
                     );
                     const isToggling = togglingRegDay === `${m.studentRegNo}_${selectedDay}`;
+                    const regUpper = String(m.studentRegNo).trim().toUpperCase();
+                    const isSelected = selectedRegs.has(regUpper);
+
+                    const toggleSelect = (e) => {
+                        e.stopPropagation();
+                        const next = new Set(selectedRegs);
+                        if (next.has(regUpper)) {
+                            next.delete(regUpper);
+                        } else {
+                            next.add(regUpper);
+                        }
+                        setSelectedRegs(next);
+                    };
+
                     return (
                         <div key={m._id || m.studentRegNo} style={{
                             padding: isMobile ? '0.9rem 1rem' : '0.85rem 1.25rem',
-                            background: isPresent ? 'rgba(52, 211, 153, 0.04)' : 'rgba(255,255,255,0.01)',
-                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.04)'}`,
+                            background: isPresent ? 'rgba(52, 211, 153, 0.04)' : isSelected ? 'rgba(59, 130, 246, 0.04)' : 'rgba(255,255,255,0.01)',
+                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : isSelected ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.04)'}`,
                             borderRadius: '0.85rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -1081,6 +1217,27 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             transition: 'all 0.2s'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                                {!isPresent && (
+                                    <div 
+                                        onClick={toggleSelect}
+                                        style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            borderRadius: '4px',
+                                            border: isSelected ? '2px solid #34d399' : '2px solid rgba(255,255,255,0.2)',
+                                            background: isSelected ? '#34d399' : 'transparent',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            marginRight: '0.25rem',
+                                            flexShrink: 0,
+                                            transition: 'all 0.15s'
+                                        }}
+                                    >
+                                        {isSelected && <span style={{ color: 'black', fontSize: '0.7rem', fontWeight: 900 }}>✓</span>}
+                                    </div>
+                                )}
                                 <div style={{
                                     width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
                                     background: isPresent ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255,255,255,0.05)',
@@ -1152,10 +1309,40 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             <>
                                 {/* TO CHECK IN - Day N */}
                                 <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In — Day {selectedDay}</div>
-                                        <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In — Day {selectedDay}</div>
+                                            <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                        </div>
+                                        {toCheckIn.length > 0 && (
+                                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ background: 'transparent', border: 'none', color: '#34d399', fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        const next = new Set(selectedRegs);
+                                                        toCheckIn.forEach(m => next.add(String(m.studentRegNo).trim().toUpperCase()));
+                                                        setSelectedRegs(next);
+                                                    }}
+                                                >
+                                                    Select All
+                                                </button>
+                                                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.7rem' }}>|</span>
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        const next = new Set(selectedRegs);
+                                                        toCheckIn.forEach(m => next.delete(String(m.studentRegNo).trim().toUpperCase()));
+                                                        setSelectedRegs(next);
+                                                    }}
+                                                >
+                                                    Deselect All
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
+
                                     {toCheckIn.length === 0 ? (
                                         <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(52, 211, 153, 0.03)', border: '1px dashed rgba(52, 211, 153, 0.15)', borderRadius: '1rem' }}>
                                             <p style={{ margin: 0, fontSize: '0.8rem', color: '#34d399', fontWeight: 700 }}>✓ All members checked in for Day {selectedDay}!</p>
@@ -1184,6 +1371,73 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     </div>
                 );
             })()}
+
+            {selectedRegs.size > 0 && (
+                <div style={{
+                    position: 'sticky',
+                    bottom: '1rem',
+                    left: 0,
+                    right: 0,
+                    background: 'rgba(9, 13, 22, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(52, 211, 153, 0.25)',
+                    padding: '1rem 1.5rem',
+                    borderRadius: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(52, 211, 153, 0.1)',
+                    marginTop: '1.5rem',
+                    zIndex: 100
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
+                            {selectedRegs.size} selected
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>
+                            Ready for bulk manual check-in
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button 
+                            className="btn" 
+                            style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                color: 'rgba(255,255,255,0.6)',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 750
+                            }}
+                            onClick={() => setSelectedRegs(new Set())}
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            className="btn btn-primary" 
+                            style={{
+                                background: '#34d399',
+                                color: 'black',
+                                padding: '0.5rem 1.5rem',
+                                borderRadius: '0.5rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem'
+                            }}
+                            onClick={handleBulkCheckIn}
+                            disabled={bulkChecking}
+                        >
+                            {bulkChecking ? (
+                                <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: 'currentColor' }} />
+                            ) : 'Check In All'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
