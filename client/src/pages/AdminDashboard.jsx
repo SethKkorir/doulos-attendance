@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
 import QRCode from 'react-qr-code';
+import MeetingInsights from '../components/MeetingInsights';
 import {
     Users, BarChart3, Sun, Moon, Link as LinkIcon, ExternalLink,
     ShieldAlert, RotateCcw, ChevronDown, ChevronLeft, ChevronRight, Check, X,
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
     GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star,
-    Activity, LogOut, Search
+    Activity, LogOut, Search, MapPin
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
@@ -327,6 +328,7 @@ const AdminDashboard = () => {
     const [trainingStatusFilter, setTrainingStatusFilter] = useState('All');
     
     // Bottom sheet state
+    const [insightMeeting, setInsightMeeting] = useState(null);
     const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
     const [bottomSheetType, setBottomSheetType] = useState(null); // 'add_member' | 'create_training' | 'filter_members' | 'qr_view'
     const [activeMeetingForQR, setActiveMeetingForQR] = useState(null);
@@ -643,7 +645,7 @@ const AdminDashboard = () => {
                                                         setBottomSheetOpen(true);
                                                     }}
                                                 >
-                                                    View QR Code
+                                                    View QR
                                                 </button>
                                                 <button 
                                                     className="mobile-action-btn"
@@ -652,7 +654,28 @@ const AdminDashboard = () => {
                                                         handleToggleMeetingStatus(m._id, m.isActive);
                                                     }}
                                                 >
-                                                    {m.isActive ? 'Close Scan' : 'Reopen'}
+                                                    {m.isActive ? 'Close' : 'Reopen'}
+                                                </button>
+                                                <button 
+                                                    style={{
+                                                        flex: '1',
+                                                        padding: '10px',
+                                                        background: 'rgba(37, 170, 225, 0.15)',
+                                                        border: '0.5px solid rgba(37, 170, 225, 0.3)',
+                                                        borderRadius: '12px',
+                                                        fontSize: '13px',
+                                                        fontWeight: '600',
+                                                        textAlign: 'center',
+                                                        cursor: 'pointer',
+                                                        color: '#25AAE1',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onClick={() => {
+                                                        triggerHaptic(15);
+                                                        setInsightMeeting(m);
+                                                    }}
+                                                >
+                                                    Insights
                                                 </button>
                                             </div>
                                         </div>
@@ -789,7 +812,7 @@ const AdminDashboard = () => {
                                                         setBottomSheetOpen(true);
                                                     }}
                                                 >
-                                                    View QR Code
+                                                    View QR
                                                 </button>
                                                 <button 
                                                     className="mobile-action-btn"
@@ -799,6 +822,27 @@ const AdminDashboard = () => {
                                                     }}
                                                 >
                                                     {t.isActive ? 'Finalize' : 'Reopen'}
+                                                </button>
+                                                <button 
+                                                    style={{
+                                                        flex: '1.2',
+                                                        padding: '10px',
+                                                        background: 'rgba(167, 139, 250, 0.15)',
+                                                        border: '0.5px solid rgba(167, 139, 250, 0.3)',
+                                                        borderRadius: '12px',
+                                                        fontSize: '13px',
+                                                        fontWeight: '600',
+                                                        textAlign: 'center',
+                                                        cursor: 'pointer',
+                                                        color: '#c084fc',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onClick={() => {
+                                                        triggerHaptic(15);
+                                                        setInsightMeeting(t);
+                                                    }}
+                                                >
+                                                    Insights & Ticker
                                                 </button>
                                             </div>
                                         </div>
@@ -1100,7 +1144,19 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
                                     <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Venue Location Name</label>
+                                        <label className="mobile-form-label">Target Campus</label>
+                                        <select 
+                                            className="mobile-form-select" 
+                                            value={mobTrainingForm.campus} 
+                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, campus: e.target.value })}
+                                        >
+                                            <option value="Both">Both Campuses</option>
+                                            <option value="Athi River">Athi River Only</option>
+                                            <option value="Valley Road">Valley Road Only</option>
+                                        </select>
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Venue Location Name *</label>
                                         <input 
                                             type="text" 
                                             className="mobile-form-input" 
@@ -1110,6 +1166,38 @@ const AdminDashboard = () => {
                                             required
                                         />
                                     </div>
+                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div>
+                                            <label className="mobile-form-label">Geofence Radius (meters)</label>
+                                            <input 
+                                                type="number" 
+                                                className="mobile-form-input" 
+                                                value={mobTrainingForm.location.radius} 
+                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, radius: Number(e.target.value) } })}
+                                                placeholder="200"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                            <button 
+                                                type="button" 
+                                                className="btn" 
+                                                style={{ width: '100%', height: '44px', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    navigator.geolocation.getCurrentPosition(pos => {
+                                                        setMobTrainingForm(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
+                                                        setMsg({ type: 'success', text: `GPS captured!` });
+                                                    }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
+                                                }}
+                                            >
+                                                <MapPin size={12} /> GPS
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {mobTrainingForm.location.latitude && mobTrainingForm.location.longitude && (
+                                        <div style={{ fontSize: '11px', color: '#34d399', marginTop: '-6px', marginBottom: '12px', fontWeight: 'bold' }}>
+                                            ✓ Captured: {mobTrainingForm.location.latitude.toFixed(6)}°, {mobTrainingForm.location.longitude.toFixed(6)}°
+                                        </div>
+                                    )}
                                     <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
                                         Create Session
                                     </button>
@@ -1291,6 +1379,18 @@ const AdminDashboard = () => {
                         )}
                     </div>
                 </div>
+                {insightMeeting && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 2000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.5rem' }} onClick={() => setInsightMeeting(null)}>
+                        <div style={{ width: '100%', maxWidth: '1000px' }} onClick={e => e.stopPropagation()}>
+                            <MeetingInsights 
+                                meeting={insightMeeting} 
+                                onClose={() => setInsightMeeting(null)} 
+                                api={api} 
+                                isTraining={activeTab === 'trainings' || insightMeeting.category === 'Training'}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Mobile Bottom Tab Bar */}
                 <div className="mobile-bottom-tabs">
