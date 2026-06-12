@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
+import QRCode from 'react-qr-code';
 import {
     Users, BarChart3, Sun, Moon, Link as LinkIcon, ExternalLink,
     ShieldAlert, RotateCcw, ChevronDown, ChevronLeft, ChevronRight, Check, X,
@@ -318,6 +319,681 @@ const AdminDashboard = () => {
         window.location.href = '/admin';
     };
 
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [searchActive, setSearchActive] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [campusFilter, setCampusFilter] = useState('All');
+    const [memberTypeFilter, setMemberTypeFilter] = useState('All');
+    const [trainingStatusFilter, setTrainingStatusFilter] = useState('All');
+    
+    // Bottom sheet state
+    const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
+    const [bottomSheetType, setBottomSheetType] = useState(null); // 'add_member' | 'create_training' | 'filter_members' | 'qr_view'
+    const [activeMeetingForQR, setActiveMeetingForQR] = useState(null);
+
+    // Form inputs for mobile sheets
+    const [mobMemberForm, setMobMemberForm] = useState({ name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' });
+    const [mobTrainingForm, setMobTrainingForm] = useState({
+        name: 'Doulos Training',
+        date: new Date().toISOString().split('T')[0],
+        campus: 'Both',
+        startTime: '14:00',
+        endTime: '17:00',
+        semester: currentSemester || 'MAY-AUG 2026',
+        requiredFields: [
+            { label: 'Full Name', key: 'studentName', required: true },
+            { label: 'Admission Number', key: 'studentRegNo', required: true }
+        ],
+        questionOfDay: '',
+        questionType: 'text',
+        questionOptions: [],
+        location: { name: '', latitude: null, longitude: null, radius: 200 }
+    });
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Haptic feedback
+    const triggerHaptic = (pattern = 15) => {
+        if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(pattern);
+        }
+    };
+
+    const handleMobileTabChange = (tab) => {
+        triggerHaptic(15);
+        setActiveTab(tab);
+        setShowMoreMenu(false);
+        setSearchActive(false);
+        setSearchQuery('');
+    };
+
+    // Form Actions for Mobile Sheets
+    const submitMobileMember = async (e) => {
+        e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        try {
+            await api.post('/members', mobMemberForm);
+            setMsg({ type: 'success', text: `Success! ${mobMemberForm.name.split(' ')[0]} added!` });
+            setMobMemberForm({ name: '', studentRegNo: '', campus: 'Athi River', memberType: 'Visitor' });
+            setBottomSheetOpen(false);
+            fetchMembers();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save member' });
+        }
+    };
+
+    const submitMobileTraining = async (e) => {
+        e.preventDefault();
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        if (!mobTrainingForm.location.name) return setMsg({ type: 'error', text: 'Venue name is required.' });
+        try {
+            await api.post('/trainings', mobTrainingForm);
+            setMsg({ type: 'success', text: 'Training session created!' });
+            setBottomSheetOpen(false);
+            fetchTrainings();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to create training' });
+        }
+    };
+
+    // Filtered lists for mobile cards
+    const getFilteredMobileMembers = () => {
+        return members.filter(m => {
+            const matchesSearch = !searchQuery || 
+                m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                m.studentRegNo.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCampus = campusFilter === 'All' || m.campus === campusFilter;
+            const matchesType = memberTypeFilter === 'All' || m.memberType === memberTypeFilter;
+            return matchesSearch && matchesCampus && matchesType;
+        });
+    };
+
+    const getFilteredMobileTrainings = () => {
+        return trainings.filter(t => {
+            const matchesSearch = !searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const now = new Date();
+            const tDate = new Date(t.date);
+            const [endH, endMin] = t.endTime.split(':').map(Number);
+            const tEnd = new Date(tDate);
+            tEnd.setHours(endH, endMin, 0, 0);
+            const isCompleted = now > tEnd || !t.isActive;
+
+            if (trainingStatusFilter === 'Active') return matchesSearch && !isCompleted;
+            if (trainingStatusFilter === 'Completed') return matchesSearch && isCompleted;
+            return matchesSearch;
+        });
+    };
+
+    if (isMobile) {
+        return (
+            <div style={{ position: 'relative', minHeight: '100vh', background: '#07090e', color: '#ffffff', overflowX: 'hidden' }}>
+                <BackgroundGallery />
+                <ValentineRain />
+
+                {/* Toast Notification */}
+                {msg && (
+                    <div className="mobile-toast" style={{ animation: 'slideUp 0.3s ease' }}>
+                        {msg.type === 'error' ? '⚠️' : '✅'} {msg.text}
+                    </div>
+                )}
+
+                {/* Mobile Header */}
+                <div className="mobile-header">
+                    {searchActive ? (
+                        <div className="mobile-search-bar" style={{ width: '100%', display: 'flex', gap: '8px' }}>
+                            <input 
+                                type="text" 
+                                placeholder={activeTab === 'members' ? "Search members..." : "Search trainings..."} 
+                                value={searchQuery} 
+                                onChange={(e) => setSearchQuery(e.target.value)} 
+                                autoFocus
+                            />
+                            <button 
+                                style={{ background: 'transparent', border: 'none', color: '#25AAE1', fontWeight: 'bold' }} 
+                                onClick={() => { setSearchActive(false); setSearchQuery(''); }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="mobile-header-title" style={{ textTransform: 'capitalize' }}>
+                                {activeTab}
+                            </div>
+                            <div className="mobile-header-actions">
+                                {['members', 'trainings'].includes(activeTab) && (
+                                    <button className="mobile-icon-btn" onClick={() => { triggerHaptic(10); setSearchActive(true); }}>
+                                        <Search size={18} />
+                                    </button>
+                                )}
+                                {activeTab === 'reports' && (
+                                    <button 
+                                        className="mobile-icon-btn" 
+                                        onClick={() => {
+                                            triggerHaptic(20);
+                                            downloadCumulativeCSV(members, currentSemester);
+                                        }}
+                                        title="Export cumulative reports"
+                                    >
+                                        <Download size={18} />
+                                    </button>
+                                )}
+                                <button className="mobile-icon-btn" onClick={() => triggerHaptic(10)}>
+                                    <Star size={18} style={{ color: '#fbbf24', fill: '#fbbf24' }} />
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Main Content Pane */}
+                <div style={{ paddingBottom: '90px' }}>
+                    
+                    {/* Render corresponding active tabs */}
+                    {activeTab === 'members' && (
+                        <div>
+                            {/* Campus Filter Chips */}
+                            <div className="mobile-filters">
+                                {['All', 'Athi River', 'Valley Road'].map(campus => (
+                                    <button 
+                                        key={campus} 
+                                        className={`mobile-chip ${campusFilter === campus ? 'active' : ''}`}
+                                        onClick={() => { triggerHaptic(10); setCampusFilter(campus); }}
+                                    >
+                                        {campus === 'Valley Road' ? 'Nairobi' : campus}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {/* Member Type Filter Chips */}
+                            <div className="mobile-filters" style={{ borderTop: '0.5px solid rgba(255,255,255,0.03)', paddingTop: '6px' }}>
+                                {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(type => (
+                                    <button 
+                                        key={type} 
+                                        className={`mobile-chip ${memberTypeFilter === type ? 'active' : ''}`}
+                                        onClick={() => { triggerHaptic(10); setMemberTypeFilter(type); }}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Mobile Members List */}
+                            <div className="mobile-members-list" style={{ marginTop: '12px' }}>
+                                {getFilteredMobileMembers().map(m => (
+                                    <div 
+                                        key={m._id} 
+                                        className="mobile-member-card"
+                                        onClick={() => {
+                                            triggerHaptic(15);
+                                            // Open Profile info or trigger actions
+                                            setMsg({ type: 'success', text: `Loaded insights for ${m.name}` });
+                                        }}
+                                    >
+                                        <div className="mobile-member-avatar">
+                                            {m.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                                        </div>
+                                        <div className="mobile-member-info">
+                                            <div className="mobile-member-name">{m.name}</div>
+                                            <div className="mobile-member-meta">
+                                                <span>{m.campus === 'Valley Road' ? 'Nairobi' : m.campus}</span>
+                                                <span className="mobile-member-badge">{m.memberType}</span>
+                                                <span>Reg: {m.studentRegNo}</span>
+                                            </div>
+                                        </div>
+                                        <div className="mobile-member-points">{m.totalPoints || 0} pts</div>
+                                    </div>
+                                ))}
+                                {getFilteredMobileMembers().length === 0 && (
+                                    <div className="mobile-empty-state">
+                                        <div className="mobile-empty-icon"><Users size={32} /></div>
+                                        <div className="mobile-empty-title">No Members Found</div>
+                                        <div className="mobile-empty-subtitle">Try adjusting your filter search queries</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'trainings' && (
+                        <div>
+                            {/* Training Status Filters */}
+                            <div className="mobile-filters">
+                                {['All', 'Active', 'Completed'].map(status => (
+                                    <button 
+                                        key={status} 
+                                        className={`mobile-chip ${trainingStatusFilter === status ? 'active' : ''}`}
+                                        onClick={() => { triggerHaptic(10); setTrainingStatusFilter(status); }}
+                                    >
+                                        {status}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Trainings Mobile List */}
+                            <div className="mobile-trainings-list">
+                                {getFilteredMobileTrainings().map(t => {
+                                    const tDate = new Date(t.date);
+                                    const progress = Math.min(100, ((t.attendanceCount || 0) / 100) * 100);
+                                    return (
+                                        <div key={t._id} className="mobile-training-card">
+                                            <div className="mobile-training-header">
+                                                <div className="mobile-training-title">{t.name}</div>
+                                                <div className="mobile-training-status" style={{
+                                                    background: t.isActive ? 'rgba(52, 211, 153, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                    color: t.isActive ? '#34d399' : '#f87171'
+                                                }}>
+                                                    {t.isActive ? 'Live' : 'Closed'}
+                                                </div>
+                                            </div>
+                                            <div className="mobile-training-meta">
+                                                <span>{t.campus}</span>
+                                                <span>•</span>
+                                                <span>{tDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
+                                                <span>•</span>
+                                                <span>{t.startTime} - {t.endTime}</span>
+                                            </div>
+
+                                            <div className="mobile-training-progress">
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px', opacity: 0.7 }}>
+                                                    <span>Attendance Progress</span>
+                                                    <span>{t.attendanceCount || 0} checked-in</span>
+                                                </div>
+                                                <div className="mobile-progress-bar">
+                                                    <div className="mobile-progress-fill" style={{ width: `${progress}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mobile-training-actions">
+                                                <button 
+                                                    className="mobile-action-btn"
+                                                    onClick={() => {
+                                                        triggerHaptic(15);
+                                                        setActiveMeetingForQR(t);
+                                                        setBottomSheetType('qr_view');
+                                                        setBottomSheetOpen(true);
+                                                    }}
+                                                >
+                                                    View QR Code
+                                                </button>
+                                                <button 
+                                                    className="mobile-action-btn"
+                                                    onClick={() => {
+                                                        triggerHaptic(15);
+                                                        handleToggleTrainingStatus(t._id, t.isActive);
+                                                    }}
+                                                >
+                                                    {t.isActive ? 'Finalize' : 'Reopen'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {getFilteredMobileTrainings().length === 0 && (
+                                    <div className="mobile-empty-state">
+                                        <div className="mobile-empty-icon"><GraduationCap size={32} /></div>
+                                        <div className="mobile-empty-title">No Trainings Found</div>
+                                        <div className="mobile-empty-subtitle">Try scheduling a new leadership training</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'reports' && (
+                        <div style={{ padding: '16px' }}>
+                            <ReportsTab
+                                meetings={meetings}
+                                members={members}
+                                onDownloadCSV={downloadCSV}
+                                onDownloadCumulativeCSV={downloadCumulativeCSV}
+                                isGuest={isGuest}
+                                api={api}
+                                setMsg={setMsg}
+                            />
+                        </div>
+                    )}
+
+                    {/* MORE Grid Menu */}
+                    {activeTab === 'more' && (
+                        <div style={{ padding: '16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                                {[
+                                    { id: 'finance', label: 'Finance Management', icon: Wallet },
+                                    { id: 'events', label: 'Events Scheduler', icon: Calendar },
+                                    { id: 'activities', label: 'Activities Groups', icon: Activity },
+                                    { id: 'feedback', label: 'Feedbacks Hub', icon: MessageCircle },
+                                    { id: 'admins', label: 'Staff Admins', icon: ShieldAlert },
+                                    { id: 'system', label: 'Settings', icon: SettingsIcon },
+                                    ...( ['superadmin', 'developer'].includes(userRole?.toLowerCase()) ? [{ id: 'observability', label: 'Observability', icon: Activity }] : [] )
+                                ].map(item => (
+                                    <button 
+                                        key={item.id}
+                                        onClick={() => handleMobileTabChange(item.id)}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '12px',
+                                            padding: '24px 16px',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            border: '1.5px solid rgba(255,255,255,0.05)',
+                                            borderRadius: '16px',
+                                            color: '#ffffff',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <item.icon size={24} style={{ color: '#25AAE1' }} />
+                                        <span style={{ fontSize: '13px', fontWeight: '600' }}>{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PROFILE Tab View */}
+                    {activeTab === 'profile' && (
+                        <div style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                            <div style={{ width: '80px', height: '80px', borderRadius: '40px', background: 'linear-gradient(135deg, #25AAE1, #1a7ca3)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
+                                {userRole[0].toUpperCase()}
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Administrator Profile</h2>
+                                <span style={{ textTransform: 'uppercase', color: '#25AAE1', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>{userRole} MODE</span>
+                            </div>
+
+                            <div style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '16px', marginTop: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '0.5px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
+                                    <span style={{ opacity: 0.5 }}>Active Semester</span>
+                                    <strong>{currentSemester}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px' }}>
+                                    <span style={{ opacity: 0.5 }}>Geofencing Tracking</span>
+                                    <strong style={{ color: '#34d399' }}>Active Online</strong>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleLogout}
+                                style={{
+                                    width: '100%',
+                                    padding: '16px',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    border: '1.5px solid rgba(239, 68, 68, 0.2)',
+                                    borderRadius: '16px',
+                                    color: '#f87171',
+                                    fontWeight: '800',
+                                    marginTop: '24px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                SIGN OUT SYSTEM
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Subpage views mapping from More tab */}
+                    {!['members', 'trainings', 'reports', 'more', 'profile'].includes(activeTab) && (
+                        <div style={{ padding: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                <button 
+                                    onClick={() => handleMobileTabChange('more')}
+                                    style={{ background: 'transparent', border: 'none', color: '#25AAE1', display: 'flex', alignItems: 'center' }}
+                                >
+                                    <ChevronLeft size={24} /> Back to More
+                                </button>
+                            </div>
+                            
+                            {activeTab === 'finance' && <AdminFinanceView isGuest={isGuest} />}
+                            {activeTab === 'events' && <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />}
+                            {activeTab === 'activities' && (
+                                <ActivitiesTab
+                                    members={members}
+                                    fetchMembers={fetchMembers}
+                                    isGuest={isGuest}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                />
+                            )}
+                            {activeTab === 'feedback' && <FeedbackView isGuest={isGuest} />}
+                            {activeTab === 'admins' && (
+                                <AdminsView
+                                    admins={admins}
+                                    loading={loadingAdmins}
+                                    onEdit={setEditingAdmin}
+                                    onDelete={handleDeleteAdmin}
+                                    guestFeaturesEnabled={guestFeaturesEnabled}
+                                    currentSemester={currentSemester}
+                                    onUpdateSetting={handleSaveSetting}
+                                    api={api}
+                                    setMsg={setMsg}
+                                    fetchAdmins={fetchAdmins}
+                                    isGuest={isGuest}
+                                />
+                            )}
+                            {activeTab === 'system' && (
+                                <SystemSettingsTab
+                                    onUpdateSetting={handleSaveSetting}
+                                    isGuest={isGuest}
+                                    setMsg={setMsg}
+                                    api={api}
+                                    userRole={userRole}
+                                />
+                            )}
+                            {activeTab === 'observability' && (
+                                <SystemObservabilityTab
+                                    members={members}
+                                    api={api}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    isGuest={isGuest}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* FAB (Floating Action Button) */}
+                {['members', 'trainings'].includes(activeTab) && (
+                    <button 
+                        className="mobile-fab" 
+                        onClick={() => {
+                            triggerHaptic(20);
+                            setBottomSheetType(activeTab === 'members' ? 'add_member' : 'create_training');
+                            setBottomSheetOpen(true);
+                        }}
+                    >
+                        <Plus size={24} />
+                    </button>
+                )}
+
+                {/* Bottom Sheet Backdrop Modal overlay */}
+                <div 
+                    className={`mobile-overlay ${bottomSheetOpen ? 'visible' : ''}`} 
+                    onClick={() => setBottomSheetOpen(false)}
+                />
+
+                {/* Mobile Bottom Sheets Drawer */}
+                <div className={`mobile-bottom-sheet ${bottomSheetOpen ? 'open' : ''}`}>
+                    <div className="mobile-sheet-handle" onClick={() => setBottomSheetOpen(false)}></div>
+                    <div className="mobile-sheet-content">
+                        
+                        {bottomSheetType === 'add_member' && (
+                            <div>
+                                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>Add New Member</h3>
+                                <form onSubmit={submitMobileMember}>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Full Name</label>
+                                        <input 
+                                            type="text" 
+                                            className="mobile-form-input" 
+                                            placeholder="e.g. Albright Kirui" 
+                                            value={mobMemberForm.name} 
+                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Admission Number</label>
+                                        <input 
+                                            type="text" 
+                                            className="mobile-form-input" 
+                                            placeholder="e.g. 21-0230" 
+                                            value={mobMemberForm.studentRegNo} 
+                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, studentRegNo: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Campus</label>
+                                        <select 
+                                            className="mobile-form-select" 
+                                            value={mobMemberForm.campus}
+                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, campus: e.target.value })}
+                                        >
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Category</label>
+                                        <select 
+                                            className="mobile-form-select" 
+                                            value={mobMemberForm.memberType}
+                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, memberType: e.target.value })}
+                                        >
+                                            <option value="Visitor">Visitor</option>
+                                            <option value="Recruit">Recruit</option>
+                                            <option value="Douloid">Douloid</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
+                                        Save Member
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {bottomSheetType === 'create_training' && (
+                            <div>
+                                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>Schedule Training</h3>
+                                <form onSubmit={submitMobileTraining}>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Training Title</label>
+                                        <input 
+                                            type="text" 
+                                            className="mobile-form-input" 
+                                            placeholder="e.g. Foundations of leadership" 
+                                            value={mobTrainingForm.name} 
+                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Date</label>
+                                        <input 
+                                            type="date" 
+                                            className="mobile-form-input" 
+                                            value={mobTrainingForm.date} 
+                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, date: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div>
+                                            <label className="mobile-form-label">Start Time</label>
+                                            <input 
+                                                type="time" 
+                                                className="mobile-form-input" 
+                                                value={mobTrainingForm.startTime} 
+                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, startTime: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mobile-form-label">End Time</label>
+                                            <input 
+                                                type="time" 
+                                                className="mobile-form-input" 
+                                                value={mobTrainingForm.endTime} 
+                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, endTime: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="mobile-form-group">
+                                        <label className="mobile-form-label">Venue Location Name</label>
+                                        <input 
+                                            type="text" 
+                                            className="mobile-form-input" 
+                                            placeholder="e.g. Athi River Chapel Hall" 
+                                            value={mobTrainingForm.location.name} 
+                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, name: e.target.value } })}
+                                            required
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
+                                        Create Session
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {bottomSheetType === 'qr_view' && activeMeetingForQR && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '12px 0 24px' }}>
+                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', textAlign: 'center' }}>
+                                    {activeMeetingForQR.name} QR Check-In
+                                </h3>
+                                <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', display: 'inline-block' }} className="training-qr-container">
+                                    <QRCode 
+                                        value={JSON.stringify({
+                                            meetingId: activeMeetingForQR._id,
+                                            name: activeMeetingForQR.name,
+                                        })}
+                                        size={220}
+                                    />
+                                </div>
+                                <span style={{ opacity: 0.6, fontSize: '13px', textAlign: 'center', maxWidth: '280px' }}>
+                                    Students scan this geofenced QR code from their mobile web portals.
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Mobile Bottom Tab Bar */}
+                <div className="mobile-bottom-tabs">
+                    <button className={`mobile-tab-item ${activeTab === 'members' ? 'active' : ''}`} onClick={() => handleMobileTabChange('members')}>
+                        <Users size={20} />
+                        <span>MEMBERS</span>
+                    </button>
+                    <button className={`mobile-tab-item ${activeTab === 'trainings' ? 'active' : ''}`} onClick={() => handleMobileTabChange('trainings')}>
+                        <GraduationCap size={20} />
+                        <span>TRAININGS</span>
+                    </button>
+                    <button className={`mobile-tab-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => handleMobileTabChange('reports')}>
+                        <BarChart3 size={20} />
+                        <span>REPORTS</span>
+                    </button>
+                    <button className={`mobile-tab-item ${['members', 'trainings', 'reports', 'profile'].includes(activeTab) ? '' : 'active'}`} onClick={() => handleMobileTabChange('more')}>
+                        <SettingsIcon size={20} />
+                        <span>MORE</span>
+                    </button>
+                    <button className={`mobile-tab-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleMobileTabChange('profile')}>
+                        <ShieldAlert size={20} />
+                        <span>PROFILE</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
             <BackgroundGallery />
@@ -500,7 +1176,7 @@ const AdminDashboard = () => {
                             )}
                         </div>
                         <button className="btn btn-sign-out" style={{ padding: sidebarCollapsed ? '0.5rem 0' : '0.6rem', borderRadius: '0.6rem', fontWeight: 800, fontSize: '0.75rem', width: '100%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={handleLogout} title="Sign Out System">
-                            {sidebarCollapsed ? '✕' : 'SIGN OUT SYSTEM'}
+                            {sidebarCollapsed ? '❌' : 'SIGN OUT SYSTEM'}
                         </button>
                     </div>
                 </aside>
@@ -792,169 +1468,6 @@ const AdminDashboard = () => {
                     }
                 }
             `}</style>
-
-            {/* Bottom Mobile Navbar */}
-            <div className="admin-mobile-bottom-nav">
-                <button 
-                    className={`admin-mobile-tab-btn ${activeTab === 'meetings' ? 'active' : ''}`} 
-                    onClick={() => {
-                        setActiveTab('meetings');
-                        setShowMoreMenu(false);
-                    }}
-                >
-                    <LayoutDashboard size={20} />
-                    <span>Meetings</span>
-                </button>
-                <button 
-                    className={`admin-mobile-tab-btn ${activeTab === 'members' ? 'active' : ''}`} 
-                    onClick={() => {
-                        setActiveTab('members');
-                        setShowMoreMenu(false);
-                    }}
-                >
-                    <Users size={20} />
-                    <span>Members</span>
-                </button>
-                <button 
-                    className={`admin-mobile-tab-btn ${activeTab === 'reports' ? 'active' : ''}`} 
-                    onClick={() => {
-                        setActiveTab('reports');
-                        setShowMoreMenu(false);
-                    }}
-                >
-                    <BarChart3 size={20} />
-                    <span>Reports</span>
-                </button>
-                <button 
-                    className={`admin-mobile-tab-btn ${['meetings', 'members', 'reports'].includes(activeTab) ? '' : 'active'}`} 
-                    onClick={() => setShowMoreMenu(true)}
-                >
-                    <SettingsIcon size={20} />
-                    <span>More</span>
-                </button>
-            </div>
-
-            {/* "More" Bottom Sheet Overlay Drawer */}
-            {showMoreMenu && (
-                <div 
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(5, 7, 12, 0.85)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        zIndex: 99999,
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        animation: 'fadeIn 0.25s ease-out'
-                    }}
-                    onClick={() => setShowMoreMenu(false)}
-                >
-                    <div 
-                        style={{
-                            width: '100%',
-                            maxWidth: '500px',
-                            background: '#0d111b',
-                            borderTopLeftRadius: '2rem',
-                            borderTopRightRadius: '2rem',
-                            border: '1px solid rgba(255, 255, 255, 0.06)',
-                            borderBottom: 'none',
-                            padding: '2rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom))',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1.5rem',
-                            boxShadow: '0 -15px 40px rgba(0,0,0,0.6)',
-                            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-                        }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1.5px', textTransform: 'uppercase' }}>G9 Control Panel</span>
-                                <h3 style={{ margin: '0.2rem 0 0', fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>More Management Tools</h3>
-                            </div>
-                            <button 
-                                onClick={() => setShowMoreMenu(false)}
-                                style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: 'none',
-                                    color: 'rgba(255,255,255,0.4)',
-                                    padding: '0.5rem',
-                                    borderRadius: '50%',
-                                    cursor: 'pointer',
-                                    display: 'flex'
-                                }}
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem', margin: '0.25rem 0' }}>
-                            {[
-                                { id: 'trainings', label: 'Trainings', icon: GraduationCap },
-                                { id: 'finance', label: 'Finance', icon: Wallet },
-                                { id: 'events', label: 'Events', icon: Calendar },
-                                { id: 'activities', label: 'Activities', icon: Activity },
-                                { id: 'feedback', label: 'Feedback', icon: MessageCircle },
-                                { id: 'admins', label: 'Admins', icon: ShieldAlert },
-                                { id: 'system', label: 'Settings', icon: SettingsIcon },
-                                ...( ['superadmin', 'developer'].includes(userRole?.toLowerCase()) ? [{ id: 'observability', label: 'Observe', icon: Activity }] : [] )
-                            ].map(item => {
-                                const isActive = activeTab === item.id;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => {
-                                            setActiveTab(item.id);
-                                            setShowMoreMenu(false);
-                                        }}
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            padding: '0.8rem 0.5rem',
-                                            borderRadius: '1rem',
-                                            background: isActive ? 'rgba(37,170,225,0.12)' : 'rgba(255,255,255,0.02)',
-                                            border: `1px solid ${isActive ? 'rgba(37,170,225,0.3)' : 'rgba(255,255,255,0.04)'}`,
-                                            color: isActive ? '#25AAE1' : '#94a3b8',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            fontFamily: "'Outfit', sans-serif"
-                                        }}
-                                    >
-                                        <item.icon size={20} style={{ color: isActive ? '#25AAE1' : '#64748b' }} />
-                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        
-                        <button 
-                            onClick={handleLogout}
-                            style={{
-                                width: '100%',
-                                padding: '0.85rem',
-                                background: 'rgba(239, 68, 68, 0.08)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                borderRadius: '0.85rem',
-                                color: '#f87171',
-                                fontSize: '0.82rem',
-                                fontWeight: 900,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                                letterSpacing: '1px'
-                            }}
-                        >
-                            <LogOut size={15} /> SIGN OUT SYSTEM
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

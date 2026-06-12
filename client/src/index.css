@@ -1239,4 +1239,688 @@ table td {
 .slide-out-activity {
   animation: slideOutToRight 0.45s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
 }
+
+/* ==========================================================================
+   MOBILE UI OVERHAUL - NATIVE APP EXPERIENCE
+   Only applies on screens below 768px
+   Desktop remains 100% unchanged
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* ---------- 1. RESET & BASE ---------- */
+  body {
+    background: #07090e !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Remove desktop background glows on mobile */
+  body::before, body::after {
+    display: none !important;
+  }
+  
+  /* ---------- 2. HIDE SIDEBAR COMPLETELY ---------- */
+  .sidebar, 
+  aside, 
+  [class*="sidebar"],
+  [class*="Sidebar"] {
+    display: none !important;
+  }
+  
+  /* ---------- 3. MAIN CONTENT - FULL WIDTH ---------- */
+  .main-content,
+  main,
+  [class*="main-content"],
+  [class*="MainContent"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative !important;
+    padding-bottom: 80px !important; /* Space for bottom tab bar */
+  }
+  
+  /* ---------- 4. BOTTOM TAB BAR (FLUTTER-STYLE) ---------- */
+  .mobile-bottom-tabs {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: rgba(13, 17, 27, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-top: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    padding: 8px 16px 12px !important;
+    z-index: 1000 !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  .mobile-tab-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    border-radius: 24px !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    min-width: 64px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+  }
+  
+  .mobile-tab-item svg {
+    width: 22px !important;
+    height: 22px !important;
+    transition: transform 0.2s ease !important;
+    color: currentColor !important;
+  }
+  
+  .mobile-tab-item span {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px !important;
+    color: currentColor !important;
+  }
+  
+  .mobile-tab-item.active {
+    background: rgba(37, 170, 225, 0.12) !important;
+    color: #25AAE1 !important;
+  }
+  
+  .mobile-tab-item.active svg {
+    transform: translateY(-2px) !important;
+  }
+  
+  .mobile-tab-item:active {
+    transform: scale(0.95) !important;
+  }
+  
+  /* ---------- 5. MOBILE HEADER (NAVIGATION BAR) ---------- */
+  .mobile-header {
+    position: sticky !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: rgba(7, 9, 14, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.06) !important;
+    padding: 12px 16px !important;
+    z-index: 99 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  
+  .mobile-header-title {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.3px !important;
+    background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.7) 100%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    color: transparent !important;
+  }
+  
+  .mobile-header-actions {
+    display: flex !important;
+    gap: 12px !important;
+  }
+  
+  .mobile-icon-btn {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 30px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    color: white !important;
+  }
+  
+  .mobile-icon-btn:active {
+    transform: scale(0.92) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* ---------- 6. SEARCH BAR (iOS STYLE) ---------- */
+  .mobile-search-container {
+    padding: 12px 16px !important;
+    background: transparent !important;
+  }
+  
+  .mobile-search-bar {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.05) !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .mobile-search-bar:focus-within {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(37, 170, 225, 0.3) !important;
+  }
+  
+  .mobile-search-bar input {
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: white !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+  }
+  
+  .mobile-search-bar input::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+    font-size: 16px !important;
+  }
+  
+  /* ---------- 7. FILTER CHIPS (HORIZONTAL SCROLL) ---------- */
+  .mobile-filters {
+    padding: 8px 16px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    gap: 8px !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .mobile-filters::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  .mobile-chip {
+    display: inline-flex !important;
+    padding: 8px 16px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 30px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    white-space: nowrap !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+  }
+  
+  .mobile-chip.active {
+    background: rgba(37, 170, 225, 0.15) !important;
+    border-color: rgba(37, 170, 225, 0.4) !important;
+    color: #25AAE1 !important;
+  }
+  
+  .mobile-chip:active {
+    transform: scale(0.96) !important;
+  }
+  
+  /* ---------- 8. STATS CARDS (STACKED VERTICAL) ---------- */
+  .mobile-stats-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+  
+  .mobile-stat-card {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+  
+  .mobile-stat-label {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+  
+  .mobile-stat-value {
+    font-size: 28px !important;
+    font-weight: 800 !important;
+    color: white !important;
+  }
+  
+  /* ---------- 9. MEMBER CARDS (SINGLE COLUMN, NATIVE LIST) ---------- */
+  .mobile-members-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 0 16px 20px !important;
+  }
+  
+  .mobile-member-card {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+  }
+  
+  .mobile-member-card:active {
+    transform: scale(0.99) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+  }
+  
+  .mobile-member-avatar {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 28px !important;
+    background: linear-gradient(135deg, rgba(37, 170, 225, 0.2), rgba(37, 170, 225, 0.05)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #25AAE1 !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .mobile-member-info {
+    flex: 1 !important;
+  }
+  
+  .mobile-member-name {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: white !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .mobile-member-meta {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+  
+  .mobile-member-badge {
+    background: rgba(37, 170, 225, 0.1) !important;
+    padding: 2px 8px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    color: #25AAE1 !important;
+  }
+  
+  .mobile-member-points {
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: #34d399 !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* ---------- 10. TRAINING CARDS (NATIVE APP STYLE) ---------- */
+  .mobile-trainings-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    padding: 16px !important;
+  }
+  
+  .mobile-training-card {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 20px !important;
+    padding: 16px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    cursor: pointer;
+  }
+  
+  .mobile-training-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .mobile-training-title {
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: white !important;
+    flex: 1 !important;
+  }
+  
+  .mobile-training-status {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 4px 10px !important;
+    border-radius: 20px !important;
+    background: rgba(52, 211, 153, 0.15) !important;
+    color: #34d399 !important;
+  }
+  
+  .mobile-training-meta {
+    display: flex !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+    font-size: 13px !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+  }
+  
+  .mobile-training-progress {
+    margin: 12px 0 !important;
+  }
+  
+  .mobile-progress-bar {
+    height: 6px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+  }
+  
+  .mobile-progress-fill {
+    height: 100% !important;
+    background: linear-gradient(90deg, #25AAE1, #34d399) !important;
+    border-radius: 3px !important;
+    width: 0% !important;
+    transition: width 0.3s ease !important;
+  }
+  
+  .mobile-training-actions {
+    display: flex !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+  
+  .mobile-action-btn {
+    flex: 1 !important;
+    padding: 10px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    color: white !important;
+  }
+  
+  .mobile-action-btn:active {
+    transform: scale(0.97) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+  
+  /* ---------- 11. BOTTOM SHEET MODAL (NATIVE iOS STYLE) ---------- */
+  .mobile-bottom-sheet {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: #0d111b !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5) !important;
+    z-index: 1001 !important;
+    transform: translateY(100%) !important;
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1) !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+  
+  .mobile-bottom-sheet.open {
+    transform: translateY(0) !important;
+  }
+  
+  .mobile-sheet-handle {
+    width: 40px !important;
+    height: 4px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 2px !important;
+    margin: 12px auto !important;
+  }
+  
+  .mobile-sheet-content {
+    padding: 8px 20px 30px !important;
+  }
+  
+  /* ---------- 12. OVERLAY (FOR MODALS) ---------- */
+  .mobile-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 1000 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.3s ease !important;
+  }
+  
+  .mobile-overlay.visible {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  
+  /* ---------- 13. FLOATING ACTION BUTTON (FAB) ---------- */
+  .mobile-fab {
+    position: fixed !important;
+    bottom: 80px !important;
+    right: 20px !important;
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 28px !important;
+    background: linear-gradient(135deg, #25AAE1, #1a7ca3) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(37, 170, 225, 0.4) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    z-index: 90 !important;
+  }
+  
+  .mobile-fab:active {
+    transform: scale(0.92) !important;
+    box-shadow: 0 2px 8px rgba(37, 170, 225, 0.3) !important;
+  }
+  
+  .mobile-fab svg {
+    width: 24px !important;
+    height: 24px !important;
+    color: white !important;
+  }
+  
+  /* ---------- 14. EMPTY STATE (NATIVE FEEL) ---------- */
+  .mobile-empty-state {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 60px 32px !important;
+    text-align: center !important;
+  }
+  
+  .mobile-empty-icon {
+    width: 80px !important;
+    height: 80px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-radius: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .mobile-empty-icon svg {
+    width: 40px !important;
+    height: 40px !important;
+    color: rgba(255, 255, 255, 0.3) !important;
+  }
+  
+  .mobile-empty-title {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: white !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .mobile-empty-subtitle {
+    font-size: 14px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    margin-bottom: 24px !important;
+  }
+  
+  /* ---------- 15. FORM FIELDS (NATIVE INPUT) ---------- */
+  .mobile-form-group {
+    margin-bottom: 20px !important;
+  }
+  
+  .mobile-form-label {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    margin-bottom: 8px !important;
+    display: block !important;
+  }
+  
+  .mobile-form-input,
+  .mobile-form-select {
+    width: 100% !important;
+    padding: 14px 16px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    color: white !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .mobile-form-input:focus,
+  .mobile-form-select:focus {
+    outline: none !important;
+    border-color: rgba(37, 170, 225, 0.5) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+  }
+  
+  /* ---------- 16. PULL TO REFRESH INDICATOR ---------- */
+  .mobile-pull-indicator {
+    text-align: center !important;
+    padding: 16px !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    font-size: 12px !important;
+  }
+  
+  /* ---------- 17. SECTION TITLES (NATIVE STYLE) ---------- */
+  .mobile-section-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 20px 16px 12px !important;
+  }
+  
+  .mobile-section-title {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px !important;
+    color: white !important;
+  }
+  
+  .mobile-section-link {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #25AAE1 !important;
+  }
+  
+  /* ---------- 18. DIVIDERS ---------- */
+  .mobile-divider {
+    height: 0.5px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    margin: 16px 0 !important;
+  }
+  
+  /* ---------- 19. TOAST NOTIFICATION (BOTTOM) ---------- */
+  .mobile-toast {
+    position: fixed !important;
+    bottom: 90px !important;
+    left: 16px !important;
+    right: 16px !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    padding: 14px 20px !important;
+    border-radius: 50px !important;
+    text-align: center !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: white !important;
+    z-index: 1002 !important;
+    animation: slideUp 0.3s ease !important;
+  }
+  
+  /* ---------- 20. ANIMATIONS ---------- */
+  @keyframes slideUp {
+    from {
+      transform: translateY(100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  /* ---------- 21. HIDE DESKTOP ELEMENTS ON MOBILE ---------- */
+  .desktop-only,
+  [class*="desktop-"],
+  .sidebar-cta-card,
+  .sidebar-profile-card {
+    display: none !important;
+  }
+  
+  /* ---------- 22. SAFE AREA INSETS (NOTCH SUPPORT) ---------- */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .mobile-bottom-tabs {
+      padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    .mobile-fab {
+      bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    .main-content {
+      padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    }
+  }
+}
+
 
