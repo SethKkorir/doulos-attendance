@@ -15,9 +15,16 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [insightSearch, setInsightSearch] = useState('');
-    const [activeTab, setActiveTab] = useState('answers'); // Default to answers first!
+    const [activeTab, setActiveTab] = useState(isTraining ? 'ticker' : 'manual_checkin'); // Default to checklist first!
     const [selectedDay, setSelectedDay] = useState(meeting.activeDay || 1);
     const [togglingRegDay, setTogglingRegDay] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         setCurrentMeeting(meeting);
@@ -33,7 +40,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 setAttendanceRecords(attRes.data);
 
                 // Fetch all members for this campus
-                const memRes = await api.get(`/members?campus=${meeting.campus}`);
+                const memRes = await api.get(`/members?campus=${meeting.campus === 'Both' ? 'All' : meeting.campus}`);
                 setAllMembers(memRes.data);
             } catch (err) {
                 console.error(err);
@@ -73,6 +80,33 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     studentRegNo: member.studentRegNo,
                     name: member.name,
                     trainingDay: day
+                });
+                setAttendanceRecords(prev => [res.data, ...prev]);
+            }
+        } catch (err) {
+            console.error("Failed to toggle attendance", err);
+            alert(err.response?.data?.message || "Operation failed");
+        } finally {
+            setTogglingRegDay(null);
+        }
+    };
+
+    const handleToggleRegular = async (member) => {
+        const key = `${member.studentRegNo}_regular`;
+        setTogglingRegDay(key);
+        try {
+            const record = attendanceRecords.find(a => 
+                String(a.studentRegNo).trim().toUpperCase() === String(member.studentRegNo).trim().toUpperCase()
+            );
+
+            if (record) {
+                await api.delete(`/attendance/${record._id}`);
+                setAttendanceRecords(prev => prev.filter(a => a._id !== record._id));
+            } else {
+                const res = await api.post('/attendance/manual', {
+                    meetingId: currentMeeting._id,
+                    studentRegNo: member.studentRegNo,
+                    name: member.name
                 });
                 setAttendanceRecords(prev => [res.data, ...prev]);
             }
@@ -263,24 +297,33 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
 
     return (
         <div className="glass-card-premium" style={{
-            padding: '2rem',
+            padding: isMobile ? '1.15rem' : '2rem',
             background: '#0d111b',
-            borderRadius: '2rem',
+            borderRadius: isMobile ? '1.25rem' : '2rem',
             animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
             border: '1px solid rgba(255,255,255,0.05)'
         }}>
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none !important;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none !important;
+                    scrollbar-width: none !important;
+                }
+            `}</style>
             
             {/* Header Area */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '0.85rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                        <BarChart3 size={28} color="#25AAE1" style={{ filter: 'drop-shadow(0 0 6px rgba(37, 170, 225, 0.4))' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexWrap: 'nowrap', gap: '1rem', marginBottom: isMobile ? '1.25rem' : '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.75rem' : '1rem', flex: 1 }}>
+                    <div style={{ padding: isMobile ? '0.6rem' : '0.85rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: isMobile ? '0.75rem' : '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
+                        <BarChart3 size={isMobile ? 22 : 28} color="#25AAE1" style={{ filter: 'drop-shadow(0 0 6px rgba(37, 170, 225, 0.4))' }} />
                     </div>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 950, letterSpacing: '-0.75px', color: 'white' }}>Meeting Insights</h2>
-                        <p style={{ color: 'rgba(255,255,255,0.45)', margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: '0.88rem' }}>
-                            {currentMeeting.name} • {new Date(currentMeeting.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        <h2 style={{ margin: 0, fontSize: isMobile ? '1.25rem' : '1.65rem', fontWeight: 950, letterSpacing: '-0.75px', color: 'white' }}>Meeting Insights</h2>
+                        <p style={{ color: 'rgba(255,255,255,0.45)', margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.88rem' }}>
+                            {currentMeeting.name} • {new Date(currentMeeting.date).toLocaleDateString(undefined, { weekday: isMobile ? 'short' : 'long', year: isMobile ? undefined : 'numeric', month: 'short', day: 'numeric' })}
                         </p>
                     </div>
                 </div>
@@ -291,44 +334,45 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         background: 'rgba(255,255,255,0.03)',
                         border: '1px solid rgba(255,255,255,0.08)',
                         color: 'white',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '1rem',
+                        padding: isMobile ? '0.55rem 1rem' : '0.75rem 1.5rem',
+                        borderRadius: '0.85rem',
                         cursor: 'pointer',
                         fontWeight: 800,
-                        fontSize: '0.75rem',
-                        letterSpacing: '1px',
-                        transition: 'all 0.3s'
+                        fontSize: isMobile ? '0.7rem' : '0.75rem',
+                        letterSpacing: '0.5px',
+                        transition: 'all 0.3s',
+                        whiteSpace: 'nowrap'
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; e.currentTarget.style.color = '#ef4444'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'white'; }}
                 >
-                    EXIT ANALYSIS
+                    {isMobile ? 'EXIT' : 'EXIT ANALYSIS'}
                 </button>
             </div>
 
             {isTraining && (
                 <div style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'stretch' : 'center',
                     justifyContent: 'space-between',
                     background: 'rgba(255, 255, 255, 0.02)',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
-                    padding: '1rem 1.5rem',
-                    borderRadius: '1.5rem',
-                    marginBottom: '1.5rem',
-                    flexWrap: 'wrap',
-                    gap: '1rem'
+                    padding: isMobile ? '0.85rem 1rem' : '1rem 1.5rem',
+                    borderRadius: '1.25rem',
+                    marginBottom: '1.25rem',
+                    gap: isMobile ? '0.85rem' : '1rem'
                 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#34d399', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                             Live Check-in Control
                         </span>
-                        <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
-                            Select which day is currently active/live for QR scans.
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
+                            Select which day is active/live for QR scans.
                         </span>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', width: isMobile ? '100%' : 'auto' }}>
                         {[1, 2, 3].map(day => {
                             const isActiveDay = currentMeeting.activeDay === day;
                             return (
@@ -336,22 +380,24 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                     key={day}
                                     onClick={() => handleActiveDayChange(day)}
                                     style={{
-                                        padding: '0.55rem 1.25rem',
+                                        flex: isMobile ? 1 : 'none',
+                                        padding: isMobile ? '0.5rem 0.25rem' : '0.55rem 1.25rem',
                                         background: isActiveDay ? 'linear-gradient(135deg, #34d399, #059669)' : 'rgba(255, 255, 255, 0.03)',
                                         border: isActiveDay ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.08)',
-                                        borderRadius: '0.75rem',
+                                        borderRadius: '0.65rem',
                                         color: isActiveDay ? 'black' : 'white',
                                         fontWeight: 800,
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.75rem',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.35rem'
+                                        justifyContent: 'center',
+                                        gap: '0.3rem'
                                     }}
                                 >
-                                    {isActiveDay && <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'black', animation: 'pulse 1.5s infinite' }} />}
-                                    Day {day} {isActiveDay ? ' (LIVE)' : ''}
+                                    {isActiveDay && <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: 'black', animation: 'pulse 1.5s infinite' }} />}
+                                    Day {day} {isActiveDay && !isMobile ? ' (LIVE)' : ''}
                                 </button>
                             );
                         })}
@@ -364,29 +410,29 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 <div style={{
                     background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
                     border: '1px solid rgba(37, 170, 225, 0.2)',
-                    padding: '1.5rem 1.75rem',
-                    borderRadius: '1.5rem',
-                    marginBottom: '1.75rem',
+                    padding: isMobile ? '1rem 1.15rem' : '1.5rem 1.75rem',
+                    borderRadius: '1.25rem',
+                    marginBottom: '1.25rem',
                     boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)',
                     position: 'relative'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.68rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                        <HelpCircle size={12} /> ACTIVE QUESTION OF THE DAY
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                        <HelpCircle size={10} /> ACTIVE QUESTION OF THE DAY
                     </div>
-                    <h3 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, color: 'white', lineHeight: '1.55', fontStyle: 'italic', opacity: 0.95 }}>
+                    <h3 style={{ margin: 0, fontSize: isMobile ? '0.95rem' : '1.18rem', fontWeight: 800, color: 'white', lineHeight: '1.45', fontStyle: 'italic', opacity: 0.95 }}>
                         "{meeting.questionOfDay}"
                     </h3>
                 </div>
             )}
 
             {/* Smart Keyword & Registry Search */}
-            <div style={{ marginBottom: '1.75rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+            <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.85rem', alignItems: isMobile ? 'stretch' : 'center' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
                     <Search
-                        size={18}
+                        size={16}
                         style={{
                             position: 'absolute',
-                            left: '1.25rem',
+                            left: '1.15rem',
                             top: '50%',
                             transform: 'translateY(-50%)',
                             color: 'rgba(255,255,255,0.3)'
@@ -394,17 +440,17 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     />
                     <input
                         type="text"
-                        placeholder="Search by student name, admission number, or answer keywords (e.g. faith, grace)..."
+                        placeholder={isMobile ? "Search name, reg no, or answers..." : "Search by student name, admission number, or answer keywords (e.g. faith, grace)..."}
                         value={insightSearch}
                         onChange={e => setInsightSearch(e.target.value)}
                         style={{
                             width: '100%',
                             background: 'rgba(0,0,0,0.3)',
                             border: '1px solid rgba(255,255,255,0.05)',
-                            padding: '1rem 1.5rem 1rem 3.5rem',
-                            borderRadius: '1.25rem',
+                            padding: isMobile ? '0.75rem 1rem 0.75rem 2.8rem' : '1rem 1.5rem 1rem 3.5rem',
+                            borderRadius: '1rem',
                             color: 'white',
-                            fontSize: '0.95rem',
+                            fontSize: isMobile ? '0.85rem' : '0.95rem',
                             fontWeight: 600,
                             outline: 'none',
                             transition: 'all 0.3s'
@@ -417,7 +463,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             onClick={() => setInsightSearch('')}
                             style={{
                                 position: 'absolute',
-                                right: '1.25rem',
+                                right: '1.15rem',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
                                 background: 'transparent',
@@ -426,56 +472,72 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 cursor: 'pointer'
                             }}
                         >
-                            <X size={18} />
+                            <X size={16} />
                         </button>
                     )}
                 </div>
 
                 {isTraining && activeTab !== 'ticker' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '0.35rem 0.5rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', padding: '0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Viewing:</span>
-                        {[1, 2, 3].map(day => {
-                            const isSelected = selectedDay === day;
-                            return (
-                                <button
-                                    key={day}
-                                    onClick={() => setSelectedDay(day)}
-                                    style={{
-                                        padding: '0.45rem 1rem',
-                                        background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'transparent',
-                                        border: 'none',
-                                        borderRadius: '0.75rem',
-                                        color: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.5)',
-                                        fontWeight: 800,
-                                        fontSize: '0.75rem',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    Day {day}
-                                </button>
-                            );
-                        })}
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.35rem', 
+                        background: 'rgba(255,255,255,0.02)', 
+                        padding: '0.3rem 0.4rem', 
+                        borderRadius: '0.85rem', 
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        justifyContent: isMobile ? 'space-between' : 'flex-start'
+                    }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', padding: '0 0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Viewing:</span>
+                        <div style={{ display: 'flex', gap: '0.2rem', flex: isMobile ? 1 : 'none', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
+                            {[1, 2, 3].map(day => {
+                                const isSelected = selectedDay === day;
+                                return (
+                                    <button
+                                        key={day}
+                                        onClick={() => setSelectedDay(day)}
+                                        style={{
+                                            padding: isMobile ? '0.35rem 0.75rem' : '0.45rem 1rem',
+                                            background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'transparent',
+                                            border: 'none',
+                                            borderRadius: '0.55rem',
+                                            color: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.5)',
+                                            fontWeight: 800,
+                                            fontSize: '0.72rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Day {day}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
 
             {/* Premium Tab Navigation Switcher Bar */}
-            <div style={{ 
-                display: 'flex', 
-                gap: '0.5rem', 
-                borderBottom: '1px solid rgba(255,255,255,0.06)', 
-                paddingBottom: '0.75rem', 
-                marginBottom: '1.75rem', 
-                overflowX: 'auto',
-                scrollbarWidth: 'none'
-            }}>
+            <div 
+                className="no-scrollbar"
+                style={{ 
+                    display: 'flex', 
+                    gap: '0.4rem', 
+                    borderBottom: '1px solid rgba(255,255,255,0.06)', 
+                    paddingBottom: '0.6rem', 
+                    marginBottom: '1.25rem', 
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                }}
+            >
                 {[
+                    ...(isTraining 
+                        ? [{ id: 'ticker', label: '3-Day Ticker', icon: Activity }]
+                        : [{ id: 'manual_checkin', label: 'Manual Ticker', icon: Activity }]),
                     { id: 'answers', label: 'Answers Board', icon: MessageSquare, badge: filteredPresent.length },
-                    { id: 'analytics', label: 'Analytics & Stats', icon: BarChart3 },
                     { id: 'present', label: 'Participants List', icon: Users, badge: filteredPresent.length },
-                    { id: 'absent', label: 'Missed Registry', icon: UserX, badge: filteredAbsent.length },
-                    ...(isTraining ? [{ id: 'ticker', label: '3-Day Ticker', icon: Activity }] : [])
+                    { id: 'absent', label: 'Missed Registry', icon: UserX, badge: filteredAbsent.length }
                 ].map(tab => {
                     const ActiveIcon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -486,15 +548,15 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.65rem 1.25rem',
+                                gap: '0.4rem',
+                                padding: isMobile ? '0.5rem 0.85rem' : '0.65rem 1.25rem',
                                 background: isActive ? 'rgba(37, 170, 225, 0.1)' : 'transparent',
                                 border: '1px solid',
                                 borderColor: isActive ? 'rgba(37, 170, 225, 0.25)' : 'transparent',
                                 color: isActive ? '#25AAE1' : 'rgba(255,255,255,0.5)',
-                                borderRadius: '0.75rem',
+                                borderRadius: '0.65rem',
                                 fontWeight: 800,
-                                fontSize: '0.78rem',
+                                fontSize: isMobile ? '0.72rem' : '0.78rem',
                                 cursor: 'pointer',
                                 transition: 'all 0.3s',
                                 whiteSpace: 'nowrap'
@@ -502,17 +564,17 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = 'white'; }}
                             onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
                         >
-                            <ActiveIcon size={14} />
+                            <ActiveIcon size={isMobile ? 12 : 14} />
                             <span>{tab.label}</span>
                             {tab.badge !== undefined && (
                                 <span style={{
-                                    fontSize: '0.6rem',
+                                    fontSize: '0.58rem',
                                     fontWeight: 900,
                                     background: isActive ? '#25AAE1' : 'rgba(255,255,255,0.1)',
                                     color: isActive ? '#0d111b' : 'rgba(255,255,255,0.6)',
-                                    padding: '0.1rem 0.45rem',
-                                    borderRadius: '0.5rem',
-                                    marginLeft: '3px'
+                                    padding: '0.08rem 0.4rem',
+                                    borderRadius: '0.4rem',
+                                    marginLeft: '2px'
                                 }}>
                                     {tab.badge}
                                 </span>
@@ -615,178 +677,178 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 </div>
             )}
 
-            {/* 2. Analytics & Stats Tab */}
-            {activeTab === 'analytics' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.4s ease-out' }}>
-                    
-                    {/* Visual Stats Widgets Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                        
-                        {/* Attendance Count Card */}
-                        <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Presence Summary</div>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                                <div style={{ fontSize: '2.5rem', fontWeight: 1000, color: '#25AAE1', lineHeight: 1 }}>{stats.presentCount}</div>
-                                <div style={{ fontSize: '1rem', opacity: 0.4, fontWeight: 700 }}>/ {stats.totalEligible} members</div>
-                            </div>
-                            <div style={{ fontSize: '0.82rem', color: 'rgba(37, 170, 225, 0.8)', marginTop: '0.75rem', fontWeight: 700 }}>
-                                {stats.recruitsCount} Recruits (First Timers) in session
-                            </div>
-                            <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.04 }}>
-                                <Users size={75} color="#25AAE1" />
-                            </div>
+            {/* 2. Manual Checklist Tab (For Regular Meetings) */}
+            {!isTraining && activeTab === 'manual_checkin' && (
+                <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                    {filteredMembers.length === 0 ? (
+                        <div style={{ 
+                            padding: '5rem 2rem', 
+                            textAlign: 'center', 
+                            background: 'rgba(255,255,255,0.01)', 
+                            borderRadius: '1.5rem', 
+                            border: '1px dashed rgba(255,255,255,0.06)' 
+                        }}>
+                            <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
+                            <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members matching your search</h4>
+                            <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
                         </div>
+                    ) : isMobile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                            {filteredMembers.map((m, idx) => {
+                                const record = attendanceRecords.find(a => 
+                                    String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase()
+                                );
+                                const isChecked = !!record;
+                                const isToggling = togglingRegDay === `${m.studentRegNo}_regular`;
 
-                        {/* Reach Rate Card */}
-                        <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Reach Percent</div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 1000, color: '#4ade80', lineHeight: 1 }}>{rate}%</div>
-                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', marginTop: '1rem', overflow: 'hidden' }}>
-                                <div style={{ width: `${rate}%`, height: '100%', background: 'linear-gradient(90deg, #25AAE1 0%, #4ade80 100%)', borderRadius: '3px', transition: 'width 1s ease-out' }}></div>
-                            </div>
-                            <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.04 }}>
-                                <Activity size={75} color="#4ade80" />
-                            </div>
-                        </div>
-
-                        {/* Absent Count Card */}
-                        <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Absent Attrition</div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 1000, color: '#f87171', lineHeight: 1 }}>{stats.absentCount}</div>
-                            <div style={{ fontSize: '0.82rem', color: 'rgba(248, 113, 113, 0.8)', marginTop: '0.75rem', fontWeight: 700 }}>
-                                Members did not scan check-in
-                            </div>
-                            <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.04 }}>
-                                <Ghost size={75} color="#f87171" />
-                            </div>
-                        </div>
-
-                    </div>
-
-                    {/* Member Type Breakdown Summary */}
-                    <div className="glass-panel" style={{ padding: '1.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.04)' }}>
-                        <h4 style={{ margin: '0 0 1.25rem 0', fontSize: '0.95rem', fontWeight: 900, color: 'white', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Participation Distribution</h4>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
-                            {['Douloid', 'Recruit', 'Visitor'].map(type => {
-                                const count = stats.breakdown[type] || 0;
-                                const percent = stats.presentCount ? Math.round((count / stats.presentCount) * 100) : 0;
-                                const barColor = type === 'Recruit' ? '#a78bfa' : type === 'Visitor' ? '#facc15' : '#25AAE1';
                                 return (
-                                    <div key={type} style={{ flex: 1, minWidth: '150px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: '0.4rem' }}>
-                                            <span>{type.toUpperCase()}S</span>
-                                            <span style={{ color: 'white' }}>{count} ({percent}%)</span>
+                                    <div key={idx} className="glass-panel" style={{
+                                        padding: '1rem',
+                                        background: isChecked ? 'rgba(52, 211, 153, 0.02)' : 'rgba(255, 255, 255, 0.01)',
+                                        border: isChecked ? '1px solid rgba(52, 211, 153, 0.15)' : '1px solid rgba(255,255,255,0.04)',
+                                        borderRadius: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: '0.75rem'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>
+                                                {m.name}
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
+                                                {m.studentRegNo}
+                                            </div>
+                                            <div style={{ marginTop: '0.4rem' }}>
+                                                <span style={{
+                                                    background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
+                                                    color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
+                                                    border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
+                                                    fontSize: '0.58rem',
+                                                    fontWeight: 900,
+                                                    padding: '0.15rem 0.4rem',
+                                                    borderRadius: '0.35rem',
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    {m.memberType}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                                            <div style={{ width: `${percent}%`, height: '100%', background: barColor, borderRadius: '3px' }}></div>
-                                        </div>
+                                        <button
+                                            onClick={() => handleToggleRegular(m)}
+                                            disabled={isToggling}
+                                            style={{
+                                                padding: '0.55rem 1rem',
+                                                background: isChecked ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                                                border: isChecked ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                                borderRadius: '0.75rem',
+                                                color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.4)',
+                                                fontWeight: 800,
+                                                fontSize: '0.75rem',
+                                                cursor: isToggling ? 'not-allowed' : 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.35rem',
+                                                transition: 'all 0.2s',
+                                                minWidth: '100px',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            {isToggling ? (
+                                                <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: '#34d399' }} />
+                                            ) : isChecked ? (
+                                                <><span>✓</span> Present</>
+                                            ) : (
+                                                <><span>-</span> Absent</>
+                                            )}
+                                        </button>
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }} className="glass-panel">
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '40%' }}>MEMBER NAME</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '25%' }}>ADMISSION NUMBER</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '20%' }}>MEMBER TYPE</th>
+                                        <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '15%', textAlign: 'center' }}>ATTENDANCE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredMembers.map((m, idx) => {
+                                        const record = attendanceRecords.find(a => 
+                                            String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase()
+                                        );
+                                        const isChecked = !!record;
+                                        const isToggling = togglingRegDay === `${m.studentRegNo}_regular`;
 
-                    {meeting.questionOfDay && meeting.questionType !== 'text' && (() => {
-                        const { data, totalVotes, averageRating } = getPollData();
-                        const qType = meeting.questionType || 'text';
-                        const COLORS = ['#25AAE1', '#4ade80', '#facc15', '#f87171', '#a78bfa', '#f472b6', '#38bdf8'];
-                        
-                        return (
-                            <div className="glass-panel" style={{ padding: '1.75rem', background: 'rgba(15, 23, 42, 0.3)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.04)', marginTop: '1.25rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                    <div>
-                                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'white', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                            Poll Analytics & Feedback
-                                        </h4>
-                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>
-                                            Question: "{meeting.questionOfDay}"
-                                        </p>
-                                    </div>
-                                    <span style={{ fontSize: '0.68rem', fontWeight: 900, background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px', border: '1px solid rgba(37, 170, 225, 0.15)' }}>
-                                        {qType.replace('_', ' ')} &bull; {totalVotes} Responses
-                                    </span>
-                                </div>
-                                
-                                {totalVotes === 0 ? (
-                                    <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem', color: 'white' }}>
-                                        No poll responses recorded yet.
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
-                                        
-                                        {/* Left: Recharts visualization */}
-                                        <div style={{ height: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                            {qType === 'rating' || qType === 'checkboxes' ? (
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <BarChart data={data} layout="vertical">
-                                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-                                                        <XAxis type="number" stroke="rgba(255,255,255,0.4)" fontSize={9} />
-                                                        <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.4)" fontSize={9} width={80} />
-                                                        <Tooltip contentStyle={{ background: '#0d111b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
-                                                        <Bar dataKey="value" fill="#25AAE1" radius={[0, 4, 4, 0]}>
-                                                            {data.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                            ))}
-                                                        </Bar>
-                                                    </BarChart>
-                                                </ResponsiveContainer>
-                                            ) : (
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie
-                                                            data={data}
-                                                            innerRadius={50}
-                                                            outerRadius={75}
-                                                            paddingAngle={4}
-                                                            dataKey="value"
+                                        return (
+                                            <tr key={idx} style={{ 
+                                                borderBottom: '1px solid rgba(255,255,255,0.03)', 
+                                                transition: '0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <td style={{ padding: '1rem', fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
+                                                    {m.name}
+                                                </td>
+                                                <td style={{ padding: '1rem', fontSize: '0.85rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                                    {m.studentRegNo}
+                                                </td>
+                                                <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
+                                                    <span style={{ 
+                                                        background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)', 
+                                                        color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1', 
+                                                        border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
+                                                        fontSize: '0.65rem', 
+                                                        fontWeight: 900, 
+                                                        padding: '0.25rem 0.5rem', 
+                                                        borderRadius: '6px',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {m.memberType}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                        <button
+                                                            onClick={() => handleToggleRegular(m)}
+                                                            disabled={isToggling}
+                                                            style={{
+                                                                background: isChecked ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                                                                border: isChecked ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                                                borderRadius: '0.5rem',
+                                                                width: '36px',
+                                                                height: '36px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: isToggling ? 'not-allowed' : 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.2)'
+                                                            }}
                                                         >
-                                                            {data.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                            ))}
-                                                        </Pie>
-                                                        <Tooltip contentStyle={{ background: '#0d111b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }} />
-                                                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px' }} />
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Right: Text breakdown & stats */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                                            {qType === 'rating' && (
-                                                <div style={{ background: 'rgba(250, 204, 21, 0.05)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(250, 204, 21, 0.15)', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                                                    <div style={{ fontSize: '2rem', color: '#facc15', lineHeight: 1 }}>⭐</div>
-                                                    <div>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 1000, color: 'white', lineHeight: 1 }}>{averageRating} / 5.0</div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontWeight: 800, marginTop: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Average Session Rating</div>
+                                                            {isToggling ? (
+                                                                <div className="loading-spinner-small" style={{ width: '14px', height: '14px', borderTopColor: '#34d399' }} />
+                                                            ) : isChecked ? (
+                                                                <span style={{ fontWeight: 900, fontSize: '1rem' }}>✓</span>
+                                                            ) : (
+                                                                <span style={{ fontSize: '0.8rem', opacity: 0.2 }}>-</span>
+                                                            )}
+                                                        </button>
                                                     </div>
-                                                </div>
-                                            )}
-                                            
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                {data.map((item, idx) => {
-                                                    const percent = totalVotes > 0 ? Math.round((item.value / totalVotes) * 100) : 0;
-                                                    const barColor = COLORS[idx % COLORS.length];
-                                                    return (
-                                                        <div key={item.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
-                                                                <span>{item.name}</span>
-                                                                <span style={{ color: 'white', fontWeight: 900 }}>{item.value} ({percent}%)</span>
-                                                            </div>
-                                                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                                                <div style={{ width: `${percent}%`, height: '100%', background: barColor, borderRadius: '2px' }}></div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                        
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -804,6 +866,66 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
                             <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No present participants matching your search</h4>
                             <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
+                        </div>
+                    ) : isMobile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                            {filteredPresent.map((a, idx) => (
+                                <div key={idx} className="glass-panel" style={{
+                                    padding: '1rem',
+                                    background: 'rgba(15, 23, 42, 0.4)',
+                                    border: '1px solid rgba(255,255,255,0.04)',
+                                    borderRadius: '1rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.75rem'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>
+                                                {a.responses?.studentName || 'Member'}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: '0.15rem' }}>
+                                                {a.studentRegNo}
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            background: a.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : a.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
+                                            color: a.memberType === 'Recruit' ? '#a78bfa' : a.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
+                                            border: `1px solid ${a.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : a.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 900,
+                                            padding: '0.2rem 0.45rem',
+                                            borderRadius: '0.4rem',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            {a.memberType}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Clock size={12} /> {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
+                                            style={{
+                                                background: 'rgba(239, 68, 68, 0.12)',
+                                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                borderRadius: '8px',
+                                                color: '#f87171',
+                                                padding: '0.45rem 0.75rem',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 800,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <Trash2 size={12} /> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <div style={{ overflowX: 'auto' }} className="glass-panel">
@@ -898,10 +1020,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             </p>
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: isMobile ? '0.75rem' : '1.25rem' }}>
                             {filteredAbsent.map(m => (
                                 <div key={m._id} className="glass-panel" style={{
-                                    padding: '1.25rem',
+                                    padding: isMobile ? '1rem' : '1.25rem',
                                     background: 'rgba(239, 68, 68, 0.01)',
                                     border: '1px solid rgba(239, 68, 68, 0.06)',
                                     borderRadius: '1.25rem',
@@ -974,6 +1096,89 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
                             <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members matching your search</h4>
                             <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
+                        </div>
+                    ) : isMobile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                            {filteredMembers.map((m, idx) => (
+                                <div key={idx} className="glass-panel" style={{
+                                    padding: '1rem',
+                                    background: 'rgba(255, 255, 255, 0.01)',
+                                    border: '1px solid rgba(255,255,255,0.04)',
+                                    borderRadius: '1rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.75rem'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>
+                                                {m.name}
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
+                                                {m.studentRegNo}
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            background: m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.08)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(37, 170, 225, 0.08)',
+                                            color: m.memberType === 'Recruit' ? '#a78bfa' : m.memberType === 'Visitor' ? '#facc15' : '#25AAE1',
+                                            border: `1px solid ${m.memberType === 'Recruit' ? 'rgba(139, 92, 246, 0.15)' : m.memberType === 'Visitor' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(37, 170, 225, 0.15)'}`,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 900,
+                                            padding: '0.2rem 0.45rem',
+                                            borderRadius: '0.4rem',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            {m.memberType}
+                                        </span>
+                                    </div>
+                                    <div style={{ 
+                                        display: 'grid', 
+                                        gridTemplateColumns: 'repeat(3, 1fr)', 
+                                        gap: '0.4rem', 
+                                        borderTop: '1px solid rgba(255,255,255,0.03)', 
+                                        paddingTop: '0.75rem' 
+                                    }}>
+                                        {[1, 2, 3].map(day => {
+                                            const record = attendanceRecords.find(a => 
+                                                String(a.studentRegNo).trim().toUpperCase() === String(m.studentRegNo).trim().toUpperCase() &&
+                                                (a.trainingDay || 1) === day
+                                            );
+                                            const isChecked = !!record;
+                                            const isToggling = togglingRegDay === `${m.studentRegNo}_${day}`;
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    onClick={() => handleToggleDay(m, day)}
+                                                    disabled={isToggling}
+                                                    style={{
+                                                        padding: '0.5rem 0',
+                                                        background: isChecked ? 'rgba(52, 211, 153, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                                                        border: isChecked ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
+                                                        borderRadius: '0.55rem',
+                                                        color: isChecked ? '#34d399' : 'rgba(255, 255, 255, 0.4)',
+                                                        fontWeight: 800,
+                                                        fontSize: '0.72rem',
+                                                        cursor: isToggling ? 'not-allowed' : 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.25rem',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {isToggling ? (
+                                                        <div className="loading-spinner-small" style={{ width: '12px', height: '12px', borderTopColor: '#34d399' }} />
+                                                    ) : isChecked ? (
+                                                        <><span>✓</span> Day {day}</>
+                                                    ) : (
+                                                        <><span>-</span> Day {day}</>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <div style={{ overflowX: 'auto' }} className="glass-panel">
