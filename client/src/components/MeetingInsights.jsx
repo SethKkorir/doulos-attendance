@@ -274,26 +274,26 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     const rate = Math.round((stats.presentCount / stats.totalEligible) * 100) || 0;
 
     const filteredAbsent = stats.absentList.filter(m => {
-        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanSearch = (insightSearch || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = (m.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = (m.studentRegNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
     });
 
     const filteredPresent = stats.presentList.filter(a => {
-        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = (a.responses?.studentName || 'Member').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanReg = a.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanSearch = (insightSearch || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = (a.responses?.studentName || a.name || 'Member').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = (a.studentRegNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const answerText = (a.questionOfDay || a.responses?.dailyQuestionAnswer || a.responses?.['dailyQuestionAnswer'] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch) || answerText.includes(cleanSearch);
     });
 
     const filteredMembers = allMembers.filter(m => {
-        const cleanSearch = insightSearch.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = m.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanReg = m.studentRegNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanSearch = (insightSearch || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = (m.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanReg = (m.studentRegNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         return cleanName.includes(cleanSearch) || cleanReg.includes(cleanSearch);
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     return (
         <div className="glass-card-premium" style={{
