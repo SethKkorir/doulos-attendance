@@ -8,7 +8,7 @@ import {
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
     GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star,
-    Activity, LogOut
+    Activity, LogOut, Search
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
