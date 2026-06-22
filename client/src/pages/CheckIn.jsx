@@ -6,6 +6,73 @@ import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
 
+const getIndexedDBId = () => {
+    return new Promise((resolve) => {
+        try {
+            const request = indexedDB.open('DoulosAttendanceDB', 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('device')) {
+                    db.createObjectStore('device', { keyPath: 'key' });
+                }
+            };
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('device')) {
+                    resolve(null);
+                    return;
+                }
+                const transaction = db.transaction('device', 'readonly');
+                const store = transaction.objectStore('device');
+                const getReq = store.get('device_id');
+                getReq.onsuccess = () => {
+                    resolve(getReq.result ? getReq.result.value : null);
+                };
+                getReq.onerror = () => resolve(null);
+            };
+            request.onerror = () => resolve(null);
+        } catch (err) {
+            resolve(null);
+        }
+    });
+};
+
+const setIndexedDBId = (id) => {
+    return new Promise((resolve) => {
+        try {
+            const request = indexedDB.open('DoulosAttendanceDB', 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('device')) {
+                    db.createObjectStore('device', { keyPath: 'key' });
+                }
+            };
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                const transaction = db.transaction('device', 'readwrite');
+                const store = transaction.objectStore('device');
+                store.put({ key: 'device_id', value: id });
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => resolve(false);
+            };
+            request.onerror = () => resolve(false);
+        } catch (err) {
+            resolve(false);
+        }
+    });
+};
+
+const getCookieId = () => {
+    const match = document.cookie.match(/(?:^|; )doulos_device_id=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
+};
+
+const setCookieId = (id) => {
+    const expiry = new Date();
+    expiry.setFullYear(expiry.getFullYear() + 10);
+    document.cookie = `doulos_device_id=${encodeURIComponent(id)}; expires=${expiry.toUTCString()}; path=/; SameSite=Lax`;
+};
+
 const CheckIn = () => {
     const params = useParams();
     const navigate = useNavigate();
@@ -63,13 +130,29 @@ const CheckIn = () => {
         }
     }, [status, navigate]);
 
-    const getPersistentDeviceId = () => {
-        let deviceId = localStorage.getItem('doulos_device_id');
-        if (!deviceId) {
-            deviceId = 'DL-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('doulos_device_id', deviceId);
+    const getPersistentDeviceId = async () => {
+        let localId = localStorage.getItem('doulos_device_id');
+        let cookieId = getCookieId();
+        let idbId = await getIndexedDBId();
+
+        let resolvedId = localId || cookieId || idbId;
+
+        if (!resolvedId) {
+            resolvedId = 'DL-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
-        return deviceId;
+
+        // Heal/sync all storages
+        if (localStorage.getItem('doulos_device_id') !== resolvedId) {
+            localStorage.setItem('doulos_device_id', resolvedId);
+        }
+        if (getCookieId() !== resolvedId) {
+            setCookieId(resolvedId);
+        }
+        if (idbId !== resolvedId) {
+            await setIndexedDBId(resolvedId);
+        }
+
+        return resolvedId;
     };
 
     useEffect(() => {
@@ -77,7 +160,7 @@ const CheckIn = () => {
 
         const fetchMeeting = async () => {
             try {
-                const deviceId = getPersistentDeviceId();
+                const deviceId = await getPersistentDeviceId();
                 const [meetingRes, statusRes] = await Promise.all([
                     api.get(`/meetings/code/${meetingCode}?deviceId=${deviceId}`),
                     api.get('/system/system-status')
@@ -518,7 +601,7 @@ const CheckIn = () => {
 
         setStatus('submitting');
         try {
-            const deviceId = getPersistentDeviceId();
+            const deviceId = await getPersistentDeviceId();
             const res = await api.post('/attendance/submit', {
                 meetingCode: meetingCode.toLowerCase(),
                 deviceId,
@@ -675,6 +758,24 @@ const CheckIn = () => {
                         gap: '0.5rem'
                     }}>
                         <span>📡 REMOTE MODE: Admin check-in preferred today.</span>
+                    </div>
+                )}
+                {meeting?.location?.latitude && (
+                    <div style={{
+                        marginTop: '1rem',
+                        padding: '0.8rem',
+                        background: 'rgba(37, 170, 225, 0.1)',
+                        border: '1px solid rgba(37, 170, 225, 0.2)',
+                        borderRadius: '0.75rem',
+                        color: '#25AAE1',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                    }}>
+                        <span>📍 GEOFENCED: Location permission is required to check in.</span>
                     </div>
                 )}
             </div>

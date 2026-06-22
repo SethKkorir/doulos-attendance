@@ -157,11 +157,20 @@ export const submitAttendance = async (req, res) => {
                 return res.status(400).json({ message: 'GPS data is required for this meeting. Please enable location.' });
             }
 
+            const uLat = Number(userLat);
+            const uLong = Number(userLong);
+            const mLat = Number(meeting.location.latitude);
+            const mLong = Number(meeting.location.longitude);
+
+            if (isNaN(uLat) || isNaN(uLong)) {
+                return res.status(400).json({ message: 'Invalid GPS coordinates sent. Please enable location and try again.' });
+            }
+
             const R = 6371e3; // meters
-            const φ1 = (meeting.location.latitude * Math.PI) / 180;
-            const φ2 = (userLat * Math.PI) / 180;
-            const Δφ = ((userLat - meeting.location.latitude) * Math.PI) / 180;
-            const Δλ = ((userLong - meeting.location.longitude) * Math.PI) / 180;
+            const φ1 = (mLat * Math.PI) / 180;
+            const φ2 = (uLat * Math.PI) / 180;
+            const Δφ = ((uLat - mLat) * Math.PI) / 180;
+            const Δλ = ((uLong - mLong) * Math.PI) / 180;
 
             const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
                 Math.cos(φ1) * Math.cos(φ2) *
@@ -183,6 +192,9 @@ export const submitAttendance = async (req, res) => {
             const isBypassed = bypassSetting?.value === 'true';
 
             if (!isBypassed) {
+                if (!deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
+                    return res.status(400).json({ message: 'Device Lock Error: Device signature is missing. Please ensure your browser supports local storage and cookies.' });
+                }
                 if (!member.linkedDeviceId && deviceId) {
                     member.linkedDeviceId = deviceId;
                     await member.save();

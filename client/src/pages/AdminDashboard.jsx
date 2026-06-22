@@ -1275,6 +1275,38 @@ const AdminDashboard = () => {
                                             required
                                         />
                                     </div>
+                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div>
+                                            <label className="mobile-form-label">Geofence Radius (meters)</label>
+                                            <input 
+                                                type="number" 
+                                                className="mobile-form-input" 
+                                                value={mobMeetingForm.location.radius} 
+                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, radius: Number(e.target.value) } })}
+                                                placeholder="200"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                            <button 
+                                                type="button" 
+                                                className="btn" 
+                                                style={{ width: '100%', height: '44px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', border: '1px solid rgba(37,170,225,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    navigator.geolocation.getCurrentPosition(pos => {
+                                                        setMobMeetingForm(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
+                                                        setMsg({ type: 'success', text: `GPS captured!` });
+                                                    }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
+                                                }}
+                                            >
+                                                <MapPin size={12} /> GPS
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {mobMeetingForm.location.latitude && mobMeetingForm.location.longitude && (
+                                        <div style={{ fontSize: '11px', color: '#25AAE1', marginTop: '-6px', marginBottom: '12px', fontWeight: 'bold' }}>
+                                            ✓ Captured: {mobMeetingForm.location.latitude.toFixed(6)}°, {mobMeetingForm.location.longitude.toFixed(6)}°
+                                        </div>
+                                    )}
                                     <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
                                         Schedule Fellowship
                                     </button>
