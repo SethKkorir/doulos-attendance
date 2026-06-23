@@ -363,15 +363,17 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
 
     return (
         <div className="glass-card-premium" style={{
-            padding: isMobile ? '1.15rem' : '2rem',
+            padding: isMobile ? '1rem' : '2rem',
             background: '#0d111b',
-            borderRadius: isMobile ? '1.25rem' : '2rem',
+            borderRadius: isMobile ? '0' : '2rem',
             animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            border: '1px solid rgba(255,255,255,0.05)',
+            boxShadow: isMobile ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            border: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: isMobile ? '92vh' : '88vh',
+            height: isMobile ? '100vh' : 'auto',
+            maxHeight: isMobile ? '100vh' : '88vh',
+            width: isMobile ? '100vw' : '100%',
             boxSizing: 'border-box',
             overflow: 'hidden'
         }}>
@@ -387,7 +389,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
             `}</style>
             
             {/* Header Area */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexWrap: 'nowrap', gap: '1rem', marginBottom: isMobile ? '1.25rem' : '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexWrap: 'nowrap', gap: '1rem', marginBottom: isMobile ? '1.25rem' : '2rem', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.75rem' : '1rem', flex: 1 }}>
                     <div style={{ padding: isMobile ? '0.6rem' : '0.85rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: isMobile ? '0.75rem' : '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
                         <BarChart3 size={isMobile ? 22 : 28} color="#25AAE1" style={{ filter: 'drop-shadow(0 0 6px rgba(37, 170, 225, 0.4))' }} />
@@ -433,7 +435,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     padding: isMobile ? '0.85rem 1rem' : '1rem 1.5rem',
                     borderRadius: '1.25rem',
                     marginBottom: '1.25rem',
-                    gap: isMobile ? '0.85rem' : '1rem'
+                    gap: isMobile ? '0.85rem' : '1rem',
+                    flexShrink: 0
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#34d399', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
@@ -486,7 +489,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     borderRadius: '1.25rem',
                     marginBottom: '1.25rem',
                     boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)',
-                    position: 'relative'
+                    position: 'relative',
+                    flexShrink: 0
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
                         <HelpCircle size={10} /> ACTIVE QUESTION OF THE DAY
@@ -498,7 +502,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
             )}
 
             {/* Smart Keyword & Registry Search */}
-            <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.85rem', alignItems: isMobile ? 'stretch' : 'center' }}>
+            <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.85rem', alignItems: isMobile ? 'stretch' : 'center', flexShrink: 0 }}>
                 <div style={{ position: 'relative', flex: 1 }}>
                     <Search
                         size={16}
@@ -596,11 +600,12 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     display: 'flex', 
                     gap: '0.4rem', 
                     borderBottom: '1px solid rgba(255,255,255,0.06)', 
-                    paddingBottom: '0.6rem', 
+                    padding: '0.2rem 0.1rem 0.6rem 0.1rem', 
                     marginBottom: '1.25rem', 
                     overflowX: 'auto',
                     scrollbarWidth: 'none',
-                    msOverflowStyle: 'none'
+                    msOverflowStyle: 'none',
+                    flexShrink: 0
                 }}
             >
                 {[
@@ -621,17 +626,18 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.4rem',
-                                padding: isMobile ? '0.5rem 0.85rem' : '0.65rem 1.25rem',
+                                padding: isMobile ? '0.55rem 0.95rem' : '0.65rem 1.25rem',
                                 background: isActive ? 'rgba(37, 170, 225, 0.1)' : 'transparent',
                                 border: '1px solid',
                                 borderColor: isActive ? 'rgba(37, 170, 225, 0.25)' : 'transparent',
                                 color: isActive ? '#25AAE1' : 'rgba(255,255,255,0.5)',
                                 borderRadius: '0.65rem',
                                 fontWeight: 800,
-                                fontSize: isMobile ? '0.72rem' : '0.78rem',
+                                fontSize: isMobile ? '0.75rem' : '0.78rem',
                                 cursor: 'pointer',
                                 transition: 'all 0.3s',
-                                whiteSpace: 'nowrap'
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
                             }}
                             onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = 'white'; }}
                             onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}

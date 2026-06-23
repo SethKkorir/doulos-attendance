@@ -288,6 +288,194 @@ const AdminDashboard = () => {
         }
     };
 
+    const downloadPDF = async (meetingId, meetingName) => {
+        try {
+            const res = await api.get(`/attendance/${meetingId}`);
+            const data = res.data;
+            if (data.length === 0) {
+                setMsg({ type: 'error', text: 'No attendance recorded yet.' });
+                return;
+            }
+
+            const allKeys = new Set();
+            data.forEach(r => {
+                const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses;
+                Object.keys(responses || {}).forEach(k => {
+                    if (k !== 'studentName' && k !== 'studentRegNo') {
+                        allKeys.add(k);
+                    }
+                });
+            });
+            const customKeys = Array.from(allKeys);
+
+            const printHtml = `
+                <html>
+                    <head>
+                        <title>${meetingName} - Attendance Roster</title>
+                        <style>
+                            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+                            body {
+                                font-family: 'Inter', sans-serif;
+                                color: #1e293b;
+                                padding: 2rem;
+                                background: #ffffff;
+                                margin: 0;
+                            }
+                            .header-container {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: flex-start;
+                                border-bottom: 2px solid #e2e8f0;
+                                padding-bottom: 1.5rem;
+                                margin-bottom: 2rem;
+                            }
+                            .logo-title {
+                                display: flex;
+                                align-items: center;
+                                gap: 1rem;
+                            }
+                            .title-details h1 {
+                                margin: 0;
+                                font-size: 1.5rem;
+                                font-weight: 800;
+                                color: #0f172a;
+                            }
+                            .title-details p {
+                                margin: 0.25rem 0 0 0;
+                                font-size: 0.875rem;
+                                color: #64748b;
+                            }
+                            .meta-info {
+                                text-align: right;
+                                font-size: 0.875rem;
+                                color: #64748b;
+                            }
+                            .meta-info strong {
+                                color: #0f172a;
+                            }
+                            table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-top: 1rem;
+                            }
+                            th {
+                                background-color: #f8fafc;
+                                color: #475569;
+                                text-align: left;
+                                font-weight: 600;
+                                font-size: 0.75rem;
+                                text-transform: uppercase;
+                                letter-spacing: 0.05em;
+                                padding: 0.75rem 1rem;
+                                border-bottom: 2px solid #cbd5e1;
+                            }
+                            td {
+                                padding: 0.75rem 1rem;
+                                font-size: 0.875rem;
+                                border-bottom: 1px solid #e2e8f0;
+                                color: #334155;
+                            }
+                            tr:nth-child(even) td {
+                                background-color: #f8fafc;
+                            }
+                            .badge {
+                                display: inline-block;
+                                padding: 0.125rem 0.375rem;
+                                font-size: 0.75rem;
+                                font-weight: 600;
+                                border-radius: 0.25rem;
+                                background-color: #f1f5f9;
+                                color: #475569;
+                            }
+                            .badge.douloid {
+                                background-color: #dcfce7;
+                                color: #166534;
+                            }
+                            .badge.recruit {
+                                background-color: #dbeafe;
+                                color: #1e40af;
+                            }
+                            .badge.visitor {
+                                background-color: #fef9c3;
+                                color: #854d0e;
+                            }
+                            @media print {
+                                body {
+                                    padding: 0;
+                                }
+                                @page {
+                                    margin: 1.5cm;
+                                }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header-container">
+                            <div class="logo-title">
+                                <div class="title-details">
+                                    <h1>${meetingName}</h1>
+                                    <p>Official Attendance Roster & Check-in Ledger</p>
+                                </div>
+                            </div>
+                            <div class="meta-info">
+                                <div>Date: <strong>${new Date(data[0]?.timestamp || new Date()).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong></div>
+                                <div>Total Checked-In: <strong>${data.length}</strong></div>
+                            </div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%">#</th>
+                                    <th>Name</th>
+                                    <th>Admission No.</th>
+                                    <th>Category</th>
+                                    <th>Time</th>
+                                    ${customKeys.map(k => `<th>${k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map((r, idx) => {
+                                    const responses = r.responses instanceof Map ? Object.fromEntries(r.responses) : r.responses || {};
+                                    const name = responses.studentName || responses.name || r.studentName || '-';
+                                    const regNo = responses.studentRegNo || r.studentRegNo || '-';
+                                    const category = r.memberType || 'Visitor';
+                                    const time = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    const catClass = category.toLowerCase();
+                                    
+                                    return `
+                                        <tr>
+                                            <td>${idx + 1}</td>
+                                            <td><strong>${name}</strong></td>
+                                            <td>${regNo}</td>
+                                            <td><span class="badge ${catClass}">${category}</span></td>
+                                            <td>${time}</td>
+                                            ${customKeys.map(k => `<td>${responses[k] || '-'}</td>`).join('')}
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+
+                        <script>
+                            window.onload = () => {
+                                setTimeout(() => {
+                                    window.print();
+                                }, 500);
+                            };
+                        </script>
+                    </body>
+                </html>
+            `;
+            const win = window.open('', '_blank');
+            win.document.write(printHtml);
+            win.document.close();
+            setMsg({ type: 'success', text: 'PDF document generated.' });
+        } catch (err) {
+            setMsg({ type: 'error', text: 'Failed to generate PDF' });
+        }
+    };
+
     const downloadCumulativeCSV = (filteredMembers, semesterName) => {
         try {
             const headers = ['Name', 'Registration Number', 'Category', 'Campus', 'Total Attendance'];
@@ -403,9 +591,28 @@ const AdminDashboard = () => {
     const submitMobileTraining = async (e) => {
         e.preventDefault();
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!mobTrainingForm.location.name) return setMsg({ type: 'error', text: 'Venue name is required.' });
+        if (!mobTrainingForm.location.latitude || !mobTrainingForm.location.longitude) {
+            return setMsg({ type: 'error', text: '⚠️ You MUST capture or input GPS coordinates before creating!' });
+        }
+        
+        // Auto-assign location name based on campus
+        let locName = 'Doulos store';
+        if (mobTrainingForm.campus === 'Valley Road' || mobTrainingForm.campus.includes('Valley Road')) {
+            locName = 'DAC 504';
+        } else if (mobTrainingForm.campus === 'Athi River') {
+            locName = 'Doulos store';
+        }
+        
+        const submissionForm = {
+            ...mobTrainingForm,
+            location: {
+                ...mobTrainingForm.location,
+                name: locName
+            }
+        };
+
         try {
-            await api.post('/trainings', mobTrainingForm);
+            await api.post('/trainings', submissionForm);
             setMsg({ type: 'success', text: 'Training session created!' });
             setBottomSheetOpen(false);
             fetchTrainings();
@@ -467,9 +674,28 @@ const AdminDashboard = () => {
     const submitMobileMeeting = async (e) => {
         e.preventDefault();
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!mobMeetingForm.location.name) return setMsg({ type: 'error', text: 'Venue name is required.' });
+        if (!mobMeetingForm.location.latitude || !mobMeetingForm.location.longitude) {
+            return setMsg({ type: 'error', text: '⚠️ You MUST capture or input GPS coordinates before creating!' });
+        }
+
+        // Auto-assign location name based on campus
+        let locName = 'Doulos store';
+        if (mobMeetingForm.campus === 'Valley Road' || mobMeetingForm.campus.includes('Valley Road')) {
+            locName = 'DAC 504';
+        } else if (mobMeetingForm.campus === 'Athi River') {
+            locName = 'Doulos store';
+        }
+
+        const submissionForm = {
+            ...mobMeetingForm,
+            location: {
+                ...mobMeetingForm.location,
+                name: locName
+            }
+        };
+
         try {
-            await api.post('/meetings', mobMeetingForm);
+            await api.post('/meetings', submissionForm);
             setMsg({ type: 'success', text: 'Fellowship meeting session scheduled!' });
             setBottomSheetOpen(false);
             fetchMeetings();
@@ -1155,26 +1381,16 @@ const AdminDashboard = () => {
                                             <option value="Valley Road">Valley Road Only</option>
                                         </select>
                                     </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Venue Location Name *</label>
-                                        <input 
-                                            type="text" 
-                                            className="mobile-form-input" 
-                                            placeholder="e.g. Athi River Chapel Hall" 
-                                            value={mobTrainingForm.location.name} 
-                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, name: e.target.value } })}
-                                            required
-                                        />
-                                    </div>
                                     <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
                                         <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Geofence Radius (meters)</label>
+                                            <label className="mobile-form-label">Geofence Radius (meters) *</label>
                                             <input 
                                                 type="number" 
                                                 className="mobile-form-input" 
                                                 value={mobTrainingForm.location.radius} 
                                                 onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, radius: Number(e.target.value) } })}
                                                 placeholder="200"
+                                                required
                                             />
                                         </div>
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
@@ -1189,20 +1405,41 @@ const AdminDashboard = () => {
                                                     }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
                                                 }}
                                             >
-                                                <MapPin size={12} /> GPS
+                                                <MapPin size={12} /> GPS Capture
                                             </button>
                                         </div>
                                     </div>
-                                    {mobTrainingForm.location.latitude && mobTrainingForm.location.longitude && (
-                                        <div style={{ fontSize: '11px', color: '#34d399', marginTop: '-6px', marginBottom: '12px', fontWeight: 'bold' }}>
-                                            ✓ Captured: {mobTrainingForm.location.latitude.toFixed(6)}°, {mobTrainingForm.location.longitude.toFixed(6)}°
+                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="mobile-form-label">Latitude *</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                className="mobile-form-input" 
+                                                value={mobTrainingForm.location.latitude || ''} 
+                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, latitude: parseFloat(e.target.value) } })}
+                                                placeholder="-1.448"
+                                                required
+                                            />
                                         </div>
-                                    )}
+                                        <div style={{ flex: 1 }}>
+                                            <label className="mobile-form-label">Longitude *</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                className="mobile-form-input" 
+                                                value={mobTrainingForm.location.longitude || ''} 
+                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, longitude: parseFloat(e.target.value) } })}
+                                                placeholder="37.015"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                     <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
                                         Create Session
                                     </button>
                                 </form>
-                            </div>
+                             </div>
                         )}
 
                         {bottomSheetType === 'create_meeting' && (
@@ -1263,17 +1500,6 @@ const AdminDashboard = () => {
                                             <option value="Athi River">Athi River</option>
                                             <option value="Both">Both</option>
                                         </select>
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Venue Location Name</label>
-                                        <input 
-                                            type="text" 
-                                            className="mobile-form-input" 
-                                            placeholder="e.g. Valley Road DAC Auditorium" 
-                                            value={mobMeetingForm.location.name} 
-                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, name: e.target.value } })}
-                                            required
-                                        />
                                     </div>
                                     <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
                                         <div style={{ flex: 1 }}>
