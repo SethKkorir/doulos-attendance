@@ -1166,8 +1166,8 @@ const AdminDashboard = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                        <div>
+                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1 }}>
                                             <label className="mobile-form-label">Geofence Radius (meters)</label>
                                             <input 
                                                 type="number" 
@@ -1177,7 +1177,7 @@ const AdminDashboard = () => {
                                                 placeholder="200"
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
                                             <button 
                                                 type="button" 
                                                 className="btn" 
@@ -1275,18 +1275,19 @@ const AdminDashboard = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                        <div>
-                                            <label className="mobile-form-label">Geofence Radius (meters)</label>
+                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="mobile-form-label">Geofence Radius (meters) *</label>
                                             <input 
                                                 type="number" 
                                                 className="mobile-form-input" 
                                                 value={mobMeetingForm.location.radius} 
                                                 onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, radius: Number(e.target.value) } })}
                                                 placeholder="200"
+                                                required
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
                                             <button 
                                                 type="button" 
                                                 className="btn" 
@@ -1298,15 +1299,36 @@ const AdminDashboard = () => {
                                                     }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
                                                 }}
                                             >
-                                                <MapPin size={12} /> GPS
+                                                <MapPin size={12} /> GPS Capture
                                             </button>
                                         </div>
                                     </div>
-                                    {mobMeetingForm.location.latitude && mobMeetingForm.location.longitude && (
-                                        <div style={{ fontSize: '11px', color: '#25AAE1', marginTop: '-6px', marginBottom: '12px', fontWeight: 'bold' }}>
-                                            ✓ Captured: {mobMeetingForm.location.latitude.toFixed(6)}°, {mobMeetingForm.location.longitude.toFixed(6)}°
+                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="mobile-form-label">Latitude *</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                className="mobile-form-input" 
+                                                value={mobMeetingForm.location.latitude || ''} 
+                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, latitude: parseFloat(e.target.value) } })}
+                                                placeholder="-1.448"
+                                                required
+                                            />
                                         </div>
-                                    )}
+                                        <div style={{ flex: 1 }}>
+                                            <label className="mobile-form-label">Longitude *</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                className="mobile-form-input" 
+                                                value={mobMeetingForm.location.longitude || ''} 
+                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, longitude: parseFloat(e.target.value) } })}
+                                                placeholder="37.015"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                     <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
                                         Schedule Fellowship
                                     </button>

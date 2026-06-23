@@ -1271,18 +1271,18 @@ const MeetingsTab = ({
                         </div>
 
                         <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
-                            <label>Geofence Radius (meters)</label>
-                            <input type="number" className="modern-input" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} placeholder="200" />
+                            <label>Geofence Radius (meters) <span style={{ color: '#ef4444' }}>*</span></label>
+                            <input type="number" className="modern-input" value={formData.location.radius} onChange={e => setFormData({ ...formData, location: { ...formData.location, radius: parseInt(e.target.value) } })} placeholder="200" required />
                         </div>
 
                         <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
-                            <label>Latitude</label>
-                            <input type="number" step="any" className="modern-input" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.448" />
+                            <label>Latitude <span style={{ color: '#ef4444' }}>*</span></label>
+                            <input type="number" step="any" className="modern-input" value={formData.location.latitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, latitude: parseFloat(e.target.value) } })} placeholder="-1.448" required />
                         </div>
                         
                         <div style={{ gridColumn: 'span 4' }} className="form-group-premium">
-                            <label>Longitude</label>
-                            <input type="number" step="any" className="modern-input" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="37.015" />
+                            <label>Longitude <span style={{ color: '#ef4444' }}>*</span></label>
+                            <input type="number" step="any" className="modern-input" value={formData.location.longitude || ''} onChange={e => setFormData({ ...formData, location: { ...formData.location, longitude: parseFloat(e.target.value) } })} placeholder="37.015" required />
                         </div>
 
                         <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: '2px' }}>

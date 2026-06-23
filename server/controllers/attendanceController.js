@@ -178,8 +178,8 @@ export const submitAttendance = async (req, res) => {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distance = R * c;
 
-            if (distance > (meeting.location.radius || 200)) {
-                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Geofence Violation', `Outside range for ${meeting.location.name} (${Math.round(distance)}m). Required: <${meeting.location.radius || 200}m`, meeting.campus);
+            if (distance > ((meeting.location.radius || 200) + 100)) { // 100m grace buffer for GPS drift
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Geofence Violation', `Outside range for ${meeting.location.name} (${Math.round(distance)}m). Required: <${(meeting.location.radius || 200) + 100}m`, meeting.campus);
                 return res.status(403).json({
                     message: `Location Mismatch: You are too far from ${meeting.location.name}. Please ensure you are at the correct venue.`
                 });
@@ -191,7 +191,7 @@ export const submitAttendance = async (req, res) => {
             const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
             const isBypassed = bypassSetting?.value === 'true';
 
-            if (!isBypassed) {
+            if (!isBypassed && member.memberType !== 'Visitor') {
                 if (!deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
                     return res.status(400).json({ message: 'Device Lock Error: Device signature is missing. Please ensure your browser supports local storage and cookies.' });
                 }
@@ -207,7 +207,7 @@ export const submitAttendance = async (req, res) => {
 
 
         // 8. Anti-Proxy Check (One check-in per device per session)
-        if (deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount) {
+        if (deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount && member?.memberType !== 'Visitor') {
             const deviceQuery = isTrainingModel
                 ? { trainingId: meeting._id, deviceId, trainingDay: meeting.activeDay || 1 }
                 : { meeting: meeting._id, deviceId };

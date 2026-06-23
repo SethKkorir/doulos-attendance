@@ -8,6 +8,15 @@ import ValentineRain from '../components/ValentineRain';
 
 const getIndexedDBId = () => {
     return new Promise((resolve) => {
+        let resolved = false;
+        const safeResolve = (val) => {
+            if (!resolved) {
+                resolved = true;
+                resolve(val);
+            }
+        };
+        const timeoutId = setTimeout(() => safeResolve(null), 1000);
+
         try {
             const request = indexedDB.open('DoulosAttendanceDB', 1);
             request.onupgradeneeded = (e) => {
@@ -19,26 +28,44 @@ const getIndexedDBId = () => {
             request.onsuccess = (e) => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains('device')) {
-                    resolve(null);
+                    clearTimeout(timeoutId);
+                    safeResolve(null);
                     return;
                 }
                 const transaction = db.transaction('device', 'readonly');
                 const store = transaction.objectStore('device');
                 const getReq = store.get('device_id');
                 getReq.onsuccess = () => {
-                    resolve(getReq.result ? getReq.result.value : null);
+                    clearTimeout(timeoutId);
+                    safeResolve(getReq.result ? getReq.result.value : null);
                 };
-                getReq.onerror = () => resolve(null);
+                getReq.onerror = () => {
+                    clearTimeout(timeoutId);
+                    safeResolve(null);
+                };
             };
-            request.onerror = () => resolve(null);
+            request.onerror = () => {
+                clearTimeout(timeoutId);
+                safeResolve(null);
+            };
         } catch (err) {
-            resolve(null);
+            clearTimeout(timeoutId);
+            safeResolve(null);
         }
     });
 };
 
 const setIndexedDBId = (id) => {
     return new Promise((resolve) => {
+        let resolved = false;
+        const safeResolve = (val) => {
+            if (!resolved) {
+                resolved = true;
+                resolve(val);
+            }
+        };
+        const timeoutId = setTimeout(() => safeResolve(false), 1000);
+
         try {
             const request = indexedDB.open('DoulosAttendanceDB', 1);
             request.onupgradeneeded = (e) => {
@@ -52,12 +79,22 @@ const setIndexedDBId = (id) => {
                 const transaction = db.transaction('device', 'readwrite');
                 const store = transaction.objectStore('device');
                 store.put({ key: 'device_id', value: id });
-                transaction.oncomplete = () => resolve(true);
-                transaction.onerror = () => resolve(false);
+                transaction.oncomplete = () => {
+                    clearTimeout(timeoutId);
+                    safeResolve(true);
+                };
+                transaction.onerror = () => {
+                    clearTimeout(timeoutId);
+                    safeResolve(false);
+                };
             };
-            request.onerror = () => resolve(false);
+            request.onerror = () => {
+                clearTimeout(timeoutId);
+                safeResolve(false);
+            };
         } catch (err) {
-            resolve(false);
+            clearTimeout(timeoutId);
+            safeResolve(false);
         }
     });
 };
