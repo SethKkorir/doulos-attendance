@@ -198,12 +198,12 @@ const ReportsTab = ({
         win.document.close();
     };
 
-    const handlePrintFellowshipPDF = () => {
+    const handlePrintCrewPDF = () => {
         const groups = Array.from(new Set(filteredMembers.map(m => m.groupName).filter(Boolean))).sort();
         const printHtml = `
             <html>
                 <head>
-                    <title>Doulos Fellowship Groups Audit Sheet</title>
+                    <title>Doulos Crews Audit Sheet</title>
                     <style>
                         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
                         @page { size: A4; margin: 15mm; }
@@ -233,8 +233,8 @@ const ReportsTab = ({
                         <div class="logo-container">
                             <img src="${window.location.origin}/logo.png" class="logo-img" alt="Doulos" />
                             <div class="header-title">
-                                <h1>Fellowship Groups Audit</h1>
-                                <p>Groups Attendance & Roster Sheets</p>
+                                <h1>Crews Audit</h1>
+                                <p>Crews Attendance & Roster Sheets</p>
                             </div>
                         </div>
                         <div class="meta-info">
@@ -244,7 +244,7 @@ const ReportsTab = ({
                         </div>
                     </div>
 
-                    ${groups.length === 0 ? '<p style="text-align:center; padding: 3rem; color: #64748b;">No fellowship groups registered yet.</p>' : groups.map(group => {
+                    ${groups.length === 0 ? '<p style="text-align:center; padding: 3rem; color: #64748b;">No Crews registered yet.</p>' : groups.map(group => {
                         const membersInGroup = filteredMembers.filter(m => m.groupName === group);
                         const totalGroupCheckins = membersInGroup.reduce((acc, m) => acc + (m.totalAttended || 0), 0);
                         const maxPossible = membersInGroup.length * filteredMeetings.length;
@@ -281,7 +281,7 @@ const ReportsTab = ({
                     }).join('')}
 
                     <div class="footer">
-                        <span>Doulos Leaders In Service Systems - Fellowship Audit Sheet</span>
+                        <span>Doulos Leaders In Service Systems - Crew Audit Sheet</span>
                         <span>Page 1 of 1</span>
                     </div>
                     <script>
@@ -641,9 +641,9 @@ const ReportsTab = ({
         }
     };
 
-    const handleExportFellowshipCSV = () => {
+    const handleExportCrewCSV = () => {
         try {
-            const headers = ['Student Name', 'Registration Number', 'Campus', 'Category', 'Assigned Fellowship Group', 'Total Attendance'];
+            const headers = ['Student Name', 'Registration Number', 'Campus', 'Category', 'Assigned Crew', 'Total Attendance'];
             const csvContent = [
                 headers.join(','),
                 ...filteredMembers.map(m => [
@@ -659,11 +659,11 @@ const ReportsTab = ({
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `Doulos_Fellowship_Groups_Audit_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', `Doulos_Crews_Audit_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            setMsg({ type: 'success', text: 'Fellowship Groups CSV exported successfully!' });
+            setMsg({ type: 'success', text: 'Crews CSV exported successfully!' });
         } catch (err) {
             setMsg({ type: 'error', text: 'Failed to export groups audit CSV' });
         }
@@ -747,7 +747,7 @@ const ReportsTab = ({
                 <div style={{ display: 'flex', gap: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem', flexWrap: 'wrap' }}>
                     {[
                         { id: 'overview', label: 'Semester Trends', icon: TrendingUp, activeColor: '#25AAE1', bg: 'rgba(37, 170, 225, 0.12)', border: 'rgba(37, 170, 225, 0.2)' },
-                        { id: 'groups', label: 'Fellowship Groups', icon: Users, activeColor: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.2)' },
+                        { id: 'groups', label: 'Crews', icon: Users, activeColor: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.2)' },
                         { id: 'watering', label: 'Tree Watering', icon: Activity, activeColor: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.2)' },
                         { id: 'honors', label: 'Consistency Honors', icon: Award, activeColor: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.2)' },
                         { id: 'finance', label: 'Contributions Ledger', icon: DollarSign, activeColor: '#a78bfa', bg: 'rgba(167, 139, 250, 0.12)', border: 'rgba(167, 139, 250, 0.2)' },
@@ -964,7 +964,7 @@ const ReportsTab = ({
                 </div>
             )}
 
-            {/* B. FELLOWSHIP GROUPS TAB */}
+            {/* B. CREWS TAB */}
             {activeTab === 'groups' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.3s' }}>
                     
@@ -973,17 +973,17 @@ const ReportsTab = ({
                         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-text, white)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Users size={20} color="#3b82f6" /> Fellowship Groups Attendance Audit
+                                    <Users size={20} color="#3b82f6" /> Crews Attendance Audit
                                 </h3>
                                 <p style={{ color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.82rem', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                                    Calculates the average check-in indices across active fellowship classes. Move, audit, and analyze member rosters below.
+                                    Calculates the average check-in indices across active Crews. Move, audit, and analyze member rosters below.
                                 </p>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <button onClick={handlePrintFellowshipPDF} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <button onClick={handlePrintCrewPDF} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <FileText size={14} /> Print Audit Sheet
                                 </button>
-                                <button onClick={handleExportFellowshipCSV} className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <button onClick={handleExportCrewCSV} className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <Download size={14} /> Export CSV
                                 </button>
                             </div>
@@ -994,7 +994,7 @@ const ReportsTab = ({
                     {(() => {
                         const groups = Array.from(new Set(filteredMembers.map(m => m.groupName).filter(Boolean))).sort();
                         if (groups.length === 0) {
-                            return <div className="glass-card-premium" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-dim)', fontWeight: 600 }}>No fellowship groups assigned yet. Create groups under "Activities & Groups" center first!</div>;
+                            return <div className="glass-card-premium" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-dim)', fontWeight: 600 }}>No Crews assigned yet. Create Crews under "Activities & Groups" center first!</div>;
                         }
                         return (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>

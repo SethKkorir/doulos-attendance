@@ -178,7 +178,7 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                     </div>
                     <div>
                         <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>No Scheduled Events</div>
-                        <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>The fellowship schedule is currently clear of custom events.</div>
+                        <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>The meeting schedule is currently clear of custom events.</div>
                     </div>
                     <button onClick={() => setShowCreate(true)} className="btn btn-primary" style={{ padding: '0.6rem 1.25rem', background: 'rgba(37, 170, 225, 0.08)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.15)' }}>
                         Publish First Event

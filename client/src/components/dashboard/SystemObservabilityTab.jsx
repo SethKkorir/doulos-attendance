@@ -67,7 +67,7 @@ const SystemObservabilityTab = ({
                 name: act.studentName || 'Legacy Student',
                 regNo: act.studentRegNo,
                 campus: act.campus || 'Athi River',
-                meeting: act.meetingName || 'Weekly Fellowship',
+                meeting: act.meetingName || 'Weekly Meeting',
                 time: act.timestamp ? new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Just Now'
             }));
             setActivities(mappedActivities);

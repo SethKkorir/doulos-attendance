@@ -663,7 +663,7 @@ export const autoGenerateGroups = async (req, res) => {
 export const clearAllGroups = async (req, res) => {
     try {
         await Member.updateMany({}, { $set: { groupName: null } });
-        res.json({ message: 'All active fellowship groups have been successfully reset.' });
+        res.json({ message: 'All active Crews have been successfully reset.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

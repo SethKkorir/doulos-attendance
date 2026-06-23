@@ -37,7 +37,7 @@ const SpiritualDashboard = () => {
 
 
     const [formData, setFormData] = useState({
-        name: 'Weekly Fellowship',
+        name: 'Weekly Meeting',
         date: new Date().toISOString().split('T')[0],
         campus: 'Athi River',
         startTime: '19:00',
@@ -61,7 +61,7 @@ const SpiritualDashboard = () => {
 
     const fetchMeetings = async () => {
         if (isGuest) {
-            setMeetings([{ _id: '1', name: 'Guest Fellowship', date: new Date().toISOString(), isActive: true, campus: 'Athi River', startTime: '19:00', endTime: '21:00' }]);
+            setMeetings([{ _id: '1', name: 'Guest Meeting', date: new Date().toISOString(), isActive: true, campus: 'Athi River', startTime: '19:00', endTime: '21:00' }]);
             return;
         }
         try {
@@ -83,7 +83,7 @@ const SpiritualDashboard = () => {
         e.preventDefault();
         try {
             await api.post('/meetings', formData);
-            setMsg({ type: 'success', text: 'Fellowship session created!' });
+            setMsg({ type: 'success', text: 'Meeting session created!' });
             setShowCreate(false);
             fetchMeetings();
         } catch (err) {
@@ -172,14 +172,14 @@ const SpiritualDashboard = () => {
                         style={{ background: activeTab === 'meetings' ? '#8b5cf6' : 'rgba(255,255,255,0.05)' }}
                         onClick={() => setActiveTab('meetings')}
                     >
-                        Fellowships & Services
+                        Meetings & Services
                     </button>
                 </div>
 
                 {activeTab === 'meetings' && (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0 }}>Fellowship Sessions</h2>
+                            <h2 style={{ margin: 0 }}>Meeting Sessions</h2>
                             <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)} style={{ background: '#8b5cf6', borderColor: '#8b5cf6' }}>
                                 <Plus size={18} style={{ marginRight: '0.5rem' }} /> New Service
                             </button>
@@ -187,9 +187,9 @@ const SpiritualDashboard = () => {
 
                         {showCreate && (
                             <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', border: '1px solid #8b5cf6' }}>
-                                <h3 style={{ marginTop: 0 }}>Schedule Service / Fellowship</h3>
+                                <h3 style={{ marginTop: 0 }}>Schedule Service / Meeting</h3>
                                 <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <input className="input-field" placeholder="Service Name (e.g., Weekly Fellowship)" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                                    <input className="input-field" placeholder="Service Name (e.g., Weekly Meeting)" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                                     <input className="input-field" type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
                                     <input className="input-field" type="time" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
                                     <input className="input-field" type="time" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />

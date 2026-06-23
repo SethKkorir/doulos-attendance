@@ -131,7 +131,7 @@ const ActivitiesTab = ({
 
     const handleClearGroups = async () => {
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        if (!window.confirm('⚠️ WARNING: This will permanently delete all fellowship group assignments. Proceed?')) return;
+        if (!window.confirm('⚠️ WARNING: This will permanently delete all Crew assignments. Proceed?')) return;
 
         try {
             const res = await api.post('/members/clear-all-groups');
@@ -159,7 +159,7 @@ const ActivitiesTab = ({
         const printHtml = `
             <html>
                 <head>
-                    <title>Doulos Directory - Fellowship Groups</title>
+                    <title>Doulos Directory - Crews</title>
                     <style>
                         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
                         @page { size: A4; margin: 15mm; }
@@ -198,7 +198,7 @@ const ActivitiesTab = ({
                         <div class="logo-container">
                             <img src="${window.location.origin}/logo.png" class="logo-img" alt="Doulos" />
                             <div class="header-title">
-                                <h1>Fellowship Groups Directory</h1>
+                                <h1>Crews Directory</h1>
                                 <p>Active Class Placements</p>
                             </div>
                         </div>
@@ -397,7 +397,7 @@ const ActivitiesTab = ({
     // --- CSV EXPORTERS ---
     const handleExportGroupsCSV = () => {
         try {
-            const headers = ['Name', 'Registration Number', 'Campus', 'Category', 'Assigned Group'];
+            const headers = ['Name', 'Registration Number', 'Campus', 'Category', 'Assigned Crew'];
             const csvContent = [
                 headers.join(','),
                 ...activeMembers.map(m => [
@@ -412,7 +412,7 @@ const ActivitiesTab = ({
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `Doulos_Fellowship_Groups_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', `Doulos_Crews_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -478,7 +478,7 @@ const ActivitiesTab = ({
                             fontSize: '0.8rem', fontWeight: 800, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.4rem'
                         }}
                     >
-                        <Users size={15} /> Fellowship Groups
+                        <Users size={15} /> Crews
                     </button>
                     <button 
                         onClick={() => setSubTab('watering')}
@@ -792,7 +792,7 @@ const ActivitiesTab = ({
                                 <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
                                 <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Category</th>
                                 {subTab === 'groups' ? (
-                                    <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Assigned Fellowship Group</th>
+                                    <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Assigned Crew</th>
                                 ) : (
                                     <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Watering Commitment</th>
                                 )}
@@ -843,7 +843,7 @@ const ActivitiesTab = ({
                                                         {/* Handler for adding custom group names inline */}
                                                         <select style={{ display: 'none' }} onChange={async (e) => {
                                                             if (e.target.value === 'NEW_GROUP_PROMPT') {
-                                                                const custom = window.prompt(`Enter custom fellowship group name for ${m.name}:`);
+                                                                const custom = window.prompt(`Enter custom Crew name for ${m.name}:`);
                                                                 if (custom && custom.trim()) {
                                                                     await handleMemberGroupChange(m._id, custom.trim());
                                                                 }
@@ -854,7 +854,7 @@ const ActivitiesTab = ({
                                                                 if (parent) {
                                                                     parent.onchange = async (evt) => {
                                                                         if (evt.target.value === 'NEW_GROUP_PROMPT') {
-                                                                            const custom = window.prompt(`Enter custom fellowship group name for ${m.name}:`);
+                                                                            const custom = window.prompt(`Enter custom Crew name for ${m.name}:`);
                                                                             if (custom && custom.trim()) {
                                                                                 await handleMemberGroupChange(m._id, custom.trim());
                                                                             } else {

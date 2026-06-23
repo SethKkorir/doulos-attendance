@@ -1273,7 +1273,7 @@ const MembersTab = ({
                                 {loadingInsights ? (
                                     <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                                         <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '36px', height: '36px', borderTopColor: '#25AAE1' }}></div>
-                                        Analyzing student fellowship analytics...
+                                        Analyzing student performance analytics...
                                     </div>
                                 ) : memberInsights ? (
                                     <div style={{

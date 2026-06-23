@@ -404,7 +404,7 @@ const SystemSettingsTab = ({
                     </div>
                     <div>
                         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>Semester Rollover Console</h3>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Close past terms, reset points, and set a welcoming new theme for the fellowship</p>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Close past terms, reset points, and set a welcoming new theme for the Doulos community</p>
                     </div>
                 </div>
 

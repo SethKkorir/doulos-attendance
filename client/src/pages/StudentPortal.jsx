@@ -1126,7 +1126,7 @@ const StudentPortal = () => {
                                             <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>🌿 FREEDOM BASE</div>
                                             <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Tree Watering Commitments</h3>
                                             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: '0.35rem', lineHeight: 1.4 }}>
-                                                Doulos Fellowship tree nurture responsibilities. Commit to days that work best for you (deselect all to clear).
+                                                Doulos tree nurture responsibilities. Commit to days that work best for you (deselect all to clear).
                                             </p>
                                         </div>
 
@@ -1258,13 +1258,13 @@ const StudentPortal = () => {
                                         )}
                                     </div>
 
-                                    {/* My Fellowship Group Card */}
+                                    {/* My Crew Card */}
                                     <div className="sp-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '4px solid #25AAE1' }}>
                                         <div>
-                                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>👥 FELLOWSHIP PLACEMENT</div>
-                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>My Fellowship Group</h3>
+                                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>👥 CREW PLACEMENT</div>
+                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>My Crew</h3>
                                             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', marginTop: '0.35rem', lineHeight: 1.4 }}>
-                                                Your small group fellowship assignment for leadership training and accountability.
+                                                Your Crew assignment for leadership training and accountability.
                                             </p>
                                         </div>
 
@@ -1316,7 +1316,7 @@ const StudentPortal = () => {
                                                 <div>
                                                     <div style={{ fontSize: '0.82rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '0.5px' }}>Placement Pending</div>
                                                     <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: '0.35rem 0 0 0', lineHeight: 1.4 }}>
-                                                        G9 is currently stratifying and balancing class fellowship groups. You will see your group card and classmates here once assigned!
+                                                        G9 is currently stratifying and balancing class Crews. You will see your Crew card and classmates here once assigned!
                                                     </p>
                                                 </div>
                                             </div>
@@ -1404,10 +1404,10 @@ const StudentPortal = () => {
                         </div>
                     </div>
 
-                    {/* Fellowship Log timeline */}
+                    {/* Meeting Log timeline */}
                     <div className="sp-card" style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <div style={{ fontWeight: 900, fontSize: '0.95rem' }}>Fellowship Log</div>
+                            <div style={{ fontWeight: 900, fontSize: '0.95rem' }}>Meeting Log</div>
                             <button onClick={() => goTab('history')} style={{ background: 'none', border: 'none', color: '#25AAE1', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>View all</button>
                         </div>
                         <div className="sp-timeline">

@@ -119,7 +119,7 @@ const AdminDashboard = () => {
     const fetchMeetings = async () => {
         if (isGuest) {
             setMeetings([
-                { _id: '1', name: 'Weekly Fellowship', date: new Date().toISOString(), isActive: true, campus: 'Valley Road', attendees: 45, attendanceCount: 45 },
+                { _id: '1', name: 'Weekly Meeting', date: new Date().toISOString(), isActive: true, campus: 'Valley Road', attendees: 45, attendanceCount: 45 },
                 { _id: '2', name: 'Leadership Summit', date: new Date(Date.now() - 86400000 * 7).toISOString(), isActive: false, campus: 'Valley Road', attendees: 120, attendanceCount: 120 },
                 { _id: '3', name: 'Prayer Night', date: new Date(Date.now() - 86400000 * 14).toISOString(), isActive: false, campus: 'Athi River', attendees: 30, attendanceCount: 30 }
             ]);
@@ -524,7 +524,7 @@ const AdminDashboard = () => {
     const [selectedMemberInsights, setSelectedMemberInsights] = useState(null);
     const [loadingMemberInsights, setLoadingMemberInsights] = useState(false);
     const [mobMeetingForm, setMobMeetingForm] = useState({
-        name: 'Weekly Fellowship',
+        name: 'Weekly Meeting',
         date: new Date().toISOString().split('T')[0],
         campus: 'Valley Road',
         startTime: '17:30',
@@ -696,7 +696,7 @@ const AdminDashboard = () => {
 
         try {
             await api.post('/meetings', submissionForm);
-            setMsg({ type: 'success', text: 'Fellowship meeting session scheduled!' });
+            setMsg({ type: 'success', text: 'Meeting scheduled successfully!' });
             setBottomSheetOpen(false);
             fetchMeetings();
         } catch (err) {
@@ -911,7 +911,7 @@ const AdminDashboard = () => {
                                     <div className="mobile-empty-state">
                                         <div className="mobile-empty-icon"><LayoutDashboard size={32} /></div>
                                         <div className="mobile-empty-title">No Meetings Found</div>
-                                        <div className="mobile-empty-subtitle">Try scheduling a new fellowship meeting</div>
+                                        <div className="mobile-empty-subtitle">Try scheduling a new meeting</div>
                                     </div>
                                 )}
                             </div>
@@ -1451,7 +1451,7 @@ const AdminDashboard = () => {
                                         <input 
                                             type="text" 
                                             className="mobile-form-input" 
-                                            placeholder="e.g. Weekly Fellowship" 
+                                            placeholder="e.g. Weekly Meeting" 
                                             value={mobMeetingForm.name} 
                                             onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, name: e.target.value })}
                                             required
@@ -1556,7 +1556,7 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
                                     <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
-                                        Schedule Fellowship
+                                        Schedule Meeting
                                     </button>
                                 </form>
                             </div>
@@ -1576,7 +1576,7 @@ const AdminDashboard = () => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '8px' }}>
                                     <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fellowships</div>
+                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Meetings</div>
                                         <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px' }}>{selectedMemberInsights.stats?.physicalAttended || 0} / {selectedMemberInsights.stats?.totalMeetings || 0}</div>
                                     </div>
                                     <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
@@ -1616,7 +1616,7 @@ const AdminDashboard = () => {
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
                                                         <span style={{ fontWeight: '600' }}>{log.name || log.meetingName}</span>
                                                         <span style={{ fontSize: '10px', opacity: 0.5, color: log.isTraining ? '#1da6d9' : '#34d399' }}>
-                                                            {log.isTraining ? 'Leadership Training' : 'Fellowship Meeting'}
+                                                            {log.isTraining ? 'Leadership Training' : 'Meeting'}
                                                         </span>
                                                     </div>
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
@@ -1924,7 +1924,7 @@ const AdminDashboard = () => {
                             <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.75px', color: 'white' }}>
                                 {activeTab === 'meetings' ? 'Meetings & Scans' : 
                                  activeTab === 'trainings' ? 'Trainings & Radius' : 
-                                 activeTab === 'members' ? 'Fellowship Registry' : 
+                                 activeTab === 'members' ? 'Douloid Registry' : 
                                  activeTab === 'reports' ? 'Reports & Analytics' : 
                                  activeTab === 'finance' ? 'Financial Systems' : 
                                  activeTab === 'events' ? 'Events Scheduler' : 
