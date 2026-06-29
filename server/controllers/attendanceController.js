@@ -81,20 +81,20 @@ export const submitAttendance = async (req, res) => {
         const meetingDate = new Date(meeting.date);
 
         // Normalize both to date strings for day comparison (YYYY-MM-DD)
-        const Y = meetingDate.getFullYear();
-        const M = String(meetingDate.getMonth() + 1).padStart(2, '0');
-        const D = String(meetingDate.getDate()).padStart(2, '0');
+        const Y = meetingDate.getUTCFullYear();
+        const M = String(meetingDate.getUTCMonth() + 1).padStart(2, '0');
+        const D = String(meetingDate.getUTCDate()).padStart(2, '0');
         const meetingStr = `${Y}-${M}-${D}`;
         const todayStr = getKenyanDate();
 
         const [startHours, startMinutes] = meeting.startTime.split(':').map(Number);
         const [endHours, endMinutes] = meeting.endTime.split(':').map(Number);
 
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
         const startTotalMinutes = startHours * 60 + startMinutes;
         const endTotalMinutes = endHours * 60 + endMinutes;
 
-        console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.getHours()}:${now.getMinutes()} vs Start=${meeting.startTime} End=${meeting.endTime}`);
+        console.log(`[DEBUG] Time Check (EAT): Today=${todayStr} Meeting=${meetingStr} Now=${now.getUTCHours()}:${now.getUTCMinutes()} vs Start=${meeting.startTime} End=${meeting.endTime}`);
 
         if (!isSuperUser && !meeting.isTestMeeting) {
             // 1. Future Day Block
@@ -187,9 +187,10 @@ export const submitAttendance = async (req, res) => {
         }
 
         // 8. Device Handcuff Logic (Locking student to one phone)
+        let isBypassed = false;
         if (member) {
             const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
-            const isBypassed = bypassSetting?.value === 'true';
+            isBypassed = bypassSetting?.value === 'true';
 
             if (!isBypassed && member.memberType !== 'Visitor') {
                 if (!deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
@@ -206,8 +207,8 @@ export const submitAttendance = async (req, res) => {
         }
 
 
-        // 8. Anti-Proxy Check (One check-in per device per session)
-        if (deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount && member?.memberType !== 'Visitor') {
+        // 8.5. Anti-Proxy Check (One check-in per device per session)
+        if (!isBypassed && deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount && member?.memberType !== 'Visitor') {
             const deviceQuery = isTrainingModel
                 ? { trainingId: meeting._id, deviceId, trainingDay: meeting.activeDay || 1 }
                 : { meeting: meeting._id, deviceId };
@@ -232,12 +233,12 @@ export const submitAttendance = async (req, res) => {
         if (!isSuperUser && !meeting.isTestMeeting && !isTrainingSession && !member?.isTestAccount) {
             const mDate = new Date(meeting.date);
             const startOfWeek = new Date(mDate);
-            startOfWeek.setDate(mDate.getDate() - mDate.getDay()); // Sunday
-            startOfWeek.setHours(0, 0, 0, 0);
+            startOfWeek.setUTCDate(mDate.getUTCDate() - mDate.getUTCDay()); // Sunday
+            startOfWeek.setUTCHours(0, 0, 0, 0);
 
             const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
-            endOfWeek.setHours(23, 59, 59, 999);
+            endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6); // Saturday
+            endOfWeek.setUTCHours(23, 59, 59, 999);
 
             // Find all meetings this week globally (all campuses)
             const meetingsThisWeek = await Meeting.find({
@@ -691,7 +692,7 @@ export const manualCheckIn = async (req, res) => {
             const meetingDate = new Date(meeting.date);
             const [endH, endM] = meeting.endTime.split(':').map(Number);
             const meetingEnd = new Date(meetingDate);
-            meetingEnd.setHours(endH, endM, 0, 0);
+            meetingEnd.setUTCHours(endH, endM, 0, 0);
             const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
 
             if (hoursSinceEnd > 48) {
@@ -770,7 +771,7 @@ export const bulkManualCheckIn = async (req, res) => {
             const meetingDate = new Date(meeting.date);
             const [endH, endM] = meeting.endTime.split(':').map(Number);
             const meetingEnd = new Date(meetingDate);
-            meetingEnd.setHours(endH, endM, 0, 0);
+            meetingEnd.setUTCHours(endH, endM, 0, 0);
             const hoursSinceEnd = (now - meetingEnd) / (1000 * 60 * 60);
 
             if (hoursSinceEnd > 48) {

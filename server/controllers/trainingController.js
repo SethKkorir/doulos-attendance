@@ -28,12 +28,12 @@ export const getTrainings = async (req, res) => {
         const activeTrainings = await Training.find({ isActive: true });
         for (const t of activeTrainings) {
             const tDate = new Date(t.date);
-            const tStr = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}-${String(tDate.getDate()).padStart(2, '0')}`;
+            const tStr = `${tDate.getUTCFullYear()}-${String(tDate.getUTCMonth() + 1).padStart(2, '0')}-${String(tDate.getUTCDate()).padStart(2, '0')}`;
             if (tStr > todayStr) continue;
 
             const [endH, endM] = t.endTime.split(':').map(Number);
             const endTotalMinutes = endH * 60 + endM;
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 
             // Trainings span multiple days (Fri–Sun).
             // Only auto-close if the training started more than 3 days ago.
@@ -43,6 +43,11 @@ export const getTrainings = async (req, res) => {
             if (isPastDay) {
                 await Training.findByIdAndUpdate(t._id, { isActive: false });
                 console.log(`[AUTO-CLOSE] Training "${t.name}" auto-closed after 3+ days.`);
+                
+                // Trigger summary email asynchronously
+                import('../utils/emailService.js').then(({ sendMeetingSummaryEmail }) => {
+                    sendMeetingSummaryEmail(t._id, true).catch(console.error);
+                }).catch(console.error);
             }
         }
 
@@ -85,13 +90,12 @@ export const getTrainingByCode = async (req, res) => {
         const todayStr = getKenyanDate();
         
         const activeDay = training.activeDay || 1;
-        const targetDate = new Date(tDate);
-        targetDate.setDate(targetDate.getDate() + (activeDay - 1));
-        const tStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+        const targetDate = new Date(tDate.getTime() + (activeDay - 1) * 24 * 60 * 60 * 1000);
+        const tStr = `${targetDate.getUTCFullYear()}-${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}-${String(targetDate.getUTCDate()).padStart(2, '0')}`;
 
         const [startH, startM] = training.startTime.split(':').map(Number);
         const [endH, endM] = training.endTime.split(':').map(Number);
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 
         if (!isSuperUser && !training.isTestMeeting) {
             if (!training.isActive) return res.status(403).json({ message: 'This training session is closed.' });
@@ -116,7 +120,19 @@ export const updateTrainingStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
+
+        const original = await Training.findById(id);
+        if (!original) return res.status(404).json({ message: 'Training not found' });
+
         const training = await Training.findByIdAndUpdate(id, updates, { new: true });
+
+        // Trigger email reports if training transitions from active -> closed
+        if (original.isActive && !training.isActive) {
+            import('../utils/emailService.js').then(({ sendMeetingSummaryEmail }) => {
+                sendMeetingSummaryEmail(training._id, true).catch(console.error);
+            }).catch(console.error);
+        }
+
         res.json(training);
     } catch (error) {
         res.status(500).json({ message: error.message });

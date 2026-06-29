@@ -352,46 +352,37 @@ export const getObservabilityTelemetry = async (req, res) => {
                 }
             ]);
 
-            // Find registration numbers of students who successfully checked in to target sessions
-            const checkedInRegNos = await Attendance.distinct('studentRegNo', {
-                $or: [
-                    { meeting: { $in: targetMeetingIds } },
-                    { trainingId: { $in: targetTrainingIds } }
-                ]
-            });
+        }
 
-            // 6. Real Recent Check-In Failures scoped to target session campuses in the last 24 hours
-            if (mongoose.connection.readyState === 1) {
-                scanErrors = await mongoose.connection.db.collection('scanerrors')
-                    .aggregate([
-                        { $match: { 
-                            campus: { $in: targetCampuses },
-                            timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-                            studentRegNo: { $nin: checkedInRegNos }
-                        } },
-                        { $sort: { timestamp: -1 } },
-                        { $limit: 20 },
-                        {
-                            $lookup: {
-                                from: "members",
-                                localField: "studentRegNo",
-                                foreignField: "studentRegNo",
-                                as: "memberInfo"
-                            }
-                        },
-                        {
-                            $project: {
-                                studentRegNo: 1,
-                                campus: 1,
-                                error: 1,
-                                desc: 1,
-                                timestamp: 1,
-                                studentName: { $arrayElemAt: ["$memberInfo.name", 0] },
-                                studentId: { $arrayElemAt: ["$memberInfo._id", 0] }
-                            }
+        // 6. Real Recent Check-In Failures in the last 24 hours (unfiltered for maximum visibility)
+        if (mongoose.connection.readyState === 1) {
+            scanErrors = await mongoose.connection.db.collection('scanerrors')
+                .aggregate([
+                    { $match: { 
+                        timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+                    } },
+                    { $sort: { timestamp: -1 } },
+                    { $limit: 30 },
+                    {
+                        $lookup: {
+                            from: "members",
+                            localField: "studentRegNo",
+                            foreignField: "studentRegNo",
+                            as: "memberInfo"
                         }
-                    ]).toArray();
-            }
+                    },
+                    {
+                        $project: {
+                            studentRegNo: 1,
+                            campus: 1,
+                            error: 1,
+                            desc: 1,
+                            timestamp: 1,
+                            studentName: { $arrayElemAt: ["$memberInfo.name", 0] },
+                            studentId: { $arrayElemAt: ["$memberInfo._id", 0] }
+                        }
+                    }
+                ]).toArray();
         }
 
         res.json({

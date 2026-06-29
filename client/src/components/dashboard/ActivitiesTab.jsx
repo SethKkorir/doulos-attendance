@@ -168,20 +168,104 @@ const ActivitiesTab = ({
                             margin: 0; padding: 0; background: #ffffff;
                             color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
-                        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #25AAE1; padding-bottom: 12px; margin-bottom: 25px; }
-                        .logo-container { display: flex; align-items: center; gap: 15px; }
-                        .logo-img { width: 65px; height: 65px; object-fit: contain; }
-                        .header-title h1 { margin: 0; font-size: 1.8rem; font-weight: 900; color: #021525; letter-spacing: -0.5px; }
-                        .header-title p { margin: 3px 0 0 0; font-size: 0.85rem; color: #25AAE1; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
-                        .meta-info { text-align: right; font-size: 0.8rem; color: #64748b; font-weight: 600; line-height: 1.4; }
-                        .meta-info strong { color: #0f172a; }
+                        .header {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            margin-bottom: 25px;
+                            height: 50px;
+                        }
+                        .logo-container {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                        }
+                        .logo-img {
+                            width: 45px;
+                            height: 45px;
+                            object-fit: contain;
+                        }
+                        .header-title h2 {
+                            margin: 0;
+                            font-size: 0.85rem;
+                            font-weight: 800;
+                            color: #475569;
+                            letter-spacing: 0.5px;
+                            line-height: 1.2;
+                        }
+                        .header-title p {
+                            margin: 2px 0 0 0;
+                            font-size: 0.85rem;
+                            font-weight: 800;
+                            color: #64748b;
+                            letter-spacing: 0.5px;
+                            line-height: 1.2;
+                        }
+                        .header-pink-line {
+                            flex-grow: 1;
+                            height: 4px;
+                            background-color: #F43F5E;
+                            margin-left: 20px;
+                            border-radius: 2px;
+                        }
+                        .watermark-bg {
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            width: 300px;
+                            height: 300px;
+                            background-image: url('${window.location.origin}/logo.png');
+                            background-size: contain;
+                            background-repeat: no-repeat;
+                            opacity: 0.02;
+                            pointer-events: none;
+                            z-index: -9999;
+                        }
+                        .footer-contact-line {
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 0.65rem;
+                            color: #64748b;
+                            font-weight: 700;
+                            border-top: 1px solid #cbd5e1;
+                            padding-top: 8px;
+                            margin-top: 40px;
+                            page-break-inside: avoid;
+                        }
+                        .footer-graphic {
+                            display: flex;
+                            height: 18px;
+                            margin-top: 6px;
+                            position: relative;
+                            overflow: hidden;
+                            page-break-inside: avoid;
+                        }
+                        .footer-pink-bar {
+                            background-color: #F43F5E;
+                            flex-grow: 1;
+                            clip-path: polygon(0 0, 100% 0, calc(100% - 15px) 100%, 0 100%);
+                            margin-right: -8px;
+                        }
+                        .footer-dark-gray-bar {
+                            background-color: #475569;
+                            width: 80px;
+                            clip-path: polygon(15px 0, 100% 0, calc(100% - 15px) 100%, 0 100%);
+                            margin-right: -8px;
+                        }
+                        .footer-light-gray-bar {
+                            background-color: #94a3b8;
+                            width: 100px;
+                            clip-path: polygon(15px 0, 100% 0, 100% 100%, 0 100%);
+                        }
+                        .meta-info { font-size: 0.75rem; color: #64748b; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
                         .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
                         .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; }
                         .summary-card h3 { margin: 0 0 5px 0; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; }
                         .summary-card div { font-size: 1.6rem; font-weight: 900; color: #25AAE1; }
                         .group-section { margin-bottom: 35px; page-break-inside: avoid; }
-                        .group-title { font-size: 1.15rem; font-weight: 900; color: #ffffff; background: #021525; padding: 8px 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-                        .group-count { font-size: 0.85rem; font-weight: 700; background: rgba(37, 170, 225, 0.2); color: #25AAE1; padding: 2px 10px; border-radius: 20px; }
+                        .group-title { font-size: 1rem; font-weight: 900; color: #ffffff; background: #475569; padding: 8px 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+                        .group-count { font-size: 0.75rem; font-weight: 700; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
                         th { background: #f1f5f9; color: #475569; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 2px solid #cbd5e1; }
                         td { padding: 9px 12px; font-size: 0.8rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
@@ -190,22 +274,29 @@ const ActivitiesTab = ({
                         .badge-recruit { background: rgba(37, 170, 225, 0.1); color: #0369a1; }
                         .badge-visitor { background: rgba(167, 139, 250, 0.1); color: #6d28d9; }
                         .badge-exempted { background: rgba(248, 113, 113, 0.1); color: #b91c1c; }
-                        .footer { width: 100%; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
                     </style>
                 </head>
                 <body>
+                    <div class="watermark-bg"></div>
                     <div class="header">
                         <div class="logo-container">
                             <img src="${window.location.origin}/logo.png" class="logo-img" alt="Doulos" />
                             <div class="header-title">
-                                <h1>Crews Directory</h1>
-                                <p>Active Class Placements</p>
+                                <h2>DOULOS TEAM BUILDERS</h2>
+                                <p>AND FREEDOM BASE CAMP</p>
                             </div>
                         </div>
-                        <div class="meta-info">
-                            Semester: <strong>${currentSemester}</strong><br/>
-                            Generated: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-                        </div>
+                        <div class="header-pink-line"></div>
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h1 style="margin: 0; font-size: 1.4rem; font-weight: 900; color: #021525;">Crews Directory</h1>
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #25AAE1; letter-spacing: 1px;">ACTIVE CLASS PLACEMENTS</span>
+                    </div>
+
+                    <div class="meta-info">
+                        Semester: <strong>${currentSemester}</strong>  |  
+                        Generated: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
                     </div>
 
                     <div class="summary-grid">
@@ -257,9 +348,15 @@ const ActivitiesTab = ({
                         `;
                     }).join('')}
 
-                    <div class="footer">
-                        <span>Doulos Leaders In Service System Directory Report</span>
-                        <span>Page 1 of 1</span>
+                    <div class="footer-contact-line">
+                        <span>📞 +254 795 640 790</span>
+                        <span>📍 Freedom Base - Daystar University Athi</span>
+                        <span>✉️ doulos@daystar.ac.ke  •  https://www.daystar.ac.ke/doulos.html</span>
+                    </div>
+                    <div class="footer-graphic">
+                        <div class="footer-pink-bar"></div>
+                        <div class="footer-dark-gray-bar"></div>
+                        <div class="footer-light-gray-bar"></div>
                     </div>
                     
                     <script>
@@ -288,13 +385,97 @@ const ActivitiesTab = ({
                             margin: 0; padding: 0; background: #ffffff;
                             color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
-                        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #10b981; padding-bottom: 12px; margin-bottom: 25px; }
-                        .logo-container { display: flex; align-items: center; gap: 15px; }
-                        .logo-img { width: 65px; height: 65px; object-fit: contain; }
-                        .header-title h1 { margin: 0; font-size: 1.8rem; font-weight: 900; color: #021525; letter-spacing: -0.5px; }
-                        .header-title p { margin: 3px 0 0 0; font-size: 0.85rem; color: #10b981; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
-                        .meta-info { text-align: right; font-size: 0.8rem; color: #64748b; font-weight: 600; line-height: 1.4; }
-                        .meta-info strong { color: #0f172a; }
+                        .header {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            margin-bottom: 25px;
+                            height: 50px;
+                        }
+                        .logo-container {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                        }
+                        .logo-img {
+                            width: 45px;
+                            height: 45px;
+                            object-fit: contain;
+                        }
+                        .header-title h2 {
+                            margin: 0;
+                            font-size: 0.85rem;
+                            font-weight: 800;
+                            color: #475569;
+                            letter-spacing: 0.5px;
+                            line-height: 1.2;
+                        }
+                        .header-title p {
+                            margin: 2px 0 0 0;
+                            font-size: 0.85rem;
+                            font-weight: 800;
+                            color: #64748b;
+                            letter-spacing: 0.5px;
+                            line-height: 1.2;
+                        }
+                        .header-pink-line {
+                            flex-grow: 1;
+                            height: 4px;
+                            background-color: #F43F5E;
+                            margin-left: 20px;
+                            border-radius: 2px;
+                        }
+                        .watermark-bg {
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            width: 300px;
+                            height: 300px;
+                            background-image: url('${window.location.origin}/logo.png');
+                            background-size: contain;
+                            background-repeat: no-repeat;
+                            opacity: 0.02;
+                            pointer-events: none;
+                            z-index: -9999;
+                        }
+                        .footer-contact-line {
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 0.65rem;
+                            color: #64748b;
+                            font-weight: 700;
+                            border-top: 1px solid #cbd5e1;
+                            padding-top: 8px;
+                            margin-top: 40px;
+                            page-break-inside: avoid;
+                        }
+                        .footer-graphic {
+                            display: flex;
+                            height: 18px;
+                            margin-top: 6px;
+                            position: relative;
+                            overflow: hidden;
+                            page-break-inside: avoid;
+                        }
+                        .footer-pink-bar {
+                            background-color: #F43F5E;
+                            flex-grow: 1;
+                            clip-path: polygon(0 0, 100% 0, calc(100% - 15px) 100%, 0 100%);
+                            margin-right: -8px;
+                        }
+                        .footer-dark-gray-bar {
+                            background-color: #475569;
+                            width: 80px;
+                            clip-path: polygon(15px 0, 100% 0, calc(100% - 15px) 100%, 0 100%);
+                            margin-right: -8px;
+                        }
+                        .footer-light-gray-bar {
+                            background-color: #94a3b8;
+                            width: 100px;
+                            clip-path: polygon(15px 0, 100% 0, 100% 100%, 0 100%);
+                        }
+                        .meta-info { font-size: 0.75rem; color: #64748b; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
                         
                         .heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 35px; }
                         .heatmap-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; background: #f8fafc; }
@@ -318,22 +499,29 @@ const ActivitiesTab = ({
                         .badge-recruit { background: rgba(37, 170, 225, 0.1); color: #0369a1; }
                         .badge-visitor { background: rgba(167, 139, 250, 0.1); color: #6d28d9; }
                         .badge-exempted { background: rgba(248, 113, 113, 0.1); color: #b91c1c; }
-                        .footer { width: 100%; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
                     </style>
                 </head>
                 <body>
+                    <div class="watermark-bg"></div>
                     <div class="header">
                         <div class="logo-container">
                             <img src="${window.location.origin}/logo.png" class="logo-img" alt="Doulos" />
                             <div class="header-title">
-                                <h1>Tree Watering Schedule</h1>
-                                <p>Freedom Base Commitment Report</p>
+                                <h2>DOULOS TEAM BUILDERS</h2>
+                                <p>AND FREEDOM BASE CAMP</p>
                             </div>
                         </div>
-                        <div class="meta-info">
-                            Semester: <strong>${currentSemester}</strong><br/>
-                            Generated: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-                        </div>
+                        <div class="header-pink-line"></div>
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h1 style="margin: 0; font-size: 1.4rem; font-weight: 900; color: #021525;">Tree Watering Schedule</h1>
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #10b981; letter-spacing: 1px;">FREEDOM BASE COMMITMENT REPORT</span>
+                    </div>
+
+                    <div class="meta-info">
+                        Semester: <strong>${currentSemester}</strong>  |  
+                        Generated: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
                     </div>
 
                     <h2 class="section-title" style="margin-top: 0;">Weekly Coverage Overview</h2>
@@ -376,9 +564,15 @@ const ActivitiesTab = ({
                         </tbody>
                     </table>
 
-                    <div class="footer">
-                        <span>Doulos Tree Watering Freedom Base Commitments Sheet</span>
-                        <span>Page 1 of 1</span>
+                    <div class="footer-contact-line">
+                        <span>📞 +254 795 640 790</span>
+                        <span>📍 Freedom Base - Daystar University Athi</span>
+                        <span>✉️ doulos@daystar.ac.ke  •  https://www.daystar.ac.ke/doulos.html</span>
+                    </div>
+                    <div class="footer-graphic">
+                        <div class="footer-pink-bar"></div>
+                        <div class="footer-dark-gray-bar"></div>
+                        <div class="footer-light-gray-bar"></div>
                     </div>
                     
                     <script>

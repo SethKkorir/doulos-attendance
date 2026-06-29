@@ -52,6 +52,11 @@ export const getMeetings = async (req, res) => {
             if (isPastDay || isPastEndTime) {
                 await Meeting.findByIdAndUpdate(m._id, { isActive: false });
                 console.log(`[AUTO-CLOSE] Meeting "${m.name}" (${meetingStr}) has been automatically closed.`);
+                
+                // Trigger summary email asynchronously
+                import('../utils/emailService.js').then(({ sendMeetingSummaryEmail }) => {
+                    sendMeetingSummaryEmail(m._id, false).catch(console.error);
+                }).catch(console.error);
             }
         }
         // --- END AUTO-CLOSE ---
@@ -130,7 +135,19 @@ export const updateMeetingStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
+
+        const original = await Meeting.findById(id);
+        if (!original) return res.status(404).json({ message: 'Meeting not found' });
+
         const meeting = await Meeting.findByIdAndUpdate(id, updates, { new: true });
+
+        // Trigger email reports if meeting transitions from active -> closed
+        if (original.isActive && !meeting.isActive) {
+            import('../utils/emailService.js').then(({ sendMeetingSummaryEmail }) => {
+                sendMeetingSummaryEmail(meeting._id, false).catch(console.error);
+            }).catch(console.error);
+        }
+
         res.json(meeting);
     } catch (error) {
         res.status(500).json({ message: error.message });

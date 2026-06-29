@@ -41,10 +41,17 @@ api.interceptors.response.use(
             if (!window.downtimeRendered) {
                 window.downtimeRendered = true;
                 console.error('SERVER DOWNTIME DETECTED: Rendering barrier...');
-                // Replace the entire page with the server's premium HTML
-                document.open();
-                document.write(error.response.data);
-                document.close();
+                // Replace the entire page with the server's premium HTML safely
+                document.documentElement.innerHTML = error.response.data;
+
+                // Execute scripts in the injected HTML so the self-recovery monitoring works
+                const scripts = document.documentElement.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
             }
             return new Promise(() => {}); // Prevent further error handling in the app
         }

@@ -26,23 +26,28 @@ const getIndexedDBId = () => {
                 }
             };
             request.onsuccess = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains('device')) {
+                try {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('device')) {
+                        clearTimeout(timeoutId);
+                        safeResolve(null);
+                        return;
+                    }
+                    const transaction = db.transaction('device', 'readonly');
+                    const store = transaction.objectStore('device');
+                    const getReq = store.get('device_id');
+                    getReq.onsuccess = () => {
+                        clearTimeout(timeoutId);
+                        safeResolve(getReq.result ? getReq.result.value : null);
+                    };
+                    getReq.onerror = () => {
+                        clearTimeout(timeoutId);
+                        safeResolve(null);
+                    };
+                } catch (innerErr) {
                     clearTimeout(timeoutId);
                     safeResolve(null);
-                    return;
                 }
-                const transaction = db.transaction('device', 'readonly');
-                const store = transaction.objectStore('device');
-                const getReq = store.get('device_id');
-                getReq.onsuccess = () => {
-                    clearTimeout(timeoutId);
-                    safeResolve(getReq.result ? getReq.result.value : null);
-                };
-                getReq.onerror = () => {
-                    clearTimeout(timeoutId);
-                    safeResolve(null);
-                };
             };
             request.onerror = () => {
                 clearTimeout(timeoutId);
@@ -75,18 +80,28 @@ const setIndexedDBId = (id) => {
                 }
             };
             request.onsuccess = (e) => {
-                const db = e.target.result;
-                const transaction = db.transaction('device', 'readwrite');
-                const store = transaction.objectStore('device');
-                store.put({ key: 'device_id', value: id });
-                transaction.oncomplete = () => {
-                    clearTimeout(timeoutId);
-                    safeResolve(true);
-                };
-                transaction.onerror = () => {
+                try {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('device')) {
+                        clearTimeout(timeoutId);
+                        safeResolve(false);
+                        return;
+                    }
+                    const transaction = db.transaction('device', 'readwrite');
+                    const store = transaction.objectStore('device');
+                    store.put({ key: 'device_id', value: id });
+                    transaction.oncomplete = () => {
+                        clearTimeout(timeoutId);
+                        safeResolve(true);
+                    };
+                    transaction.onerror = () => {
+                        clearTimeout(timeoutId);
+                        safeResolve(false);
+                    };
+                } catch (innerErr) {
                     clearTimeout(timeoutId);
                     safeResolve(false);
-                };
+                }
             };
             request.onerror = () => {
                 clearTimeout(timeoutId);
@@ -168,26 +183,47 @@ const CheckIn = () => {
     }, [status, navigate]);
 
     const getPersistentDeviceId = async () => {
-        let localId = localStorage.getItem('doulos_device_id');
+        let localId = null;
+        try {
+            localId = localStorage.getItem('doulos_device_id');
+        } catch (e) {
+            console.warn("localStorage access denied:", e);
+        }
+        
         let cookieId = getCookieId();
-        let idbId = await getIndexedDBId();
+        
+        if (localId || cookieId) {
+            const resolvedId = localId || cookieId;
+            // Heal IndexedDB in the background safely without awaiting it
+            getIndexedDBId().then(async (idbId) => {
+                if (idbId !== resolvedId) {
+                    await setIndexedDBId(resolvedId);
+                }
+            }).catch(() => {});
+            
+            // Sync cookie/localStorage in background
+            try {
+                if (localId && !cookieId) setCookieId(localId);
+                if (cookieId && !localId) localStorage.setItem('doulos_device_id', cookieId);
+            } catch (e) {}
+            
+            return resolvedId;
+        }
 
-        let resolvedId = localId || cookieId || idbId;
+        // Only if both are missing do we await IndexedDB
+        let idbId = await getIndexedDBId();
+        let resolvedId = idbId;
 
         if (!resolvedId) {
             resolvedId = 'DL-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
 
         // Heal/sync all storages
-        if (localStorage.getItem('doulos_device_id') !== resolvedId) {
+        try {
             localStorage.setItem('doulos_device_id', resolvedId);
-        }
-        if (getCookieId() !== resolvedId) {
-            setCookieId(resolvedId);
-        }
-        if (idbId !== resolvedId) {
-            await setIndexedDBId(resolvedId);
-        }
+        } catch (e) {}
+        setCookieId(resolvedId);
+        await setIndexedDBId(resolvedId);
 
         return resolvedId;
     };
