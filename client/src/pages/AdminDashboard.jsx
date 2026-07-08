@@ -1191,7 +1191,7 @@ const AdminDashboard = () => {
                                 </button>
                             </div>
                             
-                            {activeTab === 'finance' && <AdminFinanceView isGuest={isGuest} />}
+                            {activeTab === 'finance' && <AdminFinanceView isGuest={isGuest} userRole={userRole} />}
                             {activeTab === 'events' && <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />}
                             {activeTab === 'activities' && (
                                 <ActivitiesTab
@@ -1998,7 +1998,7 @@ const AdminDashboard = () => {
                     ) : activeTab === 'events' ? (
                         <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
                     ) : activeTab === 'finance' ? (
-                        <AdminFinanceView isGuest={isGuest} />
+                        <AdminFinanceView isGuest={isGuest} userRole={userRole} />
                     ) : activeTab === 'admins' ? (
                         <AdminsView
                             admins={admins}

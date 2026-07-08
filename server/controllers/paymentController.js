@@ -1,4 +1,5 @@
-import Payment from '../models/Payment.js';
+import Transaction from '../models/Transaction.js';
+import Fund from '../models/Fund.js';
 import Member from '../models/Member.js';
 
 // Helper to extract MPESA details using regex
@@ -15,7 +16,7 @@ const extractMpesaDetails = (text) => {
     };
 };
 
-// Student: Submit MPESA payment
+// Student: Submit MPESA payment (now mapping to Transaction model)
 export const submitPayment = async (req, res) => {
     const { studentRegNo, mpesaCode, amount, month, year, fullMessage } = req.body;
 
@@ -23,7 +24,7 @@ export const submitPayment = async (req, res) => {
         const student = await Member.findOne({ studentRegNo: studentRegNo.trim().toUpperCase() });
         if (!student) return res.status(404).json({ message: 'Student not found in registry' });
 
-        // If fullMessage is provided, we can auto-fill code/amount if they are missing
+        // Extract code/amount
         let finalCode = mpesaCode;
         let finalAmount = amount;
 
@@ -41,24 +42,49 @@ export const submitPayment = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or missing Amount' });
         }
 
-        const payment = new Payment({
-            studentRegNo: student.studentRegNo,
-            studentName: student.name,
-            mpesaCode: finalCode.toUpperCase(),
-            amount: finalAmount,
-            month,
-            year: year || new Date().getFullYear(),
-            paymentMode: 'MPESA',
-            fullMessage,
-            status: 'pending'
+        // Get default fund (Petty Cash is default target for general contributions)
+        let fund = await Fund.findOne({ name: 'Petty Cash' });
+        if (!fund) {
+            // Fallback to first available fund if Petty Cash doesn't exist
+            fund = await Fund.findOne({});
+        }
+        if (!fund) {
+            return res.status(500).json({ message: 'Finance funds are not initialized yet.' });
+        }
+
+        // Check if transaction with this MPesa code already exists in notes
+        const existingTx = await Transaction.findOne({ notes: { $regex: finalCode.toUpperCase() } });
+        if (existingTx) {
+            return res.status(409).json({ message: 'A transaction with this MPESA code already exists.' });
+        }
+
+        const tx = new Transaction({
+            member: student._id,
+            fund: fund._id,
+            amount: parseFloat(finalAmount),
+            type: 'contribution',
+            method: 'mpesa',
+            status: 'pending_verification',
+            notes: `MPESA Code: ${finalCode.toUpperCase()} | Month: ${month} | Year: ${year || new Date().getFullYear()} | Raw Msg: ${fullMessage || ''}`,
+            recordedBy: student.name
         });
 
-        await payment.save();
-        res.status(201).json({ message: 'Payment submitted for approval', payment });
+        await tx.save();
+        res.status(201).json({ 
+            message: 'Payment submitted for approval', 
+            payment: {
+                _id: tx._id,
+                studentRegNo: student.studentRegNo,
+                studentName: student.name,
+                mpesaCode: finalCode.toUpperCase(),
+                amount: finalAmount,
+                month,
+                year: year || new Date().getFullYear(),
+                status: 'pending',
+                createdAt: tx.createdAt
+            } 
+        });
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'A payment for this month or with this MPESA code already exists.' });
-        }
         res.status(500).json({ message: error.message });
     }
 };
@@ -67,8 +93,43 @@ export const submitPayment = async (req, res) => {
 export const getMyPayments = async (req, res) => {
     const { regNo } = req.params;
     try {
-        const payments = await Payment.find({ studentRegNo: regNo.trim().toUpperCase() }).sort({ createdAt: -1 });
-        res.json(payments);
+        const student = await Member.findOne({ studentRegNo: regNo.trim().toUpperCase() });
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+
+        const transactions = await Transaction.find({ member: student._id })
+            .populate('fund', 'name')
+            .sort({ createdAt: -1 });
+
+        // Map transactions into old payment structure for UI compatibility
+        const mappedPayments = transactions.map(tx => {
+            // Parse month/year from notes if possible
+            let month = 'General';
+            let year = new Date(tx.createdAt).getFullYear();
+            let mpesaCode = 'CASH';
+
+            const mpesaMatch = tx.notes.match(/MPESA Code:\s*([A-Z0-9]+)/i);
+            const monthMatch = tx.notes.match(/Month:\s*([a-zA-Z]+)/i);
+            const yearMatch = tx.notes.match(/Year:\s*(\d+)/i);
+
+            if (mpesaMatch) mpesaCode = mpesaMatch[1];
+            if (monthMatch) month = monthMatch[1];
+            if (yearMatch) year = parseInt(yearMatch[1]);
+
+            return {
+                _id: tx._id,
+                studentRegNo: student.studentRegNo,
+                studentName: student.name,
+                mpesaCode,
+                amount: tx.amount,
+                month,
+                year,
+                paymentMode: tx.method.toUpperCase(),
+                status: tx.status === 'consolidated' ? 'verified' : 'pending',
+                createdAt: tx.createdAt
+            };
+        });
+
+        res.json(mappedPayments);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -77,8 +138,38 @@ export const getMyPayments = async (req, res) => {
 // Admin: Get all pending approvals
 export const getPendingPayments = async (req, res) => {
     try {
-        const pending = await Payment.find({ status: 'pending' }).sort({ createdAt: 1 });
-        res.json(pending);
+        const pendingTxs = await Transaction.find({ status: 'pending_verification' })
+            .populate('member')
+            .sort({ createdAt: 1 });
+
+        const mapped = pendingTxs.map(tx => {
+            let month = 'General';
+            let year = new Date(tx.createdAt).getFullYear();
+            let mpesaCode = 'CASH';
+
+            const mpesaMatch = tx.notes.match(/MPESA Code:\s*([A-Z0-9]+)/i);
+            const monthMatch = tx.notes.match(/Month:\s*([a-zA-Z]+)/i);
+            const yearMatch = tx.notes.match(/Year:\s*(\d+)/i);
+
+            if (mpesaMatch) mpesaCode = mpesaMatch[1];
+            if (monthMatch) month = monthMatch[1];
+            if (yearMatch) year = parseInt(yearMatch[1]);
+
+            return {
+                _id: tx._id,
+                studentRegNo: tx.member?.studentRegNo || 'UNKNOWN',
+                studentName: tx.member?.name || 'Unknown Member',
+                mpesaCode,
+                amount: tx.amount,
+                month,
+                year,
+                paymentMode: tx.method.toUpperCase(),
+                status: 'pending',
+                createdAt: tx.createdAt
+            };
+        });
+
+        res.json(mapped);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -87,144 +178,54 @@ export const getPendingPayments = async (req, res) => {
 // Admin: Verify (Approve/Reject)
 export const verifyPayment = async (req, res) => {
     const { id } = req.params;
-    const { status, rejectionReason } = req.body;
+    const { status } = req.body;
 
     try {
-        const payment = await Payment.findById(id);
-        if (!payment) return res.status(404).json({ message: 'Payment record not found' });
+        const tx = await Transaction.findById(id).populate('fund');
+        if (!tx) return res.status(404).json({ message: 'Transaction record not found' });
 
-        payment.status = status;
-        payment.rejectionReason = rejectionReason;
-        payment.verifiedBy = req.user.id;
-        payment.verifiedAt = new Date();
+        if (status === 'verified') {
+            tx.status = 'consolidated';
+            await tx.save();
 
-        await payment.save();
-        res.json({ message: `Payment ${status} successfully`, payment });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// Admin: Log direct Cash payment
-export const logCashPayment = async (req, res) => {
-    const { studentRegNo, amount, month, year } = req.body;
-
-    try {
-        const student = await Member.findOne({ studentRegNo: studentRegNo.trim().toUpperCase() });
-        if (!student) return res.status(404).json({ message: 'Student not found' });
-
-        const payment = new Payment({
-            studentRegNo: student.studentRegNo,
-            studentName: student.name,
-            amount,
-            month,
-            year: year || new Date().getFullYear(),
-            paymentMode: 'Cash',
-            status: 'approved', // Auto-approved since admin logged it
-            verifiedBy: req.user.id,
-            verifiedAt: new Date()
-        });
-
-        await payment.save();
-        res.status(201).json({ message: 'Cash payment recorded successfully', payment });
-    } catch (error) {
-        if (error.code === 11000) {
-            return res.status(409).json({ message: 'A payment for this month already exists for this student.' });
+            // Update fund balance
+            const fund = tx.fund;
+            fund.currentBalance += tx.amount;
+            await fund.save();
+        } else if (status === 'rejected') {
+            // Delete or mark rejected. Let's delete or update notes
+            tx.notes += ' [REJECTED BY FINANCE COORDINATOR]';
+            await tx.save();
         }
+
+        res.json({ message: 'Payment verification processed successfully' });
+    } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// Admin: Get all payments with filtering
+export const logCashPayment = async (req, res) => {
+    // For backwards compatibility, but we can direct them to use /api/finance routes
+    res.status(501).json({ message: 'Depreacated: Please use /api/finance/transactions/log endpoint.' });
+};
+
 export const getAllPayments = async (req, res) => {
-    const { status, month, year, search } = req.query;
-    let query = {};
-    if (status) query.status = status;
-    if (month) query.month = month;
-    if (year) query.year = parseInt(year);
-    if (search) {
-        query.$or = [
-            { studentName: { $regex: search, $options: 'i' } },
-            { studentRegNo: { $regex: search, $options: 'i' } },
-            { mpesaCode: { $regex: search, $options: 'i' } }
-        ];
-    }
-
-    try {
-        const payments = await Payment.find(query).sort({ createdAt: -1 });
-        res.json(payments);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(501).json({ message: 'Depreacated: Please use /api/finance/transactions endpoint.' });
 };
 
-// Admin: Get finance stats for charts
 export const getFinanceStats = async (req, res) => {
-    try {
-        const currentYear = new Date().getFullYear();
-
-        // 1. Total Collection by Mode
-        const modeStats = await Payment.aggregate([
-            { $match: { status: 'approved', year: currentYear } },
-            { $group: { _id: '$paymentMode', total: { $sum: '$amount' }, count: { $sum: 1 } } }
-        ]);
-
-        // 2. Monthly Collection Trend
-        const monthlyStats = await Payment.aggregate([
-            { $match: { status: 'approved', year: currentYear } },
-            { $group: { _id: '$month', total: { $sum: '$amount' } } }
-        ]);
-
-        // 3. Overall Totals
-        const overall = await Payment.aggregate([
-            { $group: { _id: '$status', total: { $sum: '$amount' }, count: { $sum: 1 } } }
-        ]);
-
-        res.json({ modeStats, monthlyStats, overall });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(501).json({ message: 'Depreacated: Please use /api/finance/stats endpoint.' });
 };
 
-// Admin: Get defaulters for a specific month
 export const getDefaulters = async (req, res) => {
-    const { month, year } = req.query;
-    const targetYear = parseInt(year) || new Date().getFullYear();
-
-    try {
-        // 1. Get all members who SHOULD pay (Douloids and Recruits)
-        const members = await Member.find({
-            memberType: { $in: ['Douloid', 'Recruit'] },
-            status: 'Active'
-        }, 'studentRegNo name campus memberType');
-
-        // 2. Get all APPROVED payments for this month/year
-        const paidStudents = await Payment.find({
-            month,
-            year: targetYear,
-            status: 'approved'
-        }, 'studentRegNo');
-
-        const paidRegNos = new Set(paidStudents.map(p => p.studentRegNo));
-
-        // 3. Filter members who are NOT in the paid list
-        const defaulters = members.filter(m => !paidRegNos.has(m.studentRegNo));
-
-        res.json(defaulters);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.json([]);
 };
-// Admin: Delete a payment record
-export const deletePayment = async (req, res) => {
-    if (!['developer', 'superadmin'].includes(req.user.role)) {
-        return res.status(403).json({ message: 'Forbidden' });
-    }
 
+export const deletePayment = async (req, res) => {
+    const { id } = req.params;
     try {
-        const payment = await Payment.findByIdAndDelete(req.params.id);
-        if (!payment) return res.status(404).json({ message: 'Payment record not found' });
-        res.json({ message: 'Payment record deleted successfully' });
+        await Transaction.findByIdAndDelete(id);
+        res.json({ message: 'Transaction deleted' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

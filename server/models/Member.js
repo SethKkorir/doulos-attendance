@@ -19,6 +19,16 @@ const memberSchema = new mongoose.Schema({
         enum: ['Active', 'Archived', 'Graduated'],
         default: 'Active'
     },
+    role: {
+        type: String,
+        enum: ['member', 'training_coordinator', 'finance_coordinator', 'g9_admin'],
+        default: 'member'
+    },
+    membershipStatus: {
+        type: String,
+        enum: ['active', 'recruit', 'visitor', 'associate', 'expelled'],
+        default: 'visitor'
+    },
     lastActiveSemester: { type: String, default: null },
     wateringDays: [{
         type: String,
