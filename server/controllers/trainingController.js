@@ -44,10 +44,13 @@ export const getTrainings = async (req, res) => {
                 await Training.findByIdAndUpdate(t._id, { isActive: false });
                 console.log(`[AUTO-CLOSE] Training "${t.name}" auto-closed after 3+ days.`);
                 
-                // Trigger summary email asynchronously
-                import('../utils/emailService.js').then(({ sendMeetingSummaryEmail }) => {
-                    sendMeetingSummaryEmail(t._id, true).catch(console.error);
-                }).catch(console.error);
+                // Trigger summary email
+                try {
+                    const { sendMeetingSummaryEmail } = await import('../utils/emailService.js');
+                    await sendMeetingSummaryEmail(t._id, true);
+                } catch (emailError) {
+                    console.error('[AUTO-CLOSE] Failed to send training email:', emailError);
+                }
             }
         }
 
@@ -128,9 +131,12 @@ export const updateTrainingStatus = async (req, res) => {
 
         // Trigger email reports if training transitions from active -> closed
         if (original.isActive && !training.isActive) {
-            import('../utils/emailService.js').then(({ sendMeetingSummaryEmail }) => {
-                sendMeetingSummaryEmail(training._id, true).catch(console.error);
-            }).catch(console.error);
+            try {
+                const { sendMeetingSummaryEmail } = await import('../utils/emailService.js');
+                await sendMeetingSummaryEmail(training._id, true);
+            } catch (emailError) {
+                console.error('[MANUAL-CLOSE] Failed to send training email:', emailError);
+            }
         }
 
         res.json(training);

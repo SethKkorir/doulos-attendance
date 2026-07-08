@@ -471,9 +471,11 @@ export const sendMeetingSummaryEmail = async (meetingId, isTraining = false) => 
         console.log(`[EMAIL-REPORT] Roster and CSV sent successfully to: ${toEmail}. Message ID: ${info.messageId}`);
         
         // Trigger check-in errors report email
-        sendCheckInErrorsEmail(meetingId, isTraining).catch(err => {
+        try {
+            await sendCheckInErrorsEmail(meetingId, isTraining);
+        } catch (err) {
             console.error("Failed to send check-in errors email:", err);
-        });
+        }
 
         return { success: true, messageId: info.messageId };
 
