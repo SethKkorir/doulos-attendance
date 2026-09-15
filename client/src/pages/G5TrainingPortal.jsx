@@ -868,16 +868,16 @@ const G5TrainingPortal = () => {
 
                                 <div className="g5-stat-card">
                                     <div className="g5-stat-top">
-                                        <span className="g5-stat-label">Ready to Graduate</span>
+                                        <span className="g5-stat-label">Recruits in Pipeline</span>
                                         <div className="g5-stat-icon-wrap" style={{ backgroundColor: 'var(--color-accent-warm-soft)', color: 'var(--color-accent-warm)' }}>
                                             <GraduationCap size={20} />
                                         </div>
                                     </div>
                                     <div className="g5-stat-number" style={{ color: 'var(--color-accent-warm)' }}>
-                                        {readyToGraduate.length}
+                                        {recruits.length}
                                     </div>
                                     <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                                        {recruits.length} active recruits pipeline
+                                        {archivedRecruits.length} in 20-day holding archive
                                     </span>
                                 </div>
 
