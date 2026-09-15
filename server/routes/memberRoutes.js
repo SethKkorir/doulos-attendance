@@ -4,8 +4,8 @@ import {
     syncMembersFromAttendance, graduateAllRecruits, archiveAllRecruits, undoGraduation, setupTestAccount,
     resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock,
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
-    enrollMember, archiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos,
-    bulkEnrollFromAttendance, selfRegisterMember, autoGenerateGroups, clearAllGroups, updateSelfWateringDays,
+    enrollMember, archiveMember, unarchiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos,
+    bulkArchiveRecruits, bulkEnrollFromAttendance, selfRegisterMember, autoGenerateGroups, clearAllGroups, updateSelfWateringDays,
     blockMemberByReg
 } from '../controllers/memberController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
@@ -19,6 +19,7 @@ router.post('/sync', verifyAdmin, syncMembersFromAttendance);
 router.post('/bulk-enroll', verifyAdmin, bulkEnrollFromAttendance);
 router.post('/graduate-all', verifyAdmin, graduateAllRecruits);
 router.post('/archive-all-recruits', verifyAdmin, archiveAllRecruits);
+router.post('/bulk-archive-recruits', verifyAdmin, bulkArchiveRecruits);
 router.post('/undo-graduation', verifyAdmin, undoGraduation);
 router.post('/reset-all-points', verifyAdmin, resetAllMemberPoints);
 router.post('/setup-test-account', verifyAdmin, setupTestAccount);
@@ -29,6 +30,7 @@ router.post('/:id/points', verifyAdmin, addPoints);
 router.post('/:id/reset-device', verifyAdmin, resetDeviceLock);
 router.post('/:id/graduate', verifyAdmin, graduateMember);
 router.post('/:id/archive', verifyAdmin, archiveMember);
+router.post('/:id/unarchive', verifyAdmin, unarchiveMember);
 router.post('/:id/watering', verifyAdmin, updateWateringDays);
 router.post('/bulk-graduate', verifyAdmin, bulkGraduateMembers);
 router.post('/graduate-by-regnos', verifyAdmin, graduateByRegNos);

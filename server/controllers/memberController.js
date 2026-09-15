@@ -69,9 +69,16 @@ export const getMembers = async (req, res) => {
             queryConditions.push({ lastActiveSemester: currentSemester });
         }
 
+        // Auto-conclude expired 20-day archives in background without deleting records from DB
+        const now = new Date();
+        await Member.updateMany(
+            { status: 'Archived', archivedUntil: { $lt: now, $ne: null } },
+            { $set: { status: 'Archived-Concluded' } }
+        );
+
         // Exclude archived members unless explicitly requested
         if (includeArchived !== 'true') {
-            queryConditions.push({ status: { $ne: 'Archived' } });
+            queryConditions.push({ status: { $nin: ['Archived', 'Archived-Concluded'] } });
         }
 
         if (queryConditions.length > 0) {
@@ -339,7 +346,25 @@ export const graduateMember = async (req, res) => {
     try {
         const member = await Member.findByIdAndUpdate(
             req.params.id,
-            { $set: { needsGraduationCongrats: true, memberType: 'Douloid' } },
+            { 
+                $set: { 
+                    needsGraduationCongrats: true, 
+                    memberType: 'Douloid',
+                    status: 'Active',
+                    douloidRank: 'Shadow Douloid',
+                    archivedAt: null,
+                    archivedUntil: null
+                },
+                $push: {
+                    rankHistory: {
+                        fromRank: 'Recruit',
+                        toRank: 'Shadow Douloid',
+                        date: new Date(),
+                        promotedBy: req.user?.username || 'G5 Training Directorate',
+                        notes: 'Recruit Graduation to Douloid'
+                    }
+                }
+            },
             { new: true }
         );
         res.json({ message: `Successfully graduated ${member ? member.name : 'member'} to Douloid!`, member });
@@ -451,11 +476,68 @@ export const resetDeviceLock = async (req, res) => {
 export const bulkGraduateMembers = async (req, res) => {
     const { memberIds } = req.body; // Array of IDs
     try {
+        if (!Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ message: 'No members selected for graduation' });
+        }
         const result = await Member.updateMany(
-            { _id: { $in: memberIds }, memberType: 'Recruit' },
-            { $set: { needsGraduationCongrats: true, memberType: 'Douloid' } }
+            { _id: { $in: memberIds } },
+            { 
+                $set: { 
+                    needsGraduationCongrats: true, 
+                    memberType: 'Douloid',
+                    status: 'Active',
+                    douloidRank: 'Shadow Douloid',
+                    archivedAt: null,
+                    archivedUntil: null
+                },
+                $push: {
+                    rankHistory: {
+                        fromRank: 'Recruit',
+                        toRank: 'Shadow Douloid',
+                        date: new Date(),
+                        promotedBy: req.user?.username || 'G5 Training Directorate',
+                        notes: 'Official Recruit Graduation to Douloid'
+                    }
+                }
+            }
         );
-        res.json({ message: `Successfully graduated ${result.modifiedCount} members!`, count: result.modifiedCount });
+        res.json({ message: `Successfully graduated ${result.modifiedCount} recruits to Douloid!`, count: result.modifiedCount });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const bulkArchiveRecruits = async (req, res) => {
+    try {
+        const { memberIds, days = 20, reason = 'Recruit not graduated during cohort' } = req.body;
+        
+        let filter = { memberType: 'Recruit', status: { $nin: ['Archived', 'Archived-Concluded'] } };
+        if (Array.isArray(memberIds) && memberIds.length > 0) {
+            filter._id = { $in: memberIds };
+        }
+
+        const now = new Date();
+        const durationDays = parseInt(days) || 20;
+        const archivedUntil = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+        const result = await Member.updateMany(
+            filter,
+            {
+                $set: {
+                    status: 'Archived',
+                    archivedAt: now,
+                    archivedUntil: archivedUntil,
+                    archiveDays: durationDays,
+                    archiveReason: reason
+                }
+            }
+        );
+
+        res.json({
+            message: `Successfully archived ${result.modifiedCount} recruit(s) for a ${durationDays}-day holding period (retained safely in database).`,
+            count: result.modifiedCount,
+            archivedUntil
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -529,12 +611,44 @@ export const enrollMember = async (req, res) => {
 
 export const archiveMember = async (req, res) => {
     try {
+        const { days = 20, reason = 'Recruit not graduated during cohort' } = req.body || {};
+        const now = new Date();
+        const durationDays = parseInt(days) || 20;
+        const archivedUntil = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
         const member = await Member.findByIdAndUpdate(
             req.params.id,
-            { $set: { status: 'Archived' } },
+            { 
+                $set: { 
+                    status: 'Archived',
+                    archivedAt: now,
+                    archivedUntil: archivedUntil,
+                    archiveDays: durationDays,
+                    archiveReason: reason
+                } 
+            },
             { new: true }
         );
-        res.json({ message: 'Member archived successfully', member });
+        res.json({ message: `Member archived for ${durationDays} days (safe in database)`, member });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const unarchiveMember = async (req, res) => {
+    try {
+        const member = await Member.findByIdAndUpdate(
+            req.params.id,
+            { 
+                $set: { 
+                    status: 'Active',
+                    archivedAt: null,
+                    archivedUntil: null
+                } 
+            },
+            { new: true }
+        );
+        res.json({ message: `Member ${member?.name} restored to active status`, member });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

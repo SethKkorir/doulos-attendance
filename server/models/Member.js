@@ -18,9 +18,13 @@ const memberSchema = new mongoose.Schema({
     totalPoints: { type: Number, default: 0 },
     status: {
         type: String,
-        enum: ['Active', 'Archived', 'Graduated'],
+        enum: ['Active', 'Archived', 'Archived-Concluded', 'Graduated'],
         default: 'Active'
     },
+    archivedAt: { type: Date, default: null },
+    archivedUntil: { type: Date, default: null },
+    archiveDays: { type: Number, default: 20 },
+    archiveReason: { type: String, default: null },
     lastActiveSemester: { type: String, default: null },
     wateringDays: [{
         type: String,
@@ -35,7 +39,7 @@ const memberSchema = new mongoose.Schema({
     // G5 Training & Competency Specification
     douloidRank: {
         type: String,
-        enum: ['None', 'Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid'],
+        enum: ['None', 'Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid', 'Senior Lead Douloid'],
         default: 'None'
     },
     belayStatus: {
