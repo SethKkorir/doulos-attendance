@@ -16,6 +16,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
 import trainingRoutes from './routes/trainingRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
+import councilRoutes from './routes/councilRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 import downtimeManager from './middleware/downtimeManager.js';
@@ -50,6 +51,13 @@ import './models/Meeting.js';
 import './models/Member.js';
 import './models/Payment.js';
 import './models/Training.js';
+import './models/CampProgram.js';
+import './models/Requisition.js';
+import './models/GearAsset.js';
+import './models/IncidentLog.js';
+import './models/CouncilMinutes.js';
+import './models/HandoverDossier.js';
+import './models/SemesterRolloverSnapshot.js';
 
 const connectDB = async () => {
     if (cachedConnection && mongoose.connection.readyState === 1) {
@@ -95,6 +103,59 @@ const connectDB = async () => {
             if (!superSuperAdminExists) {
                 await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
                 console.log('✅ Premium Super Admin account initialized: supersuperadmin');
+            }
+
+            // G5 Training Directorate Accounts
+            const trainersToSeed = [
+                { username: 'trainer_athi', campus: 'Athi River', role: 'trainer' },
+                { username: 'trainer_vr', campus: 'Valley Road', role: 'trainer' },
+                { username: 'g5_director', campus: 'Both', role: 'trainer' }
+            ];
+
+            for (const t of trainersToSeed) {
+                const existing = await User.findOne({ username: t.username });
+                if (!existing) {
+                    await new User({
+                        username: t.username,
+                        password: 'trainer123',
+                        role: t.role,
+                        campus: t.campus
+                    }).save();
+                    console.log(`✅ G5 Directorate Account seeded: ${t.username} (${t.campus})`);
+                } else if (existing.role !== 'trainer') {
+                    existing.role = 'trainer';
+                    existing.campus = t.campus;
+                    await existing.save();
+                }
+            }
+
+            // G-Council Governance (G1 - G9) Role Accounts
+            const councilToSeed = [
+                { username: 'g1_coordinator', campus: 'Athi River', role: 'g1_coordinator' },
+                { username: 'g2_vice', campus: 'Valley Road', role: 'g2_vice' },
+                { username: 'g3_secretary', campus: 'Both', role: 'g3_secretary' },
+                { username: 'g4_logistics', campus: 'Both', role: 'g4_logistics' },
+                { username: 'g6_welfare', campus: 'Both', role: 'g6_welfare' },
+                { username: 'g7_treasurer', campus: 'Both', role: 'g7_treasurer' },
+                { username: 'g8_assets', campus: 'Freedom Base', role: 'g8_assets' },
+                { username: 'g9_media', campus: 'Both', role: 'g9_media' }
+            ];
+
+            for (const c of councilToSeed) {
+                const existing = await User.findOne({ username: c.username });
+                if (!existing) {
+                    await new User({
+                        username: c.username,
+                        password: 'doulos2026',
+                        role: c.role,
+                        campus: c.campus
+                    }).save();
+                    console.log(`✅ G-Council Account seeded: ${c.username} (${c.role})`);
+                } else if (existing.role !== c.role) {
+                    existing.role = c.role;
+                    existing.campus = c.campus;
+                    await existing.save();
+                }
             }
         })().catch(err => console.error('Seeding Error:', err.message));
 
@@ -149,6 +210,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/trainings', trainingRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/council', councilRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

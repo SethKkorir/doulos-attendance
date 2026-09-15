@@ -25,7 +25,7 @@ const StudentEvents = () => {
     if (events.length === 0) return (
         <div style={{ textAlign: 'center', padding: '3rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
             <Calendar size={40} color="var(--color-text-dim)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <h3 style={{ margin: 0, color: 'white' }}>No Upcoming Events</h3>
+            <h3 style={{ margin: 0, color: "#1E1B39" }}>No Upcoming Events</h3>
             <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', marginTop: '0.5rem' }}>Check back later for the new schedule.</p>
         </div>
     );
@@ -34,7 +34,7 @@ const StudentEvents = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h2 style={{ fontSize: '1.2rem', margin: '0 0 1rem 0' }}>Flow of Events</h2>
             <div style={{ position: 'relative', paddingLeft: '1rem' }}>
-                <div style={{ position: 'absolute', left: '0', top: '0', bottom: '0', width: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
+                <div style={{ position: 'absolute', left: '0', top: '0', bottom: '0', width: '2px', background: '#EBEBF2' }}></div>
                 
                 {events.map((e, idx) => (
                     <div key={e._id} style={{ position: 'relative', marginBottom: '1.5rem', paddingLeft: '1.5rem' }}>

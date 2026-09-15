@@ -3,7 +3,7 @@ import React from 'react';
 const Card = ({ children, className = '', style = {} }) => {
     const cardStyle = {
         background: 'var(--bg-card)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        border: '1px solid #EBEBF2',
         borderRadius: 'var(--radius-lg)',
         padding: 'var(--spacing-lg)',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',

@@ -26,7 +26,9 @@ const paymentSchema = new mongoose.Schema({
     fullMessage: { type: String }, // Raw pasted message
     verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     verifiedAt: { type: Date },
-    rejectionReason: { type: String }
+    rejectionReason: { type: String },
+    verificationNotes: { type: String, default: '' },
+    matchedBankStatementRef: { type: String, default: '' }
 }, { timestamps: true });
 
 // Ensure unique payment per student per month per year (to prevent double submission)

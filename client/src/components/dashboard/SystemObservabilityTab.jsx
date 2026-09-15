@@ -305,8 +305,8 @@ const SystemObservabilityTab = ({
                                     <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: hasActiveSession ? '#4ade80' : '#f87171', display: 'inline-block', boxShadow: `0 0 6px ${hasActiveSession ? '#4ade80' : '#f87171'}` }}></span> {hasActiveSession ? 'SYSTEMS LIVE' : 'SYSTEM IDLE'}
                                 </span>
                             </div>
-                            <h2 style={{ margin: '0.25rem 0 0 0', fontSize: '1.6rem', fontWeight: 900, color: 'white', letterSpacing: '-0.75px' }}>Observability & Troubleshooting</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.25rem', fontWeight: 600 }}>Real-time scan logs, active security firewalls, and instant student troubleshooting tools.</p>
+                            <h2 style={{ margin: '0.25rem 0 0 0', fontSize: '1.6rem', fontWeight: 900, color: "#1E1B39", letterSpacing: '-0.75px' }}>Observability & Troubleshooting</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: "#7E7A9B", marginTop: '0.25rem', fontWeight: 600 }}>Real-time scan logs, active security firewalls, and instant student troubleshooting tools.</p>
                         </div>
                     </div>
                     <div>
@@ -318,8 +318,8 @@ const SystemObservabilityTab = ({
                                 gap: '0.5rem', 
                                 padding: '0.65rem 1.25rem', 
                                 background: 'rgba(255,255,255,0.03)', 
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                color: 'white',
+                                border: '1px solid #EBEBF2',
+                                color: "#1E1B39",
                                 borderRadius: '0.75rem',
                                 fontWeight: 800,
                                 fontSize: '0.78rem'
@@ -339,33 +339,33 @@ const SystemObservabilityTab = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
                         
                         {/* Memory Allocation */}
-                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#0d111b', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.9rem' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '0.9rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>CPU/RAM Allocation</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: "#7E7A9B", letterSpacing: '1px', textTransform: 'uppercase' }}>CPU/RAM Allocation</span>
                                 <Cpu size={14} color="#25AAE1" />
                             </div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '-0.5px', marginBottom: '0.2rem' }}>
-                                {memoryUsage} <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>MB</span>
+                                {memoryUsage} <span style={{ fontSize: '0.9rem', color: "#7E7A9B", fontWeight: 700 }}>MB</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: "#7E7A9B", fontWeight: 700 }}>
                                 <span>HEAP ALLOCATOR</span>
                                 <span style={{ color: '#4ade80' }}>CPU LOAD: {cpuLoad}%</span>
                             </div>
                             <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', marginTop: '0.5rem', overflow: 'hidden' }}>
-                                <div style={{ width: `${(memoryUsage / 200) * 100}%`, height: '100%', background: '#25AAE1', transition: 'width 1s ease' }}></div>
+                                <div style={{ width: `${(memoryUsage / 200) * 100}%`, height: '100%', background: "#4B3F8C", transition: 'width 1s ease' }}></div>
                             </div>
                         </div>
 
                         {/* Core Server Uptime */}
-                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#0d111b', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.9rem' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '0.9rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>Server Core Uptime</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: "#7E7A9B", letterSpacing: '1px', textTransform: 'uppercase' }}>Server Core Uptime</span>
                                 <Clock size={14} color="#a78bfa" />
                             </div>
                             <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#a78bfa', letterSpacing: '-0.5px', marginBottom: '0.2rem', fontFamily: 'monospace' }}>
                                 {uptime.days}d {uptime.hours}h {uptime.minutes}m {uptime.seconds}s
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: "#7E7A9B", fontWeight: 700 }}>
                                 <span>SYSTEM PORTAL LIVE</span>
                                 <span style={{ color: '#4ade80' }}>PING: {pingTime}ms</span>
                             </div>
@@ -375,9 +375,9 @@ const SystemObservabilityTab = ({
                         </div>
 
                         {/* Background Queue Workers (BullMQ) */}
-                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#0d111b', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.9rem' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '0.9rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>Background Queues</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: "#7E7A9B", letterSpacing: '1px', textTransform: 'uppercase' }}>Background Queues</span>
                                 <Terminal size={14} color="#fbbf24" />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)' }}>
@@ -397,22 +397,22 @@ const SystemObservabilityTab = ({
                         </div>
 
                         {/* Firewall Whitelists (Dynamic QR Security) */}
-                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#0d111b', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '0.9rem' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.25rem', background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '0.9rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>Security Firewall</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: "#7E7A9B", letterSpacing: '1px', textTransform: 'uppercase' }}>Security Firewall</span>
                                 <Globe size={14} color="#f43f5e" />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 800 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.6)' }}>Dynamic QR Hashing:</span>
+                                    <span style={{ color: "#7E7A9B" }}>Dynamic QR Hashing:</span>
                                     <span style={{ color: '#f43f5e', textTransform: 'uppercase' }}>ACTIVE ({qrSaltTimer}s)</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.6)' }}>GPS Range check:</span>
+                                    <span style={{ color: "#7E7A9B" }}>GPS Range check:</span>
                                     <span style={{ color: '#4ade80', textTransform: 'uppercase' }}>STRICT GEOFENCE</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.6)' }}>Device link checks:</span>
+                                    <span style={{ color: "#7E7A9B" }}>Device link checks:</span>
                                     <span style={{ color: '#4ade80', textTransform: 'uppercase' }}>LOCKED ON SIGN</span>
                                 </div>
                             </div>
@@ -434,7 +434,7 @@ const SystemObservabilityTab = ({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#4ade80', fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', display: 'inline-block', boxShadow: '0 0 6px #4ade80', animation: 'pulse 1.5s infinite' }}></span> Real-Time Check-In Stream
                                 </div>
-                                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>SHOWING RECENT LOGS</span>
+                                <span style={{ fontSize: '0.68rem', color: "#7E7A9B", fontWeight: 700 }}>SHOWING RECENT LOGS</span>
                             </div>
 
                             <div style={{ 
@@ -448,9 +448,9 @@ const SystemObservabilityTab = ({
                                         padding: '4rem 2rem', 
                                         textAlign: 'center', 
                                         background: 'rgba(2, 10, 20, 0.2)', 
-                                        border: '1px dashed rgba(255,255,255,0.04)',
+                                        border: '1px dashed #EBEBF2',
                                         borderRadius: '0.9rem',
-                                        color: 'rgba(255,255,255,0.3)',
+                                        color: "#7E7A9B",
                                         fontSize: '0.85rem',
                                         fontWeight: 700
                                     }}>
@@ -478,10 +478,10 @@ const SystemObservabilityTab = ({
                                                     <UserCheck size={14} />
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontWeight: 800, color: 'white', fontSize: '0.88rem' }}>
+                                                    <div style={{ fontWeight: 800, color: "#1E1B39", fontSize: '0.88rem' }}>
                                                         {act.name}
                                                     </div>
-                                                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: '0.15rem' }}>
+                                                    <div style={{ fontSize: '0.68rem', color: "#7E7A9B", fontWeight: 700, marginTop: '0.15rem' }}>
                                                         {act.regNo} • {act.campus} • <span style={{ color: '#25AAE1' }}>{act.meeting}</span>
                                                     </div>
                                                 </div>
@@ -517,9 +517,9 @@ const SystemObservabilityTab = ({
                                         padding: '4rem 2rem', 
                                         textAlign: 'center', 
                                         background: 'rgba(2, 10, 20, 0.2)', 
-                                        border: '1px dashed rgba(255,255,255,0.04)',
+                                        border: '1px dashed #EBEBF2',
                                         borderRadius: '0.9rem',
-                                        color: 'rgba(255,255,255,0.3)',
+                                        color: "#7E7A9B",
                                         fontSize: '0.85rem',
                                         fontWeight: 700
                                     }}>
@@ -549,13 +549,13 @@ const SystemObservabilityTab = ({
                                                         <AlertOctagon size={15} />
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontWeight: 800, color: 'white', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                        <div style={{ fontWeight: 800, color: "#1E1B39", fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                                             {err.name} 
-                                                            <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>(Reg: {err.regNo})</span>
+                                                            <span style={{ fontSize: '0.62rem', color: "#7E7A9B", fontWeight: 700 }}>(Reg: {err.regNo})</span>
                                                             <button 
                                                                 onClick={() => handleCopyRegNo(err.regNo)} 
                                                                 title="Copy Student Registration Number"
-                                                                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', display: 'flex', padding: '0.1rem', transition: 'color 0.2s' }}
+                                                                style={{ background: 'transparent', border: 'none', color: "#7E7A9B", cursor: 'pointer', display: 'flex', padding: '0.1rem', transition: 'color 0.2s' }}
                                                                 onMouseEnter={e => e.currentTarget.style.color = '#25AAE1'}
                                                                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
                                                             >
@@ -573,7 +573,7 @@ const SystemObservabilityTab = ({
                                             </div>
 
                                             {/* Error breakdown info block */}
-                                            <div style={{ background: 'rgba(2, 10, 20, 0.4)', border: '1px solid rgba(255,255,255,0.02)', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45 }}>
+                                            <div style={{ background: 'rgba(2, 10, 20, 0.4)', border: '1px solid rgba(255,255,255,0.02)', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', fontSize: '0.75rem', color: "#7E7A9B", lineHeight: 1.45 }}>
                                                 {err.desc} {err.type === 'geofence' && <span style={{ color: '#25AAE1', fontWeight: 700 }}><Navigation size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '2px' }} />Verify that student coordinates are captured accurately.</span>}
                                             </div>
 
@@ -670,7 +670,7 @@ const SystemObservabilityTab = ({
                     padding: '5rem 2rem', 
                     textAlign: 'center', 
                     background: 'rgba(2, 10, 20, 0.25)', 
-                    border: '1px dashed rgba(255,255,255,0.06)',
+                    border: '1px dashed #EBEBF2',
                     borderRadius: '1.5rem',
                     display: 'flex',
                     flexDirection: 'column',
@@ -694,7 +694,7 @@ const SystemObservabilityTab = ({
                         <Terminal size={40} />
                     </div>
                     <div>
-                        <h3 style={{ margin: 0, fontSize: '1.30rem', fontWeight: 900, color: 'white', letterSpacing: '-0.25px' }}>Observability Telemetry Standby</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.30rem', fontWeight: 900, color: "#1E1B39", letterSpacing: '-0.25px' }}>Observability Telemetry Standby</h3>
                         <p style={{ margin: '0.5rem 0 0', fontSize: '0.88rem', color: 'var(--color-text-dim)', maxWidth: '420px', lineHeight: 1.5, fontWeight: 600 }}>
                             No active meeting or training session is currently live. Real-time telemetry scan streams and failure support diagnostics will activate automatically when a session is launched.
                         </p>

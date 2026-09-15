@@ -1,0 +1,681 @@
+/* ==========================================================================
+   DOULOS ADMIN PORTAL — DESIGN SYSTEM TOKENS & REFERENCE THEME
+   Reference aesthetic: Deep Indigo-Purple sidebar, ambient corner wash,
+   floating white surface card, clean modern typography.
+   ========================================================================== */
+
+:root {
+    --color-sidebar-bg: #4B3F8C;        /* deep indigo-purple */
+    --color-sidebar-active-bg: #DCD6F7;  /* light lavender highlight for active nav item */
+    --color-sidebar-active-text: #4B3F8C;
+    --color-sidebar-text: #E4E1F5;       /* muted lavender-white for inactive items */
+    --color-sidebar-hover-bg: rgba(220, 214, 247, 0.12);
+    --color-accent-corner: #A79AE8;      /* the light purple wash top-left of the page background */
+    --color-surface: #FFFFFF;            /* main content card */
+    --color-page-bg: #F1F1F5;            /* outer page background */
+    --color-border-subtle: #EBEBF2;      /* soft table/card divider */
+
+    /* Statuses */
+    --color-status-active-bg: #E4F6E9;
+    --color-status-active-text: #3CB371;
+    --color-status-recruit-bg: #FEF3C7;
+    --color-status-recruit-text: #D97706;
+    --color-status-inactive-bg: #FBE7E7;
+    --color-status-inactive-text: #D9534F;
+    --color-status-probation-bg: #FEE2E2;
+    --color-status-probation-text: #DC2626;
+    --color-status-archived-bg: #F3F4F6;
+    --color-status-archived-text: #6B7280;
+
+    /* Cadre Ranks */
+    --color-rank-shadow-bg: #F3F4F6;
+    --color-rank-shadow-text: #4B5563;
+    --color-rank-basic-bg: #E0F2FE;
+    --color-rank-basic-text: #0284C7;
+    --color-rank-intermediate-bg: #CCFBF1;
+    --color-rank-intermediate-text: #0D9488;
+    --color-rank-lead-bg: #FEF3C7;
+    --color-rank-lead-text: #B45309;
+
+    /* Buttons */
+    --color-button-primary-bg: #4B3F8C;
+    --color-button-primary-text: #FFFFFF;
+    --color-button-primary-hover: #3D3277;
+    --color-button-dark-bg: #2E2A4D;     /* the "Login / View Portal" action button */
+    --color-button-dark-text: #FFFFFF;
+    --color-button-dark-hover: #1F1B38;
+    --color-button-outline-border: #D1D1DB;
+    --color-button-outline-text: #4A4560;
+    --color-button-outline-hover: #F8F8FC;
+
+    /* Geometry & Shadows */
+    --radius-card: 16px;
+    --radius-button: 10px;
+    --radius-pill: 999px;
+    --radius-avatar: 999px;              /* circular member photos */
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow-dropdown: 0 12px 32px rgba(46, 42, 77, 0.15);
+}
+
+/* Base Body Override for Admin Portal */
+.doulos-admin-viewport {
+    min-height: 100vh;
+    background-color: var(--color-page-bg);
+    color: #2D2D3A;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    position: relative;
+    overflow-x: hidden;
+    display: flex;
+}
+
+/* Ambient Purple Corner Wash (top-left decorative glow) */
+.doulos-admin-corner-wash {
+    position: fixed;
+    top: -120px;
+    left: -120px;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--color-accent-corner) 0%, rgba(167, 154, 232, 0.35) 45%, transparent 70%);
+    opacity: 0.6;
+    filter: blur(60px);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ─── SIDEBAR ─── */
+.doulos-sidebar {
+    width: 260px;
+    min-width: 260px;
+    background-color: var(--color-sidebar-bg) !important;
+    color: var(--color-sidebar-text) !important;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 1.5rem 1rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.doulos-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.5rem 0.65rem 1.75rem 0.65rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 1rem;
+}
+
+.doulos-sidebar-brand-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.doulos-sidebar-brand-sub {
+    font-size: 0.68rem;
+    color: var(--color-sidebar-active-bg);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.doulos-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+}
+
+.doulos-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.7rem 0.95rem;
+    border-radius: var(--radius-pill);
+    color: var(--color-sidebar-text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s ease-in-out;
+    position: relative;
+    width: 100%;
+}
+
+.doulos-nav-item:hover {
+    background-color: var(--color-sidebar-hover-bg);
+    color: #FFFFFF;
+}
+
+.doulos-nav-item.active {
+    background-color: var(--color-sidebar-active-bg);
+    color: var(--color-sidebar-active-text);
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Thin accent bar on active nav item */
+.doulos-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 18px;
+    border-radius: 2px;
+    background-color: #FFFFFF;
+}
+
+.doulos-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ─── MAIN CONTENT AREA & FLOATING CARD ─── */
+.doulos-main-area {
+    flex: 1;
+    padding: 2rem 2.25rem;
+    min-width: 0;
+    overflow-y: auto;
+    position: relative;
+    z-index: 10;
+    box-sizing: border-box;
+}
+
+.doulos-surface-card {
+    background-color: var(--color-surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-border-subtle);
+    padding: 2rem 2.25rem;
+    min-height: calc(100vh - 4rem);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* ─── TOP BAR (Inside White Card) ─── */
+.doulos-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    margin-bottom: 1.75rem;
+}
+
+.doulos-search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background-color: #F6F6F9;
+    border: 1px solid #E5E5EB;
+    border-radius: var(--radius-pill);
+    padding: 0.55rem 1.15rem;
+    width: 320px;
+    max-width: 100%;
+    transition: all 0.2s ease;
+}
+
+.doulos-search-box:focus-within {
+    background-color: #FFFFFF;
+    border-color: var(--color-sidebar-bg);
+    box-shadow: 0 0 0 3px rgba(75, 63, 140, 0.12);
+}
+
+.doulos-search-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #2D2D3A;
+    width: 100%;
+}
+
+.doulos-search-input::placeholder {
+    color: #9E9EA7;
+}
+
+.doulos-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.doulos-bell-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background-color: #F6F6F9;
+    border: 1px solid #E5E5EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555268;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.doulos-bell-btn:hover {
+    background-color: #EBEBF2;
+    color: var(--color-sidebar-bg);
+}
+
+.doulos-bell-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #EF4444;
+    border: 1.5px solid #FFFFFF;
+}
+
+.doulos-identity-block {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.doulos-identity-block:hover {
+    background-color: #F6F6F9;
+}
+
+.doulos-identity-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-avatar);
+    background: linear-gradient(135deg, var(--color-sidebar-bg) 0%, #2E2A4D 100%);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.88rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(75, 63, 140, 0.25);
+}
+
+.doulos-identity-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.doulos-identity-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #2D2D3A;
+    line-height: 1.2;
+}
+
+.doulos-identity-role {
+    font-size: 0.68rem;
+    color: #838096;
+    font-weight: 500;
+}
+
+/* ─── DATA TABLE STYLING ─── */
+.doulos-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 1.25rem;
+}
+
+.doulos-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    text-align: left;
+}
+
+.doulos-table th {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #8E8B9F;
+    padding: 0.85rem 1rem;
+    border-bottom: 1.5px solid var(--color-border-subtle);
+    background-color: #FFFFFF;
+    white-space: nowrap;
+}
+
+.doulos-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    font-size: 0.86rem;
+    color: #333145;
+    vertical-align: middle;
+    background-color: #FFFFFF;
+}
+
+.doulos-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.doulos-table tbody tr:hover td {
+    background-color: #FBFBFE;
+}
+
+/* Member avatar photo in table */
+.doulos-table-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-avatar);
+    object-fit: cover;
+    background: linear-gradient(135deg, #EBE8F8 0%, #DCD6F7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--color-sidebar-bg);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+/* ─── RESPONSIVE BEHAVIOR & MOBILE DRAWER ─── */
+.doulos-mobile-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    background-color: var(--color-sidebar-bg);
+    color: #FFFFFF;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.doulos-mobile-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.doulos-mobile-header-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #FFFFFF;
+}
+
+.doulos-hamburger-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    color: #FFFFFF;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s ease;
+}
+
+.doulos-hamburger-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.doulos-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 27, 57, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 55;
+    animation: fadeIn 0.2s ease;
+}
+
+@media (max-width: 1024px) {
+    .doulos-sidebar {
+        width: 220px;
+        min-width: 220px;
+        padding: 1.25rem 0.75rem;
+    }
+    .doulos-main-area {
+        padding: 1.5rem;
+    }
+    .doulos-surface-card {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .doulos-mobile-header {
+        display: flex;
+    }
+    .doulos-admin-viewport {
+        flex-direction: column;
+    }
+    .doulos-sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 260px;
+        height: 100vh;
+        z-index: 60;
+        transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+    }
+    .doulos-sidebar.mobile-open {
+        left: 0;
+        box-shadow: 10px 0 35px rgba(0, 0, 0, 0.35);
+    }
+    .doulos-sidebar-backdrop.active {
+        display: block;
+    }
+    .doulos-main-area {
+        padding: 1rem;
+    }
+    .doulos-surface-card {
+        padding: 1.25rem;
+        border-radius: 12px;
+    }
+    .doulos-topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    .doulos-search-pill {
+        width: 100%;
+    }
+}
+
+/* ─── UNIVERSAL CONSOLE & TAB HARMONIZATION (PURPLE / WHITE THEME) ─── */
+.doulos-surface-card .glass-panel,
+.doulos-surface-card .glass-card-premium,
+.doulos-surface-card .admin-card,
+.doulos-surface-card .card,
+.doulos-surface-card .stat-card,
+.doulos-surface-card .metric-card-glow,
+.doulos-surface-card div[style*="#0d111b"],
+.doulos-surface-card div[style*="#0d1424"],
+.doulos-surface-card div[style*="#0a0d16"],
+.doulos-surface-card div[style*="#090d16"],
+.doulos-surface-card div[style*="#0f172a"],
+.doulos-surface-card div[style*="#090c14"] {
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    border: 1px solid #EBEBF2 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 16px rgba(75, 63, 140, 0.04) !important;
+    color: #2D2D3A !important;
+}
+
+.doulos-surface-card h1,
+.doulos-surface-card h2,
+.doulos-surface-card h3,
+.doulos-surface-card h4,
+.doulos-surface-card h5,
+.doulos-surface-card h6 {
+    color: #1E1B39 !important;
+}
+
+.doulos-surface-card p,
+.doulos-surface-card span:not(.status-tag):not(.rank-tag):not(.badge) {
+    color: #4A4560 !important;
+    text-shadow: none !important;
+}
+
+.doulos-surface-card strong,
+.doulos-surface-card b {
+    color: #1E1B39 !important;
+}
+
+.doulos-surface-card .text-muted,
+.doulos-surface-card .subtitle {
+    color: #7E7A9B !important;
+}
+
+/* Form controls */
+.doulos-surface-card input,
+.doulos-surface-card select,
+.doulos-surface-card textarea,
+.doulos-surface-card .modern-input {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #D1D1DB !important;
+    color: #1E1B39 !important;
+    border-radius: 10px !important;
+}
+
+.doulos-surface-card input:focus,
+.doulos-surface-card select:focus,
+.doulos-surface-card textarea:focus,
+.doulos-surface-card .modern-input:focus {
+    border-color: #4B3F8C !important;
+    box-shadow: 0 0 0 3px rgba(75, 63, 140, 0.15) !important;
+    outline: none !important;
+}
+
+/* Tables */
+.doulos-surface-card table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.doulos-surface-card table th {
+    background-color: #F8F8FC !important;
+    color: #6E6893 !important;
+    border-bottom: 1px solid #EBEBF2 !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.doulos-surface-card table td {
+    color: #2D2D3A !important;
+    border-bottom: 1px solid #EBEBF2 !important;
+}
+
+.doulos-surface-card table tr:hover td {
+    background-color: #FBFBFE !important;
+}
+
+/* Primary Action Buttons */
+.doulos-surface-card .btn-primary,
+.doulos-surface-card button[type="submit"]:not(.btn-outline),
+.doulos-surface-card .submit-btn-premium {
+    background: #4B3F8C !important;
+    background-image: none !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 14px rgba(75, 63, 140, 0.25) !important;
+    transition: all 0.15s ease !important;
+}
+
+.doulos-surface-card .btn-primary:hover,
+.doulos-surface-card button[type="submit"]:not(.btn-outline):hover,
+.doulos-surface-card .submit-btn-premium:hover {
+    background: #3D3277 !important;
+    box-shadow: 0 6px 18px rgba(75, 63, 140, 0.35) !important;
+}
+
+/* Cyan to Purple Harmonization */
+.doulos-surface-card [style*="#25AAE1"],
+.doulos-surface-card [style*="#25aae1"],
+.doulos-surface-card [style*="#1da6d9"],
+.doulos-surface-card [style*="#38bdf8"],
+.doulos-surface-card [style*="#00d2ff"] {
+    border-color: #DCD6F7 !important;
+}
+
+/* Floating Modals inside Admin */
+.modal-overlay,
+div[style*="position: fixed"][style*="zIndex: 9999"],
+div[style*="position: fixed"][style*="z-index: 9999"] {
+    background: rgba(46, 42, 77, 0.45) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+div[style*="position: fixed"] .glass-panel,
+div[style*="position: fixed"] .glass-card-premium,
+div[style*="position: fixed"] div[style*="#0f172a"],
+div[style*="position: fixed"] div[style*="#0d111b"] {
+    background: #FFFFFF !important;
+    border: 1px solid #EBEBF2 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 24px 60px rgba(46, 42, 77, 0.2) !important;
+    color: #1E1B39 !important;
+}
+
+div[style*="position: fixed"] h1,
+div[style*="position: fixed"] h2,
+div[style*="position: fixed"] h3,
+div[style*="position: fixed"] h4 {
+    color: #1E1B39 !important;
+}
+
+div[style*="position: fixed"] label {
+    color: #666280 !important;
+    font-weight: 700 !important;
+}
+
+div[style*="position: fixed"] input,
+div[style*="position: fixed"] select,
+div[style*="position: fixed"] textarea {
+    background: #FFFFFF !important;
+    border: 1.5px solid #D1D1DB !important;
+    color: #1E1B39 !important;
+}
+
+/* Fallback for browser-serialized RGB dark values */
+.doulos-surface-card div[style*="rgb(13, 20, 36)"],
+.doulos-surface-card div[style*="rgb(9, 13, 22)"],
+.doulos-surface-card div[style*="rgb(13, 17, 27)"],
+.doulos-surface-card div[style*="rgb(15, 23, 42)"],
+.doulos-surface-card div[style*="rgb(10, 13, 22)"] {
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    border: 1px solid #EBEBF2 !important;
+    color: #2D2D3A !important;
+}
+
+
+

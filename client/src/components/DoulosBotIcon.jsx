@@ -42,7 +42,7 @@ const DoulosBotIcon = ({ size = 24, style = {}, className = "" }) => {
             <circle cx="50" cy="55" r="35" fill="url(#db_headGrad)" />
 
             {/* Inner Face Screen (Dark Blue) */}
-            <path d="M25 50 C 25 40, 75 40, 75 50 V 65 C 75 80, 25 80, 25 65 Z" fill="#0f172a" />
+            <path d="M25 50 C 25 40, 75 40, 75 50 V 65 C 75 80, 25 80, 25 65 Z" fill="#FFFFFF" />
 
             {/* Eyes (Cyan Glowing) */}
             <circle cx="38" cy="58" r="6" fill="#00ffff" />

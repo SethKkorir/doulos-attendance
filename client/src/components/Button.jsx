@@ -28,7 +28,7 @@ const Button = ({
     const variants = {
         primary: {
             background: 'linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dark) 100%)',
-            color: '#0f172a', // Dark text on gold
+            color: "#1E1B39", // Dark text on gold
             boxShadow: '0 4px 14px 0 rgba(251, 191, 36, 0.39)',
         },
         secondary: {
@@ -38,7 +38,7 @@ const Button = ({
         },
         danger: {
             background: 'var(--danger)',
-            color: 'white',
+            color: "#1E1B39",
         }
     };
 

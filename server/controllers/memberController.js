@@ -123,7 +123,7 @@ export const updateMember = async (req, res) => {
 
 export const createMember = async (req, res) => {
     try {
-        const { studentRegNo, name, campus, memberType, status, lastActiveSemester, wateringDays } = req.body;
+        const { studentRegNo, name, campus, memberType, status, lastActiveSemester, wateringDays, phone, email } = req.body;
         const exists = await Member.findOne({ studentRegNo: studentRegNo.trim().toUpperCase() });
         if (exists) return res.status(400).json({ message: 'Member with this admission number already exists' });
 
@@ -131,8 +131,10 @@ export const createMember = async (req, res) => {
             studentRegNo: studentRegNo.trim().toUpperCase(),
             name,
             campus: campus || 'Athi River',
-            memberType: memberType || 'Visitor',
+            memberType: memberType || 'Recruit',
             status: status || 'Active',
+            phone: phone || '',
+            email: email || '',
             lastActiveSemester,
             wateringDays: wateringDays || []
         });

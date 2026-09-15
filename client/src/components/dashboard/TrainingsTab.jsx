@@ -3,10 +3,13 @@ import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, 
     BarChart3, Trash2, Link as LinkIcon, 
     ExternalLink, RotateCcw, X, Settings as SettingsIcon, Lightbulb, 
-    GraduationCap, Users, Search 
+    GraduationCap, Users, Search, Compass, Shield, Award
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import MeetingInsights from '../MeetingInsights';
+import CampRunSheetStudio from './CampRunSheetStudio';
+import DouloidCadresDirectorate from './DouloidCadresDirectorate';
+import WildernessSafetyProtocols from './WildernessSafetyProtocols';
 
 const TrainingsTab = ({ 
     trainings, 
@@ -29,7 +32,10 @@ const TrainingsTab = ({
     const [rosterTraining, setRosterTraining] = useState(null);
     const [importLoading, setImportLoading] = useState(false);
     const [trainingSemesterFilter, setTrainingSemesterFilter] = useState('Current');
-
+    const [subTab, setSubTab] = useState('studio');
+    const [directorateCampus, setDirectorateCampus] = useState(() => {
+        return localStorage.getItem('campus') || 'Both';
+    });
 
     const [semesterTheme, setSemesterTheme] = useState('');
     const [semesterVerse, setSemesterVerse] = useState('');
@@ -160,14 +166,14 @@ const TrainingsTab = ({
                             margin: 0; padding: 0; background: #ffffff;
                             -webkit-print-color-adjust: exact !important;
                             print-color-adjust: exact !important;
-                            color: #0f172a;
+                            color: #FFFFFF;
                         }
                         .page {
                             width: 210mm; height: 297mm; position: relative;
                             background: #ffffff; overflow: hidden;
                             display: flex; flex-direction: column; align-items: center; justify-content: center;
                             box-sizing: border-box;
-                            border: 12px solid #0f172a;
+                            border: 12px solid #FFFFFF;
                         }
                         .page-inner-border {
                             position: absolute;
@@ -182,10 +188,10 @@ const TrainingsTab = ({
                         }
                         .header { display: flex; flex-direction: column; align-items: center; gap: 10px; }
                         .logo-img { width: 95px; height: 95px; object-fit: contain; margin-bottom: 0.2rem; }
-                        .meeting-title { font-size: 2.5rem; font-weight: 900; line-height: 1.1; color: #0f172a; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
+                        .meeting-title { font-size: 2.5rem; font-weight: 900; line-height: 1.1; color: #FFFFFF; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
                         .meeting-meta { font-size: 1.25rem; color: #25AAE1; margin-top: 5px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: flex; align-items: center; gap: 10px; }
                         .meeting-meta-dot { color: rgba(15, 23, 42, 0.2); }
-                        .qr-outer-container { position: relative; padding: 12px; background: white; border-radius: 36px; border: 4px solid #0f172a; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
+                        .qr-outer-container { position: relative; padding: 12px; background: white; border-radius: 36px; border: 4px solid #FFFFFF; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
                         .qr-inner-wrapper { padding: 25px; background: white; border-radius: 28px; }
                         .scan-badge { position: absolute; top: -18px; right: -22px; background: #ef4444; color: white; font-weight: 900; padding: 10px 22px; border-radius: 50px; transform: rotate(10deg); box-shadow: 0 10px 20px rgba(239, 68, 68, 0.25); font-size: 1.1rem; border: 3px solid white; text-transform: uppercase; letter-spacing: 1px; }
                         .footer { width: 100%; border-top: 2px solid #f1f5f9; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
@@ -205,11 +211,11 @@ const TrainingsTab = ({
                             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
                         }
                         .theme-title { font-size: 0.9rem; font-weight: 900; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
-                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #0f172a; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.3px; line-height: 1.25; }
+                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #FFFFFF; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.3px; line-height: 1.25; }
                         .theme-verse { font-size: 1.05rem; color: #475569; font-weight: 600; line-height: 1.5; margin-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.05); padding-top: 10px; }
-                        .theme-verse strong { color: #0f172a; font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; }
+                        .theme-verse strong { color: #FFFFFF; font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; }
                         .meta { text-align: right; font-size: 0.95rem; color: #64748b; font-weight: 700; line-height: 1.4; }
-                        .meta-system { font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+                        .meta-system { font-weight: 800; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.5px; }
                         @media print { body { background: none; } .page { box-shadow: none; margin: 0; width: 100%; height: 100%; } }
                     </style>
                 </head>
@@ -318,7 +324,7 @@ const TrainingsTab = ({
                         <div style={{
                             width: '100%',
                             background: isActuallyLive ? 'linear-gradient(135deg, #34d399, #059669)' : 'linear-gradient(135deg, #1da6d9, #0a4d68)',
-                            color: 'white',
+                            color: "#1E1B39",
                             fontSize: '0.65rem',
                             fontWeight: 900,
                             padding: '0.2rem 0',
@@ -331,7 +337,7 @@ const TrainingsTab = ({
                             flex: 1,
                             width: '100%',
                             background: 'rgba(255,255,255,0.03)',
-                            color: 'white',
+                            color: "#1E1B39",
                             fontSize: '1.3rem',
                             fontWeight: 900,
                             display: 'flex',
@@ -345,7 +351,7 @@ const TrainingsTab = ({
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: "#1E1B39", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {t.name}
                             </h3>
                             <span style={{
@@ -359,7 +365,7 @@ const TrainingsTab = ({
                                 border: '1px solid rgba(52, 211, 153, 0.3)'
                             }}>Training</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: "#7E7A9B", fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
                             <MapPin size={12} color="#1da6d9" />
                             <span>{t.campus}</span>
                             <span style={{ opacity: 0.3 }}>•</span>
@@ -371,7 +377,7 @@ const TrainingsTab = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Clock size={12} color="rgba(255,255,255,0.4)" />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: "#7E7A9B" }}>
                             {t.startTime} - {t.endTime}
                         </span>
                     </div>
@@ -403,7 +409,7 @@ const TrainingsTab = ({
 
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
+                        <span style={{ color: "#7E7A9B" }}>Attendance</span>
                         <span style={{ color: '#34d399' }}>{t.attendanceCount || 0} checked-in</span>
                     </div>
                     <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -493,8 +499,8 @@ const TrainingsTab = ({
                             width: '36px',
                             height: '36px',
                             background: 'rgba(255,255,255,0.03)',
-                            color: 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            color: "#7E7A9B",
+                            border: '1px solid #EBEBF2',
                             borderRadius: '0.5rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -551,16 +557,151 @@ const TrainingsTab = ({
     });
 
     return (
-        <>
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button className="btn btn-primary" onClick={() => setShowCreateTraining(!showCreateTraining)}
-                    style={{ background: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'black', fontWeight: 800 }}>
-                    <Plus size={20} /> New Training Session
-                </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+            {/* G5 TRAINING & SAFETY DIRECTORATE MASTER BANNER */}
+            <div style={{ 
+                background: '#FFFFFF', 
+                border: '1px solid #EBEBF2', 
+                borderRadius: '20px', 
+                padding: '1.75rem',
+                position: 'relative'
+            }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
+                            <div style={{ background: 'rgba(37,170,225,0.15)', color: '#25AAE1', padding: '0.35rem', borderRadius: '8px', display: 'flex' }}>
+                                <GraduationCap size={20} />
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#25AAE1' }}>
+                                G-COUNCIL TRAINING & SAFETY DIRECTORATE (G5)
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: "#7E7A9B", fontWeight: 700 }}>
+                                • FREEDOM BASE HQ (LUKENYA HILLS)
+                            </span>
+                        </div>
+                        <h2 style={{ margin: 0, color: "#1E1B39", fontWeight: 900, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                            Outdoor Facilitation & Safety Command Suite
+                        </h2>
+                        <p style={{ margin: '0.25rem 0 0 0', color: "#7E7A9B", fontSize: '0.85rem' }}>
+                            Experiential discipleship, 4-tier Douloid progression, 3-day camp run-sheets & Lukenya ridge safety protocols.
+                        </p>
+                    </div>
+
+                    {/* Dual-Campus & Joint Ministry Switcher */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: "#7E7A9B", textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            FACILITATION CAMPUS
+                        </span>
+                        <div style={{ display: 'flex', background: '#F8F8FC', padding: '4px', borderRadius: '12px', border: '1px solid #EBEBF2' }}>
+                            {[
+                                { id: 'Athi River', label: 'Athi River' },
+                                { id: 'Valley Road', label: 'Valley Road' },
+                                { id: 'Both', label: 'Joint Ministry' }
+                            ].map(c => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => setDirectorateCampus(c.id)}
+                                    style={{
+                                        background: directorateCampus === c.id ? '#25AAE1' : 'transparent',
+                                        color: directorateCampus === c.id ? '#021525' : 'rgba(255,255,255,0.6)',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '0.45rem 0.9rem',
+                                        fontWeight: 800,
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    {c.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sub-Tabs Bar */}
+                <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid #EBEBF2', paddingTop: '1.25rem', flexWrap: 'wrap' }}>
+                    {[
+                        { id: 'studio', label: 'Camp Run-Sheet Studio', icon: Compass, badge: 'Fri-Sun Schedule & Roster' },
+                        { id: 'cadres', label: 'Douloid Cadres & Evaluations', icon: Award, badge: '4 Ranks • 5 Domains' },
+                        { id: 'drills', label: 'Field Drills & GPS Radius', icon: MapPin, badge: `${activeList.length} Active Drills` },
+                        { id: 'protocols', label: 'Wilderness Safety & LOP', icon: Shield, badge: '2:1 Belay Buddy Law' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setSubTab(tab.id)}
+                            style={{
+                                background: subTab === tab.id ? '#1e293b' : 'transparent',
+                                color: subTab === tab.id ? '#38bdf8' : 'rgba(255,255,255,0.6)',
+                                border: subTab === tab.id ? '1px solid rgba(37,170,225,0.4)' : '1px solid transparent',
+                                borderRadius: '10px',
+                                padding: '0.65rem 1.1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.65rem',
+                                cursor: 'pointer',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            <tab.icon size={17} style={{ color: subTab === tab.id ? '#25AAE1' : 'inherit' }} />
+                            <span>{tab.label}</span>
+                            <span style={{ 
+                                fontSize: '0.65rem', 
+                                background: subTab === tab.id ? 'rgba(37,170,225,0.2)' : '#EBEBF2',
+                                color: subTab === tab.id ? '#38bdf8' : 'rgba(255,255,255,0.4)',
+                                padding: '0.15rem 0.45rem', 
+                                borderRadius: '6px',
+                                fontWeight: 700 
+                            }}>
+                                {tab.badge}
+                            </span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
+            {/* Sub-Tab 1: Camp Run-Sheet Studio */}
+            {subTab === 'studio' && (
+                <CampRunSheetStudio 
+                    api={api} 
+                    campus={directorateCampus} 
+                    setMsg={setMsg} 
+                    isGuest={isGuest} 
+                    userRole={userRole} 
+                />
+            )}
+
+            {/* Sub-Tab 2: Douloid Cadres & 5-Domain Evaluations */}
+            {subTab === 'cadres' && (
+                <DouloidCadresDirectorate 
+                    api={api} 
+                    campus={directorateCampus} 
+                    setMsg={setMsg} 
+                    isGuest={isGuest} 
+                    userRole={userRole} 
+                />
+            )}
+
+            {/* Sub-Tab 4: Wilderness Safety Protocols */}
+            {subTab === 'protocols' && (
+                <WildernessSafetyProtocols />
+            )}
+
+            {/* Sub-Tab 3: Practical Field Drills & Radius */}
+            {subTab === 'drills' && (
+                <div>
+                    <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <button className="btn btn-primary" onClick={() => setShowCreateTraining(!showCreateTraining)}
+                            style={{ background: '#34d399', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'black', fontWeight: 800 }}>
+                            <Plus size={20} /> New Training Session
+                        </button>
+                    </div>
+
             {showCreateTraining && (
-                <div className="glass-card-premium" style={{ marginBottom: '2.5rem', maxWidth: '850px', position: 'relative', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '2.25rem', background: '#0a0d16', borderRadius: '24px' }}>
+                <div className="glass-card-premium" style={{ marginBottom: '2.5rem', maxWidth: '850px', position: 'relative', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '2.25rem', background: '#FFFFFF', borderRadius: '24px' }}>
                     
                     {/* Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -572,7 +713,7 @@ const TrainingsTab = ({
                                 <h3 style={{ margin: 0, color: '#34d399', fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
                                     Create Training Session
                                 </h3>
-                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: "#7E7A9B", fontWeight: 600 }}>
                                     Setup a new training, configure geofences and check-in polls.
                                 </p>
                             </div>
@@ -588,7 +729,7 @@ const TrainingsTab = ({
                     <form onSubmit={handleCreateTraining} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
                         
                         {/* SECTION 1: Identity & Schedule */}
-                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid #EBEBF2', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
                                 <SettingsIcon size={14} style={{ color: '#34d399' }} />
                                 <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>General Details</span>
@@ -596,12 +737,12 @@ const TrainingsTab = ({
                             
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem' }}>
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Training Name</label>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}>Training Name</label>
                                     <input className="modern-input" style={{ width: '100%' }} value={trainingFormData.name} onChange={e => setTrainingFormData({ ...trainingFormData, name: e.target.value })} placeholder="e.g. Leadership Foundations" required />
                                 </div>
                                 
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Target Campus</label>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}>Target Campus</label>
                                     <select className="modern-input" style={{ width: '100%' }} value={trainingFormData.campus} onChange={e => setTrainingFormData({ ...trainingFormData, campus: e.target.value })}>
                                         <option value="Both">Both Campuses</option>
                                         <option value="Athi River">Athi River Only</option>
@@ -612,24 +753,24 @@ const TrainingsTab = ({
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}><Calendar size={13} style={{ color: '#34d399' }} /> Date</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}><Calendar size={13} style={{ color: '#34d399' }} /> Date</label>
                                     <input type="date" className="modern-input" style={{ width: '100%' }} value={trainingFormData.date} onChange={e => setTrainingFormData({ ...trainingFormData, date: e.target.value })} required />
                                 </div>
 
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}><Clock size={13} style={{ color: '#34d399' }} /> Start Time</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}><Clock size={13} style={{ color: '#34d399' }} /> Start Time</label>
                                     <input type="time" className="modern-input" style={{ width: '100%' }} value={trainingFormData.startTime} onChange={e => setTrainingFormData({ ...trainingFormData, startTime: e.target.value })} required />
                                 </div>
 
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}><Clock size={13} style={{ color: '#34d399' }} /> End Time</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}><Clock size={13} style={{ color: '#34d399' }} /> End Time</label>
                                     <input type="time" className="modern-input" style={{ width: '100%' }} value={trainingFormData.endTime} onChange={e => setTrainingFormData({ ...trainingFormData, endTime: e.target.value })} required />
                                 </div>
                             </div>
                         </div>
 
                         {/* SECTION 2: Interaction / Poll */}
-                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid #EBEBF2', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
                                 <Lightbulb size={14} style={{ color: '#34d399' }} />
                                 <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Check-In Engagement Poll</span>
@@ -637,7 +778,7 @@ const TrainingsTab = ({
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Question Type</label>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}>Question Type</label>
                                     <select 
                                         className="modern-input"
                                         style={{ width: '100%' }}
@@ -660,7 +801,7 @@ const TrainingsTab = ({
                                 </div>
 
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Question Wording</label>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}>Question Wording</label>
                                     <input 
                                         type="text"
                                         className="modern-input"
@@ -673,7 +814,7 @@ const TrainingsTab = ({
                             </div>
 
                             {(trainingFormData.questionType === 'multiple_choice' || trainingFormData.questionType === 'checkboxes') && (
-                                <div style={{ background: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', marginTop: '0.25rem' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderRadius: '12px', border: '1px solid #EBEBF2', marginTop: '0.25rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Poll Options List</span>
                                         <button
@@ -728,7 +869,7 @@ const TrainingsTab = ({
                         </div>
 
                         {/* SECTION 3: Venue & Geofencing */}
-                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid #EBEBF2', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
                                 <MapPin size={14} style={{ color: '#34d399' }} />
                                 <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Venue & Geofencing</span>
@@ -736,13 +877,13 @@ const TrainingsTab = ({
 
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.25rem' }}>
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Venue Name *</label>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}>Venue Name *</label>
                                     <input className="modern-input" style={{ width: '100%' }} placeholder="e.g. Athi River Guest House" value={trainingFormData.location.name}
                                         onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, name: e.target.value } })} required />
                                 </div>
                                 
                                 <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Geofence Radius (meters)</label>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: "#7E7A9B" }}>Geofence Radius (meters)</label>
                                     <input type="number" className="modern-input" style={{ width: '100%' }} value={trainingFormData.location.radius}
                                         onChange={e => setTrainingFormData({ ...trainingFormData, location: { ...trainingFormData.location, radius: Number(e.target.value) } })} placeholder="200" />
                                 </div>
@@ -754,11 +895,11 @@ const TrainingsTab = ({
                                         <MapPin size={15} /> Current Geofence Coordinates
                                     </span>
                                     {trainingFormData.location.latitude && trainingFormData.location.longitude ? (
-                                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                                        <span style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 600 }}>
                                             ✓ Captured: {trainingFormData.location.latitude.toFixed(6)}°, {trainingFormData.location.longitude.toFixed(6)}°
                                         </span>
                                     ) : (
-                                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                                        <span style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 500 }}>
                                             Verify check-in device coordinates by fetching current GPS location.
                                         </span>
                                     )}
@@ -850,12 +991,14 @@ const TrainingsTab = ({
                     {filteredHistory.map(t => renderTrainingCard(t))}
                 </div>
             )}
+            </div>
+            )}
 
             {/* QR Modal for Training */}
             {selectedTraining && (
                 <div style={{ 
                     position: 'fixed', inset: 0, 
-                    background: 'rgba(2, 6, 12, 0.75)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                    background: 'rgba(2, 6, 12, 0.92)',
                     zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' 
                 }}
                     onClick={() => setSelectedTraining(null)}>
@@ -864,10 +1007,10 @@ const TrainingsTab = ({
                         textAlign: 'center', 
                         maxWidth: '400px', 
                         width: '100%', 
-                        background: '#090d16',
+                        background: '#F8F8FC',
                         borderRadius: '1.25rem',
                         border: '1px solid rgba(29, 166, 217, 0.2)',
-                        boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
+                        boxShadow: '0 24px 64px rgba(46, 42, 77, 0.45), 0 0 40px rgba(29, 166, 217, 0.08)',
                         animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                     }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ marginBottom: '0.5rem' }}>Scan Training QR</h3>
@@ -896,7 +1039,7 @@ const TrainingsTab = ({
                             </button>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                style={{ background: 'rgba(255,255,255,0.03)', color: "#1E1B39", fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
                                 onClick={() => {
                                     const link = `${window.location.origin}/check-in/${selectedTraining.code}`;
                                     navigator.clipboard.writeText(link);
@@ -924,7 +1067,7 @@ const TrainingsTab = ({
 
             {/* Insights Modal */}
             {insightMeeting && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.5rem' : '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(46, 42, 77, 0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.5rem' : '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
                     <div style={{ width: '100%', maxWidth: '1000px', maxHeight: '100%' }} onClick={e => e.stopPropagation()}>
 
                         <MeetingInsights 
@@ -955,14 +1098,14 @@ const TrainingsTab = ({
 
             {/* Roster Modal */}
             {rosterTraining && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setRosterTraining(null)}>
-                    <div className="glass-card-premium" style={{ width: '100%', maxWidth: '650px', background: '#090d16', borderRadius: '1.25rem', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '2rem', maxHeight: '90vh', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'popScale 0.3s' }} onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(46, 42, 77, 0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setRosterTraining(null)}>
+                    <div className="glass-card-premium" style={{ width: '100%', maxWidth: '650px', background: '#F8F8FC', borderRadius: '1.25rem', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '2rem', maxHeight: '90vh', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'popScale 0.3s' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0 }}>Manage Training Roster</h3>
                                 <p style={{ margin: '0.25rem 0 0 0', opacity: 0.5, fontSize: '0.85rem' }}>{rosterTraining.name} ({rosterTraining.campus})</p>
                             </div>
-                            <button className="btn" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)', borderRadius: '50%' }} onClick={() => setRosterTraining(null)}>
+                            <button className="btn" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.03)', color: "#7E7A9B", borderRadius: '50%' }} onClick={() => setRosterTraining(null)}>
                                 <X size={16} />
                             </button>
                         </div>
@@ -974,7 +1117,7 @@ const TrainingsTab = ({
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 };
 
@@ -1103,13 +1246,13 @@ const RosterManagerInner = ({ training, members, api, onSave, setMsg }) => {
             {mode === 'view' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, minHeight: 0 }}>
                     <div className="search-box-container" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.75rem', padding: '0.5rem 0.75rem' }}>
-                        <Search size={14} style={{ color: 'rgba(255,255,255,0.4)', marginRight: '0.5rem' }} />
+                        <Search size={14} style={{ color: "#7E7A9B", marginRight: '0.5rem' }} />
                         <input
                             type="text"
                             placeholder="Search roster..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', width: '100%', fontSize: '0.85rem' }}
+                            style={{ background: 'transparent', border: 'none', color: "#1E1B39", outline: 'none', width: '100%', fontSize: '0.85rem' }}
                         />
                     </div>
 
@@ -1122,7 +1265,7 @@ const RosterManagerInner = ({ training, members, api, onSave, setMsg }) => {
                             filteredRoster.map(r => (
                                 <div key={r.studentRegNo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', padding: '0.65rem 0.85rem', borderRadius: '0.75rem' }}>
                                     <div>
-                                        <div style={{ fontWeight: 800, color: 'white', fontSize: '0.85rem' }}>{r.name}</div>
+                                        <div style={{ fontWeight: 800, color: "#1E1B39", fontSize: '0.85rem' }}>{r.name}</div>
                                         <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.15rem' }}>
                                             {r.studentRegNo} <span style={{ opacity: 0.4 }}>•</span> {r.memberType}
                                         </div>
@@ -1139,7 +1282,7 @@ const RosterManagerInner = ({ training, members, api, onSave, setMsg }) => {
 
             {mode === 'paste' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: '0.8rem', color: "#7E7A9B", lineHeight: 1.4 }}>
                         Copy columns directly from Excel or Google Sheets (containing Admission Numbers/Names) and paste them below.
                     </div>
                     <textarea
@@ -1148,8 +1291,8 @@ const RosterManagerInner = ({ training, members, api, onSave, setMsg }) => {
                         value={pasteText}
                         onChange={e => setPasteText(e.target.value)}
                         style={{
-                            width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: '0.75rem', color: 'white', padding: '0.75rem', outline: 'none',
+                            width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid #EBEBF2',
+                            borderRadius: '0.75rem', color: "#1E1B39", padding: '0.75rem', outline: 'none',
                             fontSize: '0.85rem', fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box'
                         }}
                     />

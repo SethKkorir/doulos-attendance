@@ -15,7 +15,9 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [insightSearch, setInsightSearch] = useState('');
-    const [activeTab, setActiveTab] = useState(isTraining ? 'ticker' : 'manual_checkin'); // Default to checklist first!
+    const [activeTab, setActiveTab] = useState(
+        meeting?.initialTab || (isTraining ? 'ticker' : (meeting?.isActive ? 'manual_checkin' : 'present'))
+    ); // Default to live ticker if active, or Who Attended (present) if completed
     const [selectedDay, setSelectedDay] = useState(meeting.activeDay || 1);
     const [togglingRegDay, setTogglingRegDay] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -32,7 +34,12 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     useEffect(() => {
         setCurrentMeeting(meeting);
         setSelectedDay(meeting.activeDay || 1);
-    }, [meeting]);
+        if (meeting?.initialTab) {
+            setActiveTab(meeting.initialTab);
+        } else if (!meeting?.isActive && !isTraining) {
+            setActiveTab('present');
+        }
+    }, [meeting, isTraining]);
 
     useEffect(() => {
         setSelectedRegs(new Set());
@@ -328,7 +335,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     };
 
     if (loading) return (
-        <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(20px)', border: '1px solid #EBEBF2' }}>
             <div className="loading-spinner-small" style={{ margin: '0 auto 1.5rem', width: '50px', height: '50px', borderTopColor: 'hsl(var(--color-primary))' }}></div>
             <p style={{ fontWeight: 800, letterSpacing: '2px', color: 'hsl(var(--color-primary))', fontSize: '0.8rem' }}>DECODING ATTENDANCE PATTERNS...</p>
         </div>
@@ -364,7 +371,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     return (
         <div className="glass-card-premium" style={{
             padding: isMobile ? '1rem' : '2rem',
-            background: '#0d111b',
+            background: '#FFFFFF',
             borderRadius: isMobile ? '0' : '2rem',
             animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
             boxShadow: isMobile ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
@@ -395,8 +402,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         <BarChart3 size={isMobile ? 22 : 28} color="#25AAE1" style={{ filter: 'drop-shadow(0 0 6px rgba(37, 170, 225, 0.4))' }} />
                     </div>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: isMobile ? '1.25rem' : '1.65rem', fontWeight: 950, letterSpacing: '-0.75px', color: 'white' }}>Meeting Insights</h2>
-                        <p style={{ color: 'rgba(255,255,255,0.45)', margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.88rem' }}>
+                        <h2 style={{ margin: 0, fontSize: isMobile ? '1.25rem' : '1.65rem', fontWeight: 950, letterSpacing: '-0.75px', color: "#1E1B39" }}>Meeting Insights</h2>
+                        <p style={{ color: "#7E7A9B", margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.88rem' }}>
                             {currentMeeting.name} • {new Date(currentMeeting.date).toLocaleDateString(undefined, { weekday: isMobile ? 'short' : 'long', year: isMobile ? undefined : 'numeric', month: 'short', day: 'numeric' })}
                         </p>
                     </div>
@@ -406,8 +413,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     className="btn"
                     style={{
                         background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        color: 'white',
+                        border: '1px solid #EBEBF2',
+                        color: "#1E1B39",
                         padding: isMobile ? '0.55rem 1rem' : '0.75rem 1.5rem',
                         borderRadius: '0.85rem',
                         cursor: 'pointer',
@@ -418,7 +425,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         whiteSpace: 'nowrap'
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; e.currentTarget.style.color = '#ef4444'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = '#EBEBF2'; e.currentTarget.style.color = 'white'; }}
                 >
                     {isMobile ? 'EXIT' : 'EXIT ANALYSIS'}
                 </button>
@@ -442,7 +449,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#34d399', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                             Live Check-in Control
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 700 }}>
                             Select which day is active/live for QR scans.
                         </span>
                     </div>
@@ -458,7 +465,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         flex: isMobile ? 1 : 'none',
                                         padding: isMobile ? '0.5rem 0.25rem' : '0.55rem 1.25rem',
                                         background: isActiveDay ? 'linear-gradient(135deg, #34d399, #059669)' : 'rgba(255, 255, 255, 0.03)',
-                                        border: isActiveDay ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.08)',
+                                        border: isActiveDay ? '1px solid #34d399' : '1px solid #EBEBF2',
                                         borderRadius: '0.65rem',
                                         color: isActiveDay ? 'black' : 'white',
                                         fontWeight: 800,
@@ -495,7 +502,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
                         <HelpCircle size={10} /> ACTIVE QUESTION OF THE DAY
                     </div>
-                    <h3 style={{ margin: 0, fontSize: isMobile ? '0.95rem' : '1.18rem', fontWeight: 800, color: 'white', lineHeight: '1.45', fontStyle: 'italic', opacity: 0.95 }}>
+                    <h3 style={{ margin: 0, fontSize: isMobile ? '0.95rem' : '1.18rem', fontWeight: 800, color: "#1E1B39", lineHeight: '1.45', fontStyle: 'italic', opacity: 0.95 }}>
                         "{meeting.questionOfDay}"
                     </h3>
                 </div>
@@ -511,7 +518,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             left: '1.15rem',
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            color: 'rgba(255,255,255,0.3)'
+                            color: "#7E7A9B"
                         }}
                     />
                     <input
@@ -525,7 +532,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             border: '1px solid rgba(255,255,255,0.05)',
                             padding: isMobile ? '0.75rem 1rem 0.75rem 2.8rem' : '1rem 1.5rem 1rem 3.5rem',
                             borderRadius: '1rem',
-                            color: 'white',
+                            color: "#1E1B39",
                             fontSize: isMobile ? '0.85rem' : '0.95rem',
                             fontWeight: 600,
                             outline: 'none',
@@ -544,7 +551,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 transform: 'translateY(-50%)',
                                 background: 'transparent',
                                 border: 'none',
-                                color: 'rgba(255,255,255,0.4)',
+                                color: "#7E7A9B",
                                 cursor: 'pointer'
                             }}
                         >
@@ -561,10 +568,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         background: 'rgba(255,255,255,0.02)', 
                         padding: '0.3rem 0.4rem', 
                         borderRadius: '0.85rem', 
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        border: '1px solid #EBEBF2',
                         justifyContent: isMobile ? 'space-between' : 'flex-start'
                     }}>
-                        <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', padding: '0 0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Viewing:</span>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 900, color: "#7E7A9B", padding: '0 0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Viewing:</span>
                         <div style={{ display: 'flex', gap: '0.2rem', flex: isMobile ? 1 : 'none', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
                             {[1, 2, 3].map(day => {
                                 const isSelected = selectedDay === day;
@@ -599,7 +606,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 style={{ 
                     display: 'flex', 
                     gap: '0.4rem', 
-                    borderBottom: '1px solid rgba(255,255,255,0.06)', 
+                    borderBottom: '1px solid #EBEBF2', 
                     padding: '0.2rem 0.1rem 0.6rem 0.1rem', 
                     marginBottom: '1.25rem', 
                     overflowX: 'auto',
@@ -611,10 +618,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 {[
                     ...(isTraining 
                         ? [{ id: 'ticker', label: '3-Day Ticker', icon: Activity }]
-                        : [{ id: 'manual_checkin', label: 'Manual Ticker', icon: Activity }]),
+                        : [{ id: 'manual_checkin', label: currentMeeting?.isActive ? '⚡ Live Check-In Ticker' : 'Manual Ticker', icon: Activity }]),
+                    { id: 'present', label: 'Who Attended', icon: Users, badge: filteredPresent.length },
                     { id: 'answers', label: 'Answers Board', icon: MessageSquare, badge: filteredPresent.length },
-                    { id: 'present', label: 'Participants List', icon: Users, badge: filteredPresent.length },
-                    { id: 'absent', label: 'Missed Registry', icon: UserX, badge: filteredAbsent.length }
+                    { id: 'absent', label: 'Missed / Absent', icon: UserX, badge: filteredAbsent.length }
                 ].map(tab => {
                     const ActiveIcon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -648,8 +655,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 <span style={{
                                     fontSize: '0.58rem',
                                     fontWeight: 900,
-                                    background: isActive ? '#25AAE1' : 'rgba(255,255,255,0.1)',
-                                    color: isActive ? '#0d111b' : 'rgba(255,255,255,0.6)',
+                                    background: isActive ? '#25AAE1' : '#EBEBF2',
+                                    color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.6)',
                                     padding: '0.08rem 0.4rem',
                                     borderRadius: '0.4rem',
                                     marginLeft: '2px'
@@ -683,10 +690,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             textAlign: 'center', 
                             background: 'rgba(255,255,255,0.01)', 
                             borderRadius: '1.5rem', 
-                            border: '1px dashed rgba(255,255,255,0.06)' 
+                            border: '1px dashed #EBEBF2' 
                         }}>
-                            <MessageSquare size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
-                            <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No responses match search criteria</h4>
+                            <MessageSquare size={40} color="#EBEBF2" style={{ marginBottom: '1rem' }} />
+                            <h4 style={{ margin: 0, color: "#1E1B39", fontSize: '1.1rem', fontWeight: 700 }}>No responses match search criteria</h4>
                             <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>
                                 {insightSearch ? 'Try clearing your live filter text.' : 'Nobody has checked in and answered this question yet.'}
                             </p>
@@ -699,7 +706,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                     <div key={a._id} className="glass-panel" style={{
                                         padding: '1.5rem',
                                         background: 'rgba(15, 23, 42, 0.4)',
-                                        border: '1px solid rgba(255,255,255,0.04)',
+                                        border: '1px solid #EBEBF2',
                                         borderRadius: '1.5rem',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -708,15 +715,15 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         transition: 'all 0.3s'
                                     }}
                                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(37, 170, 225, 0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#EBEBF2'; e.currentTarget.style.transform = 'translateY(0)'; }}
                                     >
                                         {/* Respondent details */}
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div>
-                                                <div style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>
+                                                <div style={{ fontWeight: 800, fontSize: '1rem', color: "#1E1B39" }}>
                                                     {a.responses?.studentName || 'Member'}
                                                 </div>
-                                                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: '0.15rem' }}>
+                                                <div style={{ fontSize: '0.72rem', color: "#7E7A9B", fontWeight: 700, marginTop: '0.15rem' }}>
                                                     {a.studentRegNo} • {a.campus}
                                                 </div>
                                             </div>
@@ -753,7 +760,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         </div>
 
                                         {/* Metadata footer */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.68rem', color: "#7E7A9B", fontWeight: 700 }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><Clock size={11} /> CHECKED IN</span>
                                             <span>{new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                                         </div>
@@ -795,7 +802,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         <div key={m._id || m.studentRegNo} style={{
                             padding: isMobile ? '0.9rem 1rem' : '0.85rem 1.25rem',
                             background: isPresent ? 'rgba(52, 211, 153, 0.04)' : isSelected ? 'rgba(59, 130, 246, 0.04)' : 'rgba(255,255,255,0.01)',
-                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : isSelected ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.04)'}`,
+                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : isSelected ? 'rgba(59, 130, 246, 0.25)' : '#EBEBF2'}`,
                             borderRadius: '0.85rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -811,7 +818,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                             width: '18px',
                                             height: '18px',
                                             borderRadius: '4px',
-                                            border: isSelected ? '2px solid #34d399' : '2px solid rgba(255,255,255,0.2)',
+                                            border: isSelected ? '2px solid #34d399' : '2px solid #D1D1DB',
                                             background: isSelected ? '#34d399' : 'transparent',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -835,7 +842,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                     {isPresent ? '✓' : (m.name || '?').charAt(0).toUpperCase()}
                                 </div>
                                 <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: "#1E1B39", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {m.name || 'Unknown'}
                                     </div>
                                     <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.1rem' }}>
@@ -887,9 +894,9 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 return (
                     <div style={{ animation: 'fadeIn 0.4s ease-out', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         {filteredMembers.length === 0 ? (
-                            <div style={{ padding: '5rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '1.5rem', border: '1px dashed rgba(255,255,255,0.06)' }}>
-                                <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
-                                <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members found</h4>
+                            <div style={{ padding: '5rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '1.5rem', border: '1px dashed #EBEBF2' }}>
+                                <Search size={40} color="#EBEBF2" style={{ marginBottom: '1rem' }} />
+                                <h4 style={{ margin: 0, color: "#1E1B39", fontSize: '1.1rem', fontWeight: 700 }}>No members found</h4>
                                 <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your search.</p>
                             </div>
                         ) : (
@@ -898,8 +905,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In</div>
-                                            <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: "#7E7A9B", textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In</div>
+                                            <span style={{ background: '#EBEBF2', color: "#7E7A9B", fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
                                         </div>
                                         {toCheckIn.length > 0 && (
                                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -914,10 +921,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                                 >
                                                     Select All
                                                 </button>
-                                                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.7rem' }}>|</span>
+                                                <span style={{ color: '#EBEBF2', fontSize: '0.7rem' }}>|</span>
                                                 <button 
                                                     className="btn" 
-                                                    style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
+                                                    style={{ background: 'transparent', border: 'none', color: "#7E7A9B", fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
                                                     onClick={() => {
                                                         const next = new Set(selectedRegs);
                                                         toCheckIn.forEach(m => next.delete(String(m.studentRegNo).trim().toUpperCase()));
@@ -970,10 +977,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             textAlign: 'center', 
                             background: 'rgba(255,255,255,0.01)', 
                             borderRadius: '1.5rem', 
-                            border: '1px dashed rgba(255,255,255,0.06)' 
+                            border: '1px dashed #EBEBF2' 
                         }}>
-                            <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
-                            <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No present participants matching your search</h4>
+                            <Search size={40} color="#EBEBF2" style={{ marginBottom: '1rem' }} />
+                            <h4 style={{ margin: 0, color: "#1E1B39", fontSize: '1.1rem', fontWeight: 700 }}>No present participants matching your search</h4>
                             <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your live filter search input.</p>
                         </div>
                     ) : isMobile ? (
@@ -982,7 +989,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 <div key={idx} className="glass-panel" style={{
                                     padding: '1rem',
                                     background: 'rgba(15, 23, 42, 0.4)',
-                                    border: '1px solid rgba(255,255,255,0.04)',
+                                    border: '1px solid #EBEBF2',
                                     borderRadius: '1rem',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -990,10 +997,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>
+                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: "#1E1B39" }}>
                                                 {a.responses?.studentName || 'Member'}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: '0.15rem' }}>
+                                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 700, marginTop: '0.15rem' }}>
                                                 {a.studentRegNo}
                                             </div>
                                         </div>
@@ -1011,7 +1018,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         </span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <div style={{ fontSize: '0.7rem', color: "#7E7A9B", fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <Clock size={12} /> {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                         <button
@@ -1040,7 +1047,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         <div style={{ overflowX: 'auto' }} className="glass-panel">
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <tr style={{ borderBottom: '1px solid #EBEBF2' }}>
                                         <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '30%' }}>MEMBER NAME</th>
                                         <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '25%' }}>ADMISSION NUMBER</th>
                                         <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 800, opacity: 0.5, width: '15%' }}>REGISTRY ROLE</th>
@@ -1057,7 +1064,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
-                                            <td style={{ padding: '1.15rem 1rem', fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
+                                            <td style={{ padding: '1.15rem 1rem', fontSize: '0.9rem', fontWeight: 800, color: "#1E1B39" }}>
                                                 {a.responses?.studentName || 'Member'}
                                             </td>
                                             <td style={{ padding: '1.15rem 1rem', fontSize: '0.85rem', color: '#94a3b8', fontFamily: 'monospace' }}>
@@ -1077,7 +1084,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                                     {a.memberType}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1.15rem 1rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                                            <td style={{ padding: '1.15rem 1rem', fontSize: '0.8rem', color: "#7E7A9B", fontWeight: 600 }}>
                                                 {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </td>
                                             <td style={{ padding: '1.15rem 1rem', textAlign: 'right' }}>
@@ -1120,7 +1127,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             textAlign: 'center', 
                             background: 'rgba(255,255,255,0.01)', 
                             borderRadius: '1.5rem', 
-                            border: '1px dashed rgba(255,255,255,0.06)' 
+                            border: '1px dashed #EBEBF2' 
                         }}>
                             <Users size={40} color="#4ade80" style={{ marginBottom: '1rem', filter: 'drop-shadow(0 0 6px rgba(74, 222, 128, 0.3))' }} />
                             <h4 style={{ margin: 0, color: '#4ade80', fontSize: '1.1rem', fontWeight: 700 }}>100% Attendance Achieved!</h4>
@@ -1146,7 +1153,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.06)'}
                                 >
                                     <div>
-                                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>{m.name}</div>
+                                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: "#1E1B39" }}>{m.name}</div>
                                         <div style={{ fontSize: '0.72rem', opacity: 0.5, fontWeight: 700, marginTop: '0.15rem' }}>{m.studentRegNo}</div>
                                         <div style={{ marginTop: '0.5rem' }}>
                                             <span style={{
@@ -1169,8 +1176,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         className="btn btn-primary"
                                         style={{
                                             padding: '0.5rem 0.85rem',
-                                            background: '#25AAE1',
-                                            color: 'white',
+                                            background: "#4B3F8C",
+                                            color: "#1E1B39",
                                             fontSize: '0.7rem',
                                             fontWeight: 800,
                                             borderRadius: '0.65rem',
@@ -1230,7 +1237,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                         <div key={m._id || m.studentRegNo} style={{
                             padding: isMobile ? '0.9rem 1rem' : '0.85rem 1.25rem',
                             background: isPresent ? 'rgba(52, 211, 153, 0.04)' : isSelected ? 'rgba(59, 130, 246, 0.04)' : 'rgba(255,255,255,0.01)',
-                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : isSelected ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.04)'}`,
+                            border: `1px solid ${isPresent ? 'rgba(52, 211, 153, 0.15)' : isSelected ? 'rgba(59, 130, 246, 0.25)' : '#EBEBF2'}`,
                             borderRadius: '0.85rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -1246,7 +1253,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                             width: '18px',
                                             height: '18px',
                                             borderRadius: '4px',
-                                            border: isSelected ? '2px solid #34d399' : '2px solid rgba(255,255,255,0.2)',
+                                            border: isSelected ? '2px solid #34d399' : '2px solid #D1D1DB',
                                             background: isSelected ? '#34d399' : 'transparent',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1270,7 +1277,7 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                     {isPresent ? '✓' : (m.name || '?').charAt(0).toUpperCase()}
                                 </div>
                                 <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: "#1E1B39", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {m.name || 'Unknown'}
                                     </div>
                                     <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '0.1rem' }}>
@@ -1322,9 +1329,9 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                 return (
                     <div style={{ animation: 'fadeIn 0.4s ease-out', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         {filteredMembers.length === 0 ? (
-                            <div style={{ padding: '5rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '1.5rem', border: '1px dashed rgba(255,255,255,0.06)' }}>
-                                <Search size={40} color="rgba(255,255,255,0.15)" style={{ marginBottom: '1rem' }} />
-                                <h4 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 700 }}>No members found</h4>
+                            <div style={{ padding: '5rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '1.5rem', border: '1px dashed #EBEBF2' }}>
+                                <Search size={40} color="#EBEBF2" style={{ marginBottom: '1rem' }} />
+                                <h4 style={{ margin: 0, color: "#1E1B39", fontSize: '1.1rem', fontWeight: 700 }}>No members found</h4>
                                 <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Try adjusting your search.</p>
                             </div>
                         ) : (
@@ -1333,8 +1340,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In — Day {selectedDay}</div>
-                                            <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: "#7E7A9B", textTransform: 'uppercase', letterSpacing: '1.5px' }}>To Check In — Day {selectedDay}</div>
+                                            <span style={{ background: '#EBEBF2', color: "#7E7A9B", fontSize: '0.62rem', fontWeight: 800, padding: '0.1rem 0.5rem', borderRadius: '1rem' }}>{toCheckIn.length}</span>
                                         </div>
                                         {toCheckIn.length > 0 && (
                                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -1349,10 +1356,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                                 >
                                                     Select All
                                                 </button>
-                                                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.7rem' }}>|</span>
+                                                <span style={{ color: '#EBEBF2', fontSize: '0.7rem' }}>|</span>
                                                 <button 
                                                     className="btn" 
-                                                    style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
+                                                    style={{ background: 'transparent', border: 'none', color: "#7E7A9B", fontSize: '0.7rem', fontWeight: 800, padding: 0, cursor: 'pointer' }}
                                                     onClick={() => {
                                                         const next = new Set(selectedRegs);
                                                         toCheckIn.forEach(m => next.delete(String(m.studentRegNo).trim().toUpperCase()));
@@ -1416,10 +1423,10 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                     zIndex: 100
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: "#1E1B39" }}>
                             {selectedRegs.size} selected
                         </span>
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: "#7E7A9B", marginTop: '0.1rem' }}>
                             Ready for bulk manual check-in
                         </span>
                     </div>
@@ -1428,8 +1435,8 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                             className="btn" 
                             style={{
                                 background: 'rgba(255,255,255,0.03)',
-                                color: 'rgba(255,255,255,0.6)',
-                                border: '1px solid rgba(255,255,255,0.06)',
+                                color: "#7E7A9B",
+                                border: '1px solid #EBEBF2',
                                 padding: '0.5rem 1rem',
                                 borderRadius: '0.5rem',
                                 fontSize: '0.8rem',

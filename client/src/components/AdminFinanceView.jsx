@@ -168,10 +168,10 @@ const AdminFinanceView = ({ isGuest }) => {
 
             {/* Summary Cards */}
             <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#0d111b' }}>
+                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#FFFFFF' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <p style={{ margin: 0, fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>TOTAL COLLECTED</p>
+                            <p style={{ margin: 0, fontSize: '0.72rem', color: "#7E7A9B", fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>TOTAL COLLECTED</p>
                             <h3 style={{ margin: '0.25rem 0 0', fontSize: '1.6rem', color: '#4ade80', fontWeight: 900 }}>Ksh {approvedTotal.toLocaleString()}</h3>
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(74,222,128,0.08)', borderRadius: '0.5rem', border: '1px solid rgba(74,222,128,0.15)' }}>
@@ -179,10 +179,10 @@ const AdminFinanceView = ({ isGuest }) => {
                         </div>
                     </div>
                 </div>
-                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #fbbf24', background: '#0d111b' }}>
+                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #fbbf24', background: '#FFFFFF' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <p style={{ margin: 0, fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>AWAITING APPROVAL</p>
+                            <p style={{ margin: 0, fontSize: '0.72rem', color: "#7E7A9B", fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>AWAITING APPROVAL</p>
                             <h3 style={{ margin: '0.25rem 0 0', fontSize: '1.6rem', color: '#fbbf24', fontWeight: 900 }}>{pendingCount}</h3>
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(251,191,36,0.08)', borderRadius: '0.5rem', border: '1px solid rgba(251,191,36,0.15)' }}>
@@ -190,10 +190,10 @@ const AdminFinanceView = ({ isGuest }) => {
                         </div>
                     </div>
                 </div>
-                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#0d111b' }}>
+                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#FFFFFF' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <p style={{ margin: 0, fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>THIS MONTH'S GAIN</p>
+                            <p style={{ margin: 0, fontSize: '0.72rem', color: "#7E7A9B", fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>THIS MONTH'S GAIN</p>
                             <h3 style={{ margin: '0.25rem 0 0', fontSize: '1.6rem', color: '#25AAE1', fontWeight: 900 }}>
                                 Ksh {stats?.monthlyStats?.find(m => m._id === months[new Date().getMonth()])?.total?.toLocaleString() || 0}
                             </h3>
@@ -246,42 +246,42 @@ const AdminFinanceView = ({ isGuest }) => {
             </div>
 
             {/* Dynamic Content Sections */}
-            <div className="glass-card-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d111b', padding: '2rem !important' }}>
+            <div className="glass-card-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#FFFFFF', padding: '2rem !important' }}>
 
                 {/* 1. Approvals Queue */}
                 {activeTab === 'approvals' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>Pending Verifications</h3>
-                            <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Compare codes with your Bank/M-PESA statement</p>
+                        <div style={{ borderBottom: '1px solid #EBEBF2', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: "#1E1B39" }}>Pending Verifications</h3>
+                            <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: "#7E7A9B" }}>Compare codes with your Bank/M-PESA statement</p>
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {pending.length === 0 ? (
-                                <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>Queue empty. All payments are processed!</div>
+                                <div style={{ padding: '4rem', textAlign: 'center', color: "#7E7A9B", fontSize: '0.9rem' }}>Queue empty. All payments are processed!</div>
                             ) : (
                                 pending.map(p => (
-                                    <div key={p._id} className="glass-panel" style={{ padding: '1.25rem', background: '#090c14', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <div key={p._id} className="glass-panel" style={{ padding: '1.25rem', background: '#F8F8FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid #EBEBF2' }}>
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.1)', border: '1px solid rgba(37, 170, 225, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#25AAE1', fontSize: '0.85rem' }}>
                                                     {p.studentName?.charAt(0)?.toUpperCase() || 'S'}
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>{p.studentName}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{p.studentRegNo}</div>
+                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: "#1E1B39" }}>{p.studentName}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 600 }}>{p.studentRegNo}</div>
                                                 </div>
                                             </div>
                                         </div>
                                         <div>
                                             <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#4ade80' }}>Ksh {p.amount.toLocaleString()}</div>
-                                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>{p.month} Contribution</div>
+                                            <div style={{ fontSize: '0.72rem', color: "#7E7A9B", fontWeight: 700 }}>{p.month} Contribution</div>
                                         </div>
                                         <div>
                                             <code style={{ background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.35rem 0.75rem', borderRadius: '8px', letterSpacing: '1px', fontSize: '0.8rem', fontWeight: 800, border: '1px solid rgba(37, 170, 225, 0.15)' }}>{p.mpesaCode}</code>
                                         </div>
                                         <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{new Date(p.createdAt).toLocaleDateString()}</span>
+                                            <span style={{ fontSize: '0.75rem', color: "#7E7A9B" }}>{new Date(p.createdAt).toLocaleDateString()}</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <button onClick={() => handleVerify(p._id, 'approved')} className="btn btn-primary" style={{ background: 'rgba(74, 222, 128, 0.12) !important', color: '#4ade80 !important', border: '1px solid rgba(74, 222, 128, 0.25) !important', padding: '0.5rem 0.85rem', borderRadius: '0.5rem', boxShadow: 'none !important', cursor: 'pointer' }} title="Approve"><Check size={16} /></button>
@@ -297,7 +297,7 @@ const AdminFinanceView = ({ isGuest }) => {
                 {/* 2. Full Transactions List */}
                 {activeTab === 'transactions' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1.25rem', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #EBEBF2', paddingBottom: '1.25rem', marginBottom: '0.5rem' }}>
                             <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
                                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
                                 <input placeholder="Search transactions..." className="modern-input" style={{ paddingLeft: '3rem', width: '100%', border: '1px solid rgba(255,255,255,0.05)' }} value={txFilter.search} onChange={e => setTxFilter({ ...txFilter, search: e.target.value })} />
@@ -319,17 +319,17 @@ const AdminFinanceView = ({ isGuest }) => {
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {allPayments.length === 0 ? (
-                                <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>No transactions matching search found.</div>
+                                <div style={{ padding: '4rem', textAlign: 'center', color: "#7E7A9B" }}>No transactions matching search found.</div>
                             ) : (
                                 allPayments.map(p => (
-                                    <div key={p._id} className="glass-panel" style={{ padding: '1.25rem', background: '#090c14', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <div key={p._id} className="glass-panel" style={{ padding: '1.25rem', background: '#F8F8FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid #EBEBF2' }}>
                                         <div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>{p.studentName}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{p.studentRegNo}</div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: "#1E1B39" }}>{p.studentName}</div>
+                                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 600 }}>{p.studentRegNo}</div>
                                         </div>
                                         <div>
                                             <div style={{ fontWeight: 900, color: '#4ade80', fontSize: '1.05rem' }}>Ksh {p.amount}</div>
-                                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{p.month} Contribution</div>
+                                            <div style={{ fontSize: '0.72rem', color: "#7E7A9B", fontWeight: 700 }}>{p.month} Contribution</div>
                                         </div>
                                         <div>
                                             <code style={{ fontSize: '0.75rem', color: '#25AAE1', background: 'rgba(37, 170, 225, 0.05)', padding: '0.3rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(37, 170, 225, 0.1)', letterSpacing: '0.5px' }}>{p.mpesaCode || 'CASH_RECEIPT'}</code>
@@ -346,7 +346,7 @@ const AdminFinanceView = ({ isGuest }) => {
                                             </span>
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{new Date(p.createdAt).toLocaleDateString()}</span>
+                                            <span style={{ fontSize: '0.75rem', color: "#7E7A9B" }}>{new Date(p.createdAt).toLocaleDateString()}</span>
                                             <button
                                                 onClick={() => {
                                                     if (window.confirm('Delete this transaction record?')) {
@@ -375,12 +375,12 @@ const AdminFinanceView = ({ isGuest }) => {
                 {/* 3. Defaulters List */}
                 {activeTab === 'defaulters' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem', marginBottom: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ borderBottom: '1px solid #EBEBF2', paddingBottom: '1rem', marginBottom: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <AlertCircle size={20} style={{ color: '#f87171' }} />
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'white' }}>Non-Contributors List</h3>
-                                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Found {defaulters.length} regular members who haven't contributed for the selected month.</p>
+                                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: "#1E1B39" }}>Non-Contributors List</h3>
+                                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: "#7E7A9B" }}>Found {defaulters.length} regular members who haven't contributed for the selected month.</p>
                                 </div>
                             </div>
                             <select className="modern-input" style={{ width: '160px', border: '1px solid rgba(255,255,255,0.05)' }} value={defaulterFilter.month} onChange={e => setDefaulterFilter({ ...defaulterFilter, month: e.target.value })}>
@@ -390,17 +390,17 @@ const AdminFinanceView = ({ isGuest }) => {
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {defaulters.length === 0 ? (
-                                <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Perfect! No non-contributors found for this period.</div>
+                                <div style={{ padding: '4rem', textAlign: 'center', color: "#7E7A9B" }}>Perfect! No non-contributors found for this period.</div>
                             ) : (
                                 defaulters.map((d, i) => (
-                                    <div key={i} className="glass-panel" style={{ padding: '1.25rem', background: '#090c14', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <div key={i} className="glass-panel" style={{ padding: '1.25rem', background: '#F8F8FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid #EBEBF2' }}>
                                         <div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'white' }}>{d.name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{d.studentRegNo}</div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: "#1E1B39" }}>{d.name}</div>
+                                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 600 }}>{d.studentRegNo}</div>
                                         </div>
-                                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{d.campus}</div>
+                                        <div style={{ fontSize: '0.85rem', color: "#7E7A9B", fontWeight: 600 }}>{d.campus}</div>
                                         <div>
-                                            <span style={{ fontSize: '0.7rem', padding: '4px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>{d.memberType}</span>
+                                            <span style={{ fontSize: '0.7rem', padding: '4px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', color: "#7E7A9B", border: '1px solid #EBEBF2' }}>{d.memberType}</span>
                                         </div>
                                         <div>
                                             <button className="btn" style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: 'rgba(37, 170, 225, 0.08)', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.15)', fontWeight: 800 }} onClick={() => { setActiveTab('log-cash'); setCashData({ ...cashData, studentRegNo: d.studentRegNo, month: defaulterFilter.month }); }}>Record Payment</button>
@@ -415,16 +415,16 @@ const AdminFinanceView = ({ isGuest }) => {
                 {/* 4. Insights / Charts */}
                 {activeTab === 'insights' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white' }}>Financial Analytics</h3>
-                            <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Visual breakdowns of community contribution streams and monthly collections</p>
+                        <div style={{ borderBottom: '1px solid #EBEBF2', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: "#1E1B39" }}>Financial Analytics</h3>
+                            <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: "#7E7A9B" }}>Visual breakdowns of community contribution streams and monthly collections</p>
                         </div>
                         
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
 
                             {/* Monthly Trend */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', height: '350px', background: '#090c14', border: '1px solid rgba(255,255,255,0.04)' }}>
-                                <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', fontWeight: 800 }}>
+                            <div className="glass-panel" style={{ padding: '1.5rem', height: '350px', background: '#F8F8FC', border: '1px solid #EBEBF2' }}>
+                                <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: "#7E7A9B", fontWeight: 800 }}>
                                     <TrendingUp size={18} color="#25AAE1" /> COLLECTION TREND (KSH)
                                 </h4>
                                 <ResponsiveContainer width="100%" height="80%">
@@ -433,7 +433,7 @@ const AdminFinanceView = ({ isGuest }) => {
                                         <XAxis dataKey="_id" stroke="rgba(255,255,255,0.4)" fontSize={10} />
                                         <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} />
                                         <Tooltip
-                                            contentStyle={{ background: '#0d111b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}
+                                            contentStyle={{ background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '8px' }}
                                             itemStyle={{ color: '#25AAE1', fontWeight: 900 }}
                                         />
                                         <Bar dataKey="total" fill="#25AAE1" radius={[4, 4, 0, 0]} />
@@ -442,8 +442,8 @@ const AdminFinanceView = ({ isGuest }) => {
                             </div>
 
                             {/* Payment Modes */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', height: '350px', background: '#090c14', border: '1px solid rgba(255,255,255,0.04)' }}>
-                                <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', fontWeight: 800 }}>
+                            <div className="glass-panel" style={{ padding: '1.5rem', height: '350px', background: '#F8F8FC', border: '1px solid #EBEBF2' }}>
+                                <h4 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: "#7E7A9B", fontWeight: 800 }}>
                                     <PieIcon size={18} color="#4ade80" /> PAYMENT METHODS
                                 </h4>
                                 <ResponsiveContainer width="100%" height="80%">

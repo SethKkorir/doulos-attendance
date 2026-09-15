@@ -111,7 +111,7 @@ const ReportsTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -308,7 +308,7 @@ const ReportsTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -403,7 +403,7 @@ const ReportsTab = ({
                         .meta-info { font-size: 0.75rem; color: #64748b; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
                         .group-section { margin-bottom: 35px; page-break-inside: avoid; }
                         .group-title { font-size: 1rem; font-weight: 900; color: #ffffff; background: #475569; padding: 8px 15px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; }
-                        .group-badge { font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; font-weight: 700; }
+                        .group-badge { font-size: 0.75rem; background: #D1D1DB; padding: 2px 8px; border-radius: 20px; font-weight: 700; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
                         th { background: #f1f5f9; color: #475569; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 2px solid #cbd5e1; }
                         td { padding: 9px 12px; font-size: 0.8rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
@@ -457,7 +457,7 @@ const ReportsTab = ({
                                     <tbody>
                                         ${membersInGroup.map(m => `
                                             <tr>
-                                                <td style="font-weight: 700; color: #0f172a">${m.name}</td>
+                                                <td style="font-weight: 700; color: #FFFFFF">${m.name}</td>
                                                 <td style="font-family: monospace; font-weight: 600">${m.studentRegNo}</td>
                                                 <td>${m.campus}</td>
                                                 <td style="font-weight: 800; color: #3b82f6">${m.totalAttended || 0} / ${filteredMeetings.length} sessions</td>
@@ -507,7 +507,7 @@ const ReportsTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -663,7 +663,7 @@ const ReportsTab = ({
                                 <tbody>
                                     ${w.members.map(m => `
                                         <tr>
-                                            <td style="font-weight: 700; color: #0f172a">${m.name}</td>
+                                            <td style="font-weight: 700; color: #FFFFFF">${m.name}</td>
                                             <td style="font-family: monospace; font-weight: 600">${m.studentRegNo}</td>
                                             <td>${m.campus}</td>
                                             <td style="font-weight: 800; color: #10b981">${m.memberType}</td>
@@ -711,7 +711,7 @@ const ReportsTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -851,7 +851,7 @@ const ReportsTab = ({
                                 return `
                                     <tr>
                                         <td style="font-weight:800; color:#d97706">${idx + 1}</td>
-                                        <td style="font-weight: 700; color: #0f172a">${m.name}</td>
+                                        <td style="font-weight: 700; color: #FFFFFF">${m.name}</td>
                                         <td style="font-family: monospace; font-weight: 600">${m.studentRegNo}</td>
                                         <td>${m.campus}</td>
                                         <td style="font-weight: 800; color: #d97706">${m.totalAttended || 0} / ${filteredMeetings.length} (${rate}%)</td>
@@ -922,7 +922,7 @@ const ReportsTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -1194,15 +1194,15 @@ const ReportsTab = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s ease-out' }}>
             
             {/* 3. --- HEADER TAB NAVIGATION --- */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+            <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
                             <FileSpreadsheet size={28} color="#25AAE1" />
                         </div>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>Reports & Analytics</h2>
-                            <p style={{ margin: 0, color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem' }}>Compile, audit, and print premium multi-category Doulos sheets</p>
+                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: "#1E1B39" }}>Reports & Analytics</h2>
+                            <p style={{ margin: 0, color: "#7E7A9B", fontSize: '0.85rem' }}>Compile, audit, and print premium multi-category Doulos sheets</p>
                         </div>
                     </div>
                     
@@ -1272,15 +1272,15 @@ const ReportsTab = ({
                     
                     {/* Stats KPI Widgets */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#0d111b' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#FFFFFF' }}>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>TOTAL ATTENDED CHECK-INS</div>
                             <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--color-text, white)', marginTop: '0.5rem' }}>{totalAttendanceCount}</div>
                         </div>
-                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #a78bfa', background: '#0d111b' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #a78bfa', background: '#FFFFFF' }}>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>SESSIONS COUNT</div>
                             <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--color-text, white)', marginTop: '0.5rem' }}>{filteredMeetings.length}</div>
                         </div>
-                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#0d111b' }}>
+                        <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#FFFFFF' }}>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>AVERAGE PARTICIPATION RATE</div>
                             <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80', marginTop: '0.5rem' }}>{averageAttendance} <span style={{ fontSize: '0.9rem', color: 'var(--color-text-dim)' }}>students/session</span></div>
                         </div>
@@ -1290,7 +1290,7 @@ const ReportsTab = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
                         
                         {/* Custom CSS Bar chart of Session check-ins */}
-                        <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', minHeight: '340px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', minHeight: '340px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--color-text, white)' }}>Check-in Trend History</h3>
                                 <p style={{ color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.8rem', marginTop: '0.2rem' }}>Attendance checked across individual semester classes</p>
@@ -1306,7 +1306,7 @@ const ReportsTab = ({
                                     height: '180px', 
                                     gap: '0.5rem', 
                                     padding: '1.5rem 0.5rem 0.5rem 0.5rem',
-                                    borderBottom: '1px solid rgba(255,255,255,0.06)'
+                                    borderBottom: '1px solid #EBEBF2'
                                 }}>
                                     {filteredMeetings.slice(-8).map((m, idx) => {
                                         // Find max to scale relatively
@@ -1328,8 +1328,8 @@ const ReportsTab = ({
                                             >
                                                 {/* Tooltip on hover */}
                                                 <div className="chart-bar-tooltip" style={{
-                                                    position: 'absolute', bottom: `${barHeightPct + 12}%`, background: '#090d16',
-                                                    border: '1px solid rgba(37, 170, 225, 0.3)', color: 'white', borderRadius: '0.35rem',
+                                                    position: 'absolute', bottom: `${barHeightPct + 12}%`, background: '#F8F8FC',
+                                                    border: '1px solid rgba(37, 170, 225, 0.3)', color: "#1E1B39", borderRadius: '0.35rem',
                                                     padding: '0.3rem 0.5rem', fontSize: '0.62rem', fontWeight: 900, whiteSpace: 'nowrap', zIndex: 10
                                                 }}>
                                                     {m.name}: {m.attendanceCount || 0} Checked
@@ -1356,7 +1356,7 @@ const ReportsTab = ({
                         </div>
 
                         {/* Campus Breakdown progress bar */}
-                        <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--color-text, white)' }}>Campus Distribution Audit</h3>
                                 <p style={{ color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.8rem', marginTop: '0.2rem' }}>Attendance breakdown between active campus nodes</p>
@@ -1376,7 +1376,7 @@ const ReportsTab = ({
                                                 <span>Athi River Campus</span>
                                                 <span style={{ color: '#25AAE1' }}>{athiTotal} Check-ins ({athiPct}%)</span>
                                             </div>
-                                            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div style={{ width: '100%', height: '8px', background: '#EBEBF2', borderRadius: '10px', overflow: 'hidden', border: '1px solid #EBEBF2' }}>
                                                 <div style={{ width: `${athiPct}%`, height: '100%', background: 'linear-gradient(to right, rgba(37,170,225,0.3) 0%, #25AAE1 100%)', borderRadius: '10px' }} />
                                             </div>
                                         </div>
@@ -1386,7 +1386,7 @@ const ReportsTab = ({
                                                 <span>Valley Road Campus</span>
                                                 <span style={{ color: '#a78bfa' }}>{vrTotal} Check-ins ({vrPct}%)</span>
                                             </div>
-                                            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div style={{ width: '100%', height: '8px', background: '#EBEBF2', borderRadius: '10px', overflow: 'hidden', border: '1px solid #EBEBF2' }}>
                                                 <div style={{ width: `${vrPct}%`, height: '100%', background: 'linear-gradient(to right, rgba(167,139,250,0.3) 0%, #a78bfa 100%)', borderRadius: '10px' }} />
                                             </div>
                                         </div>
@@ -1398,7 +1398,7 @@ const ReportsTab = ({
                                 <button onClick={handlePrintOverviewPDF} className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
                                     <FileText size={14} /> Print PDF Report
                                 </button>
-                                <button onClick={handleExportOverviewCSV} className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}>
+                                <button onClick={handleExportOverviewCSV} className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', background: 'rgba(255,255,255,0.03)', border: '1px solid #EBEBF2', color: "#1E1B39" }}>
                                     <Download size={14} /> Export CSV
                                 </button>
                             </div>
@@ -1409,12 +1409,12 @@ const ReportsTab = ({
                     {/* Table of Session list */}
                     <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(29, 166, 217, 0.15)' }}>
                         <div style={{ padding: '1.25rem 1.5rem', background: 'rgba(2, 21, 37, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'white' }}>Semester Sessions Registry</h3>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: "#1E1B39" }}>Semester Sessions Registry</h3>
                         </div>
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <tr style={{ borderBottom: '1px solid #EBEBF2' }}>
                                         <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Session Date</th>
                                         <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Session Title</th>
                                         <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Campus Location</th>
@@ -1439,7 +1439,7 @@ const ReportsTab = ({
                                                     <span style={{ color: '#25AAE1', fontWeight: 900, background: 'rgba(37,170,225,0.1)', border: '1px solid rgba(37,170,225,0.15)', padding: '0.25rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.8rem' }}>{m.attendanceCount || 0}</span>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                    <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: 'rgba(255,255,255,0.03)', color: 'white', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', fontWeight: 800, cursor: 'pointer' }}>
+                                                    <button onClick={() => onDownloadCSV(m._id, m.name)} className="btn" style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: 'rgba(255,255,255,0.03)', color: "#1E1B39", border: '1px solid #EBEBF2', borderRadius: '0.5rem', fontWeight: 800, cursor: 'pointer' }}>
                                                         Download CSV
                                                     </button>
                                                 </td>
@@ -1459,7 +1459,7 @@ const ReportsTab = ({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.3s' }}>
                     
                     {/* Groups statistics header */}
-                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', borderLeft: '4px solid #3b82f6' }}>
+                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', borderLeft: '4px solid #3b82f6' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-text, white)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1473,7 +1473,7 @@ const ReportsTab = ({
                                 <button onClick={handlePrintCrewPDF} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <FileText size={14} /> Print Audit Sheet
                                 </button>
-                                <button onClick={handleExportCrewCSV} className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <button onClick={handleExportCrewCSV} className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', border: '1px solid #EBEBF2', color: "#1E1B39", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <Download size={14} /> Export CSV
                                 </button>
                             </div>
@@ -1495,10 +1495,10 @@ const ReportsTab = ({
                                     const groupAvgPct = maxPossible > 0 ? ((totalGroupCheckins / maxPossible) * 100).toFixed(0) : 0;
                                     
                                     return (
-                                        <div key={group} className="glass-card-premium" style={{ padding: '1.5rem', background: '#0d111b', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.75rem' }}>
+                                        <div key={group} className="glass-card-premium" style={{ padding: '1.5rem', background: '#FFFFFF', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #EBEBF2', paddingBottom: '0.75rem' }}>
                                                 <div>
-                                                    <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'white' }}>{group}</h4>
+                                                    <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: "#1E1B39" }}>{group}</h4>
                                                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim, rgba(255,255,255,0.45))', fontWeight: 600 }}>{membersInGroup.length} students assigned</span>
                                                 </div>
                                                 <div style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.25)', color: '#3b82f6', padding: '0.3rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.8rem', fontWeight: 900 }}>
@@ -1537,7 +1537,7 @@ const ReportsTab = ({
             {activeTab === 'watering' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.3s' }}>
                     
-                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', borderLeft: '4px solid #10b981' }}>
+                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', borderLeft: '4px solid #10b981' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-text, white)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1579,7 +1579,7 @@ const ReportsTab = ({
                                 )}
 
                                 {/* Heatmap Grid */}
-                                <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+                                <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.85rem' }}>
                                         {wateringStats.map(s => {
                                             const isCritical = s.count === 0;
@@ -1615,7 +1615,7 @@ const ReportsTab = ({
             {activeTab === 'honors' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.3s' }}>
                     
-                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', borderLeft: '4px solid #facc15' }}>
+                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', borderLeft: '4px solid #facc15' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-text, white)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1626,10 +1626,10 @@ const ReportsTab = ({
                                 </p>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <button onClick={handlePrintHonorsPDF} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'linear-gradient(135deg, #facc15 0%, #d97706 100%)', border: '1px solid rgba(250, 204, 21, 0.3)', display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#090d16' }}>
+                                <button onClick={handlePrintHonorsPDF} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'linear-gradient(135deg, #facc15 0%, #d97706 100%)', border: '1px solid rgba(250, 204, 21, 0.3)', display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#F8F8FC' }}>
                                     <FileText size={14} /> Print Honors List
                                 </button>
-                                <button onClick={handleExportHonorsCSV} className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <button onClick={handleExportHonorsCSV} className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.78rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', border: '1px solid #EBEBF2', color: "#1E1B39", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <Download size={14} /> Export CSV
                                 </button>
                             </div>
@@ -1641,14 +1641,14 @@ const ReportsTab = ({
                         {/* Leaderboard */}
                         <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(250, 204, 21, 0.15)' }}>
                             <div style={{ padding: '1.25rem 1.5rem', background: 'rgba(2, 21, 37, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'white' }}>Consistency Leaderboard</h3>
+                                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: "#1E1B39" }}>Consistency Leaderboard</h3>
                                 <span style={{ fontSize: '0.65rem', color: '#facc15', background: 'rgba(250, 204, 21, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid rgba(250, 204, 21, 0.15)', fontWeight: 800 }}>SORTED BY CHECK-INS DESC</span>
                             </div>
 
                             <div style={{ overflowY: 'auto', maxHeight: '420px' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <tr style={{ borderBottom: '1px solid #EBEBF2' }}>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.68rem', fontWeight: 900 }}>#</th>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.68rem', fontWeight: 900 }}>Student Name</th>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.68rem', fontWeight: 900 }}>Rate</th>
@@ -1684,14 +1684,14 @@ const ReportsTab = ({
                         {/* At Risk Alert */}
                         <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(239, 68, 68, 0.15)', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ padding: '1.25rem 1.5rem', background: 'rgba(2, 21, 37, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'white' }}>At-Risk Check-in Alerts</h3>
+                                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: "#1E1B39" }}>At-Risk Check-in Alerts</h3>
                                 <span style={{ fontSize: '0.65rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.15)', fontWeight: 800 }}>0 CHECK-INS</span>
                             </div>
 
                             <div style={{ overflowY: 'auto', flex: 1, maxHeight: '420px' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <tr style={{ borderBottom: '1px solid #EBEBF2' }}>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.68rem', fontWeight: 900 }}>Student Name</th>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.68rem', fontWeight: 900 }}>Campus Location</th>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.68rem', fontWeight: 900 }}>Details</th>
@@ -1736,7 +1736,7 @@ const ReportsTab = ({
             {activeTab === 'finance' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.3s' }}>
                     
-                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', borderLeft: '4px solid #a78bfa' }}>
+                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', borderLeft: '4px solid #a78bfa' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-text, white)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1762,19 +1762,19 @@ const ReportsTab = ({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
                             {/* Summary Cards */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-                                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#0d111b' }}>
+                                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #4ade80', background: '#FFFFFF' }}>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>TOTAL APPROVED COLLECTIONS</div>
                                     <div style={{ fontSize: '2rem', fontWeight: 900, color: '#4ade80', marginTop: '0.5rem' }}>
                                         Ksh {(financeStats.overall?.find(o => o._id === 'approved')?.total || 0).toLocaleString()}
                                     </div>
                                 </div>
-                                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #fbbf24', background: '#0d111b' }}>
+                                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #fbbf24', background: '#FFFFFF' }}>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>AWAITING APPROVAL RECORDS</div>
                                     <div style={{ fontSize: '2rem', fontWeight: 900, color: '#fbbf24', marginTop: '0.5rem' }}>
                                         {financeStats.overall?.find(o => o._id === 'pending')?.count || 0} logs
                                     </div>
                                 </div>
-                                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#0d111b' }}>
+                                <div className="glass-card-premium" style={{ padding: '1.5rem', borderLeft: '4px solid #25AAE1', background: '#FFFFFF' }}>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>VERIFIED PAYMENTS COUNT</div>
                                     <div style={{ fontSize: '2rem', fontWeight: 900, color: '#25AAE1', marginTop: '0.5rem' }}>
                                         {financeStats.overall?.find(o => o._id === 'approved')?.count || 0} receipts
@@ -1785,11 +1785,11 @@ const ReportsTab = ({
                             {/* Custom Mode list */}
                             <div className="glass-card-premium" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(167, 139, 250, 0.15)' }}>
                                 <div style={{ padding: '1.25rem 1.5rem', background: 'rgba(2, 21, 37, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'white' }}>Contribution Channels breakdown</h3>
+                                    <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: "#1E1B39" }}>Contribution Channels breakdown</h3>
                                 </div>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <tr style={{ borderBottom: '1px solid #EBEBF2' }}>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase' }}>Payment Channel</th>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase' }}>Total Collections</th>
                                             <th style={{ padding: '0.85rem 1rem', color: 'var(--color-text-dim, rgba(255,255,255,0.4))', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase' }}>Transactions count</th>
@@ -1818,13 +1818,13 @@ const ReportsTab = ({
 
             {/* F. CUMULATIVE EXPORTS TAB */}
             {activeTab === 'cumulative' && (
-                <div className="glass-card-premium" style={{ background: '#0d111b', padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', animation: 'fadeIn 0.3s' }}>
+                <div className="glass-card-premium" style={{ background: '#FFFFFF', padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', animation: 'fadeIn 0.3s' }}>
                     <div style={{ maxWidth: '450px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ padding: '1.25rem', background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.15)', borderRadius: '50%', color: '#4ade80' }}>
                             <FileSpreadsheet size={40} />
                         </div>
                         <div>
-                            <h3 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, color: 'white' }}>Cumulative Term Check-in Spreadsheet</h3>
+                            <h3 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, color: "#1E1B39" }}>Cumulative Term Check-in Spreadsheet</h3>
                             <p style={{ fontSize: '0.82rem', color: 'var(--color-text-dim, rgba(255,255,255,0.45))', lineHeight: 1.5, marginTop: '0.5rem' }}>
                                 Compile all active check-in data metrics for the selected filters into a single spreadsheet sheet. Calculated check-in ratios are included.
                             </p>
@@ -1833,7 +1833,7 @@ const ReportsTab = ({
                             className="btn btn-primary"
                             style={{
                                 background: 'linear-gradient(135deg, #4ade80 0%, #15803d 100%) !important',
-                                color: 'white', fontWeight: 800, padding: '0.85rem 2rem', width: '100%', borderRadius: '0.6rem',
+                                color: "#1E1B39", fontWeight: 800, padding: '0.85rem 2rem', width: '100%', borderRadius: '0.6rem',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                                 border: '1px solid rgba(74, 222, 128, 0.3) !important',
                                 boxShadow: '0 8px 25px rgba(74, 222, 128, 0.15) !important',

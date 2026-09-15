@@ -68,7 +68,7 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
 
             {/* Header Card */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+            <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
@@ -76,8 +76,8 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                         </div>
                         <div>
                             <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>FLOW OF EVENTS</div>
-                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>Doulos Events Schedule</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>{events.length} event{events.length !== 1 ? 's' : ''} currently scheduled</p>
+                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: "#1E1B39" }}>Doulos Events Schedule</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: "#7E7A9B" }}>{events.length} event{events.length !== 1 ? 's' : ''} currently scheduled</p>
                         </div>
                     </div>
                     <button
@@ -101,7 +101,7 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
             {/* Create Form */}
             {showCreate && (
                 <div className="glass-card-premium" style={{
-                    background: '#0d111b',
+                    background: '#FFFFFF',
                     padding: '2rem',
                     borderLeft: '4px solid #25AAE1',
                     animation: 'fadeIn 0.35s ease-out',
@@ -109,11 +109,11 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                     flexDirection: 'column',
                     gap: '1.5rem'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid #EBEBF2', paddingBottom: '1rem' }}>
                         <Plus size={20} color="#25AAE1" />
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Create New Event</h3>
-                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Publish a new outbound trip, meeting, or training session</p>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: "#7E7A9B" }}>Publish a new outbound trip, meeting, or training session</p>
                         </div>
                     </div>
 
@@ -151,7 +151,7 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                         <div style={{ gridColumn: 'span 2', marginTop: '0.5rem' }}>
                             <button type="submit" className="btn btn-primary" style={{
                                 width: '100%', padding: '0.85rem', background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
-                                color: 'white', border: '1px solid rgba(37, 170, 225, 0.3) !important', borderRadius: '0.6rem',
+                                color: "#1E1B39", border: '1px solid rgba(37, 170, 225, 0.3) !important', borderRadius: '0.6rem',
                                 fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', letterSpacing: '1px',
                                 boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important', transition: 'all 0.2s'
                             }}>
@@ -164,21 +164,21 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
 
             {/* Events Grid */}
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '4rem', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                    <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#25AAE1', borderRadius: '50%' }} />
+                <div style={{ textAlign: 'center', padding: '4rem', color: "#7E7A9B", display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                    <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid #EBEBF2', borderTopColor: '#25AAE1', borderRadius: '50%' }} />
                     <div>Syncing Events Calendar...</div>
                 </div>
             ) : events.length === 0 ? (
                 <div className="glass-card-premium" style={{
-                    background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)', padding: '5rem 2rem', textAlign: 'center',
+                    background: '#FFFFFF', border: '1px dashed #EBEBF2', padding: '5rem 2rem', textAlign: 'center',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem'
                 }}>
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '50%', color: 'rgba(255,255,255,0.15)' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid #EBEBF2', borderRadius: '50%', color: '#EBEBF2' }}>
                         <Calendar size={40} />
                     </div>
                     <div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>No Scheduled Events</div>
-                        <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>The meeting schedule is currently clear of custom events.</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: "#1E1B39" }}>No Scheduled Events</div>
+                        <div style={{ fontSize: '0.82rem', color: "#7E7A9B", marginTop: '0.25rem' }}>The meeting schedule is currently clear of custom events.</div>
                     </div>
                     <button onClick={() => setShowCreate(true)} className="btn btn-primary" style={{ padding: '0.6rem 1.25rem', background: 'rgba(37, 170, 225, 0.08)', color: '#25AAE1', border: '1px solid rgba(37, 170, 225, 0.15)' }}>
                         Publish First Event
@@ -191,7 +191,7 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                         const dateObj = new Date(e.date);
                         return (
                             <div key={e._id} className="glass-card-premium" style={{
-                                background: '#0d111b',
+                                background: '#FFFFFF',
                                 borderLeft: `4px solid ${tc.color}`,
                                 padding: '1.5rem',
                                 transition: 'all 0.25s', position: 'relative', overflow: 'hidden',
@@ -209,7 +209,7 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                                         <div style={{ fontSize: '0.65rem', fontWeight: 900, color: tc.color, textTransform: 'uppercase', letterSpacing: '1px' }}>
                                             {dateObj.toLocaleString('en', { month: 'short' })}
                                         </div>
-                                        <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'white', lineHeight: 1.1, marginTop: '2px' }}>
+                                        <div style={{ fontSize: '1.3rem', fontWeight: 900, color: "#1E1B39", lineHeight: 1.1, marginTop: '2px' }}>
                                             {dateObj.getDate()}
                                         </div>
                                     </div>
@@ -238,26 +238,26 @@ const EventsManager = ({ api, setMsg, isGuest }) => {
                                 </div>
 
                                 <div style={{ flex: 1 }}>
-                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: 'white', lineHeight: 1.35 }}>{e.title}</h3>
+                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: "#1E1B39", lineHeight: 1.35 }}>{e.title}</h3>
                                     
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: "#7E7A9B", fontWeight: 600 }}>
                                             <Clock size={14} style={{ color: tc.color, opacity: 0.8 }} />
                                             <span>{e.time}</span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: "#7E7A9B", fontWeight: 600 }}>
                                             <MapPin size={14} style={{ color: tc.color, opacity: 0.8 }} />
                                             <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{e.location}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.25rem' }}>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', borderTop: '1px solid #EBEBF2', paddingTop: '1rem', marginTop: '0.25rem' }}>
                                     <span style={{ padding: '0.25rem 0.65rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800, background: tc.bg, color: tc.color, border: `1px solid ${tc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                         {e.type}
                                     </span>
                                     {e.semester && (
-                                        <span style={{ padding: '0.25rem 0.65rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <span style={{ padding: '0.25rem 0.65rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(255,255,255,0.03)', color: "#7E7A9B", border: '1px solid #EBEBF2' }}>
                                             {e.semester}
                                         </span>
                                     )}

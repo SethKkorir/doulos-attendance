@@ -9,11 +9,11 @@ import {
     FileText, ListChecks, Settings as SettingsIcon, CheckCircle, LayoutDashboard,
     Calendar, Clock, Trash2, ShieldAlert as Ghost, Lightbulb, MessageCircle,
     GraduationCap, Wallet, Pencil, Plus, Download, FileSpreadsheet, Star,
-    Activity, LogOut, Search, MapPin
+    Activity, LogOut, Search, MapPin, Compass, Heart, Package, Award, Shield, DollarSign, QrCode, Bell, User, Menu
 } from 'lucide-react';
+import '../styles/adminTheme.css';
+import { PrimaryButton, OutlineButton } from '../components/common/Buttons';
 import Logo from '../components/Logo';
-import BackgroundGallery from '../components/BackgroundGallery';
-import ValentineRain from '../components/ValentineRain';
 import AdminFinanceView from '../components/AdminFinanceView';
 import EventsManager from '../components/EventsManager';
 
@@ -24,6 +24,18 @@ import SystemSettingsTab from '../components/dashboard/SystemSettingsTab';
 import SystemObservabilityTab from '../components/dashboard/SystemObservabilityTab';
 import ActivitiesTab from '../components/dashboard/ActivitiesTab';
 import ReportsTab from '../components/dashboard/ReportsTab';
+import ExecutiveOverviewTab from '../components/dashboard/ExecutiveOverviewTab';
+
+// G-Council Dedicated Governance Consoles & Lifecycle Modals
+import G1ExecutiveRadar from '../components/dashboard/G1ExecutiveRadar';
+import G3SecretariatConsole from '../components/dashboard/G3SecretariatConsole';
+import G4LogisticsConsole from '../components/dashboard/G4LogisticsConsole';
+import G6WelfareConsole from '../components/dashboard/G6WelfareConsole';
+import G7TreasuryConsole from '../components/dashboard/G7TreasuryConsole';
+import G8AssetsConsole from '../components/dashboard/G8AssetsConsole';
+import G9MediaConsole from '../components/dashboard/G9MediaConsole';
+import RequisitionPipelineModal from '../components/dashboard/RequisitionPipelineModal';
+import TenureHandoverModal from '../components/dashboard/TenureHandoverModal';
 
 const AdminDashboard = () => {
     const location = useLocation();
@@ -31,6 +43,7 @@ const AdminDashboard = () => {
 
     const mainContentRef = useRef(null);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
     useEffect(() => {
         if (location.state?.isGuest) {
@@ -47,13 +60,35 @@ const AdminDashboard = () => {
     const [editingAdmin, setEditingAdmin] = useState(null);
     const [msg, setMsg] = useState(null);
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
-    const [activeTab, setActiveTab] = useState('meetings'); 
+    const [activeTab, setActiveTab] = useState(() => {
+        const initial = localStorage.getItem('initialTab');
+        if (initial) {
+            localStorage.removeItem('initialTab');
+            return initial;
+        }
+        const role = localStorage.getItem('role');
+        const user = localStorage.getItem('username');
+        if (role === 'trainer' || (user && (user.startsWith('trainer') || user === 'g5_director' || user === 'g5_training'))) {
+            return 'trainings';
+        }
+        if (user === 'g1_coordinator' || user === 'g2_vice') return 'g1_radar';
+        if (user === 'g3_secretary') return 'g3_secretariat';
+        if (user === 'g4_logistics') return 'g4_logistics';
+        if (user === 'g6_welfare') return 'g6_welfare';
+        if (user === 'g7_treasurer') return 'g7_treasury';
+        if (user === 'g8_assets') return 'g8_assets';
+        if (user === 'g9_media') return 'g9_media';
+        return 'members'; // Default landing page per specification!
+    }); 
     const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'admin');
+    const [globalSearch, setGlobalSearch] = useState('');
     const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [quickRegNo, setQuickRegNo] = useState('');
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
     const [currentSemester, setCurrentSemester] = useState('MAY-AUG 2026');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
+    const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
 
     useEffect(() => {
         if (mainContentRef.current) {
@@ -728,981 +763,35 @@ const AdminDashboard = () => {
         }
     };
 
-    const getFilteredMobileMeetings = () => {
-        return meetings.filter(m => {
-            const matchesSearch = !searchQuery || (m.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCampus = campusFilter === 'All' || m.campus === campusFilter;
-            
-            if (meetingStatusFilter === 'Active') return matchesSearch && matchesCampus && m.isActive;
-            if (meetingStatusFilter === 'Closed') return matchesSearch && matchesCampus && !m.isActive;
-            return matchesSearch && matchesCampus;
-        });
-    };
-
-    if (isMobile) {
-        return (
-            <div style={{ position: 'relative', minHeight: '100vh', background: '#07090e', color: '#ffffff', overflowX: 'hidden' }}>
-                <BackgroundGallery />
-                <ValentineRain />
-
-                {/* Toast Notification */}
-                {msg && (
-                    <div className="mobile-toast" style={{ animation: 'slideUp 0.3s ease' }}>
-                        {msg.type === 'error' ? '⚠️' : '✅'} {msg.text}
-                    </div>
-                )}
-
-                {/* Mobile Header */}
-                <div className="mobile-header">
-                    {searchActive ? (
-                        <div className="mobile-search-bar" style={{ width: '100%', display: 'flex', gap: '8px' }}>
-                            <input 
-                                type="text" 
-                                placeholder={activeTab === 'members' ? "Search members..." : activeTab === 'trainings' ? "Search trainings..." : "Search meetings..."} 
-                                value={searchQuery} 
-                                onChange={(e) => setSearchQuery(e.target.value)} 
-                                autoFocus
-                            />
-                            <button 
-                                style={{ background: 'transparent', border: 'none', color: '#25AAE1', fontWeight: 'bold' }} 
-                                onClick={() => { setSearchActive(false); setSearchQuery(''); }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="mobile-header-title" style={{ textTransform: 'capitalize' }}>
-                                {activeTab}
-                            </div>
-                            <div className="mobile-header-actions">
-                                {['members', 'trainings', 'meetings'].includes(activeTab) && (
-                                    <button className="mobile-icon-btn" onClick={() => { triggerHaptic(10); setSearchActive(true); }}>
-                                        <Search size={18} />
-                                    </button>
-                                )}
-                                {activeTab === 'reports' && (
-                                    <button 
-                                        className="mobile-icon-btn" 
-                                        onClick={() => {
-                                            triggerHaptic(20);
-                                            downloadCumulativeCSV(members, currentSemester);
-                                        }}
-                                        title="Export cumulative reports"
-                                    >
-                                        <Download size={18} />
-                                    </button>
-                                )}
-                                <button className="mobile-icon-btn" onClick={() => triggerHaptic(10)}>
-                                    <Star size={18} style={{ color: '#fbbf24', fill: '#fbbf24' }} />
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                {/* Main Content Pane */}
-                <div style={{ paddingBottom: '90px' }}>
-                    
-                    {/* Render corresponding active tabs */}
-                    {activeTab === 'meetings' && (
-                        <div>
-                            {/* Campus Filter Chips */}
-                            <div className="mobile-filters">
-                                {['All', 'Athi River', 'Valley Road'].map(campus => (
-                                    <button 
-                                        key={campus} 
-                                        className={`mobile-chip ${campusFilter === campus ? 'active' : ''}`}
-                                        onClick={() => { triggerHaptic(10); setCampusFilter(campus); }}
-                                    >
-                                        {campus === 'Valley Road' ? 'Nairobi' : campus}
-                                    </button>
-                                ))}
-                            </div>
-                            
-                            {/* Meeting Status Filter Chips */}
-                            <div className="mobile-filters" style={{ borderTop: '0.5px solid rgba(255,255,255,0.03)', paddingTop: '6px' }}>
-                                {['All', 'Active', 'Closed'].map(status => (
-                                    <button 
-                                        key={status} 
-                                        className={`mobile-chip ${meetingStatusFilter === status ? 'active' : ''}`}
-                                        onClick={() => { triggerHaptic(10); setMeetingStatusFilter(status); }}
-                                    >
-                                        {status}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Meetings Mobile List */}
-                            <div className="mobile-trainings-list">
-                                {getFilteredMobileMeetings().map(m => {
-                                    const mDate = new Date(m.date);
-                                    return (
-                                        <div key={m._id} className="mobile-training-card">
-                                            <div className="mobile-training-header">
-                                                <div className="mobile-training-title">{m.name}</div>
-                                                <div className="mobile-training-status" style={{
-                                                    background: m.isActive ? 'rgba(52, 211, 153, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                    color: m.isActive ? '#34d399' : '#f87171'
-                                                }}>
-                                                    {m.isActive ? 'Live' : 'Closed'}
-                                                </div>
-                                            </div>
-                                            <div className="mobile-training-meta">
-                                                <span>{m.campus}</span>
-                                                <span>•</span>
-                                                <span>{mDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
-                                                <span>•</span>
-                                                <span>{m.startTime} - {m.endTime}</span>
-                                            </div>
-
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '12px', opacity: 0.8 }}>
-                                                <span>Attendees Registered:</span>
-                                                <strong style={{ color: '#25AAE1' }}>{m.attendanceCount || 0} attendees</strong>
-                                            </div>
-
-                                            <div className="mobile-training-actions">
-                                                <button 
-                                                    className="mobile-action-btn"
-                                                    onClick={() => {
-                                                        triggerHaptic(15);
-                                                        setActiveMeetingForQR(m);
-                                                        setBottomSheetType('qr_view');
-                                                        setBottomSheetOpen(true);
-                                                    }}
-                                                >
-                                                    View QR
-                                                </button>
-                                                <button 
-                                                    className="mobile-action-btn"
-                                                    onClick={() => {
-                                                        triggerHaptic(15);
-                                                        handleToggleMeetingStatus(m._id, m.isActive);
-                                                    }}
-                                                >
-                                                    {m.isActive ? 'Close' : 'Reopen'}
-                                                </button>
-                                                <button 
-                                                    style={{
-                                                        flex: '1',
-                                                        padding: '10px',
-                                                        background: 'rgba(37, 170, 225, 0.15)',
-                                                        border: '0.5px solid rgba(37, 170, 225, 0.3)',
-                                                        borderRadius: '12px',
-                                                        fontSize: '13px',
-                                                        fontWeight: '600',
-                                                        textAlign: 'center',
-                                                        cursor: 'pointer',
-                                                        color: '#25AAE1',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                    onClick={() => {
-                                                        triggerHaptic(15);
-                                                        setInsightMeeting(m);
-                                                    }}
-                                                >
-                                                    Insights
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {getFilteredMobileMeetings().length === 0 && (
-                                    <div className="mobile-empty-state">
-                                        <div className="mobile-empty-icon"><LayoutDashboard size={32} /></div>
-                                        <div className="mobile-empty-title">No Meetings Found</div>
-                                        <div className="mobile-empty-subtitle">Try scheduling a new meeting</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'members' && (
-                        <div>
-                            {/* Campus Filter Chips */}
-                            <div className="mobile-filters">
-                                {['All', 'Athi River', 'Valley Road'].map(campus => (
-                                    <button 
-                                        key={campus} 
-                                        className={`mobile-chip ${campusFilter === campus ? 'active' : ''}`}
-                                        onClick={() => { triggerHaptic(10); setCampusFilter(campus); }}
-                                    >
-                                        {campus === 'Valley Road' ? 'Nairobi' : campus}
-                                    </button>
-                                ))}
-                            </div>
-                            
-                            {/* Member Type Filter Chips */}
-                            <div className="mobile-filters" style={{ borderTop: '0.5px solid rgba(255,255,255,0.03)', paddingTop: '6px' }}>
-                                {['All', 'Douloid', 'Recruit', 'Visitor', 'Exempted'].map(type => (
-                                    <button 
-                                        key={type} 
-                                        className={`mobile-chip ${memberTypeFilter === type ? 'active' : ''}`}
-                                        onClick={() => { triggerHaptic(10); setMemberTypeFilter(type); }}
-                                    >
-                                        {type}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Mobile Members List */}
-                            <div className="mobile-members-list" style={{ marginTop: '12px' }}>
-                                {getFilteredMobileMembers().map(m => (
-                                    <div 
-                                        key={m._id} 
-                                        className="mobile-member-card"
-                                        onClick={() => openMemberInsights(m)}
-                                    >
-                                        <div className="mobile-member-avatar">
-                                            {m.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                                        </div>
-                                        <div className="mobile-member-info">
-                                            <div className="mobile-member-name">{m.name}</div>
-                                            <div className="mobile-member-meta">
-                                                <span>{m.campus === 'Valley Road' ? 'Nairobi' : m.campus}</span>
-                                                <span className="mobile-member-badge">{m.memberType}</span>
-                                                <span>Reg: {m.studentRegNo}</span>
-                                            </div>
-                                        </div>
-                                        <div className="mobile-member-points">{m.totalPoints || 0} pts</div>
-                                    </div>
-                                ))}
-                                {getFilteredMobileMembers().length === 0 && (
-                                    <div className="mobile-empty-state">
-                                        <div className="mobile-empty-icon"><Users size={32} /></div>
-                                        <div className="mobile-empty-title">No Members Found</div>
-                                        <div className="mobile-empty-subtitle">Try adjusting your filter search queries</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'trainings' && (
-                        <div>
-                            {/* Training Status Filters */}
-                            <div className="mobile-filters">
-                                {['All', 'Active', 'Completed'].map(status => (
-                                    <button 
-                                        key={status} 
-                                        className={`mobile-chip ${trainingStatusFilter === status ? 'active' : ''}`}
-                                        onClick={() => { triggerHaptic(10); setTrainingStatusFilter(status); }}
-                                    >
-                                        {status}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Trainings Mobile List */}
-                            <div className="mobile-trainings-list">
-                                {getFilteredMobileTrainings().map(t => {
-                                    const tDate = new Date(t.date);
-                                    const progress = Math.min(100, ((t.attendanceCount || 0) / 100) * 100);
-                                    return (
-                                        <div key={t._id} className="mobile-training-card">
-                                            <div className="mobile-training-header">
-                                                <div className="mobile-training-title">{t.name}</div>
-                                                <div className="mobile-training-status" style={{
-                                                    background: t.isActive ? 'rgba(52, 211, 153, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                    color: t.isActive ? '#34d399' : '#f87171'
-                                                }}>
-                                                    {t.isActive ? 'Live' : 'Closed'}
-                                                </div>
-                                            </div>
-                                            <div className="mobile-training-meta">
-                                                <span>{t.campus}</span>
-                                                <span>•</span>
-                                                <span>{tDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
-                                                <span>•</span>
-                                                <span>{t.startTime} - {t.endTime}</span>
-                                            </div>
-
-                                            <div className="mobile-training-progress">
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px', opacity: 0.7 }}>
-                                                    <span>Attendance Progress</span>
-                                                    <span>{t.attendanceCount || 0} checked-in</span>
-                                                </div>
-                                                <div className="mobile-progress-bar">
-                                                    <div className="mobile-progress-fill" style={{ width: `${progress}%` }}></div>
-                                                </div>
-                                            </div>
-
-                                            <div className="mobile-training-actions">
-                                                <button 
-                                                    className="mobile-action-btn"
-                                                    onClick={() => {
-                                                        triggerHaptic(15);
-                                                        setActiveMeetingForQR(t);
-                                                        setBottomSheetType('qr_view');
-                                                        setBottomSheetOpen(true);
-                                                    }}
-                                                >
-                                                    View QR
-                                                </button>
-                                                <button 
-                                                    className="mobile-action-btn"
-                                                    onClick={() => {
-                                                        triggerHaptic(15);
-                                                        handleToggleTrainingStatus(t._id, t.isActive);
-                                                    }}
-                                                >
-                                                    {t.isActive ? 'Finalize' : 'Reopen'}
-                                                </button>
-                                                <button 
-                                                    style={{
-                                                        flex: '1.2',
-                                                        padding: '10px',
-                                                        background: 'rgba(167, 139, 250, 0.15)',
-                                                        border: '0.5px solid rgba(167, 139, 250, 0.3)',
-                                                        borderRadius: '12px',
-                                                        fontSize: '13px',
-                                                        fontWeight: '600',
-                                                        textAlign: 'center',
-                                                        cursor: 'pointer',
-                                                        color: '#c084fc',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                    onClick={() => {
-                                                        triggerHaptic(15);
-                                                        setInsightMeeting(t);
-                                                    }}
-                                                >
-                                                    Insights & Ticker
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {getFilteredMobileTrainings().length === 0 && (
-                                    <div className="mobile-empty-state">
-                                        <div className="mobile-empty-icon"><GraduationCap size={32} /></div>
-                                        <div className="mobile-empty-title">No Trainings Found</div>
-                                        <div className="mobile-empty-subtitle">Try scheduling a new leadership training</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'reports' && (
-                        <div style={{ padding: '16px' }}>
-                            <ReportsTab
-                                meetings={meetings}
-                                members={members}
-                                onDownloadCSV={downloadCSV}
-                                onDownloadCumulativeCSV={downloadCumulativeCSV}
-                                isGuest={isGuest}
-                                api={api}
-                                setMsg={setMsg}
-                            />
-                        </div>
-                    )}
-
-                    {/* MORE Grid Menu */}
-                    {activeTab === 'more' && (
-                        <div style={{ padding: '16px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '24px' }}>
-                                {[
-                                    { id: 'finance', label: 'Finance Management', icon: Wallet },
-                                    { id: 'events', label: 'Events Scheduler', icon: Calendar },
-                                    { id: 'activities', label: 'Activities Groups', icon: Activity },
-                                    { id: 'feedback', label: 'Feedbacks Hub', icon: MessageCircle },
-                                    { id: 'admins', label: 'Staff Admins', icon: ShieldAlert },
-                                    { id: 'system', label: 'Settings', icon: SettingsIcon },
-                                    { id: 'profile', label: 'My Profile', icon: Star },
-                                    ...( ['superadmin', 'developer'].includes(userRole?.toLowerCase()) ? [{ id: 'observability', label: 'Observability', icon: Activity }] : [] )
-                                ].map(item => (
-                                    <button 
-                                        key={item.id}
-                                        onClick={() => handleMobileTabChange(item.id)}
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '12px',
-                                            padding: '24px 16px',
-                                            background: 'rgba(255,255,255,0.02)',
-                                            border: '1.5px solid rgba(255,255,255,0.05)',
-                                            borderRadius: '16px',
-                                            color: '#ffffff',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <item.icon size={24} style={{ color: '#25AAE1' }} />
-                                        <span style={{ fontSize: '13px', fontWeight: '600' }}>{item.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* PROFILE Tab View */}
-                    {activeTab === 'profile' && (
-                        <div style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-                            <div style={{ width: '80px', height: '80px', borderRadius: '40px', background: 'linear-gradient(135deg, #25AAE1, #1a7ca3)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
-                                {userRole[0].toUpperCase()}
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                                <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Administrator Profile</h2>
-                                <span style={{ textTransform: 'uppercase', color: '#25AAE1', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>{userRole} MODE</span>
-                            </div>
-
-                            <div style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '16px', marginTop: '12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '0.5px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-                                    <span style={{ opacity: 0.5 }}>Active Semester</span>
-                                    <strong>{currentSemester}</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px' }}>
-                                    <span style={{ opacity: 0.5 }}>Geofencing Tracking</span>
-                                    <strong style={{ color: '#34d399' }}>Active Online</strong>
-                                </div>
-                            </div>
-
-                            <button 
-                                onClick={handleLogout}
-                                style={{
-                                    width: '100%',
-                                    padding: '16px',
-                                    background: 'rgba(239, 68, 68, 0.1)',
-                                    border: '1.5px solid rgba(239, 68, 68, 0.2)',
-                                    borderRadius: '16px',
-                                    color: '#f87171',
-                                    fontWeight: '800',
-                                    marginTop: '24px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                SIGN OUT SYSTEM
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Subpage views mapping from More tab */}
-                    {!['meetings', 'members', 'trainings', 'reports', 'more', 'profile'].includes(activeTab) && (
-                        <div style={{ padding: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                                <button 
-                                    onClick={() => handleMobileTabChange('more')}
-                                    style={{ background: 'transparent', border: 'none', color: '#25AAE1', display: 'flex', alignItems: 'center' }}
-                                >
-                                    <ChevronLeft size={24} /> Back to More
-                                </button>
-                            </div>
-                            
-                            {activeTab === 'finance' && <AdminFinanceView isGuest={isGuest} />}
-                            {activeTab === 'events' && <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />}
-                            {activeTab === 'activities' && (
-                                <ActivitiesTab
-                                    members={members}
-                                    fetchMembers={fetchMembers}
-                                    isGuest={isGuest}
-                                    setMsg={setMsg}
-                                    currentSemester={currentSemester}
-                                    api={api}
-                                />
-                            )}
-                            {activeTab === 'feedback' && <FeedbackView isGuest={isGuest} />}
-                            {activeTab === 'admins' && (
-                                <AdminsView
-                                    admins={admins}
-                                    loading={loadingAdmins}
-                                    onEdit={setEditingAdmin}
-                                    onDelete={handleDeleteAdmin}
-                                    guestFeaturesEnabled={guestFeaturesEnabled}
-                                    currentSemester={currentSemester}
-                                    onUpdateSetting={handleSaveSetting}
-                                    api={api}
-                                    setMsg={setMsg}
-                                    fetchAdmins={fetchAdmins}
-                                    isGuest={isGuest}
-                                />
-                            )}
-                            {activeTab === 'system' && (
-                                <SystemSettingsTab
-                                    onUpdateSetting={handleSaveSetting}
-                                    isGuest={isGuest}
-                                    setMsg={setMsg}
-                                    api={api}
-                                    userRole={userRole}
-                                />
-                            )}
-                            {activeTab === 'observability' && (
-                                <SystemObservabilityTab
-                                    members={members}
-                                    api={api}
-                                    setMsg={setMsg}
-                                    currentSemester={currentSemester}
-                                    isGuest={isGuest}
-                                />
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* FAB (Floating Action Button) */}
-                {['members', 'trainings', 'meetings'].includes(activeTab) && (
-                    <button 
-                        className="mobile-fab" 
-                        onClick={() => {
-                            triggerHaptic(20);
-                            setBottomSheetType(activeTab === 'members' ? 'add_member' : activeTab === 'trainings' ? 'create_training' : 'create_meeting');
-                            setBottomSheetOpen(true);
-                        }}
-                    >
-                        <Plus size={24} />
-                    </button>
-                )}
-
-                {/* Bottom Sheet Backdrop Modal overlay */}
-                <div 
-                    className={`mobile-overlay ${bottomSheetOpen ? 'visible' : ''}`} 
-                    onClick={() => setBottomSheetOpen(false)}
-                />
-
-                {/* Mobile Bottom Sheets Drawer */}
-                <div className={`mobile-bottom-sheet ${bottomSheetOpen ? 'open' : ''}`}>
-                    <div className="mobile-sheet-handle" onClick={() => setBottomSheetOpen(false)}></div>
-                    <div className="mobile-sheet-content">
-                        
-                        {bottomSheetType === 'add_member' && (
-                            <div>
-                                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>Add New Member</h3>
-                                <form onSubmit={submitMobileMember}>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Full Name</label>
-                                        <input 
-                                            type="text" 
-                                            className="mobile-form-input" 
-                                            placeholder="e.g. Albright Kirui" 
-                                            value={mobMemberForm.name} 
-                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Admission Number</label>
-                                        <input 
-                                            type="text" 
-                                            className="mobile-form-input" 
-                                            placeholder="e.g. 21-0230" 
-                                            value={mobMemberForm.studentRegNo} 
-                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, studentRegNo: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Campus</label>
-                                        <select 
-                                            className="mobile-form-select" 
-                                            value={mobMemberForm.campus}
-                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, campus: e.target.value })}
-                                        >
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Valley Road">Valley Road</option>
-                                        </select>
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Category</label>
-                                        <select 
-                                            className="mobile-form-select" 
-                                            value={mobMemberForm.memberType}
-                                            onChange={(e) => setMobMemberForm({ ...mobMemberForm, memberType: e.target.value })}
-                                        >
-                                            <option value="Visitor">Visitor</option>
-                                            <option value="Recruit">Recruit</option>
-                                            <option value="Douloid">Douloid</option>
-                                        </select>
-                                    </div>
-                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
-                                        Save Member
-                                    </button>
-                                </form>
-                            </div>
-                        )}
-
-                        {bottomSheetType === 'create_training' && (
-                            <div>
-                                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>Schedule Training</h3>
-                                <form onSubmit={submitMobileTraining}>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Training Title</label>
-                                        <input 
-                                            type="text" 
-                                            className="mobile-form-input" 
-                                            placeholder="e.g. Foundations of leadership" 
-                                            value={mobTrainingForm.name} 
-                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Date</label>
-                                        <input 
-                                            type="date" 
-                                            className="mobile-form-input" 
-                                            value={mobTrainingForm.date} 
-                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                        <div>
-                                            <label className="mobile-form-label">Start Time</label>
-                                            <input 
-                                                type="time" 
-                                                className="mobile-form-input" 
-                                                value={mobTrainingForm.startTime} 
-                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, startTime: e.target.value })}
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="mobile-form-label">End Time</label>
-                                            <input 
-                                                type="time" 
-                                                className="mobile-form-input" 
-                                                value={mobTrainingForm.endTime} 
-                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, endTime: e.target.value })}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Target Campus</label>
-                                        <select 
-                                            className="mobile-form-select" 
-                                            value={mobTrainingForm.campus} 
-                                            onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, campus: e.target.value })}
-                                        >
-                                            <option value="Both">Both Campuses</option>
-                                            <option value="Athi River">Athi River Only</option>
-                                            <option value="Valley Road">Valley Road Only</option>
-                                        </select>
-                                    </div>
-                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Geofence Radius (meters) *</label>
-                                            <input 
-                                                type="number" 
-                                                className="mobile-form-input" 
-                                                value={mobTrainingForm.location.radius} 
-                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, radius: Number(e.target.value) } })}
-                                                placeholder="200"
-                                                required
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
-                                            <button 
-                                                type="button" 
-                                                className="btn" 
-                                                style={{ width: '100%', height: '44px', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
-                                                onClick={() => {
-                                                    navigator.geolocation.getCurrentPosition(pos => {
-                                                        setMobTrainingForm(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
-                                                        setMsg({ type: 'success', text: `GPS captured!` });
-                                                    }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
-                                                }}
-                                            >
-                                                <MapPin size={12} /> GPS Capture
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Latitude *</label>
-                                            <input 
-                                                type="number" 
-                                                step="any"
-                                                className="mobile-form-input" 
-                                                value={mobTrainingForm.location.latitude || ''} 
-                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, latitude: parseFloat(e.target.value) } })}
-                                                placeholder="-1.448"
-                                                required
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Longitude *</label>
-                                            <input 
-                                                type="number" 
-                                                step="any"
-                                                className="mobile-form-input" 
-                                                value={mobTrainingForm.location.longitude || ''} 
-                                                onChange={(e) => setMobTrainingForm({ ...mobTrainingForm, location: { ...mobTrainingForm.location, longitude: parseFloat(e.target.value) } })}
-                                                placeholder="37.015"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
-                                        Create Session
-                                    </button>
-                                </form>
-                             </div>
-                        )}
-
-                        {bottomSheetType === 'create_meeting' && (
-                            <div>
-                                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>Schedule Meeting</h3>
-                                <form onSubmit={submitMobileMeeting}>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Meeting Title</label>
-                                        <input 
-                                            type="text" 
-                                            className="mobile-form-input" 
-                                            placeholder="e.g. Weekly Meeting" 
-                                            value={mobMeetingForm.name} 
-                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, name: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Date</label>
-                                        <input 
-                                            type="date" 
-                                            className="mobile-form-input" 
-                                            value={mobMeetingForm.date} 
-                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mobile-form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                        <div>
-                                            <label className="mobile-form-label">Start Time</label>
-                                            <input 
-                                                type="time" 
-                                                className="mobile-form-input" 
-                                                value={mobMeetingForm.startTime} 
-                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, startTime: e.target.value })}
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="mobile-form-label">End Time</label>
-                                            <input 
-                                                type="time" 
-                                                className="mobile-form-input" 
-                                                value={mobMeetingForm.endTime} 
-                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, endTime: e.target.value })}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mobile-form-group">
-                                        <label className="mobile-form-label">Campus</label>
-                                        <select 
-                                            className="mobile-form-select" 
-                                            value={mobMeetingForm.campus}
-                                            onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, campus: e.target.value })}
-                                        >
-                                            <option value="Valley Road">Valley Road (Nairobi)</option>
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Both">Both</option>
-                                        </select>
-                                    </div>
-                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Geofence Radius (meters) *</label>
-                                            <input 
-                                                type="number" 
-                                                className="mobile-form-input" 
-                                                value={mobMeetingForm.location.radius} 
-                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, radius: Number(e.target.value) } })}
-                                                placeholder="200"
-                                                required
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
-                                            <button 
-                                                type="button" 
-                                                className="btn" 
-                                                style={{ width: '100%', height: '44px', background: 'rgba(37, 170, 225, 0.15)', color: '#25AAE1', border: '1px solid rgba(37,170,225,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
-                                                onClick={() => {
-                                                    navigator.geolocation.getCurrentPosition(pos => {
-                                                        setMobMeetingForm(prev => ({ ...prev, location: { ...prev.location, latitude: pos.coords.latitude, longitude: pos.coords.longitude } }));
-                                                        setMsg({ type: 'success', text: `GPS captured!` });
-                                                    }, () => setMsg({ type: 'error', text: 'GPS permission denied or unavailable.' }));
-                                                }}
-                                            >
-                                                <MapPin size={12} /> GPS Capture
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="mobile-form-group" style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Latitude *</label>
-                                            <input 
-                                                type="number" 
-                                                step="any"
-                                                className="mobile-form-input" 
-                                                value={mobMeetingForm.location.latitude || ''} 
-                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, latitude: parseFloat(e.target.value) } })}
-                                                placeholder="-1.448"
-                                                required
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="mobile-form-label">Longitude *</label>
-                                            <input 
-                                                type="number" 
-                                                step="any"
-                                                className="mobile-form-input" 
-                                                value={mobMeetingForm.location.longitude || ''} 
-                                                onChange={(e) => setMobMeetingForm({ ...mobMeetingForm, location: { ...mobMeetingForm.location, longitude: parseFloat(e.target.value) } })}
-                                                placeholder="37.015"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', borderRadius: '12px', marginTop: '12px' }}>
-                                        Schedule Meeting
-                                    </button>
-                                </form>
-                            </div>
-                        )}
-
-                        {bottomSheetType === 'member_insights' && selectedMemberInsights && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px 0 24px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '48px', height: '48px', borderRadius: '24px', background: 'linear-gradient(135deg, #25AAE1, #1a7ca3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}>
-                                        {selectedMemberInsights.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>{selectedMemberInsights.name}</h3>
-                                        <div style={{ opacity: 0.6, fontSize: '12px' }}>Reg: {selectedMemberInsights.studentRegNo} • {selectedMemberInsights.campus}</div>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '8px' }}>
-                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Meetings</div>
-                                        <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px' }}>{selectedMemberInsights.stats?.physicalAttended || 0} / {selectedMemberInsights.stats?.totalMeetings || 0}</div>
-                                    </div>
-                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trainings</div>
-                                        <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px' }}>{selectedMemberInsights.stats?.trainingAttended || 0} / {selectedMemberInsights.stats?.totalTrainings || 0}</div>
-                                    </div>
-                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '9px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Points Tally</div>
-                                        <div style={{ fontSize: '14px', fontWeight: '800', marginTop: '4px', color: '#fbbf24' }}>{selectedMemberInsights.totalPoints || 0} pts</div>
-                                    </div>
-                                </div>
-
-                                {selectedMemberInsights.stats && (
-                                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                            <span>Attendance Rate</span>
-                                            <strong style={{
-                                                color: selectedMemberInsights.stats.percentage > 75 ? '#4ade80' : selectedMemberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444'
-                                            }}>{selectedMemberInsights.stats.percentage}%</strong>
-                                        </div>
-                                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                                            <div style={{
-                                                height: '100%',
-                                                width: `${selectedMemberInsights.stats.percentage}%`,
-                                                background: selectedMemberInsights.stats.percentage > 75 ? '#4ade80' : selectedMemberInsights.stats.percentage > 40 ? '#facc15' : '#ef4444'
-                                            }} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedMemberInsights.history && selectedMemberInsights.history.length > 0 && (
-                                    <div>
-                                        <h4 style={{ margin: '8px 0 8px 0', fontSize: '14px', fontWeight: '700' }}>Recent Logs</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                                            {selectedMemberInsights.history.slice(0, 5).map((log, index) => (
-                                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                                                        <span style={{ fontWeight: '600' }}>{log.name || log.meetingName}</span>
-                                                        <span style={{ fontSize: '10px', opacity: 0.5, color: log.isTraining ? '#1da6d9' : '#34d399' }}>
-                                                            {log.isTraining ? 'Leadership Training' : 'Meeting'}
-                                                        </span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                                                        <span style={{ opacity: 0.6 }}>{new Date(log.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
-                                                        <span style={{ fontSize: '10px', color: log.attended ? '#34d399' : '#f87171', fontWeight: 'bold' }}>
-                                                            {log.attended ? 'Present' : 'Absent'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {bottomSheetType === 'member_insights' && loadingMemberInsights && (
-                            <div style={{ padding: '32px 0', textAlign: 'center', opacity: 0.7 }}>
-                                Loading insights...
-                            </div>
-                        )}
-
-                        {bottomSheetType === 'qr_view' && activeMeetingForQR && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '12px 0 24px' }}>
-                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', textAlign: 'center' }}>
-                                    {activeMeetingForQR.name} QR Check-In
-                                </h3>
-                                <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', display: 'inline-block' }} className="training-qr-container">
-                                    <QRCode 
-                                        value={JSON.stringify({
-                                            meetingId: activeMeetingForQR._id,
-                                            name: activeMeetingForQR.name,
-                                        })}
-                                        size={220}
-                                    />
-                                </div>
-                                <span style={{ opacity: 0.6, fontSize: '13px', textAlign: 'center', maxWidth: '280px' }}>
-                                    Students scan this geofenced QR code from their mobile web portals.
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                {insightMeeting && (
-                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 2000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.5rem' }} onClick={() => setInsightMeeting(null)}>
-                        <div style={{ width: '100%', maxWidth: '1000px' }} onClick={e => e.stopPropagation()}>
-                            <MeetingInsights 
-                                meeting={insightMeeting} 
-                                onClose={() => setInsightMeeting(null)} 
-                                api={api} 
-                                isTraining={activeTab === 'trainings' || insightMeeting.category === 'Training'}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Mobile Bottom Tab Bar */}
-                <div className="mobile-bottom-tabs">
-                    <button className={`mobile-tab-item ${activeTab === 'meetings' ? 'active' : ''}`} onClick={() => handleMobileTabChange('meetings')}>
-                        <LayoutDashboard size={20} />
-                        <span>MEETINGS</span>
-                    </button>
-                    <button className={`mobile-tab-item ${activeTab === 'trainings' ? 'active' : ''}`} onClick={() => handleMobileTabChange('trainings')}>
-                        <GraduationCap size={20} />
-                        <span>TRAININGS</span>
-                    </button>
-                    <button className={`mobile-tab-item ${activeTab === 'members' ? 'active' : ''}`} onClick={() => handleMobileTabChange('members')}>
-                        <Users size={20} />
-                        <span>MEMBERS</span>
-                    </button>
-                    <button className={`mobile-tab-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => handleMobileTabChange('reports')}>
-                        <BarChart3 size={20} />
-                        <span>REPORTS</span>
-                    </button>
-                    <button className={`mobile-tab-item ${!['meetings', 'trainings', 'members', 'reports'].includes(activeTab) ? 'active' : ''}`} onClick={() => handleMobileTabChange('more')}>
-                        <SettingsIcon size={20} />
-                        <span>MORE</span>
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
-            <BackgroundGallery />
-            <ValentineRain />
+            {/* Mobile Responsive Header with Hamburger */}
+            <header className="doulos-mobile-header">
+                <div className="doulos-mobile-header-brand">
+                    <button 
+                        className="doulos-hamburger-btn"
+                        onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                        aria-label="Toggle Navigation"
+                    >
+                        <Menu size={20} />
+                    </button>
+                    <Logo size={28} showText={false} />
+                    <span className="doulos-mobile-header-title">Doulos Admin</span>
+                </div>
+                <div 
+                    className="doulos-identity-avatar"
+                    style={{ width: '34px', height: '34px', fontSize: '0.9rem', cursor: 'pointer' }}
+                    onClick={() => { setActiveTab('identity'); setMobileNavOpen(false); }}
+                >
+                    {(localStorage.getItem('username') || userRole).charAt(0).toUpperCase()}
+                </div>
+            </header>
+
+            {/* Mobile Sidebar Backdrop */}
+            <div 
+                className={`doulos-sidebar-backdrop ${mobileNavOpen ? 'active' : ''}`}
+                onClick={() => setMobileNavOpen(false)}
+            /> 
 
             {/* Premium Header/Banner */}
             {msg && (
@@ -1728,344 +817,379 @@ const AdminDashboard = () => {
                 </div>
             )}
 
-            <div className="dashboard-layout" style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 10 }}>
-                {/* Sidebar Navigation */}
-                <aside className="sidebar" style={{ 
-                    width: sidebarCollapsed ? '78px' : '290px', 
-                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
-                    flexShrink: 0, 
-                    padding: sidebarCollapsed ? '1.75rem 0.5rem' : '1.75rem 1.25rem', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '1.5rem',
-                    overflowX: 'hidden'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', gap: '0.85rem', paddingLeft: sidebarCollapsed ? '0' : '0.5rem', position: 'relative' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                            <div style={{ animation: 'rotateLogo 60s linear infinite', flexShrink: 0 }}>
-                                <Logo size={38} showText={false} />
-                            </div>
-                            {!sidebarCollapsed && (
-                                <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                                    <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, letterSpacing: '-0.5px' }}>DOULOS</h1>
-                                    <span style={{ fontSize: '0.6rem', color: '#25AAE1', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase' }}>G9 Control Panel</span>
-                                </div>
-                            )}
+            <div className="doulos-admin-viewport">
+                {/* Ambient light purple corner wash bleeding top-left */}
+                <div className="doulos-admin-corner-wash" />
+
+                {/* Sidebar Navigation in deep indigo-purple */}
+                <aside className="doulos-sidebar">
+                    <div className="doulos-sidebar-brand">
+                        <div style={{ animation: 'rotateLogo 60s linear infinite', flexShrink: 0 }}>
+                            <Logo size={36} showText={false} />
                         </div>
-                        <button 
-                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            style={{ 
-                                background: 'rgba(255,255,255,0.05)', 
-                                border: '1px solid rgba(255,255,255,0.1)', 
-                                borderRadius: '50%', 
-                                width: '28px', 
-                                height: '28px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                cursor: 'pointer', 
-                                color: 'white',
-                                transition: 'all 0.2s',
-                                padding: 0
+                        <div>
+                            <div className="doulos-sidebar-brand-title">Doulos Timeregistrering</div>
+                            <div className="doulos-sidebar-brand-sub">Freedom Base Camp</div>
+                        </div>
+                    </div>
+
+                    <div className="doulos-nav-list">
+                        {[
+                            { id: 'identity', label: 'My Profile', icon: User },
+                            { id: 'members', label: 'Members', icon: Users },
+                            { id: 'g_council', label: 'G-Council', icon: Shield },
+                            { id: 'events', label: 'Events & Camps', icon: Calendar },
+                            { id: 'requisitions', label: 'Requisitions', icon: Package },
+                            { id: 'observability', label: 'Audit Log', icon: FileText },
+                            { id: 'crews', label: 'Crews', icon: Compass },
+                            { id: 'reports', label: 'Reports', icon: BarChart3 },
+                            { id: 'finance', label: 'Finance', icon: DollarSign },
+                            { id: 'freedom_base', label: 'Freedom Base', icon: MapPin },
+                            { id: 'discipline', label: 'Discipline', icon: ShieldAlert },
+                        ].map(item => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id || 
+                                (item.id === 'g_council' && ['g1_radar', 'g3_secretariat', 'g4_logistics', 'g9_media', 'admins'].includes(activeTab)) ||
+                                (item.id === 'events' && ['meetings', 'trainings'].includes(activeTab)) ||
+                                (item.id === 'crews' && activeTab === 'activities') ||
+                                (item.id === 'finance' && activeTab === 'g7_treasury') ||
+                                (item.id === 'freedom_base' && activeTab === 'g8_assets') ||
+                                (item.id === 'discipline' && activeTab === 'g6_welfare');
+
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => {
+                                        setMobileNavOpen(false);
+                                        if (item.id === 'requisitions') {
+                                            setIsRequisitionModalOpen(true);
+                                        } else {
+                                            setActiveTab(item.id);
+                                        }
+                                    }}
+                                    className={`doulos-nav-item ${isActive ? 'active' : ''}`}
+                                >
+                                    <span className="doulos-nav-icon"><Icon size={18} /></span>
+                                    <span>{item.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Bottom Sign Out Bar */}
+                    <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                width: '100%',
+                                padding: '0.65rem 0.95rem',
+                                borderRadius: 'var(--radius-pill)',
+                                background: 'rgba(255,255,255,0.06)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#FFFFFF',
+                                fontSize: '0.84rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
                             }}
-                            title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                         >
-                            {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-                        </button>
-                    </div>
-
-                    {/* Premium Welcome Card in Sidebar */}
-                    <div className="sidebar-profile-card" style={{ padding: sidebarCollapsed ? '0.75rem 0.25rem' : '1.25rem 1rem', display: 'flex', flexDirection: 'column', alignItems: sidebarCollapsed ? 'center' : 'stretch', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', flexDirection: sidebarCollapsed ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '0.75rem' }}>
-                            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem', color: 'white', boxShadow: '0 0 15px rgba(37, 170, 225, 0.25)' }}>
-                                {userRole.charAt(0).toUpperCase()}
-                            </div>
-                            <button className="btn-icon" onClick={() => setIsDarkMode(!isDarkMode)} title={isDarkMode ? "Toggle Light Theme" : "Toggle Dark Theme"} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '50%', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', color: 'white' }}>
-                                {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
-                            </button>
-                        </div>
-                        {!sidebarCollapsed && (
-                            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                                    {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}
-                                </div>
-                                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'white', lineHeight: 1.35 }}>
-                                    Welcome back,<br />G9!
-                                </h2>
-                            </div>
-                        )}
-                    </div>
-
-                    <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', flex: 1, overflowY: 'auto', paddingRight: '2px' }}>
-                        {!sidebarCollapsed && <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>REGISTRY CONTROL</div>}
-                        {[
-                            { id: 'meetings', label: 'Meetings & Scans', icon: LayoutDashboard },
-                            { id: 'trainings', label: 'Trainings & Radius', icon: GraduationCap },
-                            { id: 'members', label: 'Members Registry', icon: Users },
-                            { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
-                            { id: 'finance', label: 'Financial Control', icon: Wallet },
-                            { id: 'events', label: 'Events Scheduler', icon: Calendar },
-                            { id: 'activities', label: 'Activities & Groups', icon: Activity },
-                            { id: 'feedback', label: 'Community Feedback', icon: MessageCircle }
-                        ].map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => setActiveTab(t.id)}
-                                className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: sidebarCollapsed ? '0' : '0.85rem', padding: sidebarCollapsed ? '0.75rem' : '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
-                                title={sidebarCollapsed ? t.label : ''}
-                            >
-                                <t.icon size={17} style={{ flexShrink: 0 }} />
-                                {!sidebarCollapsed && <span>{t.label}</span>}
-                            </button>
-                        ))}
-
-                        {!sidebarCollapsed && <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '1.25rem', marginBottom: '0.5rem', paddingLeft: '0.75rem' }}>SYSTEM CONFIG</div>}
-                        {[
-                            { id: 'admins', label: 'Staff Admins', icon: ShieldAlert },
-                            { id: 'system', label: 'System Settings', icon: SettingsIcon }
-                        ].map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => setActiveTab(t.id)}
-                                className={`sidebar-nav-btn ${activeTab === t.id ? 'active' : ''}`}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: sidebarCollapsed ? '0' : '0.85rem', padding: sidebarCollapsed ? '0.75rem' : '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === t.id ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
-                                title={sidebarCollapsed ? t.label : ''}
-                            >
-                                <t.icon size={17} style={{ flexShrink: 0 }} />
-                                {!sidebarCollapsed && <span>{t.label}</span>}
-                            </button>
-                        ))}
-                        {['superadmin', 'developer'].includes(userRole?.toLowerCase()) && (
-                            <button
-                                onClick={() => setActiveTab('observability')}
-                                className={`sidebar-nav-btn ${activeTab === 'observability' ? 'active' : ''}`}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', gap: sidebarCollapsed ? '0' : '0.85rem', padding: sidebarCollapsed ? '0.75rem' : '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontWeight: 700, fontSize: '0.85rem', color: activeTab === 'observability' ? 'var(--color-primary)' : 'var(--color-text-dim)' }}
-                                title={sidebarCollapsed ? "System Observability" : ""}
-                            >
-                                <Activity size={17} style={{ flexShrink: 0 }} />
-                                {!sidebarCollapsed && <span>System Observability</span>}
-                            </button>
-                        )}
-                    </nav>
-
-                    {/* Glowing CTA Upgrade Card like mockup */}
-                    <div className="sidebar-cta-card" style={{ padding: sidebarCollapsed ? '0.75rem 0.25rem' : '1rem 0.85rem', display: 'flex', flexDirection: 'column', alignItems: sidebarCollapsed ? 'center' : 'flex-start' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: sidebarCollapsed ? '0' : '0.5rem' }} title={`Active Semester: ${currentSemester}`}>
-                            <Star size={14} style={{ color: '#fbbf24', fill: '#fbbf24', animation: 'pulse 2s infinite', flexShrink: 0 }} />
-                            {!sidebarCollapsed && <span style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.75px', textTransform: 'uppercase', color: 'white' }}>ACTIVE SEMESTER</span>}
-                        </div>
-                        {!sidebarCollapsed && (
-                            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white', marginBottom: '0.2rem' }}>
-                                    {currentSemester}
-                                </div>
-                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600, fontStyle: 'italic' }}>
-                                    Geofenced points tracking online.
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Bottom User Card */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem', alignItems: sidebarCollapsed ? 'center' : 'stretch' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: sidebarCollapsed ? '0' : '0.25rem' }} title={`Administrator (${userRole})`}>
-                            <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', color: '#94a3b8', flexShrink: 0 }}>
-                                G9
-                            </div>
-                            {!sidebarCollapsed && (
-                                <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white' }}>Administrator</div>
-                                    <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{userRole}</span>
-                                </div>
-                            )}
-                        </div>
-                        <button className="btn btn-sign-out" style={{ padding: sidebarCollapsed ? '0.5rem 0' : '0.6rem', borderRadius: '0.6rem', fontWeight: 800, fontSize: '0.75rem', width: '100%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={handleLogout} title="Sign Out System">
-                            {sidebarCollapsed ? '❌' : 'SIGN OUT SYSTEM'}
+                            <LogOut size={16} />
+                            <span>Sign Out</span>
                         </button>
                     </div>
                 </aside>
 
-                {/* Main panel */}
-                <main className="main-content" ref={mainContentRef} style={{ flex: 1, padding: '2rem 3rem', overflowY: 'auto' }}>
-                    
-                    {/* Mobile-only header bar styled like student portal */}
-                    <div className="admin-mobile-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #25AAE1, #021525)', border: '2px solid rgba(37,170,225,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', color: 'white', flexShrink: 0 }}>
-                                {userRole.charAt(0).toUpperCase()}
+                {/* Main Content Area: Floating White Card */}
+                <main className="doulos-main-area" ref={mainContentRef}>
+                    <div className="doulos-surface-card">
+                        {/* Topbar: Search Pill, Bell, Identity Block */}
+                        <div className="doulos-topbar">
+                            <div className="doulos-search-box">
+                                <Search size={16} color="#9E9EA7" />
+                                <input
+                                    type="text"
+                                    className="doulos-search-input"
+                                    placeholder="Search..."
+                                    value={globalSearch}
+                                    onChange={e => setGlobalSearch(e.target.value)}
+                                />
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {activeTab === 'meetings' ? 'Meetings & Scans' : 
-                                     activeTab === 'trainings' ? 'Trainings & Radius' : 
-                                     activeTab === 'members' ? 'Members Registry' : 
-                                     activeTab === 'reports' ? 'Reports & Analytics' : 
-                                     activeTab === 'finance' ? 'Financial Systems' : 
-                                     activeTab === 'events' ? 'Events Scheduler' : 
-                                     activeTab === 'activities' ? 'Activities & Groups' : 
-                                     activeTab === 'feedback' ? 'Community Feedback' : 
-                                     activeTab === 'admins' ? 'Staff Administrators' : 
-                                     activeTab === 'system' ? 'System Configurations' : 
-                                     activeTab === 'observability' ? 'System Observability' : 'Admin Panel'}
+
+                            <div className="doulos-topbar-actions">
+                                <button
+                                    className="doulos-bell-btn"
+                                    onClick={() => setMsg({ type: 'info', text: 'All systems nominal. Database synchronized.' })}
+                                    title="System Notifications"
+                                >
+                                    <Bell size={17} />
+                                    <span className="doulos-bell-badge" />
+                                </button>
+
+                                <div
+                                    className="doulos-identity-block"
+                                    onClick={() => setActiveTab('identity')}
+                                    title="Account Settings"
+                                >
+                                    <div className="doulos-identity-avatar">
+                                        {(localStorage.getItem('username') || userRole).charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="doulos-identity-info">
+                                        <span className="doulos-identity-name">
+                                            {localStorage.getItem('username') || 'Luke Asote'}
+                                        </span>
+                                        <span className="doulos-identity-role">
+                                            {['superadmin', 'SuperAdmin'].includes(userRole) ? 'G1 Coordinator' :
+                                             userRole === 'developer' ? 'Lead Systems' :
+                                             userRole === 'trainer' ? 'G5 Training Directorate' : 'Admin for Associations'}
+                                        </span>
+                                    </div>
+                                    <ChevronDown size={14} color="#838096" />
                                 </div>
-                                <div style={{ fontSize: '0.62rem', color: '#25AAE1', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{userRole} Mode</div>
                             </div>
                         </div>
-                        <button onClick={handleLogout} style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '0.5rem', color: '#f87171', padding: '0.4rem 0.75rem', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', letterSpacing: '0.5px', flexShrink: 0 }}>
-                            <LogOut size={12} /> SIGN OUT
-                        </button>
+
+                        {/* Content Body / Tab Dispatcher */}
+                        <div style={{ flex: 1 }}>
+                            {activeTab === 'identity' ? (
+                                <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1rem 0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '2rem' }}>
+                                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--color-sidebar-bg) 0%, #2E2A4D 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', fontWeight: 800 }}>
+                                            {(localStorage.getItem('username') || userRole).charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#2D2D3A' }}>
+                                                {localStorage.getItem('username') || 'Luke Asote'}
+                                            </h2>
+                                            <span style={{ fontSize: '0.8rem', color: '#8E8B9F', fontWeight: 600 }}>
+                                                Role: {userRole?.toUpperCase()} · Campus: Athi River & Valley Road
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: '#FAFAFC', border: '1px solid #EBEBF2', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                                        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#2D2D3A' }}>Account Security</h4>
+                                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#6B6882' }}>Your session is protected with JWT credentials and G-Council authentication.</p>
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                            <PrimaryButton onClick={() => setEditingAdmin({ _id: 'ME', username: localStorage.getItem('username') || 'admin', role: userRole })}>
+                                                Update Credentials
+                                            </PrimaryButton>
+                                            <OutlineButton onClick={handleLogout} style={{ color: '#D9534F', borderColor: '#FCA5A5' }}>
+                                                Sign Out Account
+                                            </OutlineButton>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : activeTab === 'members' ? (
+                                <MembersTab
+                                    members={members}
+                                    loadingMembers={loadingMembers}
+                                    userRole={userRole}
+                                    isGuest={isGuest}
+                                    fetchMembers={fetchMembers}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                    admins={admins}
+                                    fetchAdmins={fetchAdmins}
+                                />
+                            ) : activeTab === 'g_council' ? (
+                                <G1ExecutiveRadar api={api} setMsg={setMsg} isGuest={isGuest} userRole={userRole} />
+                            ) : activeTab === 'events' ? (
+                                <MeetingsTab
+                                    meetings={meetings}
+                                    userRole={userRole}
+                                    isGuest={isGuest}
+                                    fetchMeetings={fetchMeetings}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                    members={members}
+                                    quickRegNo={quickRegNo}
+                                    setQuickRegNo={setQuickRegNo}
+                                    quickCheckInLoading={quickCheckInLoading}
+                                    setQuickCheckInLoading={setQuickCheckInLoading}
+                                    fetchMembers={fetchMembers}
+                                />
+                            ) : activeTab === 'requisitions' ? (
+                                <G8AssetsConsole api={api} setMsg={setMsg} isGuest={isGuest} onOpenRequisitionModal={() => setIsRequisitionModalOpen(true)} />
+                            ) : activeTab === 'observability' ? (
+                                <SystemObservabilityTab
+                                    members={members}
+                                    api={api}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    isGuest={isGuest}
+                                />
+                            ) : activeTab === 'crews' ? (
+                                <ActivitiesTab
+                                    members={members}
+                                    fetchMembers={fetchMembers}
+                                    isGuest={isGuest}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                />
+                            ) : activeTab === 'reports' ? (
+                                <ReportsTab
+                                    meetings={meetings}
+                                    members={members}
+                                    onDownloadCSV={downloadCSV}
+                                    onDownloadCumulativeCSV={downloadCumulativeCSV}
+                                    isGuest={isGuest}
+                                    api={api}
+                                    setMsg={setMsg}
+                                />
+                            ) : activeTab === 'finance' ? (
+                                <G7TreasuryConsole api={api} setMsg={setMsg} isGuest={isGuest} />
+                            ) : activeTab === 'freedom_base' ? (
+                                <G8AssetsConsole api={api} setMsg={setMsg} isGuest={isGuest} onOpenRequisitionModal={() => setIsRequisitionModalOpen(true)} />
+                            ) : activeTab === 'discipline' ? (
+                                <G6WelfareConsole api={api} setMsg={setMsg} isGuest={isGuest} members={members} />
+                            ) : activeTab === 'dashboard' ? (
+                                <ExecutiveOverviewTab
+                                    members={members}
+                                    meetings={meetings}
+                                    trainings={trainings}
+                                    currentSemester={currentSemester}
+                                    userRole={userRole}
+                                    setActiveTab={setActiveTab}
+                                    onDownloadCumulativeCSV={downloadCumulativeCSV}
+                                />
+                            ) : activeTab === 'g1_radar' ? (
+                                <G1ExecutiveRadar api={api} setMsg={setMsg} isGuest={isGuest} userRole={userRole} />
+                            ) : activeTab === 'g3_secretariat' ? (
+                                <G3SecretariatConsole api={api} setMsg={setMsg} isGuest={isGuest} members={members} />
+                            ) : activeTab === 'g4_logistics' ? (
+                                <G4LogisticsConsole api={api} setMsg={setMsg} isGuest={isGuest} />
+                            ) : activeTab === 'g6_welfare' ? (
+                                <G6WelfareConsole api={api} setMsg={setMsg} isGuest={isGuest} members={members} />
+                            ) : activeTab === 'g7_treasury' ? (
+                                <G7TreasuryConsole api={api} setMsg={setMsg} isGuest={isGuest} />
+                            ) : activeTab === 'g8_assets' ? (
+                                <G8AssetsConsole api={api} setMsg={setMsg} isGuest={isGuest} onOpenRequisitionModal={() => setIsRequisitionModalOpen(true)} />
+                            ) : activeTab === 'g9_media' ? (
+                                <G9MediaConsole api={api} setMsg={setMsg} isGuest={isGuest} currentSemester={currentSemester} />
+                            ) : activeTab === 'meetings' ? (
+                                <MeetingsTab
+                                    meetings={meetings}
+                                    userRole={userRole}
+                                    isGuest={isGuest}
+                                    fetchMeetings={fetchMeetings}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                    members={members}
+                                    quickRegNo={quickRegNo}
+                                    setQuickRegNo={setQuickRegNo}
+                                    quickCheckInLoading={quickCheckInLoading}
+                                    setQuickCheckInLoading={setQuickCheckInLoading}
+                                    fetchMembers={fetchMembers}
+                                />
+                            ) : activeTab === 'trainings' ? (
+                                <TrainingsTab
+                                    trainings={trainings}
+                                    userRole={userRole}
+                                    isGuest={isGuest}
+                                    fetchTrainings={fetchTrainings}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                    members={members}
+                                    quickRegNo={quickRegNo}
+                                    setQuickRegNo={setQuickRegNo}
+                                    quickCheckInLoading={quickCheckInLoading}
+                                    setQuickCheckInLoading={setQuickCheckInLoading}
+                                    fetchMembers={fetchMembers}
+                                />
+                            ) : activeTab === 'activities' ? (
+                                <ActivitiesTab
+                                    members={members}
+                                    fetchMembers={fetchMembers}
+                                    isGuest={isGuest}
+                                    setMsg={setMsg}
+                                    currentSemester={currentSemester}
+                                    api={api}
+                                />
+                            ) : activeTab === 'events_mgr' ? (
+                                <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
+                            ) : activeTab === 'admins' ? (
+                                <AdminsView
+                                    admins={admins}
+                                    loading={loadingAdmins}
+                                    onEdit={setEditingAdmin}
+                                    onDelete={handleDeleteAdmin}
+                                    guestFeaturesEnabled={guestFeaturesEnabled}
+                                    currentSemester={currentSemester}
+                                    onUpdateSetting={handleSaveSetting}
+                                    api={api}
+                                    setMsg={setMsg}
+                                    fetchAdmins={fetchAdmins}
+                                    isGuest={isGuest}
+                                />
+                            ) : activeTab === 'system' ? (
+                                <SystemSettingsTab
+                                    onUpdateSetting={handleSaveSetting}
+                                    isGuest={isGuest}
+                                    setMsg={setMsg}
+                                    api={api}
+                                    userRole={userRole}
+                                />
+                            ) : null}
+                        </div>
                     </div>
-
-                    {/* Header Controls */}
-                    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Doulos Management Suite</div>
-                            <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.75px', color: 'white' }}>
-                                {activeTab === 'meetings' ? 'Meetings & Scans' : 
-                                 activeTab === 'trainings' ? 'Trainings & Radius' : 
-                                 activeTab === 'members' ? 'Douloid Registry' : 
-                                 activeTab === 'reports' ? 'Reports & Analytics' : 
-                                 activeTab === 'finance' ? 'Financial Systems' : 
-                                 activeTab === 'events' ? 'Events Scheduler' : 
-                                 activeTab === 'activities' ? 'Activities & Groups' : 
-                                 activeTab === 'feedback' ? 'Community Feedback' : 
-                                 activeTab === 'admins' ? 'Staff Administrators' : 
-                                 activeTab === 'system' ? 'System Configurations' : 
-                                 activeTab === 'observability' ? 'System Observability' : 'Management Suite'}
-                            </h1>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                            {/* Public Portal Button Removed */}
-                        </div>
-                    </header>
-
-                    {/* Tab Dispatcher */}
-                    {activeTab === 'meetings' ? (
-                        <MeetingsTab
-                            meetings={meetings}
-                            userRole={userRole}
-                            isGuest={isGuest}
-                            fetchMeetings={fetchMeetings}
-                            setMsg={setMsg}
-                            currentSemester={currentSemester}
-                            api={api}
-                            members={members}
-                            quickRegNo={quickRegNo}
-                            setQuickRegNo={setQuickRegNo}
-                            quickCheckInLoading={quickCheckInLoading}
-                            setQuickCheckInLoading={setQuickCheckInLoading}
-                            fetchMembers={fetchMembers}
-                        />
-                    ) : activeTab === 'trainings' ? (
-                        <TrainingsTab
-                            trainings={trainings}
-                            userRole={userRole}
-                            isGuest={isGuest}
-                            fetchTrainings={fetchTrainings}
-                            setMsg={setMsg}
-                            currentSemester={currentSemester}
-                            api={api}
-                            members={members}
-                            quickRegNo={quickRegNo}
-                            setQuickRegNo={setQuickRegNo}
-                            quickCheckInLoading={quickCheckInLoading}
-                            setQuickCheckInLoading={setQuickCheckInLoading}
-                            fetchMembers={fetchMembers}
-                        />
-                    ) : activeTab === 'members' ? (
-                        <MembersTab
-                            members={members}
-                            loadingMembers={loadingMembers}
-                            userRole={userRole}
-                            isGuest={isGuest}
-                            fetchMembers={fetchMembers}
-                            setMsg={setMsg}
-                            currentSemester={currentSemester}
-                            api={api}
-                        />
-                    ) : activeTab === 'activities' ? (
-                        <ActivitiesTab
-                            members={members}
-                            fetchMembers={fetchMembers}
-                            isGuest={isGuest}
-                            setMsg={setMsg}
-                            currentSemester={currentSemester}
-                            api={api}
-                        />
-                    ) : activeTab === 'feedback' ? (
-                        <FeedbackView isGuest={isGuest} />
-                    ) : activeTab === 'events' ? (
-                        <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
-                    ) : activeTab === 'finance' ? (
-                        <AdminFinanceView isGuest={isGuest} />
-                    ) : activeTab === 'admins' ? (
-                        <AdminsView
-                            admins={admins}
-                            loading={loadingAdmins}
-                            onEdit={setEditingAdmin}
-                            onDelete={handleDeleteAdmin}
-                            guestFeaturesEnabled={guestFeaturesEnabled}
-                            currentSemester={currentSemester}
-                            onUpdateSetting={handleSaveSetting}
-                            api={api}
-                            setMsg={setMsg}
-                            fetchAdmins={fetchAdmins}
-                            isGuest={isGuest}
-                        />
-                    ) : activeTab === 'system' ? (
-                        <SystemSettingsTab
-                            onUpdateSetting={handleSaveSetting}
-                            isGuest={isGuest}
-                            setMsg={setMsg}
-                            api={api}
-                            userRole={userRole}
-                        />
-                    ) : activeTab === 'reports' ? (
-                        <ReportsTab
-                            meetings={meetings}
-                            members={members}
-                            onDownloadCSV={downloadCSV}
-                            onDownloadCumulativeCSV={downloadCumulativeCSV}
-                            isGuest={isGuest}
-                            api={api}
-                            setMsg={setMsg}
-                        />
-                    ) : activeTab === 'observability' ? (
-                        <SystemObservabilityTab
-                            members={members}
-                            api={api}
-                            setMsg={setMsg}
-                            currentSemester={currentSemester}
-                            isGuest={isGuest}
-                        />
-                    ) : null}
                 </main>
             </div>
 
             {/* Add/Edit Admin Modal */}
             {editingAdmin && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setEditingAdmin(null)}>
-                    <div className="glass-panel" style={{ padding: '2.5rem 2rem', maxWidth: '400px', width: '100%', background: '#0f172a' }} onClick={e => e.stopPropagation()}>
+                <div style={{ 
+                    position: 'fixed', 
+                    inset: 0, 
+                    background: 'rgba(46, 42, 77, 0.45)', 
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    zIndex: 9999, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    padding: '1rem' 
+                }} onClick={() => setEditingAdmin(null)}>
+                    <div style={{ 
+                        padding: '2.25rem 2rem', 
+                        maxWidth: '420px', 
+                        width: '100%', 
+                        background: '#FFFFFF',
+                        border: '1px solid #EBEBF2',
+                        borderRadius: '16px',
+                        boxShadow: '0 24px 60px rgba(46, 42, 77, 0.18)',
+                        color: '#1E1B39'
+                    }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{editingAdmin._id === 'NEW' ? 'Register New Staff' : 'Edit Staff Account'}</h3>
-                            <button onClick={() => setEditingAdmin(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'rgba(255,255,255,0.4)', padding: '0.4rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1E1B39' }}>
+                                {editingAdmin._id === 'NEW' ? 'Register New Staff' : 'Edit Staff Account'}
+                            </h3>
+                            <button onClick={() => setEditingAdmin(null)} style={{ background: '#F4F2FB', border: 'none', color: '#6B6882', padding: '0.4rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
                                 <X size={16} />
                             </button>
                         </div>
                         <form onSubmit={handleSaveAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div className="form-group-premium">
-                                <label>Username</label>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#666280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Username</label>
                                 <input className="modern-input" value={editingAdmin.username || ''} onChange={e => setEditingAdmin({ ...editingAdmin, username: e.target.value })} required disabled={editingAdmin._id !== 'NEW'} />
                             </div>
                             {editingAdmin._id === 'NEW' && (
                                 <div className="form-group-premium">
-                                    <label>Password</label>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#666280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Password</label>
                                     <input className="modern-input" type="password" value={editingAdmin.password || ''} onChange={e => setEditingAdmin({ ...editingAdmin, password: e.target.value })} required />
                                 </div>
                             )}
                             <div className="form-group-premium">
-                                <label>Campus Jurisdiction</label>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#666280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Campus Jurisdiction</label>
                                 <select className="modern-input" value={editingAdmin.campus || 'Athi River'} onChange={e => setEditingAdmin({ ...editingAdmin, campus: e.target.value })}>
                                     <option value="Athi River">Athi River</option>
                                     <option value="Valley Road">Valley Road</option>
@@ -2073,14 +1197,14 @@ const AdminDashboard = () => {
                                 </select>
                             </div>
                             <div className="form-group-premium">
-                                <label>System Role</label>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#666280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>System Role</label>
                                 <select className="modern-input" value={editingAdmin.role || 'admin'} onChange={e => setEditingAdmin({ ...editingAdmin, role: e.target.value })}>
                                     <option value="admin">Admin</option>
                                     <option value="superadmin">SuperAdmin</option>
                                     <option value="developer">Developer</option>
                                 </select>
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '45px', marginTop: '0.5rem', borderRadius: '0.5rem', fontWeight: 800 }}>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '46px', marginTop: '0.5rem', borderRadius: '10px', fontWeight: 700, background: '#4B3F8C', color: '#FFFFFF' }}>
                                 {editingAdmin._id === 'NEW' ? 'Register Account' : 'Save Profiles'}
                             </button>
                         </form>
@@ -2088,93 +1212,26 @@ const AdminDashboard = () => {
                 </div>
             )}
 
-            {/* Premium Mobile Bottom Styles */}
-            <style>{`
-                @media (max-width: 768px) {
-                    .sidebar {
-                        display: none !important;
-                    }
-                    .dashboard-layout {
-                        flex-direction: column !important;
-                        min-height: 100vh !important;
-                    }
-                    .main-content {
-                        padding: 1.25rem 1rem 6.5rem !important;
-                        min-width: 0 !important;
-                        overflow-y: auto !important;
-                    }
-                    header {
-                        display: none !important; /* Hide desktop header on mobile */
-                    }
-                    .admin-mobile-header {
-                        display: flex !important;
-                        justify-content: space-between !important;
-                        align-items: center !important;
-                        background: rgba(9, 29, 46, 0.85) !important;
-                        backdrop-filter: blur(15px) !important;
-                        -webkit-backdrop-filter: blur(15px) !important;
-                        padding: 0.75rem 1rem !important;
-                        border-radius: 1rem !important;
-                        border: 1px solid rgba(37, 170, 225, 0.15) !important;
-                        margin-bottom: 1.5rem !important;
-                        position: sticky !important;
-                        top: 0 !important;
-                        z-index: 200 !important;
-                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
-                    }
-                    .admin-mobile-bottom-nav {
-                        display: flex !important;
-                        position: fixed !important;
-                        bottom: 0 !important;
-                        left: 0 !important;
-                        right: 0 !important;
-                        background: #090c14 !important;
-                        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-                        padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)) !important;
-                        justify-content: space-around !important;
-                        align-items: center !important;
-                        z-index: 1000 !important;
-                        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5) !important;
-                        backdrop-filter: blur(20px) !important;
-                        -webkit-backdrop-filter: blur(20px) !important;
-                    }
-                    .admin-mobile-tab-btn {
-                        display: flex !important;
-                        flex-direction: column !important;
-                        align-items: center !important;
-                        gap: 0.25rem !important;
-                        background: none !important;
-                        border: none !important;
-                        color: rgba(255, 255, 255, 0.4) !important;
-                        cursor: pointer !important;
-                        font-size: 0.65rem !important;
-                        font-weight: 800 !important;
-                        letter-spacing: 0.5px !important;
-                        text-transform: uppercase !important;
-                        padding: 0.4rem 0.6rem !important;
-                        border-radius: 0.5rem !important;
-                        transition: all 0.2s !important;
-                        flex: 1 !important;
-                        font-family: 'Outfit', sans-serif !important;
-                    }
-                    .admin-mobile-tab-btn.active {
-                        color: #25AAE1 !important;
-                    }
-                    .admin-mobile-tab-btn:active {
-                        transform: scale(0.95) !important;
-                    }
-                }
-                @media (min-width: 769px) {
-                    .admin-mobile-bottom-nav {
-                        display: none !important;
-                    }
-                    .admin-mobile-header {
-                        display: none !important;
-                    }
-                }
-            `}</style>
+            {/* G-Council Requisition & Handover Modals */}
+            <RequisitionPipelineModal
+                isOpen={isRequisitionModalOpen}
+                onClose={() => setIsRequisitionModalOpen(false)}
+                api={api}
+                setMsg={setMsg}
+                isGuest={isGuest}
+                userRole={userRole}
+            />
+            <TenureHandoverModal
+                isOpen={isHandoverModalOpen}
+                onClose={() => setIsHandoverModalOpen(false)}
+                api={api}
+                setMsg={setMsg}
+                isGuest={isGuest}
+                userRole={userRole}
+            />
         </div>
     );
+
 };
 
 /* --- BOTTOM HELPER VIEWS --- */
@@ -2190,9 +1247,9 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
     const [registering, setRegistering] = useState(false);
 
     const roleColors = {
-        developer: { bg: 'rgba(167, 139, 250, 0.12)', color: '#a78bfa', border: 'rgba(167, 139, 250, 0.2)' },
-        superadmin: { bg: 'rgba(248, 113, 113, 0.12)', color: '#f87171', border: 'rgba(248, 113, 113, 0.2)' },
-        admin: { bg: 'rgba(37, 170, 225, 0.12)', color: '#25AAE1', border: 'rgba(37, 170, 225, 0.2)' },
+        developer: { bg: '#F5F3FB', color: '#4B3F8C', border: '#DCD6F7' },
+        superadmin: { bg: '#FEF2F2', color: '#DC2626', border: '#FCA5A5' },
+        admin: { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
     };
 
     const handleCreateAdmin = async (e) => {
@@ -2231,16 +1288,16 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
             
             {/* Header Card */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+            <div style={{ padding: '1.75rem 2rem', background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '14px', boxShadow: '0 4px 16px rgba(75, 63, 140, 0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
-                            <Users size={28} color="#25AAE1" />
+                        <div style={{ padding: '0.85rem', background: '#F5F3FB', borderRadius: '12px', border: '1px solid #DCD6F7' }}>
+                            <Users size={24} color="#4B3F8C" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>STAFF REGISTRY</div>
-                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>System Administrators</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>Manage access privileges, credentials, and roles for Doulos</p>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#4B3F8C', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>STAFF REGISTRY</div>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#1E1B39' }}>System Administrators</h2>
+                            <p style={{ margin: 0, fontSize: '0.84rem', color: '#7E7A9B' }}>Manage access privileges, credentials, and roles for Doulos</p>
                         </div>
                     </div>
                 </div>
@@ -2251,14 +1308,14 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
                     
                     {/* Active Staff List (Left/Main Column) */}
                     <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ padding: '0.5rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} accounts</span>
+                        <div style={{ padding: '0.5rem 0.25rem', borderBottom: '1px solid #EBEBF2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7E7A9B', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Active Staff — {admins.length} accounts</span>
                         </div>
 
                         {loading ? (
-                            <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Syncing staff registry...</div>
+                            <div style={{ padding: '4rem', textAlign: 'center', color: '#7E7A9B' }}>Syncing staff registry...</div>
                         ) : admins.length === 0 ? (
-                            <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)' }}>
+                            <div style={{ padding: '3rem', textAlign: 'center', background: '#FFFFFF', border: '1px dashed #EBEBF2', borderRadius: '12px', color: '#7E7A9B' }}>
                                 No administrators registered yet.
                             </div>
                         ) : (
@@ -2266,45 +1323,45 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
                                 {admins.map(a => {
                                     const rc = roleColors[a.role] || roleColors.admin;
                                     return (
-                                        <div key={a._id} className="glass-card-premium" style={{
-                                            background: '#0d111b',
+                                        <div key={a._id} style={{
+                                            background: '#FFFFFF',
+                                            border: '1px solid #EBEBF2',
                                             borderLeft: `4px solid ${rc.color}`,
-                                            padding: '1.5rem',
+                                            borderRadius: '12px',
+                                            padding: '1.35rem',
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            gap: '1.25rem',
+                                            gap: '1.15rem',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
                                             transition: 'all 0.2s'
-                                        }}
-                                            onMouseEnter={el => { el.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                            onMouseLeave={el => { el.currentTarget.style.transform = 'translateY(0)'; }}
-                                        >
+                                        }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: rc.bg, border: `1px solid ${rc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 900, color: rc.color }}>
+                                                    <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: rc.bg, border: `1px solid ${rc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.92rem', fontWeight: 800, color: rc.color }}>
                                                         {a.username?.charAt(0)?.toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontWeight: 800, fontSize: '1rem', color: 'white' }}>{a.username}</div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, marginTop: '2px' }}>{a.campus || 'All Campuses'}</div>
+                                                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1E1B39' }}>{a.username}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#7E7A9B', fontWeight: 500, marginTop: '2px' }}>{a.campus || 'All Campuses'}</div>
                                                     </div>
                                                 </div>
-                                                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 800, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                <span style={{ padding: '0.2rem 0.65rem', borderRadius: '999px', fontSize: '0.65rem', fontWeight: 700, background: rc.bg, color: rc.color, border: `1px solid ${rc.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                     {a.role}
                                                 </span>
                                             </div>
 
-                                            <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.25rem' }}>
-                                                <button className="btn" onClick={() => onEdit(a)} style={{
+                                            <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid #EBEBF2', paddingTop: '0.85rem' }}>
+                                                <button onClick={() => onEdit(a)} style={{
                                                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-                                                    padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(255,255,255,0.03)', color: 'white',
-                                                    border: '1px solid rgba(255,255,255,0.06)', borderRadius: '0.5rem', cursor: 'pointer'
+                                                    padding: '0.45rem', fontSize: '0.75rem', fontWeight: 700, background: '#F8F8FC', color: '#4A4560',
+                                                    border: '1px solid #D1D1DB', borderRadius: '8px', cursor: 'pointer'
                                                 }}>
                                                     <Pencil size={13} /> Edit Profile
                                                 </button>
-                                                <button className="btn" onClick={() => onDelete(a._id)} style={{
+                                                <button onClick={() => onDelete(a._id)} style={{
                                                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-                                                    padding: '0.5rem', fontSize: '0.75rem', fontWeight: 800, background: 'rgba(239, 68, 68, 0.05)', color: '#f87171',
-                                                    border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '0.5rem', cursor: 'pointer'
+                                                    padding: '0.45rem', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#DC2626',
+                                                    border: '1px solid #FCA5A5', borderRadius: '8px', cursor: 'pointer'
                                                 }}>
                                                     <Trash2 size={13} /> Remove
                                                 </button>
@@ -2317,26 +1374,26 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
                     </div>
 
                     {/* Embedded Registration Form Card (Right Column) */}
-                    <div className="glass-card-premium" style={{ 
+                    <div style={{ 
                         flex: '1 1 340px', 
                         maxWidth: '450px',
-                        background: '#0d111b', 
-                        padding: '2rem', 
-                        border: '1px solid rgba(37, 170, 225, 0.25)',
-                        borderRadius: '1.25rem',
-                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+                        background: '#FFFFFF', 
+                        padding: '1.75rem 2rem', 
+                        border: '1px solid #EBEBF2',
+                        borderRadius: '14px',
+                        boxShadow: '0 8px 24px rgba(75, 63, 140, 0.06)',
                         display: 'flex', 
                         flexDirection: 'column', 
                         gap: '1.25rem' 
                     }}>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>Register Staff Account</h3>
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>Create system credentials for Doulos leaders</p>
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1E1B39' }}>Register Staff Account</h3>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem', color: '#7E7A9B' }}>Create system credentials for Doulos leaders</p>
                         </div>
 
-                        <form onSubmit={handleCreateAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <form onSubmit={handleCreateAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
                             <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>Username</label>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#666280', letterSpacing: '0.5px' }}>Username</label>
                                 <input 
                                     className="modern-input" 
                                     value={newUsername} 
@@ -2348,7 +1405,7 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
                             </div>
                             
                             <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>Password</label>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#666280', letterSpacing: '0.5px' }}>Password</label>
                                 <input 
                                     className="modern-input" 
                                     type="password" 
@@ -2361,7 +1418,7 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
                             </div>
 
                             <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>Campus Jurisdiction</label>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#666280', letterSpacing: '0.5px' }}>Campus Jurisdiction</label>
                                 <select 
                                     className="modern-input" 
                                     value={newCampus} 
@@ -2375,7 +1432,7 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
                             </div>
 
                             <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                                <label style={{ fontSize: '0.72rem', fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>System Role</label>
+                                <label style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#666280', letterSpacing: '0.5px' }}>System Role</label>
                                 <select 
                                     className="modern-input" 
                                     value={newRole} 
@@ -2390,22 +1447,21 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
 
                             <button 
                                 type="submit" 
-                                className="btn btn-primary" 
                                 disabled={registering}
                                 style={{ 
                                     width: '100%', 
-                                    height: '45px', 
-                                    borderRadius: '0.6rem', 
-                                    fontWeight: 800,
-                                    background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
-                                    color: 'white',
+                                    height: '46px', 
+                                    borderRadius: '10px', 
+                                    fontWeight: 700,
+                                    background: '#4B3F8C',
+                                    color: '#FFFFFF',
                                     border: 'none',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '0.5rem',
-                                    boxShadow: '0 8px 25px rgba(37, 170, 225, 0.2) !important',
+                                    boxShadow: '0 8px 20px rgba(75, 63, 140, 0.25)',
                                     marginTop: '0.5rem'
                                 }}
                             >
@@ -2416,10 +1472,10 @@ const AdminsView = ({ admins, loading, onEdit, onDelete, currentSemester, api, s
 
                 </div>
             ) : (
-                <div className="glass-card-premium" style={{ padding: '4rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                    <ShieldAlert size={40} style={{ color: '#f87171', opacity: 0.3 }} />
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Access Restricted</h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', maxWidth: '400px', lineHeight: 1.5 }}>Only Developers and SuperAdmins are authorized to manage administrative system accounts.</p>
+                <div style={{ padding: '4rem', textAlign: 'center', background: '#FFFFFF', border: '1px dashed #EBEBF2', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <ShieldAlert size={40} style={{ color: '#DC2626', opacity: 0.5 }} />
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1E1B39' }}>Access Restricted</h3>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#7E7A9B', maxWidth: '400px', lineHeight: 1.5 }}>Only Developers and SuperAdmins are authorized to manage administrative system accounts.</p>
                 </div>
             )}
         </div>
@@ -2453,42 +1509,40 @@ const FeedbackView = ({ isGuest }) => {
 
     useEffect(() => {
         fetchFeedbacks();
-    }, [isGuest]);
+    }, []);
 
-    const handleStatusUpdate = async (id, newStatus) => {
-        if (isGuest) return alert('Action disabled in Guest Mode');
-        const originalFeedbacks = [...feedbacks];
-        setFeedbacks(prev => prev.map(f => f._id === id ? { ...f, status: newStatus } : f));
+    const handleStatusUpdate = async (id, status) => {
+        if (isGuest) return;
         try {
-            await api.patch(`/feedback/${id}`, { status: newStatus });
+            await api.put(`/feedback/${id}/status`, { status });
+            setFeedbacks(feedbacks.map(f => f._id === id ? { ...f, status } : f));
         } catch (err) {
-            alert('Failed to update status');
-            setFeedbacks(originalFeedbacks);
+            console.error('Failed to update status', err);
         }
     };
 
     const handleDelete = async (id) => {
-        if (isGuest) return alert('Action disabled in Guest Mode');
+        if (isGuest) return;
         if (!window.confirm('Delete this feedback?')) return;
         try {
             await api.delete(`/feedback/${id}`);
-            setFeedbacks(prev => prev.filter(f => f._id !== id));
+            setFeedbacks(feedbacks.filter(f => f._id !== id));
         } catch (err) {
-            alert('Failed to delete feedback');
+            console.error('Failed to delete feedback', err);
         }
     };
 
     const filteredFeedbacks = feedbacks.filter(f => filter === 'all' || f.status === filter);
 
     const statusMeta = {
-        new: { color: '#facc15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', label: 'NEW' },
-        read: { color: '#94a3b8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.15)', label: 'READ' },
-        resolved: { color: '#4ade80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', label: 'RESOLVED' }
+        new: { color: '#B45309', bg: '#FEF3C7', border: '#FDE68A', label: 'NEW' },
+        read: { color: '#4B5563', bg: '#F3F4F6', border: '#E5E7EB', label: 'READ' },
+        resolved: { color: '#15803D', bg: '#DCFCE7', border: '#BBF7D0', label: 'RESOLVED' }
     };
 
     if (loading) return (
-        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#facc15', borderRadius: '50%' }} />
+        <div style={{ padding: '4rem', textAlign: 'center', color: '#7E7A9B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid #EBEBF2', borderTopColor: '#4B3F8C', borderRadius: '50%' }} />
             <div>Syncing Feedback Cloud...</div>
         </div>
     );
@@ -2497,34 +1551,34 @@ const FeedbackView = ({ isGuest }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
             
             {/* Header Card */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+            <div style={{ padding: '1.75rem 2rem', background: '#FFFFFF', border: '1px solid #EBEBF2', borderRadius: '14px', boxShadow: '0 4px 16px rgba(75, 63, 140, 0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                        <div style={{ padding: '1rem', background: 'rgba(250, 204, 21, 0.12)', borderRadius: '1rem', border: '1px solid rgba(250, 204, 21, 0.2)' }}>
-                            <Lightbulb size={28} color="#facc15" />
+                        <div style={{ padding: '0.85rem', background: '#FEF3C7', borderRadius: '12px', border: '1px solid #FDE68A' }}>
+                            <Lightbulb size={24} color="#D97706" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#facc15', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>COMMUNITY VOICE</div>
-                            <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>User Feedback</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>{feedbacks.length} total submissions · {feedbacks.filter(f => f.status === 'new').length} unread</p>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#D97706', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>COMMUNITY VOICE</div>
+                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#1E1B39' }}>User Feedback</h2>
+                            <p style={{ margin: 0, fontSize: '0.84rem', color: '#7E7A9B' }}>{feedbacks.length} total submissions · {feedbacks.filter(f => f.status === 'new').length} unread</p>
                         </div>
                     </div>
                     
                     {/* Status capsule filters */}
-                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '0.75rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', background: '#F8F8FC', padding: '0.3rem', borderRadius: '10px', border: '1px solid #EBEBF2', flexWrap: 'wrap' }}>
                         {['all', 'new', 'read', 'resolved'].map(s => {
                             const isActive = filter === s;
-                            const sm = statusMeta[s] || { color: '#25AAE1', bg: 'rgba(37, 170, 225, 0.12)' };
+                            const sm = statusMeta[s] || { color: '#4B3F8C', bg: '#F5F3FB' };
                             return (
                                 <button
                                     key={s}
                                     onClick={() => setFilter(s)}
                                     style={{
-                                        padding: '0.5rem 1.1rem', borderRadius: '0.5rem', cursor: 'pointer',
-                                        background: isActive ? (s === 'all' ? 'rgba(37, 170, 225, 0.12)' : sm.bg) : 'transparent',
-                                        color: isActive ? (s === 'all' ? '#25AAE1' : sm.color) : 'rgba(255,255,255,0.4)',
-                                        border: isActive ? `1px solid ${s === 'all' ? 'rgba(37, 170, 225, 0.2)' : sm.border}` : '1px solid transparent',
-                                        fontWeight: 800, fontSize: '0.78rem', textTransform: 'capitalize', transition: 'all 0.2s'
+                                        padding: '0.45rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                                        background: isActive ? (s === 'all' ? '#4B3F8C' : sm.bg) : 'transparent',
+                                        color: isActive ? (s === 'all' ? '#FFFFFF' : sm.color) : '#7E7A9B',
+                                        border: isActive ? `1px solid ${s === 'all' ? '#4B3F8C' : sm.border}` : '1px solid transparent',
+                                        fontWeight: 700, fontSize: '0.78rem', textTransform: 'capitalize', transition: 'all 0.15s ease'
                                     }}
                                 >
                                     {s}
@@ -2536,13 +1590,13 @@ const FeedbackView = ({ isGuest }) => {
             </div>
 
             {filteredFeedbacks.length === 0 ? (
-                <div className="glass-card-premium" style={{ padding: '5rem 2rem', textAlign: 'center', background: '#0d111b', border: '1px dashed rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '50%', color: 'rgba(255,255,255,0.15)' }}>
-                        <Lightbulb size={40} />
+                <div style={{ padding: '5rem 2rem', textAlign: 'center', background: '#FFFFFF', border: '1px dashed #EBEBF2', borderRadius: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ padding: '1rem', background: '#F8F8FC', border: '1px solid #EBEBF2', borderRadius: '50%', color: '#B0ADC5' }}>
+                        <Lightbulb size={36} />
                     </div>
                     <div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>No Feedback Found</div>
-                        <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>There are no messages matching the selected status filters.</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E1B39' }}>No Feedback Found</div>
+                        <div style={{ fontSize: '0.84rem', color: '#7E7A9B', marginTop: '0.25rem' }}>There are no messages matching the selected status filters.</div>
                     </div>
                 </div>
             ) : (
@@ -2550,35 +1604,32 @@ const FeedbackView = ({ isGuest }) => {
                     {filteredFeedbacks.map(f => {
                         const sm = statusMeta[f.status] || statusMeta.read;
                         return (
-                            <div key={f._id} className="glass-card-premium" style={{
+                            <div key={f._id} style={{
+                                border: '1px solid #EBEBF2',
                                 borderLeft: `4px solid ${sm.color}`,
-                                background: '#0d111b',
-                                padding: '1.5rem',
+                                background: '#FFFFFF',
+                                borderRadius: '12px',
+                                padding: '1.35rem 1.5rem',
                                 transition: 'all 0.2s',
-                                position: 'relative',
-                                overflow: 'hidden'
-                            }}
-                                onMouseEnter={el => { el.currentTarget.style.boxShadow = `0 12px 25px ${sm.bg}`; }}
-                                onMouseLeave={el => { el.currentTarget.style.boxShadow = 'none'; }}
-                            >
-                                <div style={{ position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', background: `radial-gradient(circle, ${sm.bg} 0%, transparent 70%)`, opacity: 0.5, pointerEvents: 'none' }} />
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', flexWrap: 'wrap', position: 'relative' }}>
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                position: 'relative'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: sm.bg, border: `1px solid ${sm.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900, color: sm.color }}>
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: sm.bg, border: `1px solid ${sm.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800, color: sm.color }}>
                                                 {(f.name || 'A').charAt(0).toUpperCase()}
                                             </div>
-                                            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'white' }}>{f.name || 'Anonymous Member'}</span>
-                                            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{new Date(f.createdAt).toLocaleDateString()}</span>
-                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.65rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.06)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: '#1E1B39' }}>{f.name || 'Anonymous Member'}</span>
+                                            <span style={{ fontSize: '0.75rem', color: '#7E7A9B', fontWeight: 500 }}>{new Date(f.createdAt).toLocaleDateString()}</span>
+                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.65rem', borderRadius: '999px', background: '#F8F8FC', color: '#666280', border: '1px solid #EBEBF2', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                 {f.category?.replace('_', ' ')}
                                             </span>
-                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.65rem', borderRadius: '1rem', background: sm.bg, color: sm.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', border: `1px solid ${sm.border}` }}>
+                                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.65rem', borderRadius: '999px', background: sm.bg, color: sm.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', border: `1px solid ${sm.border}` }}>
                                                 {sm.label}
                                             </span>
                                         </div>
-                                        <p style={{ margin: 0, lineHeight: 1.6, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{f.message}</p>
+                                        <p style={{ margin: 0, lineHeight: 1.6, fontSize: '0.9rem', color: '#2D2D3A', fontWeight: 500 }}>{f.message}</p>
                                     </div>
                                     
                                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', minWidth: '220px', justifyContent: 'flex-end' }}>
@@ -2587,7 +1638,7 @@ const FeedbackView = ({ isGuest }) => {
                                             onChange={(e) => handleStatusUpdate(f._id, e.target.value)}
                                             className="modern-input"
                                             style={{
-                                                padding: '0.45rem 1rem', fontSize: '0.75rem', fontWeight: 800, width: '120px', border: '1px solid rgba(255,255,255,0.06)'
+                                                padding: '0.45rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, width: '120px', border: '1px solid #D1D1DB', background: '#FFFFFF', color: '#1E1B39'
                                             }}
                                         >
                                             <option value="new">Mark New</option>
@@ -2596,13 +1647,10 @@ const FeedbackView = ({ isGuest }) => {
                                         </select>
                                         <button
                                             onClick={() => handleDelete(f._id)}
-                                            className="btn"
                                             style={{
-                                                background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', color: '#f87171',
-                                                cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem', borderRadius: '0.5rem', transition: 'all 0.2s', fontWeight: 800
+                                                background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626',
+                                                cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.85rem', borderRadius: '8px', transition: 'all 0.15s ease', fontWeight: 700
                                             }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248, 113, 113, 0.15)'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; }}
                                         >
                                             <Trash2 size={13} /> Delete
                                         </button>

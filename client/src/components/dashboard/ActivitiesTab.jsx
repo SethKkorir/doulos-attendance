@@ -166,7 +166,7 @@ const ActivitiesTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -265,7 +265,7 @@ const ActivitiesTab = ({
                         .summary-card div { font-size: 1.6rem; font-weight: 900; color: #25AAE1; }
                         .group-section { margin-bottom: 35px; page-break-inside: avoid; }
                         .group-title { font-size: 1rem; font-weight: 900; color: #ffffff; background: #475569; padding: 8px 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-                        .group-count { font-size: 0.75rem; font-weight: 700; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; }
+                        .group-count { font-size: 0.75rem; font-weight: 700; background: #D1D1DB; padding: 2px 10px; border-radius: 20px; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
                         th { background: #f1f5f9; color: #475569; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 2px solid #cbd5e1; }
                         td { padding: 9px 12px; font-size: 0.8rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
@@ -334,7 +334,7 @@ const ActivitiesTab = ({
                                     <tbody>
                                         ${membersInGroup.map(m => `
                                             <tr>
-                                                <td style="font-weight: 700; color: #0f172a">${m.name}</td>
+                                                <td style="font-weight: 700; color: #FFFFFF">${m.name}</td>
                                                 <td style="font-family: monospace; font-weight: 600">${m.studentRegNo}</td>
                                                 <td>${m.campus}</td>
                                                 <td>
@@ -383,7 +383,7 @@ const ActivitiesTab = ({
                         body { 
                             font-family: 'Plus Jakarta Sans', sans-serif;
                             margin: 0; padding: 0; background: #ffffff;
-                            color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                            color: #FFFFFF; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
                         }
                         .header {
                             display: flex;
@@ -551,7 +551,7 @@ const ActivitiesTab = ({
                         <tbody>
                             ${activeMembers.map(m => `
                                 <tr>
-                                    <td style="font-weight: 700; color: #0f172a">${m.name}</td>
+                                    <td style="font-weight: 700; color: #FFFFFF">${m.name}</td>
                                     <td style="font-family: monospace; font-weight: 600">${m.studentRegNo}</td>
                                     <td>
                                         <span class="badge badge-${m.memberType?.toLowerCase()}">${m.memberType}</span>
@@ -690,7 +690,7 @@ const ActivitiesTab = ({
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                     {subTab === 'groups' ? (
                         <>
-                            <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }} onClick={handlePrintGroupsPDF}>
+                            <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', border: '1px solid #EBEBF2', color: "#1E1B39" }} onClick={handlePrintGroupsPDF}>
                                 <FileText size={14} /> Print PDF
                             </button>
                             <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(37, 170, 225, 0.1)', border: '1px solid rgba(37, 170, 225, 0.2)', color: '#25AAE1' }} onClick={handleExportGroupsCSV}>
@@ -699,7 +699,7 @@ const ActivitiesTab = ({
                         </>
                     ) : (
                         <>
-                            <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }} onClick={handlePrintWateringPDF}>
+                            <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', border: '1px solid #EBEBF2', color: "#1E1B39" }} onClick={handlePrintWateringPDF}>
                                 <FileText size={14} /> Print PDF
                             </button>
                             <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981' }} onClick={handleExportWateringCSV}>
@@ -713,13 +713,13 @@ const ActivitiesTab = ({
             {subTab === 'groups' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
                     {/* Auto Grouping Generator Dashboard Card */}
-                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b', borderLeft: '4px solid #25AAE1' }}>
+                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF', borderLeft: '4px solid #25AAE1' }}>
                         <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             <div style={{ flex: 1, minWidth: '280px' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', color: "#1E1B39" }}>
                                     <Sparkles size={20} color="#25AAE1" /> Stratified Group Auto-Generator
                                 </h3>
-                                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.82rem', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                                <p style={{ color: "#7E7A9B", fontSize: '0.82rem', marginTop: '0.5rem', lineHeight: 1.5 }}>
                                     Distributes all active class members fairly into groups. Shuffles and stratifies members round-robin to ensure an equal leadership ratio of **Douloids**, **Recruits**, and **Visitors** in each group.
                                 </p>
                                 <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
@@ -738,7 +738,7 @@ const ActivitiesTab = ({
                                 </div>
                             </div>
 
-                            <form onSubmit={handleAutoGenerate} style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'rgba(2, 21, 37, 0.3)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
+                            <form onSubmit={handleAutoGenerate} style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'rgba(2, 21, 37, 0.3)', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid #EBEBF2', flexShrink: 0 }}>
                                 <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(0, 0, 0, 0.25)', padding: '0.25rem', borderRadius: '0.5rem', marginBottom: '0.25rem', border: '1px solid rgba(255,255,255,0.03)' }}>
                                     <button 
                                         type="button"
@@ -775,13 +775,13 @@ const ActivitiesTab = ({
                                     <div className="form-group-premium">
                                         <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text, rgba(255,255,255,0.7))', textTransform: 'uppercase' }}>Target People per Group</label>
                                         <input type="number" className="modern-input" min={1} max={100} value={peoplePerGroup} onChange={e => setPeoplePerGroup(e.target.value)} required style={{ width: '100%', marginTop: '0.35rem' }} />
-                                        <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.2rem', display: 'block' }}>
+                                        <span style={{ fontSize: '0.62rem', color: "#7E7A9B", marginTop: '0.2rem', display: 'block' }}>
                                             Will dynamically create approx. {peoplePerGroup > 0 ? Math.ceil(activeMembers.length / peoplePerGroup) : 0} groups
                                         </span>
                                     </div>
                                 )}
                                 <div className="form-group-premium">
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Custom Group Names (Optional)</label>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: "#7E7A9B", textTransform: 'uppercase' }}>Custom Group Names (Optional)</label>
                                     <textarea className="modern-input" style={{ width: '100%', minHeight: '60px', height: '60px', fontSize: '0.75rem', marginTop: '0.35rem', resize: 'none' }} placeholder="Type one name per line...&#10;e.g. Group Alpha&#10;Group Beta" value={customNamesInput} onChange={e => setCustomNamesInput(e.target.value)} />
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -805,13 +805,13 @@ const ActivitiesTab = ({
                             {groupNames.map(name => {
                                 const count = activeMembers.filter(m => m.groupName === name).length;
                                 return (
-                                    <div key={name} className="glass-card-premium interactive" style={{ padding: '1.5rem', background: '#0d111b', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                    <div key={name} className="glass-card-premium interactive" style={{ padding: '1.5rem', background: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                                         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(37, 170, 225, 0.1)', border: '1px solid rgba(37, 170, 225, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25AAE1', fontSize: '1.2rem', fontWeight: 900 }}>
                                             {name.replace('Group ', '').charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'white' }}>{name}</h4>
-                                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{count} members assigned</span>
+                                            <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: "#1E1B39" }}>{name}</h4>
+                                            <span style={{ fontSize: '0.78rem', color: "#7E7A9B", fontWeight: 600 }}>{count} members assigned</span>
                                         </div>
                                     </div>
                                 );
@@ -822,7 +822,7 @@ const ActivitiesTab = ({
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.75rem' }}>
                     {/* Weekly Coverage Grid Heatmap */}
-                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+                    <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF' }}>
                         <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Coverage Status</div>
                         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-text, white)' }}>Weekly Watering Heatmap</h3>
                         
@@ -854,7 +854,7 @@ const ActivitiesTab = ({
                     {/* Freedom Base Watering Commitment Selector Control Card */}
                     <div className="glass-card-premium" style={{ 
                         padding: '2rem', 
-                        background: '#0d111b', 
+                        background: '#FFFFFF', 
                         borderLeft: '4px solid #10b981',
                         display: 'flex',
                         flexDirection: 'column',
@@ -875,7 +875,7 @@ const ActivitiesTab = ({
                             background: 'rgba(2, 21, 37, 0.3)', 
                             padding: '1.25rem', 
                             borderRadius: '1rem', 
-                            border: '1px solid rgba(255,255,255,0.04)',
+                            border: '1px solid #EBEBF2',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -942,7 +942,7 @@ const ActivitiesTab = ({
                 <div style={{ padding: '1.5rem', background: 'rgba(2, 21, 37, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <div style={{ position: 'relative', flex: '1 1 240px' }}>
-                            <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
+                            <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: "#7E7A9B" }} />
                             <input
                                 placeholder="Search student name or admission number..."
                                 className="modern-input"
@@ -980,7 +980,7 @@ const ActivitiesTab = ({
                 <div style={{ overflowX: 'auto', flex: 1 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
-                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <tr style={{ borderBottom: '1px solid #EBEBF2' }}>
                                 <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Student Name</th>
                                 <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Admission Number</th>
                                 <th style={{ padding: '1rem', fontSize: '0.72rem', fontWeight: 900, color: 'var(--color-text-dim, rgba(255,255,255,0.4))', textTransform: 'uppercase', letterSpacing: '1px' }}>Campus</th>
@@ -995,7 +995,7 @@ const ActivitiesTab = ({
                         <tbody>
                             {filteredMembers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: "#7E7A9B", fontWeight: 600 }}>
                                         No members match your criteria.
                                     </td>
                                 </tr>
@@ -1021,17 +1021,17 @@ const ActivitiesTab = ({
                                                             style={{
                                                                 width: '100%', height: '34px', fontSize: '0.78rem', fontWeight: 700,
                                                                 background: m.groupName ? 'rgba(37,170,225,0.05)' : 'rgba(255,255,255,0.02)',
-                                                                borderColor: m.groupName ? 'rgba(37,170,225,0.25)' : 'rgba(255,255,255,0.08)',
+                                                                borderColor: m.groupName ? 'rgba(37,170,225,0.25)' : '#EBEBF2',
                                                                 color: m.groupName ? '#25AAE1' : 'var(--color-text, white)',
                                                                 cursor: 'pointer', padding: '0 0.5rem'
                                                             }}
                                                             value={m.groupName || ''}
                                                             onChange={e => handleMemberGroupChange(m._id, e.target.value)}
                                                         >
-                                                            <option value="" style={{ background: '#090d16', color: 'rgba(255,255,255,0.4)' }}>Unassigned (None)</option>
-                                                            {groupNames.map(g => <option key={g} value={g} style={{ background: '#090d16', color: 'white' }}>{g}</option>)}
+                                                            <option value="" style={{ background: '#F8F8FC', color: "#7E7A9B" }}>Unassigned (None)</option>
+                                                            {groupNames.map(g => <option key={g} value={g} style={{ background: '#F8F8FC', color: "#1E1B39" }}>{g}</option>)}
                                                             {/* Allow typing custom on-the-fly */}
-                                                            <option value="NEW_GROUP_PROMPT" style={{ background: '#090d16', color: '#fbbf24' }}>+ Assign Custom Name...</option>
+                                                            <option value="NEW_GROUP_PROMPT" style={{ background: '#F8F8FC', color: '#fbbf24' }}>+ Assign Custom Name...</option>
                                                         </select>
                                                         
                                                         {/* Handler for adding custom group names inline */}

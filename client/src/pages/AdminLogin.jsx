@@ -1,16 +1,15 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Lock, Sun, Moon, User, Eye, EyeOff, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 import Logo from '../components/Logo';
-import BackgroundGallery from '../components/BackgroundGallery';
 
 const AdminLogin = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [guestFeaturesEnabled, setGuestFeaturesEnabled] = useState(true);
     const [loading, setLoading] = useState(false);
     const [isFocusedUser, setIsFocusedUser] = useState(false);
@@ -48,36 +47,53 @@ const AdminLogin = () => {
         }
     }, [navigate]);
 
-    useEffect(() => {
-        if (!isDarkMode) {
-            document.body.classList.add('light-mode');
-            localStorage.setItem('theme', 'light');
-        } else {
-            document.body.classList.remove('light-mode');
-            localStorage.setItem('theme', 'dark');
-        }
-    }, [isDarkMode]);
-
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
             const res = await api.post('/auth/login', { username, password });
-            
+
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('role', res.data.role);
             localStorage.setItem('username', res.data.username);
-            
-            // Strict Routing Logic
-            if (res.data.username === 'supersuperadmin') {
-                console.log('Redirecting to Premium Super Admin Dashboard...');
+            localStorage.setItem('campus', res.data.campus || 'Athi River');
+
+            const isTrainer = res.data.role === 'trainer' ||
+                (res.data.username && (res.data.username.startsWith('trainer') || res.data.username === 'g5_director'));
+
+            // G-Council Strict Direct Routing Logic
+            const u = res.data.username;
+            if (u === 'supersuperadmin') {
                 navigate('/superadmin');
+            } else if (u === 'g1_coordinator' || u === 'g2_vice') {
+                localStorage.setItem('initialTab', 'g1_radar');
+                navigate('/admin/dashboard');
+            } else if (u === 'g3_secretary') {
+                localStorage.setItem('initialTab', 'g3_secretariat');
+                navigate('/admin/dashboard');
+            } else if (u === 'g4_logistics') {
+                localStorage.setItem('initialTab', 'g4_logistics');
+                navigate('/admin/dashboard');
+            } else if (isTrainer || u === 'g5_training') {
+                localStorage.setItem('initialTab', 'dashboard');
+                window.open('/g5/portal', '_blank');
+                navigate('/g5/portal');
+            } else if (u === 'g6_welfare') {
+                localStorage.setItem('initialTab', 'g6_welfare');
+                navigate('/admin/dashboard');
+            } else if (u === 'g7_treasurer') {
+                localStorage.setItem('initialTab', 'g7_treasury');
+                navigate('/admin/dashboard');
+            } else if (u === 'g8_assets') {
+                localStorage.setItem('initialTab', 'g8_assets');
+                navigate('/admin/dashboard');
+            } else if (u === 'g9_media') {
+                localStorage.setItem('initialTab', 'g9_media');
+                navigate('/admin/dashboard');
             } else if (res.data.username === 'superadmin' || res.data.role === 'superadmin') {
-                console.log('Redirecting to Super Admin View...');
                 navigate('/admin/dashboard');
             } else {
-                console.log('Redirecting to Admin Dashboard...');
                 navigate('/admin/dashboard');
             }
         } catch (err) {
@@ -88,52 +104,35 @@ const AdminLogin = () => {
     };
 
     return (
-        <div className="flex-center login-page-container" style={{
+        <div style={{
             minHeight: '100vh',
-            flexDirection: 'column',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             padding: '1.5rem',
             position: 'relative',
-            overflow: 'hidden',
-            fontFamily: 'var(--font-main)'
+            backgroundColor: '#F1F1F5',
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            overflow: 'hidden'
         }}>
-            {/* Background Image Carousel */}
-            <BackgroundGallery />
+            {/* Ambient Purple Corner Wash top-left */}
+            <div style={{
+                position: 'fixed',
+                top: '-140px',
+                left: '-140px',
+                width: '520px',
+                height: '520px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, #A79AE8 0%, rgba(167, 154, 232, 0.4) 45%, transparent 70%)',
+                opacity: 0.65,
+                filter: 'blur(70px)',
+                pointerEvents: 'none',
+                zIndex: 1
+            }} />
 
-            {/* Glowing Ambient Blobs - Adding rich layered animation for visual wow factor */}
-            <div className="ambient-blob blob-1"></div>
-            <div className="ambient-blob blob-2"></div>
-
-            {/* Premium Theme Switcher */}
-            <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="theme-toggle-btn"
-                aria-label="Toggle Theme"
-                style={{
-                    position: 'absolute',
-                    top: '2rem',
-                    right: '2rem',
-                    width: '48px',
-                    height: '48px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    zIndex: 100,
-                    borderRadius: '14px',
-                    border: '1px solid var(--theme-toggle-border)',
-                    background: 'var(--theme-toggle-bg)',
-                    backdropFilter: 'blur(8px)',
-                    color: isDarkMode ? '#facc15' : 'var(--primary-electric)',
-                    boxShadow: 'var(--theme-toggle-shadow)',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-            >
-                {isDarkMode ? <Sun size={20} className="theme-icon" /> : <Moon size={20} className="theme-icon" />}
-            </button>
-
-            {/* Floating Redesigned Toast Notification for Login Failures */}
+            {/* Error Toast Notification */}
             {error && (
-                <div className="premium-toast-alert" style={{
+                <div style={{
                     position: 'fixed',
                     top: '2rem',
                     left: '50%',
@@ -141,579 +140,319 @@ const AdminLogin = () => {
                     zIndex: 2000,
                     minWidth: '320px',
                     maxWidth: '90%',
-                    padding: '1rem 1.25rem',
-                    borderRadius: '1rem',
-                    background: 'var(--toast-bg)',
-                    border: '1px solid var(--toast-border)',
-                    boxShadow: 'var(--toast-shadow)',
+                    padding: '0.9rem 1.25rem',
+                    borderRadius: '12px',
+                    background: '#FFFFFF',
+                    border: '1px solid #FCA5A5',
+                    boxShadow: '0 12px 32px rgba(220, 38, 38, 0.12)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.85rem',
-                    color: 'var(--toast-color)',
-                    animation: 'error-slide-down 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                    color: '#991B1B',
+                    animation: 'slideDown 0.35s ease forwards'
                 }}>
-                    <AlertCircle size={20} style={{ color: 'var(--toast-icon-color)', flexShrink: 0 }} />
+                    <AlertCircle size={20} style={{ color: '#DC2626', flexShrink: 0 }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--toast-title-color)' }}>Authentication Alert</span>
-                        <span style={{ fontWeight: 500, fontSize: '0.85rem', opacity: 0.9 }}>{error}</span>
+                        <span style={{ fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.5px', textTransform: 'uppercase', color: '#DC2626' }}>
+                            Authentication Error
+                        </span>
+                        <span style={{ fontWeight: 500, fontSize: '0.84rem' }}>{error}</span>
                     </div>
                 </div>
             )}
 
-            {/* Login Card Container */}
-            <div className="login-card-panel" style={{
+            {/* Floating Crisp White Login Card */}
+            <div style={{
                 width: '100%',
-                maxWidth: '420px',
-                padding: '3rem 2.25rem 2.5rem',
-                borderRadius: '2rem',
-                border: '1px solid var(--login-card-border)',
-                background: 'var(--login-card-bg)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                boxShadow: 'var(--login-card-shadow)',
+                maxWidth: '440px',
+                padding: '2.75rem 2.25rem 2.25rem',
+                borderRadius: '20px',
+                border: '1px solid #EBEBF2',
+                background: '#FFFFFF',
+                boxShadow: '0 20px 48px rgba(75, 63, 140, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03)',
                 position: 'relative',
-                zIndex: 10,
-                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                zIndex: 10
             }}>
                 {/* Visual Header */}
-                <div style={{ marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        {/* Logo Orbital Glow Ring 1 */}
-                        <div className="orbital-ring ring-outer"></div>
-                        {/* Logo Orbital Glow Ring 2 */}
-                        <div className="orbital-ring ring-inner"></div>
-                        
-                        <div className="brand-logo-wrapper">
-                            <Logo size={76} showText={false} />
-                        </div>
-                    </div>
-
-                    <h1 className="login-card-title" style={{
-                        marginTop: '1.75rem',
-                        marginBottom: '0.5rem',
-                        fontSize: '1.75rem',
-                        fontWeight: 900,
-                        letterSpacing: '-0.03em',
-                        background: 'var(--title-gradient)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        textTransform: 'uppercase'
-                    }}>
-                        Admin Access
-                    </h1>
-
+                <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                     <div style={{
+                        width: '68px',
+                        height: '68px',
+                        borderRadius: '18px',
+                        background: 'linear-gradient(135deg, #4B3F8C 0%, #3D3277 100%)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.75rem',
-                        width: '80%',
                         justifyContent: 'center',
-                        opacity: 0.65
+                        boxShadow: '0 8px 24px rgba(75, 63, 140, 0.25)',
+                        marginBottom: '1.25rem'
                     }}>
-                        <div style={{ height: '1px', flex: 1, background: 'var(--divider-gradient-left)' }}></div>
-                        <span style={{
-                            fontSize: '0.65rem',
-                            fontWeight: 800,
-                            letterSpacing: '2.5px',
-                            textTransform: 'uppercase',
-                            color: 'var(--color-primary-text)'
-                        }}>Secure Portal</span>
-                        <div style={{ height: '1px', flex: 1, background: 'var(--divider-gradient-right)' }}></div>
+                        <Logo size={42} showText={false} />
                     </div>
+
+                    <h1 style={{
+                        margin: 0,
+                        fontSize: '1.6rem',
+                        fontWeight: 800,
+                        color: '#1E1B39',
+                        letterSpacing: '-0.02em'
+                    }}>
+                        Doulos Admin Portal
+                    </h1>
+
+                    <p style={{
+                        margin: '0.45rem 0 0',
+                        fontSize: '0.84rem',
+                        color: '#7E7A9B',
+                        fontWeight: 500
+                    }}>
+                        Freedom Base Camp · Executive Console
+                    </p>
                 </div>
 
                 {/* Form Elements */}
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    
+                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Username Input Field */}
-                    <div className="form-input-group">
-                        <label className={`form-input-label ${isFocusedUser || username ? 'label-focused' : ''}`}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            color: isFocusedUser ? '#4B3F8C' : '#666280'
+                        }}>
                             Username
-                            <span className="required-dot"></span>
                         </label>
-                        <div className={`input-icon-container ${isFocusedUser ? 'focused' : ''}`}>
-                            <User size={18} className="input-icon-left" />
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            background: '#FFFFFF',
+                            border: `1.5px solid ${isFocusedUser ? '#4B3F8C' : '#D1D1DB'}`,
+                            borderRadius: '10px',
+                            padding: '0 0.95rem',
+                            height: '46px',
+                            boxShadow: isFocusedUser ? '0 0 0 3px rgba(75, 63, 140, 0.12)' : 'none',
+                            transition: 'all 0.15s ease'
+                        }}>
+                            <User size={18} color={isFocusedUser ? '#4B3F8C' : '#9E9EA7'} />
                             <input
                                 type="text"
-                                className="form-input-field"
-                                placeholder="Developer Username"
+                                placeholder="Admin or G-Council username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 onFocus={() => setIsFocusedUser(true)}
                                 onBlur={() => setIsFocusedUser(false)}
                                 required
+                                style={{
+                                    border: 'none',
+                                    outline: 'none',
+                                    background: 'transparent',
+                                    width: '100%',
+                                    fontSize: '0.9rem',
+                                    color: '#1E1B39',
+                                    fontWeight: 500
+                                }}
                             />
                         </div>
                     </div>
 
                     {/* Password Input Field */}
-                    <div className="form-input-group">
-                        <label className={`form-input-label ${isFocusedPass || password ? 'label-focused' : ''}`}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            color: isFocusedPass ? '#4B3F8C' : '#666280'
+                        }}>
                             Password
-                            <span className="required-dot"></span>
                         </label>
-                        <div className={`input-icon-container ${isFocusedPass ? 'focused' : ''}`}>
-                            <Lock size={18} className="input-icon-left" />
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            background: '#FFFFFF',
+                            border: `1.5px solid ${isFocusedPass ? '#4B3F8C' : '#D1D1DB'}`,
+                            borderRadius: '10px',
+                            padding: '0 0.95rem',
+                            height: '46px',
+                            boxShadow: isFocusedPass ? '0 0 0 3px rgba(75, 63, 140, 0.12)' : 'none',
+                            transition: 'all 0.15s ease'
+                        }}>
+                            <Lock size={18} color={isFocusedPass ? '#4B3F8C' : '#9E9EA7'} />
                             <input
-                                type={showPassword ? "text" : "password"}
-                                className="form-input-field"
+                                type={showPassword ? 'text' : 'password'}
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 onFocus={() => setIsFocusedPass(true)}
                                 onBlur={() => setIsFocusedPass(false)}
                                 required
-                                style={{ paddingRight: '3rem' }}
+                                style={{
+                                    border: 'none',
+                                    outline: 'none',
+                                    background: 'transparent',
+                                    width: '100%',
+                                    fontSize: '0.9rem',
+                                    color: '#1E1B39',
+                                    fontWeight: 500
+                                }}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="password-toggle-btn"
                                 tabIndex={-1}
-                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#9E9EA7',
+                                    padding: '0.2rem',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}
                             >
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
                     </div>
 
-                    {/* Submit Button */}
+                    {/* G-Council (G1 - G9) & Staff Quick Access */}
+                    <div style={{
+                        background: '#F8F8FC',
+                        border: '1px solid #EBEBF2',
+                        borderRadius: '12px',
+                        padding: '0.85rem 0.95rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                        marginTop: '0.25rem'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#4B3F8C' }}>
+                                G-COUNCIL QUICK ACCESS
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: '#7E7A9B', fontWeight: 600 }}>Pass: doulos2026</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
+                            {[
+                                { user: 'g1_coordinator', pass: 'doulos2026', label: 'G1 Coordinator' },
+                                { user: 'g3_secretary', pass: 'doulos2026', label: 'G3 Secretary' },
+                                { user: 'g4_logistics', pass: 'doulos2026', label: 'G4 Logistics' },
+                                { user: 'trainer_athi', pass: 'trainer123', label: 'G5 Training' },
+                                { user: 'g6_welfare', pass: 'doulos2026', label: 'G6 Welfare' },
+                                { user: 'g7_treasurer', pass: 'doulos2026', label: 'G7 Treasurer' },
+                                { user: 'g8_assets', pass: 'doulos2026', label: 'G8 Equipment' },
+                                { user: 'g9_media', pass: 'doulos2026', label: 'G9 Media/QR' },
+                                { user: 'superadmin', pass: 'admin123', label: 'SuperAdmin' }
+                            ].map(t => {
+                                const isSelected = username === t.user;
+                                return (
+                                    <button
+                                        key={t.user}
+                                        type="button"
+                                        onClick={() => {
+                                            setUsername(t.user);
+                                            setPassword(t.pass);
+                                        }}
+                                        style={{
+                                            background: isSelected ? '#4B3F8C' : '#FFFFFF',
+                                            border: `1px solid ${isSelected ? '#4B3F8C' : '#EBEBF2'}`,
+                                            borderRadius: '6px',
+                                            padding: '0.42rem 0.2rem',
+                                            color: isSelected ? '#FFFFFF' : '#4A4560',
+                                            fontSize: '0.68rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            textAlign: 'center',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        {t.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Submit Button in deep indigo-purple */}
                     <button
                         type="submit"
-                        className={`submit-btn-premium ${loading ? 'loading' : ''}`}
                         disabled={loading}
+                        style={{
+                            height: '48px',
+                            background: '#4B3F8C',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontSize: '0.92rem',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            boxShadow: '0 8px 20px rgba(75, 63, 140, 0.25)',
+                            transition: 'all 0.2s ease',
+                            marginTop: '0.5rem'
+                        }}
+                        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#3D3277'; }}
+                        onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#4B3F8C'; }}
                     >
-                        <div className="submit-btn-content">
-                            {loading ? (
-                                <>
-                                    <Loader2 size={18} className="spinner-animate" />
-                                    <span>Verifying Access...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>Log In Portal</span>
-                                    <ArrowRight size={18} className="arrow-hover-animate" />
-                                </>
-                            )}
-                        </div>
+                        {loading ? (
+                            <>
+                                <Loader2 size={18} className="spinner-animate" />
+                                <span>Verifying credentials...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>Sign In to Portal</span>
+                                <ArrowRight size={18} />
+                            </>
+                        )}
                     </button>
                 </form>
 
                 {/* Footer Guest Option */}
                 {guestFeaturesEnabled && (
-                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
+                    <div style={{ marginTop: '1.75rem', display: 'flex', justifyContent: 'center' }}>
                         <button
                             onClick={() => navigate('/guest')}
-                            className="guest-portal-btn"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#4B3F8C',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                cursor: 'pointer',
+                                padding: '0.4rem 0.75rem',
+                                borderRadius: '8px',
+                                transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#F4F2FB'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
                             <span>Guest Access & Verification</span>
-                            <ArrowRight size={14} className="guest-arrow" />
+                            <ArrowRight size={14} />
                         </button>
                     </div>
                 )}
 
                 {/* Subfooter */}
-                <div className="subfooter-branding">
-                    Doulos Attendance Dashboard System
+                <div style={{
+                    marginTop: '1.25rem',
+                    textAlign: 'center',
+                    fontSize: '0.72rem',
+                    color: '#9E9EA7',
+                    fontWeight: 500
+                }}>
+                    Doulos Timeregistrering System
                 </div>
             </div>
-
-            {/* Embedded Redesigned CSS Styles */}
-            <style>{`
-                /* CSS Dynamic Theme Variables */
-                .login-page-container {
-                    --theme-toggle-bg: rgba(9, 29, 46, 0.4);
-                    --theme-toggle-border: rgba(29, 166, 217, 0.15);
-                    --theme-toggle-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
-                    
-                    --login-card-bg: rgba(2, 21, 37, 0.7);
-                    --login-card-border: rgba(29, 166, 217, 0.2);
-                    --login-card-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8), 0 0 50px -10px rgba(29, 166, 217, 0.12);
-                    --title-gradient: linear-gradient(135deg, #ffffff 0%, #1da6d9 100%);
-                    
-                    --color-primary-text: #1da6d9;
-                    --divider-gradient-left: linear-gradient(to right, transparent, rgba(29, 166, 217, 0.4));
-                    --divider-gradient-right: linear-gradient(to left, transparent, rgba(29, 166, 217, 0.4));
-                    
-                    --input-bg: rgba(0, 0, 0, 0.35);
-                    --input-border: rgba(29, 166, 217, 0.15);
-                    --input-border-focus: #1da6d9;
-                    --input-text: #ffffff;
-                    --input-placeholder: rgba(255, 255, 255, 0.25);
-                    --input-icon-color: rgba(255, 255, 255, 0.4);
-                    --input-icon-focus: #1da6d9;
-                    
-                    --label-color: rgba(255, 255, 255, 0.5);
-                    --label-color-focused: #1da6d9;
-                    
-                    --btn-gradient: linear-gradient(135deg, #1da6d9 0%, #0d729c 100%);
-                    --btn-shadow: 0 10px 25px -5px rgba(29, 166, 217, 0.4);
-                    --btn-shadow-hover: 0 15px 35px -5px rgba(29, 166, 217, 0.6);
-                    
-                    --guest-color: rgba(29, 166, 217, 0.8);
-                    --guest-color-hover: #ffffff;
-                    --guest-bg-hover: rgba(29, 166, 217, 0.1);
-                    
-                    --toast-bg: rgba(28, 9, 15, 0.8);
-                    --toast-border: rgba(239, 68, 68, 0.3);
-                    --toast-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(239, 68, 68, 0.1);
-                    --toast-color: #fca5a5;
-                    --toast-title-color: #ef4444;
-                    --toast-icon-color: #ef4444;
-                }
-
-                .light-mode .login-page-container {
-                    --theme-toggle-bg: rgba(255, 255, 255, 0.8);
-                    --theme-toggle-border: rgba(0, 0, 0, 0.08);
-                    --theme-toggle-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
-                    
-                    --login-card-bg: rgba(255, 255, 255, 0.8);
-                    --login-card-border: rgba(0, 0, 0, 0.08);
-                    --login-card-shadow: 0 30px 60px -15px rgba(2, 21, 37, 0.15), 0 0 30px rgba(0, 0, 0, 0.02);
-                    --title-gradient: linear-gradient(135deg, #021525 0%, #1da6d9 100%);
-                    
-                    --color-primary-text: #021525;
-                    --divider-gradient-left: linear-gradient(to right, transparent, rgba(2, 21, 37, 0.2));
-                    --divider-gradient-right: linear-gradient(to left, transparent, rgba(2, 21, 37, 0.2));
-                    
-                    --input-bg: rgba(248, 250, 252, 0.8);
-                    --input-border: rgba(0, 0, 0, 0.1);
-                    --input-border-focus: #1da6d9;
-                    --input-text: #021525;
-                    --input-placeholder: rgba(2, 21, 37, 0.35);
-                    --input-icon-color: rgba(2, 21, 37, 0.4);
-                    --input-icon-focus: #1da6d9;
-                    
-                    --label-color: rgba(2, 21, 37, 0.6);
-                    --label-color-focused: #1da6d9;
-                    
-                    --btn-gradient: linear-gradient(135deg, #1da6d9 0%, #021525 100%);
-                    --btn-shadow: 0 10px 25px -5px rgba(29, 166, 217, 0.25);
-                    --btn-shadow-hover: 0 15px 35px -5px rgba(29, 166, 217, 0.4);
-                    
-                    --guest-color: #021525;
-                    --guest-color-hover: #1da6d9;
-                    --guest-bg-hover: rgba(29, 166, 217, 0.08);
-                    
-                    --toast-bg: rgba(254, 242, 242, 0.95);
-                    --toast-border: rgba(239, 68, 68, 0.2);
-                    --toast-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-                    --toast-color: #991b1b;
-                    --toast-title-color: #dc2626;
-                    --toast-icon-color: #dc2626;
-                }
-
-                /* Glowing Blobs Behind the Glass Card */
-                .ambient-blob {
-                    position: absolute;
-                    width: 320px;
-                    height: 320px;
-                    border-radius: 50%;
-                    filter: blur(80px);
-                    opacity: 0.12;
-                    z-index: 1;
-                    pointer-events: none;
-                    transition: opacity 1s ease;
-                }
-                .light-mode .ambient-blob {
-                    opacity: 0.04;
-                }
-                .blob-1 {
-                    background: radial-gradient(circle, #1da6d9 0%, transparent 70%);
-                    top: 25%;
-                    left: 30%;
-                    animation: float-blob-1 12s ease-in-out infinite;
-                }
-                .blob-2 {
-                    background: radial-gradient(circle, #a855f7 0%, transparent 70%);
-                    bottom: 25%;
-                    right: 30%;
-                    animation: float-blob-2 15s ease-in-out infinite;
-                }
-
-                /* Theme Toggle Button Hover */
-                .theme-toggle-btn:hover {
-                    border-color: #1da6d9 !important;
-                    transform: translateY(-2px) scale(1.05);
-                    box-shadow: 0 12px 28px -4px rgba(29, 166, 217, 0.2) !important;
-                }
-                .theme-toggle-btn:active {
-                    transform: scale(0.95);
-                }
-                .theme-icon {
-                    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                }
-                .theme-toggle-btn:hover .theme-icon {
-                    transform: rotate(15deg) scale(1.1);
-                }
-
-                /* Double Orbital Glow Rings around Logo */
-                .brand-logo-wrapper {
-                    position: relative;
-                    z-index: 5;
-                    filter: drop-shadow(0 0 25px rgba(29, 166, 217, 0.45));
-                    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                }
-                .brand-logo-wrapper:hover {
-                    transform: scale(1.04);
-                }
-                .orbital-ring {
-                    position: absolute;
-                    border-radius: 50%;
-                    border: 1px dashed rgba(29, 166, 217, 0.25);
-                    pointer-events: none;
-                }
-                .ring-outer {
-                    width: 114px;
-                    height: 114px;
-                    animation: spin-clockwise 25s linear infinite;
-                    border: 1px dashed rgba(29, 166, 217, 0.3);
-                }
-                .ring-inner {
-                    width: 96px;
-                    height: 96px;
-                    animation: spin-counter 15s linear infinite;
-                    border: 1px dotted rgba(29, 166, 217, 0.4);
-                }
-
-                /* Inputs Styling */
-                .form-input-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-                    width: 100%;
-                    position: relative;
-                }
-                .form-input-label {
-                    font-size: 0.65rem;
-                    font-weight: 800;
-                    letter-spacing: 1.5px;
-                    text-transform: uppercase;
-                    color: var(--label-color);
-                    text-align: left;
-                    transition: all 0.3s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding-left: 2px;
-                }
-                .label-focused {
-                    color: var(--label-color-focused);
-                }
-                .required-dot {
-                    width: 4px;
-                    height: 4px;
-                    background-color: #ef4444;
-                    border-radius: 50%;
-                    display: inline-block;
-                }
-                .input-icon-container {
-                    position: relative;
-                    display: flex;
-                    align-items: center;
-                    width: 100%;
-                    border-radius: 12px;
-                    background: var(--input-bg);
-                    border: 1px solid var(--input-border);
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                .input-icon-container.focused {
-                    border-color: var(--input-border-focus);
-                    box-shadow: 0 0 0 4px rgba(29, 166, 217, 0.15);
-                    background: rgba(0, 0, 0, 0.45);
-                }
-                .light-mode .input-icon-container.focused {
-                    background: #ffffff;
-                    box-shadow: 0 0 0 4px rgba(29, 166, 217, 0.12);
-                }
-                .input-icon-left {
-                    position: absolute;
-                    left: 1rem;
-                    color: var(--input-icon-color);
-                    pointer-events: none;
-                    transition: color 0.3s ease, transform 0.3s ease;
-                }
-                .input-icon-container.focused .input-icon-left {
-                    color: var(--input-icon-focus);
-                    transform: scale(1.05);
-                }
-                .form-input-field {
-                    width: 100%;
-                    height: 48px;
-                    padding: 0 1rem 0 2.75rem;
-                    background: transparent !important;
-                    border: none !important;
-                    border-radius: 12px;
-                    color: var(--input-text) !important;
-                    font-size: 0.92rem;
-                    font-weight: 600;
-                    letter-spacing: 0.5px;
-                    outline: none !important;
-                    transition: all 0.3s ease;
-                }
-                .form-input-field::placeholder {
-                    color: var(--input-placeholder);
-                    font-weight: 500;
-                    opacity: 1;
-                }
-                
-                /* Password Toggle Option Styling */
-                .password-toggle-btn {
-                    position: absolute;
-                    right: 0.75rem;
-                    height: 32px;
-                    width: 32px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: transparent;
-                    border: none;
-                    color: var(--input-icon-color);
-                    cursor: pointer;
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                }
-                .password-toggle-btn:hover {
-                    color: var(--input-border-focus);
-                    background: rgba(255, 255, 255, 0.05);
-                }
-                .light-mode .password-toggle-btn:hover {
-                    background: rgba(0, 0, 0, 0.04);
-                }
-                .password-toggle-btn:active {
-                    transform: scale(0.9);
-                }
-
-                /* Premium Action Button Styling */
-                .submit-btn-premium {
-                    position: relative;
-                    width: 100%;
-                    height: 52px;
-                    margin-top: 0.75rem;
-                    border-radius: 12px;
-                    background: var(--btn-gradient);
-                    border: none;
-                    cursor: pointer;
-                    overflow: hidden;
-                    box-shadow: var(--btn-shadow);
-                    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-                }
-                .submit-btn-premium::before {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-                    transform: translateX(-100%);
-                    transition: transform 0.6s ease;
-                    pointer-events: none;
-                }
-                .submit-btn-premium:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: var(--btn-shadow-hover);
-                }
-                .submit-btn-premium:hover::before {
-                    transform: translateX(100%);
-                }
-                .submit-btn-premium:active:not(:disabled) {
-                    transform: translateY(0);
-                }
-                .submit-btn-content {
-                    position: relative;
-                    z-index: 2;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.75rem;
-                    color: #ffffff;
-                    font-size: 0.92rem;
-                    font-weight: 800;
-                    letter-spacing: 2px;
-                    text-transform: uppercase;
-                    transition: all 0.2s ease;
-                }
-                .arrow-hover-animate {
-                    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                }
-                .submit-btn-premium:hover .arrow-hover-animate {
-                    transform: translateX(4px) scale(1.1);
-                }
-                
-                /* Loading State Styles */
-                .submit-btn-premium.loading {
-                    cursor: not-allowed;
-                    opacity: 0.9;
-                    background: var(--btn-gradient);
-                }
-                .spinner-animate {
-                    animation: spin 1s linear infinite;
-                }
-
-                /* Guest Portal Button Redesign */
-                .guest-portal-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    background: transparent;
-                    border: 1px solid transparent;
-                    color: var(--guest-color);
-                    padding: 0.6rem 1.2rem;
-                    border-radius: 30px;
-                    font-size: 0.82rem;
-                    font-weight: 700;
-                    cursor: pointer;
-                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-                .guest-portal-btn:hover {
-                    color: var(--guest-color-hover);
-                    background: var(--guest-bg-hover);
-                    border-color: rgba(29, 166, 217, 0.15);
-                }
-                .guest-arrow {
-                    transition: transform 0.3s ease;
-                }
-                .guest-portal-btn:hover .guest-arrow {
-                    transform: translateX(3px);
-                }
-
-                /* Subfooter Info */
-                .subfooter-branding {
-                    margin-top: 2rem;
-                    font-size: 0.65rem;
-                    font-weight: 700;
-                    letter-spacing: 2px;
-                    text-transform: uppercase;
-                    opacity: 0.3;
-                    color: var(--color-primary-text);
-                    text-align: center;
-                    pointer-events: none;
-                }
-
-                /* Keyframe Animations */
-                @keyframes float-blob-1 {
-                    0% { transform: translate(0, 0) scale(1); }
-                    33% { transform: translate(40px, -60px) scale(1.15); }
-                    66% { transform: translate(-30px, 30px) scale(0.9); }
-                    100% { transform: translate(0, 0) scale(1); }
-                }
-                @keyframes float-blob-2 {
-                    0% { transform: translate(0, 0) scale(1); }
-                    33% { transform: translate(-50px, 50px) scale(0.9); }
-                    66% { transform: translate(30px, -40px) scale(1.15); }
-                    100% { transform: translate(0, 0) scale(1); }
-                }
-                @keyframes spin-clockwise {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                @keyframes spin-counter {
-                    from { transform: rotate(360deg); }
-                    to { transform: rotate(0deg); }
-                }
-                @keyframes error-slide-down {
-                    0% { transform: translate(-50%, -30px); opacity: 0; }
-                    100% { transform: translate(-50%, 0); opacity: 1; }
-                }
-            `}</style>
         </div>
     );
 };

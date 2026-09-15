@@ -123,8 +123,9 @@ class DowntimeManager {
         if (token) {
             try {
                 const verified = jwt.verify(token, process.env.JWT_SECRET);
-                const allowedRoles = ['admin', 'superadmin', 'developer'];
-                if (verified && verified.role && allowedRoles.includes(verified.role.toLowerCase())) {
+                const allowedRoles = ['admin', 'superadmin', 'developer', 'trainer'];
+                const roleLower = (verified?.role || '').toLowerCase();
+                if (verified && (allowedRoles.includes(roleLower) || roleLower.startsWith('g'))) {
                     return true;
                 }
             } catch (err) {
@@ -182,6 +183,13 @@ class DowntimeManager {
 
             // Manual Maintenance
             if (this.status.isManualMaintenance) {
+                // Allow admin authentication and system status checks so administrators do not get locked out
+                const path = req.originalUrl || req.url || '';
+                if ((req.method === 'POST' && path.includes('/api/auth/login')) ||
+                    (req.method === 'GET' && path.includes('/api/system/system-status'))) {
+                    return next();
+                }
+
                 return this.renderDowntime(res, 'Scheduled Maintenance', 'We are currently performing scheduled maintenance to improve our services. Please check back shortly.', 503);
             }
 

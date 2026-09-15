@@ -13,6 +13,8 @@ const memberSchema = new mongoose.Schema({
         enum: ['Athi River', 'Valley Road'],
         required: true
     },
+    phone: { type: String, default: '' },
+    email: { type: String, default: '' },
     totalPoints: { type: Number, default: 0 },
     status: {
         type: String,
@@ -28,7 +30,58 @@ const memberSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     isTestAccount: { type: Boolean, default: false },
     needsGraduationCongrats: { type: Boolean, default: false },
-    linkedDeviceId: { type: String, default: null }
+    linkedDeviceId: { type: String, default: null },
+    
+    // G5 Training & Competency Specification
+    douloidRank: {
+        type: String,
+        enum: ['None', 'Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid'],
+        default: 'None'
+    },
+    belayStatus: {
+        type: String,
+        enum: ['Not Permitted', 'Secondary Belayer', 'Primary Belayer Certified'],
+        default: 'Not Permitted'
+    },
+    soloStationAllowed: {
+        type: Boolean,
+        default: false
+    },
+    evaluations: [{
+        date: { type: Date, default: Date.now },
+        evaluator: { type: String, default: 'G5 Directorate' },
+        domain: {
+            type: String,
+            enum: ['Team Building', 'Freedom Base Operations', 'High Ropes', 'Rescue & Extrication', 'First Aid & Wellbeing']
+        },
+        score: { type: Number, min: 1, max: 5, default: 3 },
+        notes: { type: String, default: '' },
+        passed: { type: Boolean, default: true }
+    }],
+    rankHistory: [{
+        fromRank: { type: String },
+        toRank: { type: String },
+        date: { type: Date, default: Date.now },
+        promotedBy: { type: String, default: 'G5 Training Directorate' },
+        notes: { type: String, default: '' }
+    }],
+    
+    // G9 Photo Vault & Birthday System (US-BIR-014)
+    photoVault: [{ type: String }],
+    dateOfBirth: { type: Date, default: null },
+    birthdayPosterStatus: {
+        type: String,
+        enum: ['Pending Design', 'Poster Created', 'Published to Socials', 'Archived'],
+        default: 'Pending Design'
+    },
+    
+    // G6 Welfare & Community Pulse (US-G6-007)
+    consecutiveAbsences: { type: Number, default: 0 },
+    squadLeader: { type: String, default: null },
+    squadLeaderPhone: { type: String, default: null },
+    
+    // G8 Freedom Base Land Stewardship (US-G8-009)
+    environmentalStreak: { type: Number, default: 0 }
 }, { timestamps: true });
 
 export default mongoose.model('Member', memberSchema);

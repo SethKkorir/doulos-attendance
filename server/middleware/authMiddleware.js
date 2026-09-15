@@ -15,11 +15,15 @@ export const verifyToken = (req, res, next) => {
 
 export const verifyAdmin = (req, res, next) => {
     verifyToken(req, res, () => {
-        const allowedRoles = ['admin', 'superadmin', 'developer'];
-        if (allowedRoles.includes(req.user?.role)) {
+        const allowedRoles = [
+            'admin', 'superadmin', 'developer', 'trainer',
+            'g1_coordinator', 'g2_vice', 'g3_secretary', 'g4_logistics', 
+            'g5_training', 'g6_welfare', 'g7_treasurer', 'g8_assets', 'g9_media'
+        ];
+        if (allowedRoles.includes(req.user?.role) || (req.user?.role && req.user.role.startsWith('g'))) {
             next();
         } else {
-            res.status(403).json({ message: 'Admin access required' });
+            res.status(403).json({ message: 'G-Council or Admin access required' });
         }
     });
 };

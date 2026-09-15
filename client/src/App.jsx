@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdmin from './pages/SuperAdmin';
+import G5TrainingPortal from './pages/G5TrainingPortal';
 
 import CheckIn from './pages/CheckIn';
 import StudentPortal from './pages/StudentPortal';
@@ -46,6 +47,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SuperAdmin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/g5/portal"
+          element={
+            <ProtectedRoute>
+              <G5TrainingPortal />
             </ProtectedRoute>
           }
         />

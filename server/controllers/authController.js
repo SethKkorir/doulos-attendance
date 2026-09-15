@@ -70,7 +70,7 @@ export const login = async (req, res) => {
         if (process.env.NODE_ENV !== 'production') {
             console.log('✅ Login successful');
         }
-        res.json({ token, role: user.role, username: user.username });
+        res.json({ token, role: user.role, username: user.username, campus: user.campus || 'Athi River' });
     } catch (error) {
         console.error('❌ Login error:', error.message);
         res.status(500).json({ message: 'Server error', error: error.message });

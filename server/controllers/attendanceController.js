@@ -5,8 +5,7 @@ import Member from '../models/Member.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Settings from '../models/Settings.js';
 import mongoose from 'mongoose';
-import { checkCampusTime } from '../utils/timeCheck.js';
-import { getKenyanTime, getKenyanDate } from '../utils/kenyanTime.js';
+import { getKenyanTime, getKenyanDate, getWeekRange } from '../utils/kenyanTime.js';
 
 const logScanError = async (studentRegNo, errorType, desc, campus) => {
     try {
@@ -229,18 +228,11 @@ export const submitAttendance = async (req, res) => {
             return res.status(409).json({ message: 'You have already signed in for this session.' });
         }
 
-        // 9.5. Weekly Check-In Restriction — MEETINGS ONLY (Trainings are exempt)
+        // 9.5. Weekly Check-In Restriction — A member can only attend ONE meeting per week (Trainings exempt)
         if (!isSuperUser && !meeting.isTestMeeting && !isTrainingSession && !member?.isTestAccount) {
-            const mDate = new Date(meeting.date);
-            const startOfWeek = new Date(mDate);
-            startOfWeek.setUTCDate(mDate.getUTCDate() - mDate.getUTCDay()); // Sunday
-            startOfWeek.setUTCHours(0, 0, 0, 0);
+            const { startOfWeek, endOfWeek } = getWeekRange(meeting.date);
 
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6); // Saturday
-            endOfWeek.setUTCHours(23, 59, 59, 999);
-
-            // Find all meetings this week globally (all campuses)
+            // Find all meetings this week globally across all campuses
             const meetingsThisWeek = await Meeting.find({
                 date: { $gte: startOfWeek, $lte: endOfWeek },
                 _id: { $ne: meeting._id } // Exclude current meeting
@@ -258,7 +250,7 @@ export const submitAttendance = async (req, res) => {
                     await logScanError(studentRegNo, 'Weekly Restriction', `Duplicate weekly attendance: Already signed in to ${attendedOther.meeting.name} (${attendedOther.meeting.campus})`, meeting.campus);
                     const campusName = attendedOther.meeting.campus === 'Valley Road' ? 'Nairobi' : attendedOther.meeting.campus;
                     return res.status(403).json({
-                        message: `ACCESS DENIED: You have already attended ${campusName} this week.`
+                        message: `ACCESS DENIED: A member can only attend one meeting per week. You have already attended "${attendedOther.meeting.name}" (${campusName}) this week.`
                     });
                 }
             }
@@ -682,7 +674,31 @@ export const manualCheckIn = async (req, res) => {
             : { meeting: meetingId, studentRegNo: regNo };
 
         const existing = await Attendance.findOne(dupQuery);
-        if (existing) return res.status(409).json({ message: 'Already checked in' });
+        if (existing) return res.status(409).json({ message: 'Already checked in for this session' });
+
+        // --- ENFORCE STRICT RULE: 1 MEETING ATTENDANCE PER WEEK PER MEMBER ---
+        if (!isTraining && !meeting.isTestMeeting) {
+            const { startOfWeek, endOfWeek } = getWeekRange(meeting.date);
+            const otherMeetings = await Meeting.find({
+                date: { $gte: startOfWeek, $lte: endOfWeek },
+                _id: { $ne: meeting._id }
+            }).select('_id name campus date');
+
+            const otherIds = otherMeetings.map(m => m._id);
+            if (otherIds.length > 0) {
+                const attendedOther = await Attendance.findOne({
+                    studentRegNo: regNo,
+                    meeting: { $in: otherIds }
+                }).populate('meeting');
+
+                if (attendedOther) {
+                    const campusName = attendedOther.meeting.campus === 'Valley Road' ? 'Nairobi' : attendedOther.meeting.campus;
+                    return res.status(400).json({
+                        message: `Policy Restriction: ${regNo} has already attended "${attendedOther.meeting.name}" (${campusName}) this week. A member can only attend one meeting per week.`
+                    });
+                }
+            }
+        }
 
         // Security: Lock manual check-in after 24-48 hours (Bypass for SuperAdmin)
         // Exempt training from strict lock for flexibility
@@ -748,9 +764,10 @@ export const manualCheckIn = async (req, res) => {
 };
 
 export const bulkManualCheckIn = async (req, res) => {
-    const { meetingId, members, trainingDay } = req.body;
+    const { meetingId, trainingDay } = req.body;
+    const memberList = req.body.members || req.body.studentRegNos || [];
     try {
-        if (!meetingId || !Array.isArray(members) || members.length === 0) {
+        if (!meetingId || !Array.isArray(memberList) || memberList.length === 0) {
             return res.status(400).json({ message: 'Invalid request: meetingId and members array are required' });
         }
 
@@ -779,12 +796,37 @@ export const bulkManualCheckIn = async (req, res) => {
             }
         }
 
+        // Find other meetings this week to enforce 1 meeting attendance per week
+        const weeklyAttendedMap = new Map();
+        if (!isTraining && !meeting.isTestMeeting) {
+            const { startOfWeek, endOfWeek } = getWeekRange(meeting.date);
+            const otherMeetings = await Meeting.find({
+                date: { $gte: startOfWeek, $lte: endOfWeek },
+                _id: { $ne: meeting._id }
+            }).select('_id name campus');
+
+            const otherIds = otherMeetings.map(m => m._id);
+            if (otherIds.length > 0) {
+                const weeklyRecords = await Attendance.find({
+                    meeting: { $in: otherIds }
+                }).populate('meeting');
+
+                for (const rec of weeklyRecords) {
+                    const reg = String(rec.studentRegNo).trim().toUpperCase();
+                    const cName = rec.meeting?.campus === 'Valley Road' ? 'Nairobi' : (rec.meeting?.campus || '');
+                    weeklyAttendedMap.set(reg, `${rec.meeting?.name || 'Meeting'} (${cName})`);
+                }
+            }
+        }
+
         const records = [];
         const skipped = [];
 
-        for (const m of members) {
-            if (!m.studentRegNo) continue;
-            const regNo = String(m.studentRegNo).trim().toUpperCase();
+        for (const item of memberList) {
+            const rawReg = typeof item === 'string' ? item : (item.studentRegNo || item.regNo);
+            if (!rawReg) continue;
+            const regNo = String(rawReg).trim().toUpperCase();
+            const studentName = typeof item === 'object' ? item.name : undefined;
 
             const dupQuery = isTraining
                 ? { trainingId: meetingId, studentRegNo: regNo, trainingDay: targetDay }
@@ -792,7 +834,12 @@ export const bulkManualCheckIn = async (req, res) => {
 
             const existing = await Attendance.findOne(dupQuery);
             if (existing) {
-                skipped.push(regNo);
+                skipped.push({ regNo, reason: 'Already checked in for this session' });
+                continue;
+            }
+
+            if (weeklyAttendedMap.has(regNo)) {
+                skipped.push({ regNo, reason: `Already attended ${weeklyAttendedMap.get(regNo)} this week` });
                 continue;
             }
 
@@ -800,9 +847,9 @@ export const bulkManualCheckIn = async (req, res) => {
             if (!dbMember) {
                 dbMember = new Member({
                     studentRegNo: regNo,
-                    name: m.name || 'Manual Bulk Entry',
-                    memberType: m.memberType || 'Visitor',
-                    campus: m.campus || meeting.campus,
+                    name: studentName || 'Manual Bulk Entry',
+                    memberType: 'Visitor',
+                    campus: meeting.campus,
                     status: 'Active'
                 });
                 await dbMember.save();

@@ -4,14 +4,32 @@ import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { getKenyanTime } from '../utils/kenyanTime.js';
-
-
+import { getKenyanTime, getWeekRange } from '../utils/kenyanTime.js';
 
 export const createMeeting = async (req, res) => {
     const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions } = req.body;
 
     try {
+        if (!date || !campus) {
+            return res.status(400).json({ message: 'Date and Campus are required to schedule a meeting' });
+        }
+
+        // --- ENFORCE STRICT RULE: 1 MEETING PER WEEK PER CAMPUS ---
+        if (!isTestMeeting) {
+            const { startOfWeek, endOfWeek } = getWeekRange(date);
+            const existingMeeting = await Meeting.findOne({
+                campus,
+                date: { $gte: startOfWeek, $lte: endOfWeek }
+            });
+
+            if (existingMeeting) {
+                const existingDateStr = new Date(existingMeeting.date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' });
+                return res.status(400).json({
+                    message: `Policy Violation: Only one meeting per week is allowed for ${campus}. "${existingMeeting.name}" is already scheduled for ${existingDateStr} (${existingMeeting.startTime} - ${existingMeeting.endTime}).`
+                });
+            }
+        }
+
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
             name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions

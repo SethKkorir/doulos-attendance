@@ -217,7 +217,7 @@ const SystemSettingsTab = ({
     };
 
     if (loading) return (
-        <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ padding: '4rem', textAlign: 'center', color: "#7E7A9B", display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <SettingsIcon size={36} className="animate-spin" style={{ opacity: 0.3 }} />
             <div>Loading System Configurations...</div>
         </div>
@@ -227,7 +227,7 @@ const SystemSettingsTab = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', animation: 'fadeIn 0.5s' }}>
 
             {/* Header */}
-            <div className="glass-card-premium" style={{ padding: '2rem', background: '#0d111b' }}>
+            <div className="glass-card-premium" style={{ padding: '2rem', background: '#FFFFFF' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                     <div style={{ padding: '1rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '1rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
                         <SettingsIcon size={28} color="#25AAE1" />
@@ -235,7 +235,7 @@ const SystemSettingsTab = ({
                     <div>
                         <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>CONTROL PANEL</div>
                         <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900 }}>Global Settings & Semester Rollover</h2>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.45)' }}>Configure system parameters and perform clean academic transitions</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: "#7E7A9B" }}>Configure system parameters and perform clean academic transitions</p>
                     </div>
                 </div>
             </div>
@@ -244,14 +244,14 @@ const SystemSettingsTab = ({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
 
                 {/* Spiritual Theme Card */}
-                <div className="glass-card-premium" style={{ borderLeft: '4px solid #8b5cf6', background: '#0d111b', padding: '1.5rem' }}>
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #8b5cf6', background: '#FFFFFF', padding: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
                         <div style={{ padding: '0.7rem', background: 'rgba(139,92,246,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(139,92,246,0.15)' }}>
                             <BookOpen size={20} color="#8b5cf6" />
                         </div>
                         <div>
                             <div style={{ fontWeight: 800, fontSize: '1rem' }}>Spiritual Theme</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Current Semester Theme title</div>
+                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", marginTop: '0.15rem' }}>Current Semester Theme title</div>
                         </div>
                     </div>
                     <input
@@ -271,14 +271,14 @@ const SystemSettingsTab = ({
                 </div>
 
                 {/* Scriptural Verse Card */}
-                <div className="glass-card-premium" style={{ borderLeft: '4px solid #f43f5e', background: '#0d111b', padding: '1.5rem' }}>
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #f43f5e', background: '#FFFFFF', padding: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.5rem' }}>
                         <div style={{ padding: '0.7rem', background: 'rgba(244,63,94,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(244,63,94,0.15)' }}>
                             <Sparkles size={20} color="#f43f5e" />
                         </div>
                         <div>
                             <div style={{ fontWeight: 800, fontSize: '1rem' }}>Scriptural Verse</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Reference — Verse text</div>
+                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", marginTop: '0.15rem' }}>Reference — Verse text</div>
                         </div>
                     </div>
                     <input
@@ -298,22 +298,22 @@ const SystemSettingsTab = ({
                 </div>
 
                 {/* Tree Watering Selector Access Card */}
-                <div className="glass-card-premium" style={{ borderLeft: '4px solid #10b981', background: '#0d111b', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #10b981', background: '#FFFFFF', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
                         <div style={{ padding: '0.7rem', background: 'rgba(16,185,129,0.08)', borderRadius: '0.75rem', border: '1px solid rgba(16,185,129,0.15)' }}>
                             <CheckSquare size={20} color="#10b981" />
                         </div>
                         <div>
                             <div style={{ fontWeight: 800, fontSize: '1rem' }}>Watering Commitment Access</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Open student watering selector form</div>
+                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", marginTop: '0.15rem' }}>Open student watering selector form</div>
                         </div>
                     </div>
                     
-                    <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45, margin: '0 0 1.25rem 0' }}>
+                    <p style={{ fontSize: '0.78rem', color: "#7E7A9B", lineHeight: 1.45, margin: '0 0 1.25rem 0' }}>
                         When <strong>Live</strong>, students can select their committed watering days directly in their portal. When <strong>Closed</strong>, the form is hidden but their commitments remain visible as read-only.
                     </p>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid #EBEBF2' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 800, color: wateringActive ? '#10b981' : '#f87171', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: wateringActive ? '#10b981' : '#f87171', display: 'inline-block', boxShadow: wateringActive ? '0 0 10px #10b981' : 'none' }}></span>
                             {wateringActive ? 'STATUS: ACTIVE (LIVE)' : 'STATUS: CLOSED (INACTIVE)'}
@@ -324,7 +324,7 @@ const SystemSettingsTab = ({
                             disabled={saving.watering_selector_active}
                             style={{
                                 border: 'none',
-                                background: wateringActive ? '#10b981' : 'rgba(255,255,255,0.1)',
+                                background: wateringActive ? '#10b981' : '#EBEBF2',
                                 color: wateringActive ? '#021525' : 'rgba(255,255,255,0.4)',
                                 padding: '0.45rem 1rem',
                                 borderRadius: '0.5rem',
@@ -343,22 +343,22 @@ const SystemSettingsTab = ({
                 </div>
 
                 {/* Device Signature Lock Bypass Card */}
-                <div className="glass-card-premium" style={{ borderLeft: '4px solid #25AAE1', background: '#0d111b', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div className="glass-card-premium" style={{ borderLeft: '4px solid #25AAE1', background: '#FFFFFF', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
                         <div style={{ padding: '0.7rem', background: 'rgba(37, 170, 225, 0.08)', borderRadius: '0.75rem', border: '1px solid rgba(37, 170, 225, 0.15)' }}>
                             <LinkIcon size={20} color="#25AAE1" />
                         </div>
                         <div>
                             <div style={{ fontWeight: 800, fontSize: '1rem' }}>Device Link Protection</div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>Bypass device sign-in locks globally</div>
+                            <div style={{ fontSize: '0.75rem', color: "#7E7A9B", marginTop: '0.15rem' }}>Bypass device sign-in locks globally</div>
                         </div>
                     </div>
                     
-                    <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45, margin: '0 0 1.25rem 0' }}>
+                    <p style={{ fontSize: '0.78rem', color: "#7E7A9B", lineHeight: 1.45, margin: '0 0 1.25rem 0' }}>
                         When <strong>Bypassed</strong>, students can check in from any device even if their account is linked to another phone. Handy during emergencies or lockout issues.
                     </p>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(2, 21, 37, 0.4)', borderRadius: '0.75rem', border: '1px solid #EBEBF2' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 800, color: bypassDeviceLock ? '#f87171' : '#10b981', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: bypassDeviceLock ? '#f87171' : '#10b981', display: 'inline-block', boxShadow: bypassDeviceLock ? '0 0 10px #f87171' : '0 0 10px #10b981' }}></span>
                             {bypassDeviceLock ? 'STATUS: LOCKS BYPASSED' : 'STATUS: SECURITY ACTIVE'}
@@ -369,7 +369,7 @@ const SystemSettingsTab = ({
                             disabled={saving.bypass_device_lock}
                             style={{
                                 border: 'none',
-                                background: bypassDeviceLock ? '#f87171' : 'rgba(255,255,255,0.1)',
+                                background: bypassDeviceLock ? '#f87171' : '#EBEBF2',
                                 color: bypassDeviceLock ? '#021525' : 'rgba(255,255,255,0.4)',
                                 padding: '0.45rem 1rem',
                                 borderRadius: '0.5rem',
@@ -392,19 +392,19 @@ const SystemSettingsTab = ({
             {/* Semester Rollover Configuration Wizard */}
             <div className="glass-card-premium" style={{ 
                 borderLeft: '4px solid #25AAE1', 
-                background: '#0d111b',
+                background: '#FFFFFF',
                 padding: '2rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1.5rem'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #EBEBF2', paddingBottom: '1rem' }}>
                     <div style={{ padding: '0.75rem', background: 'rgba(37, 170, 225, 0.12)', borderRadius: '0.75rem', border: '1px solid rgba(37, 170, 225, 0.2)' }}>
                         <Calendar size={22} color="#25AAE1" />
                     </div>
                     <div>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>Semester Rollover Console</h3>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Close past terms, reset points, and set a welcoming new theme for the Doulos community</p>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: "#1E1B39" }}>Semester Rollover Console</h3>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: "#7E7A9B" }}>Close past terms, reset points, and set a welcoming new theme for the Doulos community</p>
                     </div>
                 </div>
 
@@ -425,7 +425,7 @@ const SystemSettingsTab = ({
                                 <option key={idx} value={opt.value}>{opt.label}</option>
                             ))}
                         </select>
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Select the upcoming term from the options</span>
+                        <span style={{ fontSize: '0.7rem', color: "#7E7A9B" }}>Select the upcoming term from the options</span>
                     </div>
 
                     <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -439,7 +439,7 @@ const SystemSettingsTab = ({
                             placeholder="e.g. Set Apart / Rooted"
                             style={{ width: '100%', border: '1px solid rgba(37,170,225,0.15)' }}
                         />
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Shows up on first student check-in pop-up</span>
+                        <span style={{ fontSize: '0.7rem', color: "#7E7A9B" }}>Shows up on first student check-in pop-up</span>
                     </div>
 
                     <div className="form-group-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', gridColumn: '1 / -1' }}>
@@ -453,11 +453,11 @@ const SystemSettingsTab = ({
                             placeholder="e.g. 1 Peter 1:15-16 — 'But just as he who called you is holy, so be holy in all you do...'"
                             style={{ width: '100%', border: '1px solid rgba(37,170,225,0.15)' }}
                         />
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Companion scripture displaying spiritual focus</span>
+                        <span style={{ fontSize: '0.7rem', color: "#7E7A9B" }}>Companion scripture displaying spiritual focus</span>
                     </div>
                 </div>
 
-                <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.5rem' }}>
+                <div style={{ marginTop: '0.5rem', borderTop: '1px solid #EBEBF2', paddingTop: '1.5rem' }}>
                     {rolloverDate && timeRemaining > 0 ? (
                         <div style={{
                             padding: '1.5rem',
@@ -480,20 +480,20 @@ const SystemSettingsTab = ({
                                     <div key={idx} style={{
                                         minWidth: '60px',
                                         background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid rgba(255,255,255,0.04)',
+                                        border: '1px solid #EBEBF2',
                                         borderRadius: '0.75rem',
                                         padding: '0.6rem 0.5rem'
                                     }}>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', lineHeight: 1 }}>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: "#1E1B39", lineHeight: 1 }}>
                                             {String(t.val).padStart(2, '0')}
                                         </div>
-                                        <div style={{ fontSize: '0.55rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginTop: '0.35rem', letterSpacing: '0.5px' }}>
+                                        <div style={{ fontSize: '0.55rem', fontWeight: 800, color: "#7E7A9B", marginTop: '0.35rem', letterSpacing: '0.5px' }}>
                                             {t.label}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: '1.25rem', marginBottom: 0, fontWeight: 600 }}>
+                            <p style={{ fontSize: '0.78rem', color: "#7E7A9B", marginTop: '1.25rem', marginBottom: 0, fontWeight: 600 }}>
                                 Semester Rollover is locked until this 14-week term ends. Only SuperAdmins can roll back this state.
                             </p>
                         </div>
@@ -524,7 +524,7 @@ const SystemSettingsTab = ({
             {hasBackup && ['superadmin', 'developer'].includes(userRole?.toLowerCase()) && (
                 <div className="glass-card-premium" style={{ 
                     borderLeft: '4px solid #f97316', 
-                    background: '#0d111b',
+                    background: '#FFFFFF',
                     padding: '2rem',
                     display: 'flex',
                     flexDirection: 'column',
@@ -532,29 +532,29 @@ const SystemSettingsTab = ({
                     marginTop: '1.5rem',
                     animation: 'fadeIn 0.3s ease-out'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #EBEBF2', paddingBottom: '1rem' }}>
                         <div style={{ padding: '0.75rem', background: 'rgba(249, 115, 22, 0.12)', borderRadius: '0.75rem', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
                             <ShieldAlert size={22} color="#f97316" />
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>SuperAdmin Reversion Control</h3>
-                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Revert and restore pre-rollover active meetings, trainings, settings, and member points</p>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: "#1E1B39" }}>SuperAdmin Reversion Control</h3>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: "#7E7A9B" }}>Revert and restore pre-rollover active meetings, trainings, settings, and member points</p>
                         </div>
                     </div>
 
                     <div style={{ background: 'rgba(249, 115, 22, 0.04)', border: '1px solid rgba(249, 115, 22, 0.2)', borderRadius: '0.75rem', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#f97316', letterSpacing: '1px', textTransform: 'uppercase' }}>Available Restore Point</div>
-                        <div style={{ fontSize: '0.9rem', color: 'white', fontWeight: 800 }}>
+                        <div style={{ fontSize: '0.9rem', color: "#1E1B39", fontWeight: 800 }}>
                             Last Semester: <span style={{ color: '#f97316' }}>{backupInfo?.current_semester || 'Unknown'}</span>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45 }}>
+                        <div style={{ fontSize: '0.75rem', color: "#7E7A9B", lineHeight: 1.45 }}>
                             Rolled over by: <strong>{backupInfo?.initiatedBy || 'SYSTEM'}</strong>
                             <br />
                             Time: <strong>{backupInfo?.timestamp ? new Date(backupInfo.timestamp).toLocaleString() : 'N/A'}</strong>
                         </div>
                     </div>
 
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: "#7E7A9B", lineHeight: 1.5 }}>
                         Restoring this rollback point will instantly overwrite all current student point balances back to their pre-rollover states, reactivate all sessions that were live during the rollover, and set settings back.
                     </p>
 
@@ -567,7 +567,7 @@ const SystemSettingsTab = ({
                                 width: '100%',
                                 padding: '1rem',
                                 background: 'linear-gradient(135deg, #f97316 0%, #a83a03 100%)',
-                                color: 'white',
+                                color: "#1E1B39",
                                 borderColor: 'rgba(249, 115, 22, 0.3)',
                                 fontWeight: 800,
                                 letterSpacing: '1px',
@@ -601,7 +601,7 @@ const SystemSettingsTab = ({
                     <div className="glass-panel" style={{
                         maxWidth: '500px',
                         width: '100%',
-                        background: '#0d111b',
+                        background: '#FFFFFF',
                         border: '1px solid rgba(37, 170, 225, 0.25)',
                         borderRadius: '1.5rem',
                         padding: '2.5rem 2rem',
@@ -620,7 +620,7 @@ const SystemSettingsTab = ({
                                         : wizardStep > stepNum 
                                             ? 'rgba(74,222,128,0.1)' 
                                             : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${wizardStep === stepNum ? '#25AAE1' : wizardStep > stepNum ? '#4ade80' : 'rgba(255,255,255,0.08)'}`,
+                                    border: `1px solid ${wizardStep === stepNum ? '#25AAE1' : wizardStep > stepNum ? '#4ade80' : '#EBEBF2'}`,
                                     color: wizardStep === stepNum ? '#25AAE1' : wizardStep > stepNum ? '#4ade80' : 'rgba(255,255,255,0.3)',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -647,7 +647,7 @@ const SystemSettingsTab = ({
                                     This operation executes the following global changes:
                                 </p>
                                 
-                                <ul style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.65, paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <ul style={{ fontSize: '0.82rem', color: "#7E7A9B", lineHeight: 1.65, paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                     <li>Closes and finalizes all active meetings & trainings of the past term.</li>
                                     <li>Resets all student point balances back to <strong>0</strong> (exempting test accounts).</li>
                                     <li>Triggers a custom spiritual <strong>Welcome Card</strong> upon the next check-in of all students, presenting the theme: <em>"{theme || 'None'}"</em>.</li>
@@ -657,7 +657,7 @@ const SystemSettingsTab = ({
                                     <button 
                                         onClick={() => setShowWizard(false)}
                                         className="btn"
-                                        style={{ flex: 1, background: 'rgba(255,255,255,0.03)', color: 'white', borderColor: 'rgba(255,255,255,0.08)' }}
+                                        style={{ flex: 1, background: 'rgba(255,255,255,0.03)', color: "#1E1B39", borderColor: '#EBEBF2' }}
                                     >
                                         Abort
                                     </button>
@@ -689,14 +689,14 @@ const SystemSettingsTab = ({
                                     value={confirmText}
                                     onChange={(e) => setConfirmText(e.target.value)}
                                     placeholder="Type semester name here..."
-                                    style={{ width: '100%', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', fontSize: '1rem', fontWeight: 900 }}
+                                    style={{ width: '100%', border: '1px solid #EBEBF2', textAlign: 'center', fontSize: '1rem', fontWeight: 900 }}
                                 />
 
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
                                     <button 
                                         onClick={() => setWizardStep(1)}
                                         className="btn"
-                                        style={{ flex: 1, background: 'rgba(255,255,255,0.03)', color: 'white', borderColor: 'rgba(255,255,255,0.08)' }}
+                                        style={{ flex: 1, background: 'rgba(255,255,255,0.03)', color: "#1E1B39", borderColor: '#EBEBF2' }}
                                         disabled={rolloverLoading}
                                     >
                                         Back
@@ -707,7 +707,7 @@ const SystemSettingsTab = ({
                                         style={{ 
                                             flex: 1, 
                                             background: confirmText.trim().toUpperCase() === semester.trim().toUpperCase() ? 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important' : 'rgba(255,255,255,0.02) !important', 
-                                            color: confirmText.trim().toUpperCase() === semester.trim().toUpperCase() ? 'white' : 'rgba(255,255,255,0.15)', 
+                                            color: confirmText.trim().toUpperCase() === semester.trim().toUpperCase() ? 'white' : '#EBEBF2', 
                                             borderColor: confirmText.trim().toUpperCase() === semester.trim().toUpperCase() ? 'rgba(37,170,225,0.3)' : 'rgba(255,255,255,0.05)', 
                                             fontWeight: 800, 
                                             cursor: confirmText.trim().toUpperCase() === semester.trim().toUpperCase() ? 'pointer' : 'not-allowed',
@@ -745,8 +745,8 @@ const SystemSettingsTab = ({
                                     <Sparkles size={32} />
                                 </div>
 
-                                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>Rollover Completed!</h3>
-                                <p style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, margin: 0 }}>
+                                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: "#1E1B39" }}>Rollover Completed!</h3>
+                                <p style={{ fontSize: '0.88rem', color: "#7E7A9B", lineHeight: 1.5, margin: 0 }}>
                                     The system was successfully rolled over.
                                     <br /><br />
                                     Active tracking semester is now set to <strong>{semester.toUpperCase()}</strong>.

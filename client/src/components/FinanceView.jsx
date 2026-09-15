@@ -167,10 +167,10 @@ const FinanceView = ({ regNo, memberName }) => {
                             <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-dim)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                                 CURRENT PERIOD
                             </div>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem', color: 'white' }}>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem', color: "#1E1B39" }}>
                                 {currentMonthName}
                             </h2>
-                            <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.7)' }}>
+                            <p style={{ margin: 0, fontSize: '1rem', color: "#7E7A9B" }}>
                                 {currentMonthStatus.status === 'approved'
                                     ? "Thank you! Your contribution for this month is verified."
                                     : currentMonthStatus.status === 'pending'
@@ -276,8 +276,8 @@ const FinanceView = ({ regNo, memberName }) => {
                             onChange={(e) => setFormData({ ...formData, fullMessage: e.target.value })}
                             style={{
                                 width: '100%', height: '80px', borderRadius: '0.75rem',
-                                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                padding: '1rem', color: 'white', fontSize: '0.85rem', resize: 'none'
+                                background: 'rgba(0,0,0,0.3)', border: '1px solid #EBEBF2',
+                                padding: '1rem', color: "#1E1B39", fontSize: '0.85rem', resize: 'none'
                             }}
                         />
                         <div id="paste-feedback" style={{ fontSize: '0.7rem', color: '#4ade80', fontWeight: 700, marginTop: '0.3rem', height: '14px' }}></div>
@@ -364,24 +364,24 @@ const FinanceView = ({ regNo, memberName }) => {
                             <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: '50%', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', marginBottom: '1rem' }}>
                                 <FileText size={40} />
                             </div>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'white' }}>DIGITAL RECEIPT</h2>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: "#1E1B39" }}>DIGITAL RECEIPT</h2>
                             <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--color-text-dim)', fontWeight: 700, letterSpacing: '1px' }}>{selectedReceipt.month} {selectedReceipt.year}</p>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                            <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <div style={{ borderBottom: '1px dashed #EBEBF2', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 700 }}>STUDENT</span>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 900 }}>{memberName}</span>
                             </div>
-                            <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <div style={{ borderBottom: '1px dashed #EBEBF2', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 700 }}>AMOUNT</span>
                                 <span style={{ fontSize: '0.9rem', fontWeight: 900, color: '#4ade80' }}>Ksh {selectedReceipt.amount.toLocaleString()}</span>
                             </div>
-                            <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <div style={{ borderBottom: '1px dashed #EBEBF2', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 700 }}>METHOD</span>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 900 }}>{selectedReceipt.paymentMode}</span>
                             </div>
-                            <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <div style={{ borderBottom: '1px dashed #EBEBF2', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', fontWeight: 700 }}>CODE</span>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 900, letterSpacing: '1px' }}>{selectedReceipt.mpesaCode || 'CASH_VERIFIED'}</span>
                             </div>
@@ -393,7 +393,7 @@ const FinanceView = ({ regNo, memberName }) => {
                             textAlign: 'center'
                         }}>
                             <div style={{ fontSize: '0.7rem', color: '#4ade80', fontWeight: 800, marginBottom: '0.2rem' }}>VERIFIED BY DOULOS FINANCE</div>
-                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                            <div style={{ fontSize: '0.6rem', color: "#7E7A9B", fontWeight: 600 }}>
                                 Date: {new Date(selectedReceipt.verifiedAt).toLocaleDateString()}
                             </div>
                         </div>
@@ -402,7 +402,7 @@ const FinanceView = ({ regNo, memberName }) => {
                             onClick={() => setSelectedReceipt(null)}
                             style={{
                                 marginTop: '1.5rem', width: '100%', background: 'transparent',
-                                border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-dim)',
+                                border: '1px solid #EBEBF2', color: 'var(--color-text-dim)',
                                 padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 800,
                                 cursor: 'pointer'
                             }}

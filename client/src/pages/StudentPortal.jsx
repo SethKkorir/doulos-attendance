@@ -89,7 +89,7 @@ const CSS = `
     .sp-right { width: var(--right-w); min-width: var(--right-w); padding: 2rem 1.5rem 2rem 0; display: flex; flex-direction: column; gap: 1.25rem; }
     /* CARD */
     .sp-card {
-        background: var(--panel); backdrop-filter: blur(20px);
+        background: #0d1424;
         border-radius: 1.25rem; border: 1px solid var(--border-light);
         padding: 1.5rem; transition: border-color 0.25s;
     }
@@ -222,9 +222,7 @@ const CSS = `
             padding: 1.5rem;
         }
         .sp-login-card {
-            background: rgba(9, 29, 46, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: #0d1424;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 1.25rem;
             padding: 2.25rem 1.75rem;
@@ -240,9 +238,7 @@ const CSS = `
             display: flex !important;
             justify-content: space-between;
             align-items: center;
-            background: rgba(9, 29, 46, 0.85);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            background: #0d1424;
             padding: 0.75rem 1rem;
             border-radius: 1rem;
             border: 1px solid var(--border-light);

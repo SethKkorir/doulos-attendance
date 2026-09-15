@@ -811,7 +811,7 @@ const MeetingsTab = ({
                         <div style={{
                             width: '100%',
                             background: isActuallyLive ? 'linear-gradient(135deg, #22c55e, #15803d)' : 'linear-gradient(135deg, #1da6d9, #0a4d68)',
-                            color: 'white',
+                            color: "#1E1B39",
                             fontSize: '0.65rem',
                             fontWeight: 900,
                             padding: '0.2rem 0',
@@ -824,7 +824,7 @@ const MeetingsTab = ({
                             flex: 1,
                             width: '100%',
                             background: 'rgba(255,255,255,0.03)',
-                            color: 'white',
+                            color: "#1E1B39",
                             fontSize: '1.3rem',
                             fontWeight: 900,
                             display: 'flex',
@@ -838,11 +838,11 @@ const MeetingsTab = ({
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: "#1E1B39", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {m.name}
                             </h3>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: "#7E7A9B", fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 600 }}>
                             <MapPin size={12} color="#1da6d9" />
                             <span>{m.campus}</span>
                             <span style={{ opacity: 0.3 }}>•</span>
@@ -854,7 +854,7 @@ const MeetingsTab = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.85rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Clock size={12} color="rgba(255,255,255,0.4)" />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: "#7E7A9B" }}>
                             {m.startTime} - {m.endTime}
                         </span>
                     </div>
@@ -881,7 +881,7 @@ const MeetingsTab = ({
 
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>Attendance</span>
+                        <span style={{ color: "#7E7A9B" }}>Attendance</span>
                         <span style={{ color: isActuallyLive ? '#22c55e' : '#1da6d9' }}>{m.attendanceCount || 0} checked-in</span>
                     </div>
                     <div style={{ height: '5px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -901,7 +901,7 @@ const MeetingsTab = ({
                         onClick={e => e.stopPropagation()}
                     >
                         <div style={{ position: 'relative', flex: 1 }}>
-                            <Search size={13} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                            <Search size={13} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: "#7E7A9B" }} />
                             <input
                                 className="input-field"
                                 placeholder="Search Name / Reg No"
@@ -922,8 +922,8 @@ const MeetingsTab = ({
                             style={{
                                 padding: '0.45rem 0.75rem',
                                 background: 'rgba(255,255,255,0.05)',
-                                color: 'rgba(255,255,255,0.6)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                color: "#7E7A9B",
+                                border: '1px solid #EBEBF2',
                                 borderRadius: '0.5rem',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1309,7 +1309,7 @@ const MeetingsTab = ({
                                     border: '1px solid rgba(29, 166, 217, 0.3)', 
                                     borderRadius: '0.75rem', 
                                     height: '46px',
-                                    color: 'white', 
+                                    color: "#1E1B39", 
                                     fontWeight: 700, 
                                     display: 'flex', 
                                     alignItems: 'center', 
@@ -1343,7 +1343,7 @@ const MeetingsTab = ({
             </h3>
 
             {activeList.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', marginBottom: '2rem', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', marginBottom: '2rem', border: '1px dashed #EBEBF2' }}>
                     <p style={{ margin: 0, color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>No active or upcoming meetings scheduled.</p>
                 </div>
             ) : (
@@ -1370,7 +1370,7 @@ const MeetingsTab = ({
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Calendar size={18} style={{ color: '#a78bfa' }} />
-                    <h3 style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'white' }}>
+                    <h3 style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: "#1E1B39" }}>
                         Archived History ({filteredHistory.length} Sessions)
                     </h3>
                 </div>
@@ -1442,10 +1442,10 @@ const MeetingsTab = ({
                         textAlign: 'center', 
                         maxWidth: '400px', 
                         width: '100%', 
-                        background: '#090d16',
+                        background: '#F8F8FC',
                         borderRadius: '1.25rem',
                         border: '1px solid rgba(29, 166, 217, 0.2)',
-                        boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
+                        boxShadow: '0 24px 64px rgba(46, 42, 77, 0.45), 0 0 40px rgba(29, 166, 217, 0.08)',
                         animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                     }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ marginBottom: '0.5rem' }}>Scan Meeting QR</h3>
@@ -1474,7 +1474,7 @@ const MeetingsTab = ({
                             </button>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                style={{ background: 'rgba(255,255,255,0.03)', color: "#1E1B39", fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
                                 onClick={() => {
                                     const link = `${window.location.origin}/check-in/${selectedMeeting.code}`;
                                     navigator.clipboard.writeText(link);
@@ -1514,13 +1514,13 @@ const MeetingsTab = ({
                         textAlign: 'center', 
                         maxWidth: '400px', 
                         width: '100%', 
-                        background: '#090d16',
+                        background: '#F8F8FC',
                         borderRadius: '1.25rem',
                         border: '1px solid rgba(29, 166, 217, 0.2)',
-                        boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 40px rgba(29, 166, 217, 0.08)',
+                        boxShadow: '0 24px 64px rgba(46, 42, 77, 0.45), 0 0 40px rgba(29, 166, 217, 0.08)',
                         animation: 'popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                     }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ marginBottom: '0.5rem', color: 'white' }}>Scan Athi River Semester QR</h3>
+                        <h3 style={{ marginBottom: '0.5rem', color: "#1E1B39" }}>Scan Athi River Semester QR</h3>
 
                         <div className="semester-qr-container" style={{ background: 'white', padding: '1.5rem', borderRadius: '1rem', display: 'inline-block', marginBottom: '1.5rem' }}>
                             <QRCode value={`${window.location.origin}/check-in/athi-river`} size={220} level="H" />
@@ -1533,7 +1533,7 @@ const MeetingsTab = ({
                             </div>
                         </div>
 
-                        <h4 style={{ margin: '0 0 0.25rem', color: 'white' }}>Permanent Semester QR</h4>
+                        <h4 style={{ margin: '0 0 0.25rem', color: "#1E1B39" }}>Permanent Semester QR</h4>
                         <p style={{ opacity: 0.5, marginBottom: '1.5rem', fontSize: '0.85rem' }}>Athi River Campus | Active meetings only</p>
 
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1546,7 +1546,7 @@ const MeetingsTab = ({
                             </button>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
+                                style={{ background: 'rgba(255,255,255,0.03)', color: "#1E1B39", fontSize: '0.8rem', padding: '0.5rem 1rem', border: '1px solid var(--glass-border)' }}
                                 onClick={() => {
                                     const link = `${window.location.origin}/check-in/athi-river`;
                                     navigator.clipboard.writeText(link);
@@ -1563,7 +1563,7 @@ const MeetingsTab = ({
 
             {/* Insights Modal */}
             {insightMeeting && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(46, 42, 77, 0.45)', zIndex: 1000, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem 1rem' }} onClick={() => setInsightMeeting(null)}>
                     <div style={{ width: '100%', maxWidth: '1000px' }} onClick={e => e.stopPropagation()}>
                         <MeetingInsights 
                             meeting={insightMeeting} 
