@@ -82,8 +82,16 @@ export const getMeetings = async (req, res) => {
         }
         // --- END AUTO-CLOSE ---
 
+        const { includeArchived } = req.query;
+
         // 1. Fetch meetings with attendance count
         const pipeline = [];
+
+        if (includeArchived !== 'true') {
+            pipeline.push({
+                $match: { isArchived: { $ne: true } }
+            });
+        }
 
         pipeline.push(
             {
@@ -107,6 +115,9 @@ export const getMeetings = async (req, res) => {
 
         // Sort: Active First, then Date Descending
         meetings.sort((a, b) => {
+            if (a.isArchived !== b.isArchived) {
+                return a.isArchived ? 1 : -1;
+            }
             if (a.isActive === b.isActive) {
                 return new Date(b.date) - new Date(a.date);
             }
@@ -311,3 +322,79 @@ export const getMeetingByCode = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const archiveMeeting = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body || {};
+        const meeting = await Meeting.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    isArchived: true,
+                    archivedAt: new Date(),
+                    archiveReason: reason || 'Archived meeting session',
+                    isActive: false
+                }
+            },
+            { new: true }
+        );
+        if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
+        res.json({ message: `Meeting "${meeting.name}" archived successfully (attendance records retained safely in database).`, meeting });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const unarchiveMeeting = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const meeting = await Meeting.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    isArchived: false,
+                    archivedAt: null,
+                    archiveReason: null
+                }
+            },
+            { new: true }
+        );
+        if (!meeting) return res.status(404).json({ message: 'Meeting not found' });
+        res.json({ message: `Meeting "${meeting.name}" restored from archive.`, meeting });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const bulkArchiveCompletedMeetings = async (req, res) => {
+    try {
+        const { meetingIds, reason = 'Batch archived past completed meetings' } = req.body || {};
+        let filter = { isActive: false, isArchived: { $ne: true } };
+
+        if (Array.isArray(meetingIds) && meetingIds.length > 0) {
+            filter = { _id: { $in: meetingIds } };
+        }
+
+        const now = new Date();
+        const result = await Meeting.updateMany(
+            filter,
+            {
+                $set: {
+                    isArchived: true,
+                    archivedAt: now,
+                    archiveReason: reason,
+                    isActive: false
+                }
+            }
+        );
+
+        res.json({
+            message: `Successfully archived ${result.modifiedCount} completed meeting(s). All attendance records are fully preserved in the database.`,
+            count: result.modifiedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+

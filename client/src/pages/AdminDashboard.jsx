@@ -160,7 +160,7 @@ const AdminDashboard = () => {
             return;
         }
         try {
-            const res = await api.get('/meetings');
+            const res = await api.get('/meetings?includeArchived=true');
             const sorted = res.data.sort((a, b) => {
                 if (a.isActive === b.isActive) {
                     return new Date(b.date) - new Date(a.date);

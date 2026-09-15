@@ -166,6 +166,12 @@ const G5TrainingPortal = () => {
     const [isGraduatingRecruits, setIsGraduatingRecruits] = useState(false);
     const [isArchivingRecruits, setIsArchivingRecruits] = useState(false);
 
+    // Tab 3: Meetings & Archive State
+    const [meetingSubTab, setMeetingSubTab] = useState('active'); // 'active' | 'archived'
+    const [meetingSearch, setMeetingSearch] = useState('');
+    const [meetingCampusFilter, setMeetingCampusFilter] = useState('All');
+    const [isArchivingMeetings, setIsArchivingMeetings] = useState(false);
+
     const showToast = (msg, type = 'success') => {
         setToast({ text: msg, type });
         setTimeout(() => setToast(null), 4000);
@@ -193,7 +199,7 @@ const G5TrainingPortal = () => {
             ] = await Promise.allSettled([
                 api.get('/members?includeArchived=true'),
                 api.get('/trainings/cadres'),
-                api.get('/meetings'),
+                api.get('/meetings?includeArchived=true'),
                 api.get('/trainings'),
                 api.get('/council/incidents'),
                 api.get('/council/absence-radar'),
@@ -272,8 +278,36 @@ const G5TrainingPortal = () => {
         });
     }, [archivedRecruits, recruitSearch, recruitCampusFilter]);
 
+    const activeMeetings = useMemo(() => {
+        return meetings.filter(m => !m.isArchived);
+    }, [meetings]);
+
+    const archivedMeetings = useMemo(() => {
+        return meetings.filter(m => m.isArchived);
+    }, [meetings]);
+
+    const filteredActiveMeetings = useMemo(() => {
+        return activeMeetings.filter(m => {
+            const matchesSearch = !meetingSearch.trim() || 
+                (m.name || '').toLowerCase().includes(meetingSearch.toLowerCase()) || 
+                (m.code || '').toLowerCase().includes(meetingSearch.toLowerCase());
+            const matchesCampus = meetingCampusFilter === 'All' || m.campus === meetingCampusFilter;
+            return matchesSearch && matchesCampus;
+        });
+    }, [activeMeetings, meetingSearch, meetingCampusFilter]);
+
+    const filteredArchivedMeetings = useMemo(() => {
+        return archivedMeetings.filter(m => {
+            const matchesSearch = !meetingSearch.trim() || 
+                (m.name || '').toLowerCase().includes(meetingSearch.toLowerCase()) || 
+                (m.code || '').toLowerCase().includes(meetingSearch.toLowerCase());
+            const matchesCampus = meetingCampusFilter === 'All' || m.campus === meetingCampusFilter;
+            return matchesSearch && matchesCampus;
+        });
+    }, [archivedMeetings, meetingSearch, meetingCampusFilter]);
+
     const totalAttended = meetings.reduce((sum, m) => sum + (m.attendanceCount || 0), 0);
-    const totalExpected = meetings.length > 0 && activeMembers.length > 0 ? meetings.length * activeMembers.length : 0;
+    const totalExpected = activeMeetings.length > 0 && activeMembers.length > 0 ? activeMeetings.length * activeMembers.length : 0;
     const attendancePercentage = totalExpected > 0 ? Math.min(100, Math.round((totalAttended / totalExpected) * 100)) : 0;
 
     // Filtered cadres for Rank Promotions Tab
@@ -387,6 +421,54 @@ const G5TrainingPortal = () => {
             showToast(err.response?.data?.message || 'Could not schedule meeting', 'error');
         } finally {
             setMeetingCreating(false);
+        }
+    };
+
+    // Tab 3: Meeting Archive & Restore Handlers
+    const handleArchiveMeeting = async (meeting) => {
+        if (!window.confirm(`Archive meeting "${meeting.name}"?\n\nNote: All attendance records and member points will remain safely preserved in the database.`)) return;
+        try {
+            await api.post(`/meetings/${meeting._id}/archive`);
+            showToast(`Meeting "${meeting.name}" archived successfully`);
+            setMeetings(prev => prev.map(m => m._id === meeting._id ? { ...m, isArchived: true, archivedAt: new Date(), isActive: false } : m));
+        } catch (err) {
+            console.error('Archive meeting failed:', err);
+            showToast(err.response?.data?.message || 'Failed to archive meeting', 'error');
+        }
+    };
+
+    const handleUnarchiveMeeting = async (meeting) => {
+        try {
+            await api.post(`/meetings/${meeting._id}/unarchive`);
+            showToast(`Meeting "${meeting.name}" restored to active sessions`);
+            setMeetings(prev => prev.map(m => m._id === meeting._id ? { ...m, isArchived: false, archivedAt: null } : m));
+        } catch (err) {
+            console.error('Restore meeting failed:', err);
+            showToast(err.response?.data?.message || 'Failed to restore meeting', 'error');
+        }
+    };
+
+    const handleBulkArchiveMeetings = async () => {
+        const pastCompleted = meetings.filter(m => !m.isActive && !m.isArchived);
+        if (pastCompleted.length === 0) {
+            showToast('No completed meetings available to archive', 'error');
+            return;
+        }
+        if (!window.confirm(`Archive all ${pastCompleted.length} completed past meeting(s)?\n\nAll attendance records will remain safely preserved in the database.`)) return;
+
+        setIsArchivingMeetings(true);
+        try {
+            const res = await api.post('/meetings/bulk-archive', {
+                meetingIds: pastCompleted.map(m => m._id)
+            });
+            showToast(res.data?.message || `Archived ${pastCompleted.length} past meetings`);
+            const archivedIds = pastCompleted.map(m => m._id);
+            setMeetings(prev => prev.map(m => archivedIds.includes(m._id) ? { ...m, isArchived: true, archivedAt: new Date() } : m));
+        } catch (err) {
+            console.error('Bulk archive meetings failed:', err);
+            showToast(err.response?.data?.message || 'Failed to archive completed meetings', 'error');
+        } finally {
+            setIsArchivingMeetings(false);
         }
     };
 
@@ -964,7 +1046,7 @@ const G5TrainingPortal = () => {
                                             <GraduationCap size={18} /> View Recruit Graduations ({recruits.length})
                                         </button>
                                         <button className="g5-btn-secondary" onClick={() => setActiveTab('meetings')}>
-                                            <Calendar size={18} /> View All Field Meetings ({meetings.length})
+                                            <Calendar size={18} /> View Field Meetings ({activeMeetings.length})
                                         </button>
                                     </div>
                                 </div>
@@ -1158,162 +1240,458 @@ const G5TrainingPortal = () => {
                     {/* ========================================================= */}
                     {activeTab === 'meetings' && (
                         <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            {/* TAB 3 HEADER */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Training Meetings & Field Drills</h2>
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Weekly sessions, live attendance feeds, and who attended roster</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Training Meetings & Field Drills</h2>
+                                        <span className="g5-pill g5-pill-purple">
+                                            {activeMeetings.length} Active Sessions
+                                        </span>
+                                        {archivedMeetings.length > 0 && (
+                                            <span className="g5-pill g5-pill-inactive">
+                                                🗄️ {archivedMeetings.length} Archived
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
+                                        Weekly sessions, live attendance feeds, who attended rosters, and safe archive repository
+                                    </p>
                                 </div>
-                                <button className="g5-btn-warm" onClick={() => setShowNewMeetingModal(true)}>
-                                    <Plus size={18} /> + New Meeting
+                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <button className="g5-btn-warm" onClick={() => setShowNewMeetingModal(true)}>
+                                        <Plus size={18} /> + New Meeting
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* SUB-TABS: ACTIVE & RECENT vs ARCHIVED */}
+                            <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '2px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setMeetingSubTab('active')}
+                                    style={{
+                                        background: meetingSubTab === 'active' ? 'var(--color-surface)' : 'transparent',
+                                        color: meetingSubTab === 'active' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                        border: meetingSubTab === 'active' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                        padding: '0.6rem 1.25rem',
+                                        borderRadius: '10px',
+                                        fontWeight: 800,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: meetingSubTab === 'active' ? '0 2px 8px rgba(107, 95, 168, 0.15)' : 'none',
+                                        transition: 'all 0.18s ease'
+                                    }}
+                                >
+                                    <Calendar size={17} /> Active & Recent Sessions ({activeMeetings.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMeetingSubTab('archived')}
+                                    style={{
+                                        background: meetingSubTab === 'archived' ? 'var(--color-surface)' : 'transparent',
+                                        color: meetingSubTab === 'archived' ? 'var(--color-accent-warm)' : 'var(--color-text-muted)',
+                                        border: meetingSubTab === 'archived' ? '2px solid var(--color-accent-warm)' : '1px solid var(--color-border)',
+                                        padding: '0.6rem 1.25rem',
+                                        borderRadius: '10px',
+                                        fontWeight: 800,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: meetingSubTab === 'archived' ? '0 2px 8px rgba(232, 163, 61, 0.15)' : 'none',
+                                        transition: 'all 0.18s ease'
+                                    }}
+                                >
+                                    <Archive size={17} /> Archived Sessions ({archivedMeetings.length})
                                 </button>
                             </div>
 
-                            {/* ACTIVE LIVE BANNER IF ANY SESSION IS LIVE */}
-                            {meetings.filter(m => m.isActive).length > 0 && (() => {
-                                const activeM = meetings.filter(m => m.isActive)[0];
-                                return (
-                                    <div style={{
-                                        background: 'linear-gradient(135deg, #EAF7F0 0%, #E0F5E9 100%)',
-                                        border: '1.5px solid var(--color-status-active)',
-                                        borderRadius: 'var(--radius-card)',
-                                        padding: '1.25rem 1.75rem',
-                                        marginBottom: '1.75rem',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        flexWrap: 'wrap',
-                                        gap: '1rem',
-                                        boxShadow: '0 4px 18px rgba(76, 175, 125, 0.15)'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <div className="g5-pulse-dot" style={{ width: '12px', height: '12px' }} />
-                                            <div>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
-                                                    Live Check-In Active: {activeM.name}
-                                                </div>
-                                                <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                                                    {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: 'var(--color-primary)', letterSpacing: '1px' }}>{activeM.code}</strong>
-                                                </div>
-                                            </div>
+                            {/* SEARCH & FILTERS BAR */}
+                            <div className="g5-card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
+                                        <div style={{ position: 'relative', flex: 1 }}>
+                                            <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search meeting by name or code..."
+                                                value={meetingSearch}
+                                                onChange={(e) => setMeetingSearch(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.6rem 0.85rem 0.6rem 2.4rem',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid var(--color-border)',
+                                                    background: 'var(--color-page-bg)',
+                                                    color: 'var(--color-text-main)',
+                                                    fontSize: '0.88rem',
+                                                    fontWeight: 600
+                                                }}
+                                            />
                                         </div>
-                                        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-                                            <button
-                                                className="g5-btn-warm"
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'manual_checkin' })}
-                                            >
-                                                <Radio size={16} /> Open Live Attendance Feed
-                                            </button>
-                                            <button
-                                                className="g5-btn-secondary"
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'present' })}
-                                            >
-                                                <Users size={16} /> Who Attended ({activeM.attendanceCount ?? 0})
-                                            </button>
-                                        </div>
+                                        <select
+                                            value={meetingCampusFilter}
+                                            onChange={(e) => setMeetingCampusFilter(e.target.value)}
+                                            style={{
+                                                padding: '0.6rem 1rem',
+                                                borderRadius: '10px',
+                                                border: '1px solid var(--color-border)',
+                                                background: 'var(--color-page-bg)',
+                                                color: 'var(--color-text-main)',
+                                                fontSize: '0.88rem',
+                                                fontWeight: 700
+                                            }}
+                                        >
+                                            <option value="All">All Campuses</option>
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
                                     </div>
-                                );
-                            })()}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                                {meetings.map((meeting) => (
-                                    <div
-                                        key={meeting._id || meeting.code || meeting.date}
-                                        className="g5-card"
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'space-between',
-                                            cursor: 'pointer',
-                                            transition: 'transform 0.18s ease, box-shadow 0.18s ease',
-                                            border: meeting.isActive ? '1.5px solid var(--color-status-active)' : '1px solid var(--color-border)'
-                                        }}
-                                        onClick={() => setInsightMeeting({ ...meeting, initialTab: meeting.isActive ? 'manual_checkin' : 'present' })}
-                                    >
-                                        <div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                                                <span className="g5-pill g5-pill-purple">
-                                                    <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
-                                                </span>
-                                                <span
-                                                    className={`g5-pill ${meeting.isActive ? 'g5-pill-active' : 'g5-pill-inactive'}`}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setInsightMeeting({ ...meeting, initialTab: meeting.isActive ? 'manual_checkin' : 'present' });
-                                                    }}
-                                                >
-                                                    {meeting.isActive ? (
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                            <div className="g5-pulse-dot" style={{ width: '6px', height: '6px' }} />
-                                                            Live • Active
-                                                        </span>
-                                                    ) : (
-                                                        'Completed'
-                                                    )}
-                                                </span>
-                                            </div>
+                                    {/* BATCH ARCHIVE ACTION BUTTON IN ACTIVE VIEW */}
+                                    {meetingSubTab === 'active' && (() => {
+                                        const completedPast = activeMeetings.filter(m => !m.isActive);
+                                        return completedPast.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                className="g5-btn-secondary"
+                                                onClick={handleBulkArchiveMeetings}
+                                                disabled={isArchivingMeetings}
+                                                style={{ fontSize: '0.84rem' }}
+                                                title="Safely moves completed meetings to the Archived vault. Attendance data remains in the database."
+                                            >
+                                                <Archive size={15} />
+                                                {isArchivingMeetings ? 'Archiving...' : `Archive Completed Meetings (${completedPast.length}) 🗄️`}
+                                            </button>
+                                        ) : null;
+                                    })()}
+                                </div>
+                            </div>
 
-                                            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>
-                                                {meeting.name || 'Weekly Training Drill'}
-                                            </h3>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '0.4rem' }}>
-                                                <Clock size={15} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
-                                            </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                                                <MapPin size={15} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
-                                            </div>
-                                        </div>
-
-                                        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-                                                    CODE: {meeting.code || 'DOULOS'}
-                                                </span>
-                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-status-active)' }}>
-                                                    ✓ 48hr compliant
-                                                </span>
-                                            </div>
-
-                                            {meeting.isActive ? (
-                                                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                            {/* ========================================================= */}
+                            {/* ACTIVE MEETINGS VIEW */}
+                            {/* ========================================================= */}
+                            {meetingSubTab === 'active' && (
+                                <div>
+                                    {/* ACTIVE LIVE BANNER IF ANY SESSION IS LIVE */}
+                                    {filteredActiveMeetings.filter(m => m.isActive).length > 0 && (() => {
+                                        const activeM = filteredActiveMeetings.filter(m => m.isActive)[0];
+                                        return (
+                                            <div style={{
+                                                background: 'linear-gradient(135deg, #EAF7F0 0%, #E0F5E9 100%)',
+                                                border: '1.5px solid var(--color-status-active)',
+                                                borderRadius: 'var(--radius-card)',
+                                                padding: '1.25rem 1.75rem',
+                                                marginBottom: '1.75rem',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                flexWrap: 'wrap',
+                                                gap: '1rem',
+                                                boxShadow: '0 4px 18px rgba(76, 175, 125, 0.15)'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div className="g5-pulse-dot" style={{ width: '12px', height: '12px' }} />
+                                                    <div>
+                                                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                            Live Check-In Active: {activeM.name}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
+                                                            {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: 'var(--color-primary)', letterSpacing: '1px' }}>{activeM.code}</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                                                     <button
                                                         className="g5-btn-warm"
-                                                        style={{ width: '100%', justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setInsightMeeting({ ...meeting, initialTab: 'manual_checkin' });
-                                                        }}
+                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'manual_checkin' })}
                                                     >
-                                                        <Radio size={15} /> Live Attendance Feed & Check-In
+                                                        <Radio size={16} /> Open Live Attendance Feed
                                                     </button>
                                                     <button
                                                         className="g5-btn-secondary"
-                                                        style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem' }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setInsightMeeting({ ...meeting, initialTab: 'present' });
-                                                        }}
+                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'present' })}
                                                     >
-                                                        <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                        <Users size={16} /> Who Attended ({activeM.attendanceCount ?? 0})
                                                     </button>
                                                 </div>
-                                            ) : (
-                                                <button
-                                                    className="g5-btn-secondary"
-                                                    style={{ width: '100%', justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {filteredActiveMeetings.length === 0 ? (
+                                        <div className="g5-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+                                            <div className="g5-avatar" style={{ width: '64px', height: '64px', margin: '0 auto 1.25rem', fontSize: '1.8rem' }}>
+                                                📅
+                                            </div>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                {meetingSearch || meetingCampusFilter !== 'All' ? 'No Matching Meetings Found' : 'No Active Meetings Scheduled'}
+                                            </h3>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', maxWidth: '420px', margin: '0.5rem auto 1.25rem' }}>
+                                                {meetingSearch || meetingCampusFilter !== 'All'
+                                                    ? 'Try adjusting your search query or campus filter.'
+                                                    : 'Schedule a new drill or weekly fellowship meeting using the button below.'}
+                                            </p>
+                                            <button className="g5-btn-warm" onClick={() => setShowNewMeetingModal(true)}>
+                                                <Plus size={18} /> Schedule New Meeting
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                            {filteredActiveMeetings.map((meeting) => (
+                                                <div
+                                                    key={meeting._id || meeting.code || meeting.date}
+                                                    className="g5-card"
+                                                    style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        justifyContent: 'space-between',
+                                                        cursor: 'pointer',
+                                                        transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+                                                        border: meeting.isActive ? '1.5px solid var(--color-status-active)' : '1px solid var(--color-border)'
                                                     }}
+                                                    onClick={() => setInsightMeeting({ ...meeting, initialTab: meeting.isActive ? 'manual_checkin' : 'present' })}
                                                 >
-                                                    <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0}) • View Roster
-                                                </button>
-                                            )}
+                                                    <div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                                                            <span className="g5-pill g5-pill-purple">
+                                                                <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
+                                                            </span>
+                                                            <span
+                                                                className={`g5-pill ${meeting.isActive ? 'g5-pill-active' : 'g5-pill-inactive'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setInsightMeeting({ ...meeting, initialTab: meeting.isActive ? 'manual_checkin' : 'present' });
+                                                                }}
+                                                            >
+                                                                {meeting.isActive ? (
+                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                                        <div className="g5-pulse-dot" style={{ width: '6px', height: '6px' }} />
+                                                                        Live • Active
+                                                                    </span>
+                                                                ) : (
+                                                                    'Completed'
+                                                                )}
+                                                            </span>
+                                                        </div>
+
+                                                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>
+                                                            {meeting.name || 'Weekly Training Drill'}
+                                                        </h3>
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '0.4rem' }}>
+                                                            <Clock size={15} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                                                            <MapPin size={15} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
+                                                                CODE: {meeting.code || 'DOULOS'}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-status-active)' }}>
+                                                                ✓ {meeting.campus}
+                                                            </span>
+                                                        </div>
+
+                                                        {meeting.isActive ? (
+                                                            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                                                                <button
+                                                                    className="g5-btn-warm"
+                                                                    style={{ width: '100%', justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setInsightMeeting({ ...meeting, initialTab: 'manual_checkin' });
+                                                                    }}
+                                                                >
+                                                                    <Radio size={15} /> Live Attendance Feed & Check-In
+                                                                </button>
+                                                                <button
+                                                                    className="g5-btn-secondary"
+                                                                    style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                    }}
+                                                                >
+                                                                    <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem' }}>
+                                                                <button
+                                                                    className="g5-btn-secondary"
+                                                                    style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                    }}
+                                                                >
+                                                                    <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                                </button>
+                                                                <button
+                                                                    className="g5-btn-outline"
+                                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem' }}
+                                                                    title="Archive this completed session (attendance records remain safe in database)"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleArchiveMeeting(meeting);
+                                                                    }}
+                                                                >
+                                                                    <Archive size={15} /> Archive
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ========================================================= */}
+                            {/* ARCHIVED MEETINGS VIEW */}
+                            {/* ========================================================= */}
+                            {meetingSubTab === 'archived' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    {/* ARCHIVE NOTICE BANNER */}
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, rgba(232, 163, 61, 0.08), rgba(107, 95, 168, 0.08))',
+                                        border: '1.5px solid var(--color-border)',
+                                        borderRadius: '14px',
+                                        padding: '1.25rem 1.5rem',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '1rem'
+                                    }}>
+                                        <div style={{
+                                            width: '42px',
+                                            height: '42px',
+                                            borderRadius: '10px',
+                                            backgroundColor: 'var(--color-accent-warm-soft)',
+                                            color: 'var(--color-accent-warm)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                            <Archive size={22} />
+                                        </div>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
+                                                    Archived Meeting Sessions
+                                                </h3>
+                                                <span className="g5-pill g5-pill-active" style={{ fontSize: '0.72rem' }}>
+                                                    🔒 Attendance Safely Preserved in Database
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', lineHeight: 1.5 }}>
+                                                Archived meetings retain all member check-ins, attendance logs, and student points in MongoDB. You can inspect rosters, export reports, or restore any meeting back to the active list at any time.
+                                            </p>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+
+                                    {filteredArchivedMeetings.length === 0 ? (
+                                        <div className="g5-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+                                            <div className="g5-avatar" style={{ width: '64px', height: '64px', margin: '0 auto 1.25rem', fontSize: '1.8rem', backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
+                                                🗄️
+                                            </div>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                No Meetings in Archive
+                                            </h3>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', maxWidth: '420px', margin: '0.5rem auto 0' }}>
+                                                Completed meetings from previous weeks or past semesters can be archived to keep your active dashboard clean.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                            {filteredArchivedMeetings.map((meeting) => (
+                                                <div
+                                                    key={meeting._id || meeting.code || meeting.date}
+                                                    className="g5-card"
+                                                    style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        justifyContent: 'space-between',
+                                                        cursor: 'pointer',
+                                                        border: '1px solid var(--color-border)'
+                                                    }}
+                                                    onClick={() => setInsightMeeting({ ...meeting, initialTab: 'present' })}
+                                                >
+                                                    <div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                                                            <span className="g5-pill g5-pill-purple">
+                                                                <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
+                                                            </span>
+                                                            <span className="g5-pill g5-pill-inactive">
+                                                                🗄️ Archived {meeting.archivedAt ? `• ${new Date(meeting.archivedAt).toLocaleDateString()}` : ''}
+                                                            </span>
+                                                        </div>
+
+                                                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>
+                                                            {meeting.name || 'Weekly Training Drill'}
+                                                        </h3>
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '0.4rem' }}>
+                                                            <Clock size={15} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                                                            <MapPin size={15} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
+                                                                CODE: {meeting.code || 'DOULOS'}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-status-active)' }}>
+                                                                🔒 Database Retained
+                                                            </span>
+                                                        </div>
+
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem' }}>
+                                                            <button
+                                                                className="g5-btn-secondary"
+                                                                style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                }}
+                                                            >
+                                                                <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                            </button>
+                                                            <button
+                                                                className="g5-btn-outline"
+                                                                style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', borderColor: 'var(--color-primary)' }}
+                                                                title="Restore this meeting back to active & recent sessions"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleUnarchiveMeeting(meeting);
+                                                                }}
+                                                            >
+                                                                <RotateCcw size={15} /> Restore
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 

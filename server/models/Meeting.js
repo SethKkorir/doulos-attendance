@@ -12,6 +12,9 @@ const meetingSchema = new mongoose.Schema({
     endTime: { type: String, required: true },   // e.g., "23:00"
     semester: { type: String, default: '' },      // e.g., "MAY-AUG 2026"
     isActive: { type: Boolean, default: true },
+    isArchived: { type: Boolean, default: false },
+    archivedAt: { type: Date, default: null },
+    archiveReason: { type: String, default: null },
     code: { type: String, unique: true }, // Unique meeting ID/Token for QR
     requiredFields: {
         type: [

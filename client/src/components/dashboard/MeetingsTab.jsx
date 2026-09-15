@@ -3,7 +3,7 @@ import {
     Plus, Calendar, Clock, MapPin, Download, QrCode as QrIcon, 
     BarChart3, Trash2, Search, Link as LinkIcon, 
     ExternalLink, RotateCcw, X, Settings as SettingsIcon, Lightbulb, 
-    ClipboardCheck, ListChecks, Users 
+    ClipboardCheck, ListChecks, Users, Archive 
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import MeetingInsights from '../MeetingInsights';
@@ -25,6 +25,7 @@ const MeetingsTab = ({
 }) => {
     const [showCreate, setShowCreate] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState(null);
     const [showSemesterQR, setShowSemesterQR] = useState(false);
     const [insightMeeting, setInsightMeeting] = useState(null);
@@ -160,6 +161,29 @@ const MeetingsTab = ({
             setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
         } finally {
             setImportLoading(false);
+        }
+    };
+
+    const handleArchiveMeeting = async (meeting) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        if (!window.confirm(`Archive meeting "${meeting.name}"?\n\nNote: All attendance data remains safely retained in the database.`)) return;
+        try {
+            await api.post(`/meetings/${meeting._id}/archive`);
+            setMsg({ type: 'success', text: `Meeting "${meeting.name}" archived successfully.` });
+            fetchMeetings();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to archive meeting' });
+        }
+    };
+
+    const handleUnarchiveMeeting = async (meeting) => {
+        if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
+        try {
+            await api.post(`/meetings/${meeting._id}/unarchive`);
+            setMsg({ type: 'success', text: `Meeting "${meeting.name}" restored from archive.` });
+            fetchMeetings();
+        } catch (err) {
+            setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to restore meeting' });
         }
     };
 
@@ -1060,6 +1084,54 @@ const MeetingsTab = ({
                         </button>
                     )}
 
+                    {!m.isActive && !m.isArchived && (
+                        <button
+                            className="btn"
+                            style={{
+                                flex: 0.9,
+                                background: 'rgba(232, 163, 61, 0.15)',
+                                color: '#e8a33d',
+                                border: '1px solid rgba(232, 163, 61, 0.3)',
+                                fontSize: '0.75rem',
+                                padding: '0.55rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.35rem'
+                            }}
+                            onClick={() => handleArchiveMeeting(m)}
+                            title="Archive this completed session (attendance data remains safe in database)"
+                        >
+                            <Archive size={14} /> Archive
+                        </button>
+                    )}
+
+                    {m.isArchived && (
+                        <button
+                            className="btn"
+                            style={{
+                                flex: 0.9,
+                                background: 'rgba(34, 197, 94, 0.15)',
+                                color: '#4ade80',
+                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                                fontSize: '0.75rem',
+                                padding: '0.55rem',
+                                fontWeight: 800,
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.35rem'
+                            }}
+                            onClick={() => handleUnarchiveMeeting(m)}
+                            title="Restore this meeting back to the active list"
+                        >
+                            <RotateCcw size={14} /> Restore
+                        </button>
+                    )}
+
                     {!m.isActive && ['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
                         <button
                             className="btn"
@@ -1087,8 +1159,9 @@ const MeetingsTab = ({
         );
     };
 
-    const activeList = meetings.filter(m => m.isActive);
-    const historyList = meetings.filter(m => !m.isActive);
+    const activeList = meetings.filter(m => m.isActive && !m.isArchived);
+    const historyList = meetings.filter(m => !m.isActive && !m.isArchived);
+    const archivedList = meetings.filter(m => m.isArchived);
 
     const getSem = (d) => {
         const date = new Date(d);
@@ -1371,11 +1444,11 @@ const MeetingsTab = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Calendar size={18} style={{ color: '#a78bfa' }} />
                     <h3 style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: "#1E1B39" }}>
-                        Archived History ({filteredHistory.length} Sessions)
+                        Past Completed Sessions ({filteredHistory.length} Sessions)
                     </h3>
                 </div>
                 <span style={{ fontSize: '0.75rem', color: '#a78bfa', fontWeight: 800 }}>
-                    {showHistory ? 'HIDE HISTORY ▲' : 'SHOW HISTORY ▼'}
+                    {showHistory ? 'HIDE COMPLETED ▲' : 'SHOW COMPLETED ▼'}
                 </span>
             </div>
 
@@ -1427,6 +1500,65 @@ const MeetingsTab = ({
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Dedicated Archived Sessions Vault */}
+            <div 
+                style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '1.5rem', 
+                    marginTop: '2.5rem',
+                    background: 'rgba(236, 72, 153, 0.04)',
+                    border: '1px solid rgba(236, 72, 153, 0.15)',
+                    padding: '1rem 1.5rem',
+                    borderRadius: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+                onClick={() => setShowArchived(!showArchived)}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Archive size={18} style={{ color: '#ec4899' }} />
+                    <h3 style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#1E1B39' }}>
+                        Archived Sessions Vault ({archivedList.length} Meetings)
+                    </h3>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#ec4899', fontWeight: 800 }}>
+                    {showArchived ? 'HIDE ARCHIVED VAULT ▲' : 'SHOW ARCHIVED VAULT ▼'}
+                </span>
+            </div>
+
+            {showArchived && (
+                <div style={{ marginBottom: '3rem' }}>
+                    <div style={{ 
+                        marginBottom: '1.25rem', 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        flexWrap: 'wrap', 
+                        gap: '1rem', 
+                        background: 'rgba(236, 72, 153, 0.05)', 
+                        padding: '1rem 1.25rem', 
+                        borderRadius: '0.75rem', 
+                        border: '1px solid rgba(236, 72, 153, 0.15)' 
+                    }}>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                            🗄️ These meetings have been archived to keep your active dashboard focused. All student check-in records, attendance logs, and points remain 100% preserved and can be restored anytime.
+                        </p>
+                    </div>
+
+                    {archivedList.length === 0 ? (
+                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.9rem' }}>
+                            No archived meetings in vault.
+                        </div>
+                    ) : (
+                        <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                            {archivedList.map(m => renderMeetingCard(m))}
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* QR Modal for Meeting */}
