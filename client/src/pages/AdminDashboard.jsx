@@ -22,7 +22,6 @@ import TrainingsTab from '../components/dashboard/TrainingsTab';
 import MembersTab from '../components/dashboard/MembersTab';
 import SystemSettingsTab from '../components/dashboard/SystemSettingsTab';
 import SystemObservabilityTab from '../components/dashboard/SystemObservabilityTab';
-import ActivitiesTab from '../components/dashboard/ActivitiesTab';
 import ReportsTab from '../components/dashboard/ReportsTab';
 import ExecutiveOverviewTab from '../components/dashboard/ExecutiveOverviewTab';
 
@@ -841,7 +840,6 @@ const AdminDashboard = () => {
                             { id: 'events', label: 'Events & Camps', icon: Calendar },
                             { id: 'requisitions', label: 'Requisitions', icon: Package },
                             { id: 'observability', label: 'Audit Log', icon: FileText },
-                            { id: 'crews', label: 'Crews', icon: Compass },
                             { id: 'reports', label: 'Reports', icon: BarChart3 },
                             { id: 'finance', label: 'Finance', icon: DollarSign },
                             { id: 'freedom_base', label: 'Freedom Base', icon: MapPin },
@@ -851,7 +849,6 @@ const AdminDashboard = () => {
                             const isActive = activeTab === item.id || 
                                 (item.id === 'g_council' && ['g1_radar', 'g3_secretariat', 'g4_logistics', 'g9_media', 'admins'].includes(activeTab)) ||
                                 (item.id === 'events' && ['meetings', 'trainings'].includes(activeTab)) ||
-                                (item.id === 'crews' && activeTab === 'activities') ||
                                 (item.id === 'finance' && activeTab === 'g7_treasury') ||
                                 (item.id === 'freedom_base' && activeTab === 'g8_assets') ||
                                 (item.id === 'discipline' && activeTab === 'g6_welfare');
@@ -1025,15 +1022,6 @@ const AdminDashboard = () => {
                                     currentSemester={currentSemester}
                                     isGuest={isGuest}
                                 />
-                            ) : activeTab === 'crews' ? (
-                                <ActivitiesTab
-                                    members={members}
-                                    fetchMembers={fetchMembers}
-                                    isGuest={isGuest}
-                                    setMsg={setMsg}
-                                    currentSemester={currentSemester}
-                                    api={api}
-                                />
                             ) : activeTab === 'reports' ? (
                                 <ReportsTab
                                     meetings={meetings}
@@ -1105,15 +1093,6 @@ const AdminDashboard = () => {
                                     quickCheckInLoading={quickCheckInLoading}
                                     setQuickCheckInLoading={setQuickCheckInLoading}
                                     fetchMembers={fetchMembers}
-                                />
-                            ) : activeTab === 'activities' ? (
-                                <ActivitiesTab
-                                    members={members}
-                                    fetchMembers={fetchMembers}
-                                    isGuest={isGuest}
-                                    setMsg={setMsg}
-                                    currentSemester={currentSemester}
-                                    api={api}
                                 />
                             ) : activeTab === 'events_mgr' ? (
                                 <EventsManager api={api} setMsg={setMsg} isGuest={isGuest} />
