@@ -981,45 +981,27 @@ const MeetingsTab = ({
                     style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}
                     onClick={e => e.stopPropagation()}
                 >
-                    {((m.isActive && !isMeetingOver) || ['developer', 'superadmin', 'SuperAdmin'].includes(userRole)) && (
-                        <button
-                            className="btn"
-                            style={{
-                                flex: 1,
-                                background: 'rgba(29, 166, 217, 0.1)',
-                                color: '#1da6d9',
-                                border: '1px solid rgba(29, 166, 217, 0.2)',
-                                padding: '0.55rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.35rem'
-                            }}
-                            onClick={() => {
-                                const now = new Date();
-                                const [startH, startM] = m.startTime.split(':').map(Number);
-                                const [endH, endM] = m.endTime.split(':').map(Number);
-                                const start = new Date(m.date);
-                                start.setHours(startH, startM, 0, 0);
-                                const end = new Date(m.date);
-                                end.setHours(endH, endM, 0, 0);
-                                const isWithinTime = now >= start && now <= end;
-
-                                if (isWithinTime) {
-                                    setSelectedMeeting(m);
-                                } else {
-                                    if (window.confirm(`⚠️ TIME WARNING ⚠️\n\nThis meeting is scheduled for ${m.startTime} - ${m.endTime}.\nCurrent time is ${now.toLocaleTimeString()}.\n\nDo you want to FORCE OPEN the QR code for printing/testing?`)) {
-                                        setSelectedMeeting(m);
-                                    }
-                                }
-                            }}
-                        >
-                            <QrIcon size={14} /> QR
-                        </button>
-                    )}
+                    <button
+                        className="btn"
+                        style={{
+                            flex: 1,
+                            background: 'rgba(29, 166, 217, 0.1)',
+                            color: '#1da6d9',
+                            border: '1px solid rgba(29, 166, 217, 0.2)',
+                            padding: '0.55rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
+                        }}
+                        onClick={() => setSelectedMeeting(m)}
+                        title="Display QR code for students to scan"
+                    >
+                        <QrIcon size={14} /> QR
+                    </button>
 
                     <button 
                         className="btn" 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import QRCode from 'react-qr-code';
 import api from '../api';
 import G5MeetingModal from '../components/G5MeetingModal';
 import CampScheduleStudio from '../components/dashboard/CampScheduleStudio';
@@ -48,7 +49,10 @@ import {
     Square,
     UserCheck,
     History,
-    UserMinus
+    UserMinus,
+    QrCode,
+    Printer,
+    Copy
 } from 'lucide-react';
 
 const G5TrainingPortal = () => {
@@ -80,6 +84,8 @@ const G5TrainingPortal = () => {
     // Modals
     const [showNewMeetingModal, setShowNewMeetingModal] = useState(false);
     const [insightMeeting, setInsightMeeting] = useState(null);
+    const [qrMeeting, setQrMeeting] = useState(null);
+    const [copiedQrLink, setCopiedQrLink] = useState(false);
     const [newMeetingForm, setNewMeetingForm] = useState({
         name: 'Weekly Doulos',
         campus: 'Athi River',
@@ -1408,6 +1414,14 @@ const G5TrainingPortal = () => {
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                                                     <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ background: '#25AAE1', borderColor: '#25AAE1' }}
+                                                        onClick={() => setQrMeeting(activeM)}
+                                                    >
+                                                        <QrCode size={16} /> Display QR Code 📱
+                                                    </button>
+                                                    <button
                                                         className="g5-btn-warm"
                                                         onClick={() => setInsightMeeting({ ...activeM, initialTab: 'manual_checkin' })}
                                                     >
@@ -1515,19 +1529,33 @@ const G5TrainingPortal = () => {
                                                                 >
                                                                     <Radio size={15} /> Live Attendance Feed & Check-In
                                                                 </button>
-                                                                <button
-                                                                    className="g5-btn-secondary"
-                                                                    style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem' }}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setInsightMeeting({ ...meeting, initialTab: 'present' });
-                                                                    }}
-                                                                >
-                                                                    <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
-                                                                </button>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-secondary"
+                                                                        style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.35)' }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setQrMeeting(meeting);
+                                                                        }}
+                                                                        title="Display QR code on screen"
+                                                                    >
+                                                                        <QrCode size={14} /> Display QR
+                                                                    </button>
+                                                                    <button
+                                                                        className="g5-btn-secondary"
+                                                                        style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem' }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                        }}
+                                                                    >
+                                                                        <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         ) : (
-                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem' }}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
                                                                 <button
                                                                     className="g5-btn-secondary"
                                                                     style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
@@ -1537,6 +1565,18 @@ const G5TrainingPortal = () => {
                                                                     }}
                                                                 >
                                                                     <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="g5-btn-secondary"
+                                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.35)' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setQrMeeting(meeting);
+                                                                    }}
+                                                                    title="Display QR code"
+                                                                >
+                                                                    <QrCode size={14} /> QR
                                                                 </button>
                                                                 <button
                                                                     className="g5-btn-outline"
@@ -1662,7 +1702,7 @@ const G5TrainingPortal = () => {
                                                             </span>
                                                         </div>
 
-                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem' }}>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
                                                             <button
                                                                 className="g5-btn-secondary"
                                                                 style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
@@ -1672,6 +1712,18 @@ const G5TrainingPortal = () => {
                                                                 }}
                                                             >
                                                                 <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="g5-btn-secondary"
+                                                                style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.35)' }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setQrMeeting(meeting);
+                                                                }}
+                                                                title="Display QR code"
+                                                            >
+                                                                <QrCode size={14} /> QR
                                                             </button>
                                                             <button
                                                                 className="g5-btn-outline"
@@ -3697,6 +3749,179 @@ const G5TrainingPortal = () => {
                     api={api}
                     onRefresh={fetchPortalData}
                 />
+            )}
+
+            {/* ========================================================= */}
+            {/* DEDICATED MEETING QR CODE PROJECTOR MODAL */}
+            {/* ========================================================= */}
+            {qrMeeting && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10000,
+                        padding: '1.5rem'
+                    }}
+                    onClick={() => setQrMeeting(null)}
+                >
+                    <div
+                        className="g5-card"
+                        style={{
+                            maxWidth: '460px',
+                            width: '100%',
+                            background: '#FFFFFF',
+                            borderRadius: '24px',
+                            padding: '2rem 2.25rem',
+                            textAlign: 'center',
+                            boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.35)',
+                            position: 'relative'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setQrMeeting(null)}
+                            style={{
+                                position: 'absolute',
+                                top: '1.25rem',
+                                right: '1.25rem',
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                background: 'var(--color-page-bg)',
+                                border: '1px solid var(--color-border)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--color-text-muted)'
+                            }}
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>
+                            <QrCode size={13} /> Meeting Check-In QR
+                        </div>
+
+                        <h3 style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-text-main)', margin: '0 0 0.35rem' }}>
+                            {qrMeeting.name || 'Training Meeting'}
+                        </h3>
+                        <p style={{ fontSize: '0.84rem', color: 'var(--color-text-muted)', margin: '0 0 1.5rem' }}>
+                            {qrMeeting.campus} • {new Date(qrMeeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} • {qrMeeting.startTime || '18:00'} - {qrMeeting.endTime || '20:00'}
+                        </p>
+
+                        {/* QR BOX */}
+                        <div style={{
+                            background: '#FFFFFF',
+                            padding: '1.5rem',
+                            borderRadius: '18px',
+                            display: 'inline-block',
+                            border: '2px solid rgba(37, 170, 225, 0.3)',
+                            boxShadow: '0 8px 30px rgba(37, 170, 225, 0.15)',
+                            marginBottom: '1.25rem'
+                        }}>
+                            <QRCode
+                                value={`${window.location.origin}/check-in/${qrMeeting.code}`}
+                                size={240}
+                                level="H"
+                            />
+                        </div>
+
+                        {/* JOIN CODE */}
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                Meeting Code
+                            </div>
+                            <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '3px', fontFamily: 'monospace', lineHeight: 1.1, margin: '0.2rem 0' }}>
+                                {(qrMeeting.code || 'DOULOS').toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.35rem' }}>
+                                Point camera to scan, or enter code at <strong>{window.location.host}/check-in</strong>
+                            </div>
+                        </div>
+
+                        {/* BUTTONS */}
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                type="button"
+                                className="g5-btn-secondary"
+                                style={{ fontSize: '0.82rem', padding: '0.55rem 0.9rem' }}
+                                onClick={() => {
+                                    const link = `${window.location.origin}/check-in/${qrMeeting.code}`;
+                                    navigator.clipboard.writeText(link);
+                                    setCopiedQrLink(true);
+                                    setTimeout(() => setCopiedQrLink(false), 2000);
+                                }}
+                            >
+                                {copiedQrLink ? <Check size={14} color="var(--color-status-active)" /> : <Copy size={14} />}
+                                {copiedQrLink ? 'Copied!' : 'Copy Link'}
+                            </button>
+
+                            <a
+                                href={`/check-in/${qrMeeting.code}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="g5-btn-secondary"
+                                style={{ fontSize: '0.82rem', padding: '0.55rem 0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                            >
+                                <ExternalLink size={14} /> Open Page
+                            </a>
+
+                            <button
+                                type="button"
+                                className="g5-btn-warm"
+                                style={{ fontSize: '0.82rem', padding: '0.55rem 1rem', background: '#25AAE1', borderColor: '#25AAE1' }}
+                                onClick={() => {
+                                    const checkInUrl = `${window.location.origin}/check-in/${qrMeeting.code}`;
+                                    const printWin = window.open('', '_blank');
+                                    if (!printWin) return;
+                                    printWin.document.write(`
+                                        <html>
+                                            <head>
+                                                <title>Doulos Meeting QR - ${qrMeeting.name}</title>
+                                                <style>
+                                                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; text-align: center; color: #1E1B39; }
+                                                    .card { border: 2px solid #25AAE1; border-radius: 24px; padding: 40px; max-width: 460px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+                                                    .title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
+                                                    .sub { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+                                                    .qr-box { padding: 20px; background: #fff; border-radius: 16px; display: inline-block; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+                                                    .code { font-size: 38px; font-weight: 900; letter-spacing: 4px; color: #25AAE1; margin-bottom: 8px; font-family: monospace; }
+                                                    .link { font-size: 13px; color: #64748b; word-break: break-all; }
+                                                </style>
+                                            </head>
+                                            <body>
+                                                <div class="card">
+                                                    <div style="font-size: 12px; font-weight: 800; color: #25AAE1; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">DOULOS ATTENDANCE CHECK-IN</div>
+                                                    <div class="title">${qrMeeting.name || 'Training Session'}</div>
+                                                    <div class="sub">${qrMeeting.campus || 'Campus'} • ${new Date(qrMeeting.date).toLocaleDateString()} • ${qrMeeting.startTime || ''} - ${qrMeeting.endTime || ''}</div>
+                                                    <div class="qr-box">
+                                                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(checkInUrl)}" width="250" height="250" alt="Meeting QR" />
+                                                    </div>
+                                                    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">MEETING JOIN CODE</div>
+                                                    <div class="code">${(qrMeeting.code || 'DOULOS').toUpperCase()}</div>
+                                                    <div class="link">${checkInUrl}</div>
+                                                </div>
+                                                <script>
+                                                    window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 400); };
+                                                </script>
+                                            </body>
+                                        </html>
+                                    `);
+                                    printWin.document.close();
+                                }}
+                            >
+                                <Printer size={14} /> Print Poster
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
         </div>

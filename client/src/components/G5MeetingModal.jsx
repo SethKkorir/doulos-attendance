@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import QRCode from 'react-qr-code';
 import {
     X,
     Users,
@@ -21,7 +22,10 @@ import {
     UserX,
     Activity,
     ChevronRight,
-    RefreshCw
+    RefreshCw,
+    QrCode,
+    Printer,
+    ExternalLink
 } from 'lucide-react';
 
 const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
@@ -188,6 +192,57 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
         setCopiedCode(true);
         showToast('Meeting code copied to clipboard!');
         setTimeout(() => setCopiedCode(false), 2000);
+    };
+
+    // Copy check-in link
+    const [copiedLink, setCopiedLink] = useState(false);
+    const checkInUrl = meeting?.code ? `${window.location.origin}/check-in/${meeting.code}` : '';
+
+    const handleCopyLink = () => {
+        if (!checkInUrl) return;
+        navigator.clipboard.writeText(checkInUrl);
+        setCopiedLink(true);
+        showToast('Check-in link copied to clipboard!');
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
+    // Print meeting QR poster
+    const handlePrintQR = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Doulos Meeting QR - ${meeting.name || 'Session'}</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; text-align: center; color: #1E1B39; }
+                        .card { border: 2px solid #25AAE1; border-radius: 24px; padding: 40px; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+                        .title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
+                        .sub { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+                        .qr-box { padding: 20px; background: #fff; border-radius: 16px; display: inline-block; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+                        .code { font-size: 38px; font-weight: 900; letter-spacing: 4px; color: #25AAE1; margin-bottom: 8px; font-family: monospace; }
+                        .link { font-size: 13px; color: #64748b; word-break: break-all; }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div style="font-size: 12px; font-weight: 800; color: #25AAE1; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">DOULOS ATTENDANCE CHECK-IN</div>
+                        <div class="title">${meeting.name || 'Training Session'}</div>
+                        <div class="sub">${meeting.campus || 'Campus'} • ${new Date(meeting.date).toLocaleDateString()} • ${meeting.startTime || ''} - ${meeting.endTime || ''}</div>
+                        <div class="qr-box">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(checkInUrl)}" width="260" height="260" alt="Meeting QR" />
+                        </div>
+                        <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">MEETING JOIN CODE</div>
+                        <div class="code">${(meeting.code || 'DOULOS').toUpperCase()}</div>
+                        <div class="link">${checkInUrl}</div>
+                    </div>
+                    <script>
+                        window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 400); };
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     // Quick manual check-in
@@ -390,6 +445,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     {meeting.name || 'Weekly Training Session'}
                                 </h2>
 
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
                                 <div
                                     onClick={handleCopyCode}
                                     title="Click to copy check-in code"
@@ -411,6 +467,30 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     <span>CODE: {meeting.code || 'DOULOS'}</span>
                                     {copiedCode ? <Check size={13} color="var(--color-status-active)" /> : <Copy size={13} />}
                                 </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('qrcode')}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        padding: '0.32rem 0.75rem',
+                                        background: activeTab === 'qrcode' ? '#25AAE1' : 'rgba(37, 170, 225, 0.1)',
+                                        color: activeTab === 'qrcode' ? '#FFFFFF' : '#25AAE1',
+                                        border: '1px solid rgba(37, 170, 225, 0.3)',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 800,
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    title="Display QR code screen for room/projector check-in"
+                                >
+                                    <QrCode size={14} />
+                                    <span>Display QR</span>
+                                </button>
+                            </div>
                             </div>
                         </div>
 
@@ -727,6 +807,28 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                 >
                                     {absentList.length}
                                 </span>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('qrcode')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.45rem',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '10px',
+                                    border: 'none',
+                                    background: activeTab === 'qrcode' ? '#FFFFFF' : 'transparent',
+                                    color: activeTab === 'qrcode' ? '#25AAE1' : 'var(--color-text-muted)',
+                                    fontWeight: activeTab === 'qrcode' ? 800 : 600,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    boxShadow: activeTab === 'qrcode' ? '0 2px 8px rgba(37, 170, 225, 0.18)' : 'none',
+                                    transition: 'all 0.18s'
+                                }}
+                            >
+                                <QrCode size={15} />
+                                <span>QR Display Screen</span>
                             </button>
                         </div>
 
@@ -1386,6 +1488,114 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     </table>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* TAB 5: QR CODE PROJECTOR SCREEN */}
+                    {activeTab === 'qrcode' && (
+                        <div style={{ textAlign: 'center', padding: '1.5rem 1rem', maxWidth: '620px', margin: '0 auto' }}>
+                            <div style={{
+                                background: '#FFFFFF',
+                                borderRadius: '24px',
+                                padding: '2.5rem 2rem',
+                                border: '1.5px solid rgba(37, 170, 225, 0.25)',
+                                boxShadow: '0 16px 48px rgba(107, 95, 168, 0.08)'
+                            }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.4rem 0.9rem', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1.25rem' }}>
+                                    <QrCode size={14} /> Scan With Phone Camera
+                                </div>
+
+                                <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--color-text-main)', margin: '0 0 0.5rem' }}>
+                                    {meeting.name || 'Weekly Training Meeting'}
+                                </h3>
+                                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: '0 0 1.75rem' }}>
+                                    {meeting.campus} • {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} • {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                </p>
+
+                                {/* QR CODE CONTAINER */}
+                                <div style={{
+                                    background: '#FFFFFF',
+                                    padding: '1.75rem',
+                                    borderRadius: '20px',
+                                    display: 'inline-block',
+                                    border: '2px solid rgba(37, 170, 225, 0.3)',
+                                    boxShadow: '0 12px 36px rgba(37, 170, 225, 0.12)',
+                                    marginBottom: '1.5rem'
+                                }}>
+                                    <QRCode value={checkInUrl} size={250} level="H" />
+                                </div>
+
+                                {/* MEETING CODE DISPLAY */}
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                                        Join Code
+                                    </div>
+                                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '3px', fontFamily: 'monospace', margin: '0.2rem 0' }}>
+                                        {(meeting.code || 'DOULOS').toUpperCase()}
+                                    </div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                                        Students can scan the QR code above or type this code manually at <strong style={{ color: 'var(--color-text-main)' }}>{window.location.host}/check-in</strong>
+                                    </div>
+                                </div>
+
+                                {/* QUICK ACTIONS */}
+                                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
+                                    <button
+                                        type="button"
+                                        className="g5-btn-secondary"
+                                        onClick={handleCopyLink}
+                                        style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                                    >
+                                        {copiedLink ? <Check size={15} color="var(--color-status-active)" /> : <Copy size={15} />}
+                                        {copiedLink ? 'Link Copied!' : 'Copy Check-In Link'}
+                                    </button>
+
+                                    <a
+                                        href={checkInUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="g5-btn-secondary"
+                                        style={{ fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                                    >
+                                        <ExternalLink size={15} /> Open Check-In Page
+                                    </a>
+
+                                    <button
+                                        type="button"
+                                        className="g5-btn-warm"
+                                        onClick={handlePrintQR}
+                                        style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem', background: '#25AAE1', borderColor: '#25AAE1' }}
+                                    >
+                                        <Printer size={15} /> Print QR Poster
+                                    </button>
+                                </div>
+
+                                {/* LIVE CHECK-IN TALLY BADGE */}
+                                <div style={{
+                                    background: 'var(--color-page-bg)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '12px',
+                                    padding: '0.75rem 1.25rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    fontSize: '0.88rem'
+                                }}>
+                                    <div className="g5-pulse-dot" style={{ width: '8px', height: '8px' }} />
+                                    <span style={{ color: 'var(--color-text-muted)' }}>Attendance Status:</span>
+                                    <strong style={{ color: 'var(--color-status-active)', fontWeight: 800 }}>
+                                        {attendedList.length} Students Checked In So Far
+                                    </strong>
+                                    <button
+                                        type="button"
+                                        onClick={() => fetchData(true)}
+                                        style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                                        title="Refresh live count"
+                                    >
+                                        <RefreshCw size={14} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
