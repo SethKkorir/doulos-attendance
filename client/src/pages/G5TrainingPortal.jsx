@@ -138,8 +138,17 @@ const G5TrainingPortal = () => {
     });
     const [incidentSubmitting, setIncidentSubmitting] = useState(false);
 
-    // Promotion Scoring State for selected candidate
+    // Promotion Scoring & Batch Selection State
     const [promotionScores, setPromotionScores] = useState({});
+    const [selectedCadres, setSelectedCadres] = useState([]);
+    const [batchRank, setBatchRank] = useState('Basic Douloid');
+    const [batchBelayStatus, setBatchBelayStatus] = useState('Secondary Belayer');
+    const [batchSoloAllowed, setBatchSoloAllowed] = useState(false);
+    const [batchSubmitting, setBatchSubmitting] = useState(false);
+    const [promotionRankFilter, setPromotionRankFilter] = useState('All');
+    const [promotionSearch, setPromotionSearch] = useState('');
+    const [promotionCampusFilter, setPromotionCampusFilter] = useState('All');
+    const [evaluatingCadre, setEvaluatingCadre] = useState(null);
 
     const showToast = (msg, type = 'success') => {
         setToast({ text: msg, type });
@@ -222,6 +231,23 @@ const G5TrainingPortal = () => {
     const totalAttended = meetings.reduce((sum, m) => sum + (m.attendanceCount || 0), 0);
     const totalExpected = meetings.length > 0 && members.length > 0 ? meetings.length * members.length : 0;
     const attendancePercentage = totalExpected > 0 ? Math.min(100, Math.round((totalAttended / totalExpected) * 100)) : 0;
+
+    // Filtered cadres for Rank Promotions Tab
+    const filteredCadres = useMemo(() => {
+        return cadres.filter(c => {
+            const matchesSearch = !promotionSearch.trim() || 
+                (c.name || '').toLowerCase().includes(promotionSearch.toLowerCase()) || 
+                (c.studentRegNo || '').toLowerCase().includes(promotionSearch.toLowerCase());
+
+            const matchesCampus = promotionCampusFilter === 'All' || c.campus === promotionCampusFilter;
+
+            const rankVal = c.douloidRank || 'None';
+            const matchesRank = promotionRankFilter === 'All' || 
+                (promotionRankFilter === 'Unranked' ? (!c.douloidRank || c.douloidRank === 'None') : rankVal === promotionRankFilter);
+
+            return matchesSearch && matchesCampus && matchesRank;
+        });
+    }, [cadres, promotionSearch, promotionCampusFilter, promotionRankFilter]);
 
     // GPS Geolocation Capture
     const handleCaptureGps = () => {
@@ -349,68 +375,97 @@ const G5TrainingPortal = () => {
     };
 
     // Confirm Rank Promotion
-    const handleConfirmPromotion = async (cadre, nextRank) => {
+    const handleConfirmPromotion = async (cadre, nextRank, customBelay, customSolo, notes) => {
         try {
             const scores = promotionScores[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 };
+            const belay = customBelay || cadre.belayStatus || (nextRank === 'Shadow Douloid' || nextRank === 'None' ? 'Not Permitted' : 'Secondary Belayer');
+            const solo = customSolo !== undefined ? customSolo : (nextRank === 'Intermediate Douloid' || nextRank === 'Lead Douloid' || nextRank === 'Senior Lead Douloid');
+
             await api.put(`/trainings/members/${cadre._id}/rank`, {
                 douloidRank: nextRank,
-                belayStatus: cadre.belayStatus || 'Secondary Belayer',
-                soloStationAllowed: nextRank === 'Intermediate Douloid' || nextRank === 'Lead Douloid',
-                notes: `Promoted through G5 5-Domain Evaluation. Avg Score: ${Object.values(scores).reduce((a,b)=>a+b,0)/5}`,
+                belayStatus: belay,
+                soloStationAllowed: solo,
+                notes: notes || `Promoted to ${nextRank} through G5 Evaluation. Avg Score: ${(Object.values(scores).reduce((a,b)=>a+b,0)/5).toFixed(1)}★`,
                 promotedBy: username
             });
             showToast(`🌟 Promoted ${cadre.name} to ${nextRank}!`);
-            setCadres(prev => prev.map(c => c._id === cadre._id ? { ...c, douloidRank: nextRank } : c));
+            setCadres(prev => prev.map(c => c._id === cadre._id ? { 
+                ...c, 
+                douloidRank: nextRank,
+                belayStatus: belay,
+                soloStationAllowed: solo
+            } : c));
         } catch (err) {
             console.error('Promotion error:', err);
             showToast(err.response?.data?.message || 'Failed to update rank', 'error');
         }
     };
 
-    // Report Incident
-    const handleReportIncident = async (e) => {
-        e.preventDefault();
-        setIncidentSubmitting(true);
+    // Batch Promotion Handler (Select multiple students and promote them at once)
+    const handleBatchPromote = async () => {
+        if (selectedCadres.length === 0) {
+            showToast('Please select at least one student to promote', 'error');
+            return;
+        }
+
+        if ((batchRank === 'Shadow Douloid' || batchRank === 'None') && batchBelayStatus === 'Primary Belayer Certified') {
+            showToast('Safety Rule: Shadow Douloids cannot hold Primary Belayer certification', 'error');
+            return;
+        }
+
+        setBatchSubmitting(true);
         try {
-            const res = await api.post('/council/incidents', {
-                ...incidentForm,
-                investigator: username
+            const res = await api.put('/trainings/members/batch-rank', {
+                memberIds: selectedCadres,
+                douloidRank: batchRank,
+                belayStatus: batchBelayStatus,
+                soloStationAllowed: batchSoloAllowed,
+                promotedBy: username,
+                notes: `Batch promoted to ${batchRank} by ${username}`
             });
-            showToast('Safety incident logged with root-cause action plan');
-            setShowReportIncidentModal(false);
-            setIncidents(prev => [res.data.incident || incidentForm, ...prev]);
-            setIncidentForm({
-                title: '',
-                severity: 'Near-Miss',
-                location: 'Freedom Base',
-                campus: 'Athi River',
-                description: '',
-                correctiveActionPlan: ''
-            });
+
+            showToast(res.data.message || `Promoted ${selectedCadres.length} students to ${batchRank}!`);
+
+            setCadres(prev => prev.map(c => {
+                if (selectedCadres.includes(c._id)) {
+                    return {
+                        ...c,
+                        douloidRank: batchRank,
+                        belayStatus: batchBelayStatus,
+                        soloStationAllowed: batchSoloAllowed
+                    };
+                }
+                return c;
+            }));
+
+            setSelectedCadres([]);
         } catch (err) {
-            console.error('Incident report error:', err);
-            showToast('Failed to submit incident report', 'error');
+            console.error('Batch promotion error:', err);
+            showToast(err.response?.data?.message || 'Failed to batch promote students', 'error');
         } finally {
-            setIncidentSubmitting(false);
+            setBatchSubmitting(false);
         }
     };
 
-    // Promotion helper
+    // Promotion helper - correct sequential rank progression ladder
     const getNextRank = (currentRank) => {
+        if (!currentRank || currentRank === 'None' || currentRank === 'Recruit') return 'Shadow Douloid';
         switch (currentRank) {
             case 'Shadow Douloid': return 'Basic Douloid';
             case 'Basic Douloid': return 'Intermediate Douloid';
             case 'Intermediate Douloid': return 'Lead Douloid';
-            default: return 'Lead Douloid (Senior)';
+            case 'Lead Douloid': return 'Senior Lead Douloid';
+            default: return 'Basic Douloid';
         }
     };
 
     const getRankColor = (rank) => {
         switch (rank) {
+            case 'Senior Lead Douloid': return { bg: '#FEF3C7', text: '#B45309', border: '#FCD34D' };
             case 'Lead Douloid': return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A' };
             case 'Intermediate Douloid': return { bg: '#E0F2FE', text: '#0284C7', border: '#BAE6FD' };
             case 'Basic Douloid': return { bg: '#E0E7FF', text: '#4F46E5', border: '#C7D2FE' };
-            case 'Shadow Douloid': return { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' };
+            case 'Shadow Douloid': return { bg: '#F3E8FF', text: '#7E22CE', border: '#E9D5FF' };
             default: return { bg: '#F3F4F6', text: '#6B7280', border: '#E5E7EB' };
         }
     };
@@ -1211,103 +1266,591 @@ const G5TrainingPortal = () => {
                     )}
 
                     {/* ========================================================= */}
-                    {/* TAB 6: RANK PROMOTIONS (5-DOMAIN SCORING WIDGET CARDS) */}
+                    {/* TAB 6: RANK PROMOTIONS (BATCH PROMOTION STUDIO & 5-DOMAIN EVALUATION) */}
                     {/* ========================================================= */}
                     {activeTab === 'promotions' && (
-                        <div>
-                            <div style={{ marginBottom: '1.75rem' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Cadre Rank Promotions</h2>
-                                <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)' }}>
-                                    5-Domain competency evaluations to elevate cadres into Intermediate and Lead leadership.
-                                </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* HEADER & RANK LADDER OVERVIEW */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Cadre Rank Promotions</h2>
+                                        <span className="g5-pill g5-pill-purple">
+                                            <Award size={14} /> {cadres.length} Active Cadres
+                                        </span>
+                                    </div>
+                                    <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                                        Promote individual students or select multiple candidates for batch rank advancement.
+                                    </p>
+                                </div>
                             </div>
 
-                            <div className="g5-celebrate-grid">
-                                {cadres.slice(0, 6).map((cadre) => {
-                                    const currentRank = cadre.douloidRank || 'Shadow Douloid';
-                                    const nextRank = getNextRank(currentRank);
-                                    const scores = promotionScores[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 };
+                            {/* RANK LADDER FILTER CHIPS */}
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                {[
+                                    { id: 'All', label: 'All Cadres', count: cadres.length, color: '#6B5FA8' },
+                                    { id: 'Unranked', label: 'Unranked / Recruits', count: cadres.filter(c => !c.douloidRank || c.douloidRank === 'None').length, color: '#6B7280' },
+                                    { id: 'Shadow Douloid', label: 'Shadow Douloids', count: cadres.filter(c => c.douloidRank === 'Shadow Douloid').length, color: '#7E22CE' },
+                                    { id: 'Basic Douloid', label: 'Basic Douloids', count: cadres.filter(c => c.douloidRank === 'Basic Douloid').length, color: '#4F46E5' },
+                                    { id: 'Intermediate Douloid', label: 'Intermediate Douloids', count: cadres.filter(c => c.douloidRank === 'Intermediate Douloid').length, color: '#0284C7' },
+                                    { id: 'Lead Douloid', label: 'Lead Douloids', count: cadres.filter(c => c.douloidRank === 'Lead Douloid').length, color: '#D97706' },
+                                    { id: 'Senior Lead Douloid', label: 'Senior Leads', count: cadres.filter(c => c.douloidRank === 'Senior Lead Douloid').length, color: '#B45309' }
+                                ].map(chip => (
+                                    <button
+                                        key={chip.id}
+                                        type="button"
+                                        onClick={() => setPromotionRankFilter(chip.id)}
+                                        style={{
+                                            padding: '0.45rem 0.9rem',
+                                            borderRadius: '999px',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            border: promotionRankFilter === chip.id ? `2px solid ${chip.color}` : '1px solid var(--color-border)',
+                                            background: promotionRankFilter === chip.id ? 'var(--color-surface)' : 'var(--color-page-bg)',
+                                            color: promotionRankFilter === chip.id ? chip.color : 'var(--color-text-main)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.45rem',
+                                            boxShadow: promotionRankFilter === chip.id ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <span>{chip.label}</span>
+                                        <span style={{
+                                            background: promotionRankFilter === chip.id ? chip.color : 'rgba(0,0,0,0.06)',
+                                            color: promotionRankFilter === chip.id ? '#FFFFFF' : 'var(--color-text-muted)',
+                                            padding: '0.1rem 0.45rem',
+                                            borderRadius: '999px',
+                                            fontSize: '0.74rem'
+                                        }}>
+                                            {chip.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
 
-                                    const updateScore = (domain, val) => {
-                                        setPromotionScores(prev => ({
-                                            ...prev,
-                                            [cadre._id]: {
-                                                ...(prev[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 }),
-                                                [domain]: Number(val)
-                                            }
-                                        }));
-                                    };
+                            {/* SEARCH & CONTROLS TOOLBAR */}
+                            <div className="g5-card" style={{ padding: '0.85rem 1.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.85rem', flex: 1, minWidth: '280px', alignItems: 'center' }}>
+                                        <div className="g5-search-wrap" style={{ flex: 1, height: '40px' }}>
+                                            <Search size={16} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search student name or admission number..."
+                                                value={promotionSearch}
+                                                onChange={(e) => setPromotionSearch(e.target.value)}
+                                                className="g5-search-input"
+                                                style={{ fontSize: '0.85rem' }}
+                                            />
+                                        </div>
 
-                                    return (
-                                        <div key={cadre._id} className="g5-celebrate-card">
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                                        <select
+                                            className="g5-form-input"
+                                            style={{ width: '160px', height: '40px', padding: '0 0.75rem', fontSize: '0.85rem' }}
+                                            value={promotionCampusFilter}
+                                            onChange={(e) => setPromotionCampusFilter(e.target.value)}
+                                        >
+                                            <option value="All">All Campuses</option>
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                        <button
+                                            type="button"
+                                            className="g5-btn-secondary"
+                                            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
+                                            onClick={() => {
+                                                if (selectedCadres.length === filteredCadres.length) {
+                                                    setSelectedCadres([]);
+                                                } else {
+                                                    setSelectedCadres(filteredCadres.map(c => c._id));
+                                                }
+                                            }}
+                                        >
+                                            {selectedCadres.length === filteredCadres.length && filteredCadres.length > 0 
+                                                ? 'Deselect All' 
+                                                : `Select All (${filteredCadres.length})`}
+                                        </button>
+
+                                        {selectedCadres.length > 0 && (
+                                            <button
+                                                type="button"
+                                                className="g5-btn-outline"
+                                                style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
+                                                onClick={() => setSelectedCadres([])}
+                                            >
+                                                Clear ({selectedCadres.length})
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BATCH PROMOTION ACTION BAR (STICKY WHEN 1 OR MORE CADRES SELECTED) */}
+                            {selectedCadres.length > 0 && (
+                                <div style={{
+                                    background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
+                                    color: '#FFFFFF',
+                                    padding: '1.25rem 1.5rem',
+                                    borderRadius: '16px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '1rem',
+                                    boxShadow: '0 10px 30px rgba(49, 46, 129, 0.25)',
+                                    border: '1.5px solid #4338CA'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                        <div style={{
+                                            background: '#4F46E5',
+                                            width: '38px',
+                                            height: '38px',
+                                            borderRadius: '10px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#FFFFFF'
+                                        }}>
+                                            <Award size={20} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.2px' }}>
+                                                {selectedCadres.length} Student{selectedCadres.length > 1 ? 's' : ''} Selected for Batch Promotion
+                                            </div>
+                                            <div style={{ fontSize: '0.78rem', color: '#C7D2FE', marginTop: '0.15rem' }}>
+                                                Assign target rank, belay certification, and safety station clearances simultaneously.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        {/* Target Rank Picker */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#C7D2FE', textTransform: 'uppercase' }}>Target Rank</label>
+                                            <select
+                                                value={batchRank}
+                                                onChange={(e) => {
+                                                    const r = e.target.value;
+                                                    setBatchRank(r);
+                                                    if (r === 'Shadow Douloid' || r === 'None') {
+                                                        setBatchBelayStatus('Not Permitted');
+                                                        setBatchSoloAllowed(false);
+                                                    }
+                                                }}
+                                                style={{
+                                                    background: '#FFFFFF',
+                                                    color: '#1E1B4B',
+                                                    border: 'none',
+                                                    padding: '0.5rem 0.85rem',
+                                                    borderRadius: '8px',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.85rem'
+                                                }}
+                                            >
+                                                <option value="Shadow Douloid">Shadow Douloid</option>
+                                                <option value="Basic Douloid">Basic Douloid</option>
+                                                <option value="Intermediate Douloid">Intermediate Douloid</option>
+                                                <option value="Lead Douloid">Lead Douloid</option>
+                                                <option value="Senior Lead Douloid">Senior Lead Douloid</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Belay Clearance Picker */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#C7D2FE', textTransform: 'uppercase' }}>Belay Clearance</label>
+                                            <select
+                                                value={batchBelayStatus}
+                                                onChange={(e) => setBatchBelayStatus(e.target.value)}
+                                                disabled={batchRank === 'Shadow Douloid' || batchRank === 'None'}
+                                                style={{
+                                                    background: '#FFFFFF',
+                                                    color: '#1E1B4B',
+                                                    border: 'none',
+                                                    padding: '0.5rem 0.85rem',
+                                                    borderRadius: '8px',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.85rem',
+                                                    opacity: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 0.6 : 1
+                                                }}
+                                            >
+                                                <option value="Not Permitted">Not Permitted</option>
+                                                <option value="Secondary Belayer">Secondary Belayer</option>
+                                                <option value="Primary Belayer Certified">Primary Belayer Certified</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Solo Station Checkbox */}
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.45rem',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            cursor: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 'not-allowed' : 'pointer',
+                                            opacity: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 0.5 : 1,
+                                            marginTop: '1rem'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={batchSoloAllowed}
+                                                disabled={batchRank === 'Shadow Douloid' || batchRank === 'None'}
+                                                onChange={(e) => setBatchSoloAllowed(e.target.checked)}
+                                                style={{ width: '16px', height: '16px', accentColor: '#E8A33D' }}
+                                            />
+                                            Solo Station
+                                        </label>
+
+                                        {/* Batch Promote Button */}
+                                        <button
+                                            type="button"
+                                            className="g5-btn-warm"
+                                            style={{
+                                                padding: '0.55rem 1.25rem',
+                                                fontSize: '0.88rem',
+                                                marginTop: '0.8rem',
+                                                boxShadow: '0 4px 14px rgba(232, 163, 61, 0.4)'
+                                            }}
+                                            disabled={batchSubmitting}
+                                            onClick={handleBatchPromote}
+                                        >
+                                            {batchSubmitting ? (
+                                                <>
+                                                    <RefreshCw size={15} className="g5-spin" /> Promoting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles size={16} /> Promote {selectedCadres.length} Selected to {batchRank}
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* CADRES PROMOTION ROSTER TABLE */}
+                            <div className="g5-card" style={{ padding: 0, overflow: 'hidden' }}>
+                                <div className="g5-table-wrap">
+                                    <table className="g5-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '40px', textAlign: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={filteredCadres.length > 0 && selectedCadres.length === filteredCadres.length}
+                                                        onChange={() => {
+                                                            if (selectedCadres.length === filteredCadres.length) {
+                                                                setSelectedCadres([]);
+                                                            } else {
+                                                                setSelectedCadres(filteredCadres.map(c => c._id));
+                                                            }
+                                                        }}
+                                                        style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                                                    />
+                                                </th>
+                                                <th>Student Name</th>
+                                                <th>Campus</th>
+                                                <th>Current Rank</th>
+                                                <th>Next Rank Step</th>
+                                                <th>Belay & Clearances</th>
+                                                <th style={{ textAlign: 'right' }}>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredCadres.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={7} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
+                                                        <Users size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>No cadres match your filters</div>
+                                                        <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Try clearing your search query or selecting "All Cadres".</div>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredCadres.map((cadre) => {
+                                                    const currentRank = cadre.douloidRank || 'None';
+                                                    const nextRank = getNextRank(currentRank);
+                                                    const currentColor = getRankColor(currentRank);
+                                                    const nextColor = getRankColor(nextRank);
+                                                    const isSelected = selectedCadres.includes(cadre._id);
+
+                                                    return (
+                                                        <tr 
+                                                            key={cadre._id}
+                                                            style={{
+                                                                backgroundColor: isSelected ? 'rgba(107, 95, 168, 0.05)' : 'transparent',
+                                                                transition: 'background-color 0.15s ease'
+                                                            }}
+                                                        >
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isSelected}
+                                                                    onChange={() => {
+                                                                        setSelectedCadres(prev => 
+                                                                            prev.includes(cadre._id) ? prev.filter(id => id !== cadre._id) : [...prev, cadre._id]
+                                                                        );
+                                                                    }}
+                                                                    style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                                                                />
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                                                    <div className="g5-avatar" style={{ width: '38px', height: '38px', fontSize: '0.9rem' }}>
+                                                                        {cadre.name.charAt(0)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div style={{ fontWeight: 700, color: 'var(--color-text-main)', fontSize: '0.92rem' }}>
+                                                                            {cadre.name}
+                                                                        </div>
+                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                                                            {cadre.studentRegNo || 'No Reg No'}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                                {cadre.campus}
+                                                            </td>
+                                                            <td>
+                                                                <span style={{
+                                                                    background: currentColor.bg,
+                                                                    color: currentColor.text,
+                                                                    border: `1px solid ${currentColor.border}`,
+                                                                    padding: '0.3rem 0.75rem',
+                                                                    borderRadius: '999px',
+                                                                    fontWeight: 800,
+                                                                    fontSize: '0.78rem'
+                                                                }}>
+                                                                    {currentRank}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                                                    <ArrowUpRight size={15} style={{ color: 'var(--color-accent-warm)' }} />
+                                                                    <span style={{
+                                                                        background: nextColor.bg,
+                                                                        color: nextColor.text,
+                                                                        border: `1px solid ${nextColor.border}`,
+                                                                        padding: '0.25rem 0.65rem',
+                                                                        borderRadius: '999px',
+                                                                        fontWeight: 800,
+                                                                        fontSize: '0.76rem'
+                                                                    }}>
+                                                                        {nextRank}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                                    <span style={{ fontSize: '0.76rem', color: 'var(--color-text-main)', fontWeight: 600 }}>
+                                                                        {cadre.belayStatus || 'Not Permitted'}
+                                                                    </span>
+                                                                    {cadre.soloStationAllowed && (
+                                                                        <span style={{ fontSize: '0.72rem', color: 'var(--color-status-active)', fontWeight: 700 }}>
+                                                                            ✓ Solo Station Cleared
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ textAlign: 'right' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-secondary"
+                                                                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem' }}
+                                                                        onClick={() => {
+                                                                            setEvaluatingCadre(cadre);
+                                                                            if (!promotionScores[cadre._id]) {
+                                                                                setPromotionScores(prev => ({
+                                                                                    ...prev,
+                                                                                    [cadre._id]: { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 }
+                                                                                }));
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <Sliders size={13} /> 5-Domain Evaluation
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-warm"
+                                                                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem' }}
+                                                                        onClick={() => handleConfirmPromotion(cadre, nextRank)}
+                                                                    >
+                                                                        <Award size={13} /> Promote to {nextRank}
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* 5-DOMAIN EVALUATION MODAL */}
+                            {evaluatingCadre && (() => {
+                                const cadre = evaluatingCadre;
+                                const currentRank = cadre.douloidRank || 'None';
+                                const nextRank = getNextRank(currentRank);
+                                const scores = promotionScores[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 };
+                                const avgScore = (Object.values(scores).reduce((a, b) => a + b, 0) / 5).toFixed(1);
+
+                                const updateScore = (domain, val) => {
+                                    setPromotionScores(prev => ({
+                                        ...prev,
+                                        [cadre._id]: {
+                                            ...(prev[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 }),
+                                            [domain]: Number(val)
+                                        }
+                                    }));
+                                };
+
+                                return (
+                                    <div style={{
+                                        position: 'fixed',
+                                        inset: 0,
+                                        backgroundColor: 'rgba(30, 27, 75, 0.65)',
+                                        backdropFilter: 'blur(6px)',
+                                        zIndex: 9999,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '1.5rem'
+                                    }}>
+                                        <div style={{
+                                            background: '#FFFFFF',
+                                            borderRadius: '24px',
+                                            maxWidth: '560px',
+                                            width: '100%',
+                                            maxHeight: '90vh',
+                                            overflowY: 'auto',
+                                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                            border: '1px solid var(--color-border)',
+                                            padding: '2rem'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                    <div className="g5-avatar" style={{ width: '50px', height: '50px' }}>
+                                                    <div className="g5-avatar" style={{ width: '48px', height: '48px', fontSize: '1.2rem' }}>
                                                         {cadre.name.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
                                                             {cadre.name}
                                                         </h3>
-                                                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                                                            {cadre.campus} • {cadre.studentRegNo}
+                                                        <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                                                            {cadre.studentRegNo} • {cadre.campus}
                                                         </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEvaluatingCadre(null)}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                                                >
+                                                    <X size={20} />
+                                                </button>
+                                            </div>
+
+                                            {/* Current Rank vs Next Rank Progression Pill */}
+                                            <div style={{
+                                                background: 'var(--color-page-bg)',
+                                                borderRadius: '14px',
+                                                padding: '0.85rem 1.25rem',
+                                                marginBottom: '1.5rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                border: '1px solid var(--color-border)'
+                                            }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>CURRENT RANK</div>
+                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text-main)', marginTop: '0.15rem' }}>
+                                                        {currentRank}
+                                                    </div>
+                                                </div>
+                                                <ArrowUpRight size={20} style={{ color: 'var(--color-accent-warm)' }} />
+                                                <div>
+                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>TARGET PROMOTION</div>
+                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-primary)', marginTop: '0.15rem' }}>
+                                                        {nextRank}
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>AVG SCORE</div>
+                                                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-accent-warm)', marginTop: '0.15rem' }}>
+                                                        {avgScore}★
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1.25rem', background: 'var(--color-page-bg)', padding: '0.65rem 0.95rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>CURRENT:</span>
-                                                <span className="g5-pill g5-pill-purple">{currentRank}</span>
-                                                <ArrowUpRight size={16} style={{ color: 'var(--color-accent-warm)' }} />
-                                                <span className="g5-pill g5-pill-recruit">{nextRank}</span>
-                                            </div>
-
-                                            {/* Compact 5-Domain Scoring Widget */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.5rem' }}>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                    5-Domain Competency Scoring
-                                                </span>
+                                            {/* 5-Domain Competency Sliders */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.75rem' }}>
+                                                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    5-Domain Competency Scoring (1 to 5 Stars)
+                                                </div>
 
                                                 {[
-                                                    { key: 'team', label: 'Team Building Debriefs' },
-                                                    { key: 'ropes', label: 'High Ropes & Dynamic Belaying' },
-                                                    { key: 'base', label: 'Freedom Base Hardware Audits' },
-                                                    { key: 'rescue', label: 'Ridge Rescue & Fall Arrest' },
-                                                    { key: 'firstAid', label: 'Wilderness Triage & First Aid' }
+                                                    { key: 'team', label: 'Team Building Debriefs', desc: 'Group dynamics, spiritual discipleship, debrief synthesis' },
+                                                    { key: 'ropes', label: 'High Ropes & Dynamic Belaying', desc: 'Hardware rigging, carabiner squeeze, double-check commands' },
+                                                    { key: 'base', label: 'Freedom Base Hardware Audits', desc: 'Helmet inspection, dynamic rope life cycle, anchor security' },
+                                                    { key: 'rescue', label: 'Ridge Rescue & Fall Arrest', desc: 'Spine board extrication, litter extraction, descent control' },
+                                                    { key: 'firstAid', label: 'Wilderness Triage & First Aid', desc: 'Wilderness incident management, trauma response, hydration' }
                                                 ].map(domain => (
-                                                    <div key={domain.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)', fontWeight: 600 }}>
-                                                            {domain.label}
-                                                        </span>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                            <input
-                                                                type="range"
-                                                                min="1"
-                                                                max="5"
-                                                                value={scores[domain.key]}
-                                                                onChange={(e) => updateScore(domain.key, e.target.value)}
-                                                                style={{ width: '70px', accentColor: 'var(--color-accent-warm)' }}
-                                                            />
-                                                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-accent-warm)', width: '20px', textAlign: 'right' }}>
+                                                    <div key={domain.key} style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '0.85rem 1rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
+                                                                {domain.label}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-accent-warm)' }}>
                                                                 {scores[domain.key]}★
                                                             </span>
                                                         </div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.65rem' }}>
+                                                            {domain.desc}
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="1"
+                                                            max="5"
+                                                            value={scores[domain.key]}
+                                                            onChange={(e) => updateScore(domain.key, e.target.value)}
+                                                            style={{ width: '100%', accentColor: 'var(--color-accent-warm)' }}
+                                                        />
                                                     </div>
                                                 ))}
                                             </div>
 
-                                            <button
-                                                className="g5-btn-warm"
-                                                style={{ width: '100%', justifyContent: 'center' }}
-                                                onClick={() => handleConfirmPromotion(cadre, nextRank)}
-                                            >
-                                                <Award size={18} /> Confirm Promotion to {nextRank}
-                                            </button>
+                                            {/* Action Buttons */}
+                                            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                                                <button
+                                                    type="button"
+                                                    className="g5-btn-secondary"
+                                                    onClick={() => setEvaluatingCadre(null)}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="g5-btn-warm"
+                                                    onClick={async () => {
+                                                        await handleConfirmPromotion(cadre, nextRank);
+                                                        setEvaluatingCadre(null);
+                                                    }}
+                                                >
+                                                    <Award size={16} /> Confirm Promotion to {nextRank}
+                                                </button>
+                                            </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 

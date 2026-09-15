@@ -513,6 +513,66 @@ export const updateMemberRank = async (req, res) => {
     }
 };
 
+export const batchUpdateMemberRank = async (req, res) => {
+    try {
+        const { memberIds, douloidRank, belayStatus, soloStationAllowed, notes, promotedBy } = req.body;
+
+        if (!Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ message: 'No members selected for batch promotion' });
+        }
+        if (!douloidRank) {
+            return res.status(400).json({ message: 'Target rank is required' });
+        }
+
+        // Constitutional Safety Guardrails
+        if (douloidRank === 'Shadow Douloid' || douloidRank === 'None') {
+            if (belayStatus === 'Primary Belayer Certified') {
+                return res.status(400).json({ 
+                    message: 'Constitutional Safety Violation: Shadow Douloids and Recruits cannot hold Primary Belayer Certification!' 
+                });
+            }
+            if (soloStationAllowed) {
+                return res.status(400).json({ 
+                    message: 'Constitutional Safety Violation: Shadow Douloids and Recruits cannot hold Solo Station Clearance!' 
+                });
+            }
+        }
+
+        const members = await Member.find({ _id: { $in: memberIds } });
+        const updatedMembers = [];
+
+        for (const member of members) {
+            const previousRank = member.douloidRank || 'None';
+            if (douloidRank !== previousRank) {
+                member.rankHistory.push({
+                    fromRank: previousRank,
+                    toRank: douloidRank,
+                    date: new Date(),
+                    promotedBy: promotedBy || req.user?.username || 'G5 Directorate',
+                    notes: notes || `Batch promoted to ${douloidRank}`
+                });
+                member.douloidRank = douloidRank;
+                if (member.memberType === 'Recruit') {
+                    member.memberType = 'Douloid';
+                }
+            }
+
+            if (belayStatus) member.belayStatus = belayStatus;
+            if (typeof soloStationAllowed === 'boolean') member.soloStationAllowed = soloStationAllowed;
+
+            await member.save();
+            updatedMembers.push(member);
+        }
+
+        res.json({ 
+            message: `Successfully promoted ${updatedMembers.length} member(s) to ${douloidRank}`, 
+            updatedMembers 
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const evaluateMember = async (req, res) => {
     try {
         const { id } = req.params;

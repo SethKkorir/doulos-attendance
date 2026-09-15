@@ -3,7 +3,7 @@ import {
     createTraining, getTrainings, getTrainingByCode,
     updateTrainingStatus, setTrainingLocation, deleteTraining,
     getCampProgram, saveCampProgram, getCadresAndRecruits,
-    updateMemberRank, evaluateMember
+    updateMemberRank, batchUpdateMemberRank, evaluateMember
 } from '../controllers/trainingController.js';
 import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 
@@ -15,6 +15,7 @@ router.post('/camp-program', verifyAdmin, saveCampProgram);
 
 // Cadres, Recruits & Competency Evaluation
 router.get('/cadres', verifyAdmin, getCadresAndRecruits);
+router.put('/members/batch-rank', verifyAdmin, batchUpdateMemberRank);
 router.put('/members/:id/rank', verifyAdmin, updateMemberRank);
 router.post('/members/:id/evaluate', verifyAdmin, evaluateMember);
 
