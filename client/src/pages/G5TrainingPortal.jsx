@@ -52,11 +52,15 @@ import {
     UserMinus,
     QrCode,
     Printer,
-    Copy
+    Copy,
+    Menu
 } from 'lucide-react';
 
 const G5TrainingPortal = () => {
     const navigate = useNavigate();
+
+    // Responsive Mobile Sidebar State
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     // Active Navigation Tab (9 items strictly)
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -761,16 +765,40 @@ const G5TrainingPortal = () => {
 
     return (
         <div className="g5-portal-root">
-            {/* FIXED SIDEBAR */}
-            <aside className="g5-sidebar">
-                <div className="g5-sidebar-brand">
-                    <div className="g5-brand-icon-box">
-                        <Compass size={24} />
+            {/* BACKDROP OVERLAY ON MOBILE */}
+            <div
+                className={`g5-sidebar-backdrop ${mobileSidebarOpen ? 'active' : ''}`}
+                onClick={() => setMobileSidebarOpen(false)}
+            />
+
+            {/* FIXED / MOBILE SLIDE-OUT SIDEBAR */}
+            <aside className={`g5-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+                <div className="g5-sidebar-brand" style={{ justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <div className="g5-brand-icon-box">
+                            <Compass size={24} />
+                        </div>
+                        <div>
+                            <div className="g5-brand-title">Doulos G5</div>
+                            <div className="g5-brand-subtitle">Training Portal</div>
+                        </div>
                     </div>
-                    <div>
-                        <div className="g5-brand-title">Doulos G5</div>
-                        <div className="g5-brand-subtitle">Training Portal</div>
-                    </div>
+                    {mobileSidebarOpen && (
+                        <button
+                            type="button"
+                            onClick={() => setMobileSidebarOpen(false)}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-text-muted)',
+                                cursor: 'pointer',
+                                padding: '0.35rem',
+                                borderRadius: '8px'
+                            }}
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
                 </div>
 
                 <nav className="g5-nav-list">
@@ -781,7 +809,10 @@ const G5TrainingPortal = () => {
                             <button
                                 key={item.id}
                                 className={`g5-nav-btn ${isActive ? 'active' : ''}`}
-                                onClick={() => setActiveTab(item.id)}
+                                onClick={() => {
+                                    setActiveTab(item.id);
+                                    setMobileSidebarOpen(false);
+                                }}
                             >
                                 <Icon size={19} />
                                 <span>{item.label}</span>
@@ -827,21 +858,32 @@ const G5TrainingPortal = () => {
             <div className="g5-main-wrapper">
                 {/* TOPBAR */}
                 <header className="g5-topbar">
-                    <div className="g5-search-wrap">
-                        <Search size={17} />
-                        <input
-                            type="text"
-                            placeholder="Search cadets, recruits, skills..."
-                            className="g5-search-input"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                        <button
+                            type="button"
+                            className="g5-menu-toggle"
+                            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+                            aria-label="Toggle Navigation Menu"
+                        >
+                            {mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                        </button>
+
+                        <div className="g5-search-wrap">
+                            <Search size={17} />
+                            <input
+                                type="text"
+                                placeholder="Search cadets, recruits, skills..."
+                                className="g5-search-input"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     <div className="g5-topbar-actions">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-primary-soft)', padding: '0.35rem 0.85rem', borderRadius: '999px' }}>
                             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-status-active)' }}></span>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                            <span className="g5-ministry-badge-text" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                                 Outdoor Ministry Mode
                             </span>
                         </div>
@@ -1016,7 +1058,7 @@ const G5TrainingPortal = () => {
                             </div>
 
                             {/* Warm Glanceable Overview Cards */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1.5rem' }}>
+                            <div className="g5-overview-split">
                                 <div className="g5-card">
                                     <div className="g5-card-header">
                                         <div>
@@ -1272,7 +1314,7 @@ const G5TrainingPortal = () => {
                             </div>
 
                             {/* SUB-TABS: ACTIVE & RECENT vs ARCHIVED */}
-                            <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '2px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '2px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', flexWrap: 'nowrap' }}>
                                 <button
                                     type="button"
                                     onClick={() => setMeetingSubTab('active')}
@@ -1288,6 +1330,7 @@ const G5TrainingPortal = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.5rem',
+                                        flexShrink: 0,
                                         boxShadow: meetingSubTab === 'active' ? '0 2px 8px rgba(107, 95, 168, 0.15)' : 'none',
                                         transition: 'all 0.18s ease'
                                     }}
@@ -1309,6 +1352,7 @@ const G5TrainingPortal = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.5rem',
+                                        flexShrink: 0,
                                         boxShadow: meetingSubTab === 'archived' ? '0 2px 8px rgba(232, 163, 61, 0.15)' : 'none',
                                         transition: 'all 0.18s ease'
                                     }}
@@ -1822,7 +1866,7 @@ const G5TrainingPortal = () => {
                             </div>
 
                             {/* SUB-TABS: ACTIVE RECRUITS vs 20-DAY ARCHIVED RECRUITS */}
-                            <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '2px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '2px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', flexWrap: 'nowrap' }}>
                                 <button
                                     type="button"
                                     onClick={() => setRecruitSubTab('active')}
@@ -1838,6 +1882,7 @@ const G5TrainingPortal = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.5rem',
+                                        flexShrink: 0,
                                         boxShadow: recruitSubTab === 'active' ? '0 2px 8px rgba(107, 95, 168, 0.15)' : 'none',
                                         transition: 'all 0.18s ease'
                                     }}
@@ -1859,6 +1904,7 @@ const G5TrainingPortal = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.5rem',
+                                        flexShrink: 0,
                                         boxShadow: recruitSubTab === 'archived' ? '0 2px 8px rgba(232, 163, 61, 0.15)' : 'none',
                                         transition: 'all 0.18s ease'
                                     }}
@@ -3766,18 +3812,20 @@ const G5TrainingPortal = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         zIndex: 10000,
-                        padding: '1.5rem'
+                        padding: '0.75rem'
                     }}
                     onClick={() => setQrMeeting(null)}
                 >
                     <div
                         className="g5-card"
                         style={{
-                            maxWidth: '460px',
-                            width: '100%',
+                            maxWidth: '440px',
+                            width: '94vw',
+                            maxHeight: '92vh',
+                            overflowY: 'auto',
                             background: '#FFFFFF',
-                            borderRadius: '24px',
-                            padding: '2rem 2.25rem',
+                            borderRadius: '20px',
+                            padding: '1.75rem 1.25rem',
                             textAlign: 'center',
                             boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.35)',
                             position: 'relative'
@@ -3789,10 +3837,10 @@ const G5TrainingPortal = () => {
                             onClick={() => setQrMeeting(null)}
                             style={{
                                 position: 'absolute',
-                                top: '1.25rem',
-                                right: '1.25rem',
-                                width: '36px',
-                                height: '36px',
+                                top: '1rem',
+                                right: '1rem',
+                                width: '34px',
+                                height: '34px',
                                 borderRadius: '50%',
                                 background: 'var(--color-page-bg)',
                                 border: '1px solid var(--color-border)',
@@ -3806,30 +3854,31 @@ const G5TrainingPortal = () => {
                             <X size={18} />
                         </button>
 
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: 'rgba(37, 170, 225, 0.1)', color: '#25AAE1', padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.85rem' }}>
                             <QrCode size={13} /> Meeting Check-In QR
                         </div>
 
-                        <h3 style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-text-main)', margin: '0 0 0.35rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-text-main)', margin: '0 0 0.35rem', wordBreak: 'break-word' }}>
                             {qrMeeting.name || 'Training Meeting'}
                         </h3>
-                        <p style={{ fontSize: '0.84rem', color: 'var(--color-text-muted)', margin: '0 0 1.5rem' }}>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', margin: '0 0 1.25rem' }}>
                             {qrMeeting.campus} • {new Date(qrMeeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} • {qrMeeting.startTime || '18:00'} - {qrMeeting.endTime || '20:00'}
                         </p>
 
                         {/* QR BOX */}
                         <div style={{
                             background: '#FFFFFF',
-                            padding: '1.5rem',
-                            borderRadius: '18px',
+                            padding: '1.25rem',
+                            borderRadius: '16px',
                             display: 'inline-block',
                             border: '2px solid rgba(37, 170, 225, 0.3)',
                             boxShadow: '0 8px 30px rgba(37, 170, 225, 0.15)',
-                            marginBottom: '1.25rem'
+                            marginBottom: '1.25rem',
+                            maxWidth: '100%'
                         }}>
                             <QRCode
                                 value={`${window.location.origin}/check-in/${qrMeeting.code}`}
-                                size={240}
+                                size={Math.min(240, typeof window !== 'undefined' ? window.innerWidth - 120 : 240)}
                                 level="H"
                             />
                         </div>

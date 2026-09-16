@@ -46,8 +46,50 @@
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 40;
+  z-index: 50;
   box-shadow: 2px 0 16px rgba(107, 95, 168, 0.03);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar Backdrop Overlay on Mobile */
+.g5-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 45;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.g5-sidebar-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mobile Hamburger Menu Toggle Button */
+.g5-menu-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-page-bg);
+  color: var(--color-text-main);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.g5-menu-toggle:hover {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .g5-sidebar-brand {
@@ -828,4 +870,216 @@
 .g5-form-textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(107, 95, 168, 0.12);
+}
+
+/* ========================================================= */
+/* COMPREHENSIVE RESPONSIVE DESIGN & MOBILE OVERHAUL */
+/* ========================================================= */
+
+.g5-overview-split {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Tablet & Smaller Desktops (<= 1024px) */
+@media (max-width: 1024px) {
+  .g5-sidebar {
+    transform: translateX(-100%);
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.35);
+  }
+
+  .g5-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .g5-sidebar-backdrop {
+    display: block;
+  }
+
+  .g5-main-wrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .g5-topbar {
+    padding: 0 1.25rem;
+  }
+
+  .g5-menu-toggle {
+    display: inline-flex;
+  }
+
+  .g5-content {
+    padding: 1.25rem;
+  }
+
+  .g5-overview-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Mobile Devices (<= 768px) */
+@media (max-width: 768px) {
+  .g5-topbar {
+    height: auto;
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .g5-topbar-actions {
+    gap: 0.5rem;
+  }
+
+  .g5-search-wrap {
+    order: 3;
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+
+  .g5-ministry-badge-text {
+    display: none;
+  }
+
+  .g5-profile-info {
+    display: none;
+  }
+
+  .g5-profile-block {
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+  }
+
+  .g5-content {
+    padding: 1rem;
+  }
+
+  .g5-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .g5-stat-card {
+    padding: 1rem;
+  }
+
+  .g5-stat-number {
+    font-size: 1.5rem !important;
+  }
+
+  .g5-card {
+    padding: 1.25rem;
+  }
+
+  .g5-celebrate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modals on mobile */
+  .g5-modal-backdrop {
+    padding: 0.5rem !important;
+  }
+
+  .g5-modal-container {
+    max-height: 94vh !important;
+    width: 96vw !important;
+    border-radius: 16px !important;
+  }
+
+  .g5-modal-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .g5-modal-body {
+    padding: 1.25rem;
+  }
+
+  .g5-modal-footer {
+    padding: 0.85rem 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .g5-modal-footer button {
+    width: 100%;
+  }
+
+  /* Tables */
+  .g5-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .g5-table th,
+  .g5-table td {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  /* Action buttons */
+  .g5-btn-warm,
+  .g5-btn-primary,
+  .g5-btn-secondary,
+  .g5-btn-outline {
+    padding: 0.55rem 0.9rem;
+    font-size: 0.82rem;
+  }
+
+  /* Meeting Modal Mobile Enhancements */
+  .g5-meeting-modal-header {
+    padding: 1.15rem 1.15rem 0.85rem !important;
+  }
+
+  .g5-modal-filter-bar {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .g5-modal-scroll-body {
+    padding: 0.85rem !important;
+  }
+
+  .g5-modal-tabs-wrapper {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .g5-modal-tabs-pills {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+}
+
+/* Small Smart Phones (<= 480px) */
+@media (max-width: 480px) {
+  .g5-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .g5-content {
+    padding: 0.75rem;
+  }
+
+  .g5-card {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .g5-brand-title {
+    font-size: 1rem;
+  }
+
+  .g5-topbar {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .g5-modal-body {
+    padding: 1rem;
+  }
 }

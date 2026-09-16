@@ -364,13 +364,14 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
             onClick={onClose}
         >
             <div
+                className="g5-modal-container"
                 style={{
                     backgroundColor: '#FFFFFF',
                     borderRadius: '24px',
-                    width: '100%',
+                    width: '96vw',
                     maxWidth: '1040px',
-                    height: '92vh',
-                    maxHeight: '880px',
+                    height: '93vh',
+                    maxHeight: '920px',
                     display: 'flex',
                     flexDirection: 'column',
                     boxShadow: '0 25px 60px -15px rgba(107, 95, 168, 0.35)',
@@ -409,6 +410,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
 
                 {/* MODAL HEADER */}
                 <div
+                    className="g5-meeting-modal-header"
                     style={{
                         padding: '1.5rem 2rem 1.25rem',
                         borderBottom: '1px solid var(--color-border-subtle)',
@@ -564,10 +566,11 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
 
                     {/* STAT COUNTERS STRIP */}
                     <div
+                        className="g5-meeting-stat-strip"
                         style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: '0.85rem',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: '0.75rem',
                             marginTop: '1rem'
                         }}
                     >
@@ -670,6 +673,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
 
                     {/* TAB SWITCHER & ACTION CONTROLS */}
                     <div
+                        className="g5-modal-tabs-wrapper"
                         style={{
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -680,7 +684,20 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         }}
                     >
                         {/* TAB PILLS */}
-                        <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--color-page-bg)', padding: '0.3rem', borderRadius: '14px', border: '1px solid var(--color-border)' }}>
+                        <div
+                            className="g5-modal-tabs-pills"
+                            style={{
+                                display: 'flex',
+                                gap: '0.4rem',
+                                background: 'var(--color-page-bg)',
+                                padding: '0.3rem',
+                                borderRadius: '14px',
+                                border: '1px solid var(--color-border)',
+                                overflowX: 'auto',
+                                WebkitOverflowScrolling: 'touch',
+                                maxWidth: '100%'
+                            }}
+                        >
                             <button
                                 onClick={() => setActiveTab('attended')}
                                 style={{
@@ -696,7 +713,9 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     fontSize: '0.85rem',
                                     cursor: 'pointer',
                                     boxShadow: activeTab === 'attended' ? '0 2px 8px rgba(107, 95, 168, 0.12)' : 'none',
-                                    transition: 'all 0.18s'
+                                    transition: 'all 0.18s',
+                                    flexShrink: 0,
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 <Users size={15} />
@@ -731,7 +750,9 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                         fontSize: '0.85rem',
                                         cursor: 'pointer',
                                         boxShadow: activeTab === 'live' ? '0 2px 8px rgba(76, 175, 125, 0.15)' : 'none',
-                                        transition: 'all 0.18s'
+                                        transition: 'all 0.18s',
+                                        flexShrink: 0,
+                                        whiteSpace: 'nowrap'
                                     }}
                                 >
                                     <div className="g5-pulse-dot" style={{ width: '7px', height: '7px' }} />
@@ -755,7 +776,9 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                         fontSize: '0.85rem',
                                         cursor: 'pointer',
                                         boxShadow: activeTab === 'answers' ? '0 2px 8px rgba(232, 163, 61, 0.15)' : 'none',
-                                        transition: 'all 0.18s'
+                                        transition: 'all 0.18s',
+                                        flexShrink: 0,
+                                        whiteSpace: 'nowrap'
                                     }}
                                 >
                                     <MessageCircle size={15} />
@@ -790,7 +813,9 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     fontSize: '0.85rem',
                                     cursor: 'pointer',
                                     boxShadow: activeTab === 'absent' ? '0 2px 8px rgba(224, 122, 109, 0.15)' : 'none',
-                                    transition: 'all 0.18s'
+                                    transition: 'all 0.18s',
+                                    flexShrink: 0,
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 <UserX size={15} />
@@ -824,7 +849,9 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     fontSize: '0.85rem',
                                     cursor: 'pointer',
                                     boxShadow: activeTab === 'qrcode' ? '0 2px 8px rgba(37, 170, 225, 0.18)' : 'none',
-                                    transition: 'all 0.18s'
+                                    transition: 'all 0.18s',
+                                    flexShrink: 0,
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 <QrCode size={15} />
@@ -858,6 +885,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
 
                 {/* SEARCH & SUB-FILTERS BAR */}
                 <div
+                    className="g5-modal-filter-bar"
                     style={{
                         padding: '0.85rem 2rem',
                         background: '#FFFFFF',
@@ -865,11 +893,12 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: '1rem',
+                        gap: '0.85rem',
+                        flexWrap: 'wrap',
                         flexShrink: 0
                     }}
                 >
-                    <div style={{ position: 'relative', flex: 1, maxWidth: '420px' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: '220px', maxWidth: '420px' }}>
                         <Search
                             size={16}
                             style={{
@@ -942,6 +971,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
 
                 {/* SCROLLABLE MODAL CONTENT BODY */}
                 <div
+                    className="g5-modal-scroll-body"
                     style={{
                         flex: 1,
                         overflowY: 'auto',
@@ -995,6 +1025,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                 </div>
                             ) : (
                                 <div
+                                    className="g5-table-wrap"
                                     style={{
                                         background: '#FFFFFF',
                                         borderRadius: '16px',
@@ -1110,7 +1141,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
 
                     {/* TAB 2: LIVE FEED & TICKER (FOR ACTIVE DRILLS) */}
                     {activeTab === 'live' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem' }}>
+                        <div className="g5-overview-split" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem' }}>
                             {/* LIVE INCOMING TICKER */}
                             <div className="g5-card" style={{ padding: '1.25rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -1388,6 +1419,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                 </div>
                             ) : (
                                 <div
+                                    className="g5-table-wrap"
                                     style={{
                                         background: '#FFFFFF',
                                         borderRadius: '16px',
@@ -1497,7 +1529,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                             <div style={{
                                 background: '#FFFFFF',
                                 borderRadius: '24px',
-                                padding: '2.5rem 2rem',
+                                padding: '2rem 1.25rem',
                                 border: '1.5px solid rgba(37, 170, 225, 0.25)',
                                 boxShadow: '0 16px 48px rgba(107, 95, 168, 0.08)'
                             }}>
@@ -1515,14 +1547,16 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                 {/* QR CODE CONTAINER */}
                                 <div style={{
                                     background: '#FFFFFF',
-                                    padding: '1.75rem',
+                                    padding: '1.25rem',
                                     borderRadius: '20px',
                                     display: 'inline-block',
                                     border: '2px solid rgba(37, 170, 225, 0.3)',
                                     boxShadow: '0 12px 36px rgba(37, 170, 225, 0.12)',
-                                    marginBottom: '1.5rem'
+                                    marginBottom: '1.5rem',
+                                    maxWidth: '100%',
+                                    boxSizing: 'border-box'
                                 }}>
-                                    <QRCode value={checkInUrl} size={250} level="H" />
+                                    <QRCode value={checkInUrl} size={Math.min(240, typeof window !== 'undefined' ? Math.max(180, window.innerWidth - 120) : 240)} level="H" />
                                 </div>
 
                                 {/* MEETING CODE DISPLAY */}
