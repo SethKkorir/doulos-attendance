@@ -644,13 +644,14 @@
 }
 
 .g5-form-card-panel {
-  background: var(--color-page-bg);
-  border: 1px solid var(--color-border);
+  background: #FFFFFF;
+  border: 1.5px solid #DBEAFE;
   border-radius: 16px;
-  padding: 1.25rem;
+  padding: 1.35rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.04);
 }
 
 /* Campus Segmented Toggle */
@@ -658,20 +659,20 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-  background: #FFFFFF;
-  padding: 0.35rem;
+  background: #F1F5F9;
+  padding: 0.4rem;
   border-radius: var(--radius-button);
-  border: 1.5px solid var(--color-border);
+  border: 1.5px solid #CBD5E1;
 }
 
 .g5-campus-btn {
   border: none;
   background: transparent;
-  padding: 0.6rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 10px;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  color: var(--color-text-muted);
+  color: #475569;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -681,9 +682,9 @@
 }
 
 .g5-campus-btn.active {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(107, 95, 168, 0.1);
+  background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
 }
 
 /* Question Type Chips */
@@ -694,13 +695,13 @@
 }
 
 .g5-type-chip {
-  border: 1px solid var(--color-border);
+  border: 1.5px solid #CBD5E1;
   background: #FFFFFF;
   border-radius: 10px;
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.65rem;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-text-muted);
+  color: #475569;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -711,15 +712,16 @@
 }
 
 .g5-type-chip:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: #2563EB;
+  color: #1D4ED8;
 }
 
 .g5-type-chip.active {
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  font-weight: 800;
+  background: #EFF6FF !important;
+  border-color: #2563EB !important;
+  color: #1D4ED8 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15) !important;
 }
 
 /* Venue Preset Chips */
@@ -731,9 +733,9 @@
 
 .g5-venue-preset-card {
   background: #FFFFFF;
-  border: 1.5px solid var(--color-border);
+  border: 1.5px solid #CBD5E1;
   border-radius: 12px;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.95rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -743,33 +745,35 @@
 }
 
 .g5-venue-preset-card:hover {
-  border-color: var(--color-accent-warm);
+  border-color: #2563EB;
   transform: translateY(-1px);
 }
 
 .g5-venue-preset-card.active {
-  border-color: var(--color-accent-warm);
-  background: var(--color-accent-warm-soft);
+  border: 2px solid #2563EB !important;
+  background: #EFF6FF !important;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.15) !important;
 }
 
 .g5-venue-title {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 800;
-  color: var(--color-text-main);
+  color: #0F172A;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .g5-venue-sub {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  color: #64748B;
+  font-weight: 600;
 }
 
 /* GPS Radar Card */
 .g5-gps-radar-box {
-  background: linear-gradient(135deg, #F8F6FD 0%, #EFEBF8 100%);
-  border: 1px solid var(--color-border);
+  background: #F0F7FF;
+  border: 1.5px solid #BFDBFE;
   border-radius: 14px;
   padding: 1rem 1.15rem;
   display: flex;
@@ -845,9 +849,11 @@
 }
 
 .g5-form-label {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-text-main);
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #0F172A;
+  display: block;
+  margin-bottom: 0.35rem;
 }
 
 .g5-form-input,
@@ -855,21 +861,30 @@
 .g5-form-textarea {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1.5px solid var(--color-border);
+  border: 1.5px solid #CBD5E1;
   border-radius: var(--radius-button);
-  font-size: 0.9rem;
-  color: var(--color-text-main);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #0F172A;
   background-color: #FFFFFF;
   outline: none;
   font-family: inherit;
-  transition: border-color 0.15s ease;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.g5-form-input::placeholder,
+.g5-form-textarea::placeholder {
+  color: #94A3B8;
+  font-weight: 500;
 }
 
 .g5-form-input:focus,
 .g5-form-select:focus,
 .g5-form-textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(107, 95, 168, 0.12);
+  border-color: #2563EB;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 /* ========================================================= */
@@ -994,10 +1009,19 @@
     padding: 0.5rem !important;
   }
 
-  .g5-modal-container {
+  .g5-modal,
+  .g5-modal-container,
+  .g5-modal-xl {
     max-height: 94vh !important;
-    width: 96vw !important;
-    border-radius: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px !important;
+    margin: 0 !important;
+  }
+
+  .g5-modal-scrollable .g5-modal-body {
+    max-height: calc(94vh - 135px) !important;
+    padding: 1.15rem !important;
   }
 
   .g5-modal-header {
@@ -1011,6 +1035,7 @@
   .g5-modal-footer {
     padding: 0.85rem 1.25rem;
     flex-wrap: wrap;
+    gap: 0.75rem;
   }
 
   .g5-modal-footer button {

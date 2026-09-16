@@ -118,6 +118,7 @@ const G5TrainingPortal = () => {
         }
     });
     const [meetingCreating, setMeetingCreating] = useState(false);
+    const [allowMultipleMeeting, setAllowMultipleMeeting] = useState(false);
     const [gpsCapturing, setGpsCapturing] = useState(false);
 
     const VENUE_PRESETS = [
@@ -703,12 +704,13 @@ const G5TrainingPortal = () => {
         return { start, end };
     };
 
-    // Check if a meeting already exists for this campus in the selected week
+    // Check if an ACTIVE meeting already exists for this campus in the selected week (archived meetings are excluded)
     const existingConflictMeeting = useMemo(() => {
         if (!newMeetingForm.date || !newMeetingForm.campus) return null;
         const range = getWeekRangeClient(newMeetingForm.date);
         if (!range) return null;
         return meetings.find(m => {
+            if (m.isArchived) return false; // Ignore archived meetings completely!
             if (m.campus !== newMeetingForm.campus) return false;
             const mDate = new Date(m.date);
             return mDate >= range.start && mDate <= range.end;
@@ -718,8 +720,8 @@ const G5TrainingPortal = () => {
     // Meeting Creation handler (Full Session Details & Geofencing)
     const handleCreateMeeting = async (e) => {
         e.preventDefault();
-        if (existingConflictMeeting) {
-            showToast(`Policy restriction: A meeting is already scheduled for ${newMeetingForm.campus} this week`, 'error');
+        if (existingConflictMeeting && !allowMultipleMeeting) {
+            showToast(`A meeting is already scheduled for ${newMeetingForm.campus} this week. Check the override toggle to schedule an additional session.`, 'warning');
             return;
         }
         setMeetingCreating(true);
@@ -730,6 +732,7 @@ const G5TrainingPortal = () => {
                 campus: newMeetingForm.campus,
                 startTime: newMeetingForm.startTime,
                 endTime: newMeetingForm.endTime,
+                allowMultiple: allowMultipleMeeting,
                 semester: 'MAY-AUG 2026',
                 questionType: newMeetingForm.questionType,
                 questionOfDay: newMeetingForm.questionOfDay,
@@ -746,6 +749,7 @@ const G5TrainingPortal = () => {
             const res = await api.post('/meetings', payload);
             showToast('Meeting session created successfully!');
             setShowNewMeetingModal(false);
+            setAllowMultipleMeeting(false);
             setMeetings(prev => [res.data || payload, ...prev]);
         } catch (err) {
             console.error('Meeting creation failed:', err);
@@ -1782,8 +1786,8 @@ const G5TrainingPortal = () => {
                                             />
                                         </div>
 
-                                        {/* TOUCH-FRIENDLY CAMPUS CHIPS (EASY ON MOBILE) */}
-                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                        {/* TOUCH-FRIENDLY CAMPUS CHIPS (HIGH CONTRAST & VISIBLE) */}
+                                        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
                                             {['All', 'Athi River', 'Valley Road'].map((campus) => {
                                                 const isSelected = meetingCampusFilter === campus;
                                                 return (
@@ -1792,15 +1796,16 @@ const G5TrainingPortal = () => {
                                                         type="button"
                                                         onClick={() => setMeetingCampusFilter(campus)}
                                                         style={{
-                                                            padding: '0.55rem 0.85rem',
+                                                            padding: '0.55rem 0.95rem',
                                                             borderRadius: '999px',
-                                                            border: isSelected ? '1.5px solid #1D4ED8' : '1.5px solid #E2E8F0',
-                                                            background: isSelected ? '#EFF6FF' : '#FFFFFF',
-                                                            color: isSelected ? '#1D4ED8' : '#475569',
-                                                            fontWeight: isSelected ? 800 : 600,
-                                                            fontSize: '0.82rem',
+                                                            border: isSelected ? '2px solid #1D4ED8' : '1.5px solid #CBD5E1',
+                                                            background: isSelected ? '#1D4ED8' : '#FFFFFF',
+                                                            color: isSelected ? '#FFFFFF' : '#0F172A',
+                                                            fontWeight: isSelected ? 800 : 700,
+                                                            fontSize: '0.84rem',
                                                             cursor: 'pointer',
-                                                            transition: 'all 0.15s ease'
+                                                            transition: 'all 0.15s ease',
+                                                            boxShadow: isSelected ? '0 3px 10px rgba(29, 78, 216, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.04)'
                                                         }}
                                                     >
                                                         {campus === 'All' ? '🌐 All Campuses' : campus}
@@ -1917,37 +1922,53 @@ const G5TrainingPortal = () => {
                                     {filteredActiveMeetings.length === 0 ? (
                                         <div style={{
                                             background: '#FFFFFF',
-                                            border: '1.5px solid #DBEAFE',
-                                            borderRadius: '18px',
+                                            border: '2px solid #BFDBFE',
+                                            borderRadius: '20px',
                                             textAlign: 'center',
                                             padding: '3.5rem 1.5rem',
-                                            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.05)'
+                                            boxShadow: '0 6px 24px rgba(37, 99, 235, 0.08)'
                                         }}>
                                             <div style={{
-                                                width: '64px',
-                                                height: '64px',
+                                                width: '68px',
+                                                height: '68px',
                                                 margin: '0 auto 1.25rem',
-                                                fontSize: '1.8rem',
+                                                fontSize: '2rem',
                                                 background: '#EFF6FF',
-                                                border: '1.5px solid #BFDBFE',
+                                                border: '2px solid #93C5FD',
                                                 borderRadius: '50%',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center'
+                                                justifyContent: 'center',
+                                                color: '#1D4ED8',
+                                                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.15)'
                                             }}>
                                                 📅
                                             </div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
-                                                {meetingSearch || meetingCampusFilter !== 'All' ? 'No Matching Meetings Found' : 'No Active Meetings Scheduled'}
+                                            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.4rem' }}>
+                                                {meetingSearch || meetingCampusFilter !== 'All' ? 'No Matching Active Meetings Found' : 'No Active Meetings Scheduled'}
                                             </h3>
-                                            <p style={{ fontSize: '0.9rem', color: '#64748B', maxWidth: '420px', margin: '0.5rem auto 1.25rem' }}>
+                                            <p style={{ fontSize: '0.92rem', color: '#334155', maxWidth: '480px', margin: '0.5rem auto 1.5rem', lineHeight: 1.5, fontWeight: 500 }}>
                                                 {meetingSearch || meetingCampusFilter !== 'All'
-                                                    ? 'Try adjusting your search query or campus filter.'
-                                                    : 'Schedule a new drill or weekly fellowship meeting using the button below.'}
+                                                    ? 'Try clearing your search query or switching campus filters.'
+                                                    : archivedMeetings.length > 0
+                                                        ? `All current sessions (${archivedMeetings.length} meetings) are stored safely in the Archived Sessions Vault. You can open the vault below or schedule a new active session.`
+                                                        : 'Schedule a new drill or weekly fellowship meeting using the button below.'}
                                             </p>
-                                            <button className="g5-btn-blue-solid" onClick={() => setShowNewMeetingModal(true)}>
-                                                <Plus size={18} /> Schedule New Meeting
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                <button type="button" className="g5-btn-blue-solid" onClick={() => setShowNewMeetingModal(true)}>
+                                                    <Plus size={18} /> Schedule New Meeting
+                                                </button>
+                                                {archivedMeetings.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-archive-amber"
+                                                        style={{ padding: '0.72rem 1.25rem', fontSize: '0.88rem' }}
+                                                        onClick={() => setMeetingSubTab('archived')}
+                                                    >
+                                                        <Archive size={17} /> Open Archived Sessions Vault ({archivedMeetings.length}) 🗄️
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.35rem' }}>
@@ -4473,35 +4494,41 @@ const G5TrainingPortal = () => {
             {showNewMeetingModal && (
                 <div className="g5-modal-backdrop" onClick={() => setShowNewMeetingModal(false)}>
                     <div className="g5-modal g5-modal-xl g5-modal-scrollable" onClick={(e) => e.stopPropagation()}>
-                        <div className="g5-modal-header" style={{ padding: '1.25rem 1.75rem' }}>
+                        {/* MODAL HEADER: ROYAL BLUE & HIGH CONTRAST */}
+                        <div className="g5-modal-header" style={{
+                            padding: '1.25rem 1.75rem',
+                            background: 'linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%)',
+                            color: '#FFFFFF'
+                        }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                                 <div style={{
-                                    width: '42px',
-                                    height: '42px',
+                                    width: '44px',
+                                    height: '44px',
                                     borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, #6B5FA8 0%, #8E82CA 100%)',
+                                    background: '#FFFFFF',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    color: '#FFFFFF',
-                                    boxShadow: '0 4px 12px rgba(107, 95, 168, 0.25)'
+                                    color: '#1D4ED8',
+                                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)'
                                 }}>
-                                    <Compass size={22} />
+                                    <Compass size={24} />
                                 </div>
                                 <div>
-                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', lineHeight: 1.2 }}>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
                                         Create Meeting Session
                                     </h3>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                                    <p style={{ fontSize: '0.82rem', color: '#DBEAFE', marginTop: '0.2rem' }}>
                                         Schedule outdoor practicals, weekly fellowship, and geofenced attendance verification
                                     </p>
                                 </div>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => setShowNewMeetingModal(false)}
                                 style={{
                                     border: 'none',
-                                    background: 'var(--color-page-bg)',
+                                    background: 'rgba(255, 255, 255, 0.2)',
                                     borderRadius: '50%',
                                     width: '36px',
                                     height: '36px',
@@ -4509,7 +4536,7 @@ const G5TrainingPortal = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     cursor: 'pointer',
-                                    color: 'var(--color-text-muted)',
+                                    color: '#FFFFFF',
                                     transition: 'all 0.15s ease'
                                 }}
                             >
@@ -4519,29 +4546,49 @@ const G5TrainingPortal = () => {
 
                         <form onSubmit={handleCreateMeeting}>
                             <div className="g5-modal-body" style={{ padding: '1.5rem 1.75rem' }}>
-                                {/* WEEKLY CAMPUS LIMIT CONFLICT BANNER */}
+                                {/* ACTIVE SESSION CONFLICT NOTICE WITH 1-CLICK OVERRIDE */}
                                 {existingConflictMeeting && (
                                     <div style={{
-                                        background: 'var(--color-accent-warm-soft)',
-                                        border: '1.5px solid var(--color-accent-warm)',
+                                        background: '#FFFBEB',
+                                        border: '1.5px solid #F59E0B',
                                         borderRadius: '14px',
-                                        padding: '0.85rem 1.25rem',
-                                        marginBottom: '1.25rem',
+                                        padding: '1rem 1.25rem',
+                                        marginBottom: '1.35rem',
                                         display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.85rem',
-                                        fontSize: '0.85rem',
-                                        color: 'var(--color-text-main)'
+                                        flexDirection: 'column',
+                                        gap: '0.65rem',
+                                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.08)'
                                     }}>
-                                        <AlertTriangle size={20} style={{ color: 'var(--color-accent-warm)', flexShrink: 0 }} />
-                                        <div>
-                                            <div style={{ fontWeight: 800, color: 'var(--color-text-main)' }}>
-                                                Policy Restriction: 1 Meeting Per Week Allowed for {newMeetingForm.campus}
-                                            </div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                                                "<strong>{existingConflictMeeting.name}</strong>" is already scheduled for this week on {new Date(existingConflictMeeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ({existingConflictMeeting.startTime} - {existingConflictMeeting.endTime}).
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                                            <AlertTriangle size={22} style={{ color: '#D97706', flexShrink: 0, marginTop: '2px' }} />
+                                            <div>
+                                                <div style={{ fontWeight: 800, color: '#92400E', fontSize: '0.92rem' }}>
+                                                    Notice: Another active session is already scheduled for {newMeetingForm.campus} this week
+                                                </div>
+                                                <div style={{ fontSize: '0.83rem', color: '#B45309', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                                                    "<strong>{existingConflictMeeting.name}</strong>" is scheduled on {new Date(existingConflictMeeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ({existingConflictMeeting.startTime} - {existingConflictMeeting.endTime}).
+                                                </div>
                                             </div>
                                         </div>
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.65rem',
+                                            paddingTop: '0.65rem',
+                                            borderTop: '1px dashed #FDE68A',
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 800,
+                                            color: '#78350F'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={allowMultipleMeeting}
+                                                onChange={(e) => setAllowMultipleMeeting(e.target.checked)}
+                                                style={{ width: '18px', height: '18px', accentColor: '#1D4ED8', cursor: 'pointer' }}
+                                            />
+                                            <span>Allow additional training session / field drill for this week (Admin Override & Test Mode)</span>
+                                        </label>
                                     </div>
                                 )}
 
@@ -4554,11 +4601,11 @@ const G5TrainingPortal = () => {
                                         </div>
 
                                         <div className="g5-form-group" style={{ marginBottom: '0.85rem' }}>
-                                            <label className="g5-form-label">Meeting Name</label>
+                                            <label className="g5-form-label">Meeting Name *</label>
                                             <input
                                                 type="text"
                                                 className="g5-form-input"
-                                                placeholder="Weekly Doulos"
+                                                placeholder="e.g. Weekly Doulos / Weekend Field Drill"
                                                 required
                                                 value={newMeetingForm.name}
                                                 onChange={(e) => setNewMeetingForm({ ...newMeetingForm, name: e.target.value })}
@@ -4566,54 +4613,54 @@ const G5TrainingPortal = () => {
                                         </div>
 
                                         <div className="g5-form-group" style={{ marginBottom: '0.85rem' }}>
-                                            <label className="g5-form-label">Campus Location</label>
+                                            <label className="g5-form-label">Campus Location *</label>
                                             <div className="g5-campus-toggle">
                                                 <button
                                                     type="button"
                                                     className={`g5-campus-btn ${newMeetingForm.campus === 'Athi River' ? 'active' : ''}`}
                                                     onClick={() => applyVenuePreset(VENUE_PRESETS[0])}
                                                 >
-                                                    <Tent size={16} /> Athi River (Doulos Store)
+                                                    <Tent size={16} /> Athi River Base
                                                 </button>
                                                 <button
                                                     type="button"
                                                     className={`g5-campus-btn ${newMeetingForm.campus === 'Valley Road' ? 'active' : ''}`}
                                                     onClick={() => applyVenuePreset(VENUE_PRESETS[1])}
                                                 >
-                                                    <Users size={16} /> Nairobi Campus (DAC 506)
+                                                    <Users size={16} /> Nairobi Campus (DAC)
                                                 </button>
                                             </div>
                                         </div>
 
                                         <div className="g5-form-grid-3" style={{ gap: '0.65rem', marginBottom: '0.85rem' }}>
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label">Date</label>
+                                                <label className="g5-form-label">Date *</label>
                                                 <input
                                                     type="date"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem' }}
+                                                    style={{ padding: '0.65rem 0.75rem', fontSize: '0.88rem' }}
                                                     required
                                                     value={newMeetingForm.date}
                                                     onChange={(e) => setNewMeetingForm({ ...newMeetingForm, date: e.target.value })}
                                                 />
                                             </div>
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label">Start Time</label>
+                                                <label className="g5-form-label">Start Time *</label>
                                                 <input
                                                     type="time"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem' }}
+                                                    style={{ padding: '0.65rem 0.75rem', fontSize: '0.88rem' }}
                                                     required
                                                     value={newMeetingForm.startTime}
                                                     onChange={(e) => setNewMeetingForm({ ...newMeetingForm, startTime: e.target.value })}
                                                 />
                                             </div>
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label">End Time</label>
+                                                <label className="g5-form-label">End Time *</label>
                                                 <input
                                                     type="time"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem' }}
+                                                    style={{ padding: '0.65rem 0.75rem', fontSize: '0.88rem' }}
                                                     required
                                                     value={newMeetingForm.endTime}
                                                     onChange={(e) => setNewMeetingForm({ ...newMeetingForm, endTime: e.target.value })}
@@ -4622,15 +4669,15 @@ const G5TrainingPortal = () => {
                                         </div>
 
                                         {/* QUESTION / POLL STUDIO */}
-                                        <div style={{ background: '#FFFFFF', padding: '1rem', borderRadius: '14px', border: '1px solid var(--color-border)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.65rem' }}>
-                                                <Lightbulb size={15} style={{ color: 'var(--color-primary)' }} />
-                                                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                        <div style={{ background: '#F8FAFC', padding: '1.1rem', borderRadius: '14px', border: '1.5px solid #CBD5E1' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.75rem' }}>
+                                                <Lightbulb size={16} style={{ color: '#2563EB' }} />
+                                                <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
                                                     Interactive Roll-Call Question
                                                 </span>
                                             </div>
 
-                                            <div className="g5-type-chip-grid" style={{ marginBottom: '0.75rem' }}>
+                                            <div className="g5-type-chip-grid" style={{ marginBottom: '0.85rem' }}>
                                                 {[
                                                     { id: 'text', label: 'Open Text', icon: FileText },
                                                     { id: 'yes_no', label: 'Yes / No', icon: CheckCircle2 },
@@ -4655,27 +4702,27 @@ const G5TrainingPortal = () => {
                                             </div>
 
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label" style={{ fontSize: '0.78rem' }}>Question Wording</label>
+                                                <label className="g5-form-label" style={{ fontSize: '0.8rem' }}>Question Prompt</label>
                                                 <input
                                                     type="text"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.85rem', fontSize: '0.85rem' }}
-                                                    placeholder="e.g. Rate your week / Choose an option"
+                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.88rem' }}
+                                                    placeholder="e.g. Belay station check-in or Rate readiness"
                                                     value={newMeetingForm.questionOfDay}
                                                     onChange={(e) => setNewMeetingForm({ ...newMeetingForm, questionOfDay: e.target.value })}
                                                 />
                                             </div>
 
                                             {(newMeetingForm.questionType === 'multiple_choice' || newMeetingForm.questionType === 'checkboxes') && (
-                                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--color-border)' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                                <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1.5px dashed #CBD5E1' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.55rem' }}>
+                                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1D4ED8' }}>
                                                             Poll Choices
                                                         </span>
                                                         <button
                                                             type="button"
-                                                            className="g5-btn-secondary"
-                                                            style={{ padding: '0.2rem 0.6rem', fontSize: '0.72rem' }}
+                                                            className="g5-btn-blue-soft"
+                                                            style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem' }}
                                                             onClick={() => setNewMeetingForm(prev => ({
                                                                 ...prev,
                                                                 questionOptions: [...prev.questionOptions, '']
@@ -4684,14 +4731,14 @@ const G5TrainingPortal = () => {
                                                             + Add Choice
                                                         </button>
                                                     </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                                                         {newMeetingForm.questionOptions.map((opt, idx) => (
-                                                            <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', minWidth: '16px' }}>{idx + 1}.</span>
+                                                            <div key={idx} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', minWidth: '18px' }}>{idx + 1}.</span>
                                                                 <input
                                                                     type="text"
                                                                     className="g5-form-input"
-                                                                    style={{ padding: '0.4rem 0.65rem', fontSize: '0.82rem' }}
+                                                                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
                                                                     placeholder={`Choice ${idx + 1}`}
                                                                     value={opt}
                                                                     onChange={(e) => {
@@ -4703,14 +4750,14 @@ const G5TrainingPortal = () => {
                                                                 {newMeetingForm.questionOptions.length > 2 && (
                                                                     <button
                                                                         type="button"
-                                                                        className="g5-btn-outline"
-                                                                        style={{ padding: '0.35rem 0.55rem', color: 'var(--color-status-inactive)' }}
+                                                                        className="g5-btn-delete-rose"
+                                                                        style={{ padding: '0.45rem 0.65rem' }}
                                                                         onClick={() => {
                                                                             const updated = newMeetingForm.questionOptions.filter((_, i) => i !== idx);
                                                                             setNewMeetingForm({ ...newMeetingForm, questionOptions: updated });
                                                                         }}
                                                                     >
-                                                                        <X size={13} />
+                                                                        <X size={14} />
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -4731,10 +4778,10 @@ const G5TrainingPortal = () => {
                                         {/* OFFICIAL VENUE SELECTION */}
                                         <div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
-                                                    Official Campus Venue
+                                                <span className="g5-form-label" style={{ marginBottom: 0 }}>
+                                                    Official Campus Venue Preset
                                                 </span>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                                                <span style={{ fontSize: '0.74rem', color: '#1D4ED8', fontWeight: 800 }}>
                                                     {newMeetingForm.campus === 'Athi River' ? 'Athi River Base' : 'Nairobi Campus'}
                                                 </span>
                                             </div>
@@ -4749,7 +4796,7 @@ const G5TrainingPortal = () => {
                                                         >
                                                             <div className="g5-venue-title">
                                                                 <span>{p.title}</span>
-                                                                {isSelected && <Check size={14} style={{ color: 'var(--color-accent-warm)' }} />}
+                                                                {isSelected && <Check size={16} style={{ color: '#1D4ED8', strokeWidth: 3 }} />}
                                                             </div>
                                                             <div className="g5-venue-sub">{p.sub}</div>
                                                         </div>
@@ -4760,11 +4807,11 @@ const G5TrainingPortal = () => {
 
                                         {/* LOCATION NAME INPUT */}
                                         <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                            <label className="g5-form-label">Venue / Location Name</label>
+                                            <label className="g5-form-label">Venue / Location Name *</label>
                                             <input
                                                 type="text"
                                                 className="g5-form-input"
-                                                placeholder="Doulos Store or DAC 506"
+                                                placeholder="Doulos Store, DAC 506, or Wall"
                                                 required
                                                 value={newMeetingForm.location.name}
                                                 onChange={(e) => setNewMeetingForm({
@@ -4778,14 +4825,14 @@ const G5TrainingPortal = () => {
                                         <div className="g5-gps-radar-box">
                                             <div className="g5-gps-radar-header">
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <Radio size={16} style={{ color: 'var(--color-primary)' }} />
-                                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                    <Radio size={16} style={{ color: '#2563EB' }} />
+                                                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
                                                         Satellite GPS Lock
                                                     </span>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                    <div className="g5-pulse-dot" />
-                                                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-status-active)' }}>
+                                                    <div className="g5-pulse-dot" style={{ backgroundColor: '#10B981' }} />
+                                                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>
                                                         High-Accuracy Geofence
                                                     </span>
                                                 </div>
@@ -4793,18 +4840,26 @@ const G5TrainingPortal = () => {
 
                                             <button
                                                 type="button"
-                                                className="g5-btn-warm"
-                                                style={{ width: '100%', justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
+                                                className="g5-btn-blue-solid"
+                                                style={{ width: '100%', justifyContent: 'center', padding: '0.72rem', fontSize: '0.88rem' }}
                                                 onClick={handleCaptureGps}
                                                 disabled={gpsCapturing}
                                             >
                                                 <Navigation size={16} />
-                                                {gpsCapturing ? 'Locating Device Coordinates...' : 'Capture GPS'}
+                                                {gpsCapturing ? 'Locating Device Coordinates...' : 'Capture Device GPS'}
                                             </button>
 
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFFFFF', padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>COORDINATES:</span>
-                                                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                background: '#FFFFFF',
+                                                padding: '0.6rem 0.95rem',
+                                                borderRadius: '10px',
+                                                border: '1.5px solid #BFDBFE'
+                                            }}>
+                                                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#475569' }}>COORDINATES:</span>
+                                                <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace' }}>
                                                     {Number(newMeetingForm.location.latitude).toFixed(5)}, {Number(newMeetingForm.location.longitude).toFixed(5)}
                                                 </span>
                                             </div>
@@ -4814,15 +4869,15 @@ const G5TrainingPortal = () => {
                                         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.65rem' }}>
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                                                    <label className="g5-form-label" style={{ fontSize: '0.78rem' }}>Radius (m) *</label>
-                                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-accent-warm)' }}>
+                                                    <label className="g5-form-label" style={{ fontSize: '0.78rem', marginBottom: 0 }}>Radius (m) *</label>
+                                                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1D4ED8' }}>
                                                         {newMeetingForm.location.radius}m
                                                     </span>
                                                 </div>
                                                 <input
                                                     type="number"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.55rem 0.65rem', fontSize: '0.85rem' }}
+                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.88rem' }}
                                                     required
                                                     value={newMeetingForm.location.radius}
                                                     onChange={(e) => setNewMeetingForm({
@@ -4833,12 +4888,12 @@ const G5TrainingPortal = () => {
                                             </div>
 
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label" style={{ fontSize: '0.78rem' }}>Latitude *</label>
+                                                <label className="g5-form-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Latitude *</label>
                                                 <input
                                                     type="number"
                                                     step="any"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.55rem 0.65rem', fontSize: '0.85rem' }}
+                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.88rem' }}
                                                     required
                                                     value={newMeetingForm.location.latitude}
                                                     onChange={(e) => setNewMeetingForm({
@@ -4849,12 +4904,12 @@ const G5TrainingPortal = () => {
                                             </div>
 
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label" style={{ fontSize: '0.78rem' }}>Longitude *</label>
+                                                <label className="g5-form-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Longitude *</label>
                                                 <input
                                                     type="number"
                                                     step="any"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.55rem 0.65rem', fontSize: '0.85rem' }}
+                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.88rem' }}
                                                     required
                                                     value={newMeetingForm.location.longitude}
                                                     onChange={(e) => setNewMeetingForm({
@@ -4870,30 +4925,35 @@ const G5TrainingPortal = () => {
                                 </div>
                             </div>
 
-                            <div className="g5-modal-footer" style={{ justifyContent: 'space-between', padding: '1rem 1.75rem' }}>
+                            <div className="g5-modal-footer" style={{ justifyContent: 'space-between', padding: '1.15rem 1.75rem', background: '#FFFFFF', borderTop: '2px solid #E2E8F0' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-status-active)' }} />
-                                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
                                         {newMeetingForm.campus} • {newMeetingForm.location.radius}m perimeter verified
                                     </span>
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <button type="button" className="g5-btn-outline" onClick={() => setShowNewMeetingModal(false)}>
+                                    <button
+                                        type="button"
+                                        className="g5-btn-blue-soft"
+                                        style={{ background: '#F1F5F9', color: '#334155', borderColor: '#CBD5E1' }}
+                                        onClick={() => setShowNewMeetingModal(false)}
+                                    >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="g5-btn-warm"
-                                        disabled={meetingCreating || !!existingConflictMeeting}
+                                        className="g5-btn-blue-solid"
+                                        disabled={meetingCreating || (!!existingConflictMeeting && !allowMultipleMeeting)}
                                         style={{
-                                            opacity: existingConflictMeeting ? 0.5 : 1,
-                                            cursor: existingConflictMeeting ? 'not-allowed' : 'pointer'
+                                            opacity: (existingConflictMeeting && !allowMultipleMeeting) ? 0.6 : 1,
+                                            cursor: (existingConflictMeeting && !allowMultipleMeeting) ? 'not-allowed' : 'pointer'
                                         }}
-                                        title={existingConflictMeeting ? `A meeting already exists for ${newMeetingForm.campus} this week` : ''}
+                                        title={existingConflictMeeting && !allowMultipleMeeting ? 'Check the override box above to allow multiple sessions this week' : ''}
                                     >
                                         <Sparkles size={16} />
-                                        {meetingCreating ? 'Creating Session...' : existingConflictMeeting ? 'Weekly Limit Reached' : 'Create Meeting Session'}
+                                        {meetingCreating ? 'Creating Session...' : (existingConflictMeeting && !allowMultipleMeeting) ? 'Override Required' : '+ Create Meeting Session'}
                                     </button>
                                 </div>
                             </div>

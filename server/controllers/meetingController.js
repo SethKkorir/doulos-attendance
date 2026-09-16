@@ -14,18 +14,19 @@ export const createMeeting = async (req, res) => {
             return res.status(400).json({ message: 'Date and Campus are required to schedule a meeting' });
         }
 
-        // --- ENFORCE STRICT RULE: 1 MEETING PER WEEK PER CAMPUS ---
-        if (!isTestMeeting) {
+        // --- ENFORCE STRICT RULE: 1 ACTIVE MEETING PER WEEK PER CAMPUS ---
+        if (!isTestMeeting && !req.body.allowMultiple) {
             const { startOfWeek, endOfWeek } = getWeekRange(date);
             const existingMeeting = await Meeting.findOne({
                 campus,
+                isArchived: { $ne: true },
                 date: { $gte: startOfWeek, $lte: endOfWeek }
             });
 
             if (existingMeeting) {
                 const existingDateStr = new Date(existingMeeting.date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' });
                 return res.status(400).json({
-                    message: `Policy Violation: Only one meeting per week is allowed for ${campus}. "${existingMeeting.name}" is already scheduled for ${existingDateStr} (${existingMeeting.startTime} - ${existingMeeting.endTime}).`
+                    message: `Policy Violation: Only one active meeting per week is allowed for ${campus}. "${existingMeeting.name}" is already scheduled for ${existingDateStr} (${existingMeeting.startTime} - ${existingMeeting.endTime}).`
                 });
             }
         }
