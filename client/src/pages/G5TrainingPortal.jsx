@@ -182,6 +182,14 @@ const G5TrainingPortal = () => {
     const [meetingCampusFilter, setMeetingCampusFilter] = useState('All');
     const [isArchivingMeetings, setIsArchivingMeetings] = useState(false);
 
+    // Tab 7: Membership Roster & Export Studio State
+    const [rosterSubTab, setRosterSubTab] = useState('directory'); // 'directory' | 'export_studio'
+    const [rosterRoleFilter, setRosterRoleFilter] = useState('All'); // 'All' | 'Douloid' | 'Recruit'
+    const [rosterRankFilter, setRosterRankFilter] = useState('All'); // 'All' | rank | 'Recruit'
+    const [rosterCampusFilter, setRosterCampusFilter] = useState('All'); // 'All' | 'Athi River' | 'Valley Road'
+    const [rosterBelayFilter, setRosterBelayFilter] = useState('All'); // 'All' | 'Primary Belayer Certified' | 'Belayer Qualified' | 'Not Permitted'
+    const [rosterSearch, setRosterSearch] = useState('');
+
     const showToast = (msg, type = 'success') => {
         setToast({ text: msg, type });
         setTimeout(() => setToast(null), 4000);
@@ -336,6 +344,308 @@ const G5TrainingPortal = () => {
             return matchesSearch && matchesCampus && matchesRank;
         });
     }, [cadres, promotionSearch, promotionCampusFilter, promotionRankFilter]);
+
+    // Helper: Map personnel details with latest cadre data
+    const getMemberDetails = (m) => {
+        const isRecruit = m.memberType === 'Recruit' || m.status === 'Recruit';
+        const cadreObj = !isRecruit ? cadres.find(c => String(c.studentRegNo || '').trim().toUpperCase() === String(m.studentRegNo || '').trim().toUpperCase()) : null;
+        const rank = isRecruit ? 'Recruit Candidate' : (cadreObj?.douloidRank || m.douloidRank || 'Shadow Douloid');
+        const belay = isRecruit ? 'Not Permitted' : (cadreObj?.belayStatus || m.belayStatus || 'Not Permitted');
+        const solo = isRecruit ? false : (cadreObj?.soloStationAllowed ?? m.soloStationAllowed ?? false);
+        return { isRecruit, rank, belay, solo };
+    };
+
+    // Filtered members for Membership Roster & Export Studio (Tab 7)
+    const filteredRosterMembers = useMemo(() => {
+        return activeMembers.filter(m => {
+            const { isRecruit, rank, belay } = getMemberDetails(m);
+            const isDouloid = !isRecruit;
+
+            // Role filter
+            if (rosterRoleFilter === 'Douloid' && !isDouloid) return false;
+            if (rosterRoleFilter === 'Recruit' && !isRecruit) return false;
+
+            // Rank filter
+            if (rosterRankFilter !== 'All') {
+                if (rosterRankFilter === 'Recruit') {
+                    if (!isRecruit) return false;
+                } else {
+                    if (rank !== rosterRankFilter) return false;
+                }
+            }
+
+            // Campus filter
+            if (rosterCampusFilter !== 'All' && m.campus !== rosterCampusFilter) return false;
+
+            // Belay filter
+            if (rosterBelayFilter !== 'All') {
+                if (rosterBelayFilter === 'Primary Belayer Certified') {
+                    if (belay !== 'Primary Belayer Certified') return false;
+                } else if (rosterBelayFilter === 'Belayer Qualified') {
+                    if (belay !== 'Belayer Qualified' && belay !== 'Primary Belayer Certified') return false;
+                } else if (rosterBelayFilter === 'Not Permitted') {
+                    if (belay && belay !== 'Not Permitted') return false;
+                }
+            }
+
+            // Search query
+            if (rosterSearch.trim()) {
+                const q = rosterSearch.toLowerCase();
+                const nameMatch = (m.name || '').toLowerCase().includes(q);
+                const regMatch = (m.studentRegNo || '').toLowerCase().includes(q);
+                const phoneMatch = (m.phone || '').toLowerCase().includes(q);
+                if (!nameMatch && !regMatch && !phoneMatch) return false;
+            }
+
+            return true;
+        });
+    }, [activeMembers, cadres, rosterRoleFilter, rosterRankFilter, rosterCampusFilter, rosterBelayFilter, rosterSearch]);
+
+    // Export Roster to CSV
+    const handleExportRosterCSV = (listToExport = filteredRosterMembers, filenameSuffix = '') => {
+        if (!listToExport || listToExport.length === 0) {
+            showToast('No personnel records to export with current filters', 'error');
+            return;
+        }
+        const headers = ['Full Name', 'Admission No', 'Role Type', 'Douloid Rank', 'Campus', 'Belay Clearance', 'Solo Station Allowed', 'Status', 'Phone', 'Email'];
+        const rows = listToExport.map(m => {
+            const { isRecruit, rank, belay, solo } = getMemberDetails(m);
+            return [
+                `"${(m.name || '').replace(/"/g, '""')}"`,
+                `"${(m.studentRegNo || '').replace(/"/g, '""')}"`,
+                `"${isRecruit ? 'Recruit' : 'Douloid'}"`,
+                `"${rank}"`,
+                `"${m.campus || 'Athi River'}"`,
+                `"${belay}"`,
+                `"${solo ? 'Yes' : 'No'}"`,
+                `"${m.status || 'Active'}"`,
+                `"${m.phone || ''}"`,
+                `"${m.email || ''}"`
+            ];
+        });
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cleanSuffix = filenameSuffix ? `_${filenameSuffix.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : '';
+        a.download = `doulos_roster${cleanSuffix}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(`Exported ${listToExport.length} members to CSV!`);
+    };
+
+    // Download / Print Roster PDF
+    const handleDownloadRosterPDF = (listToExport = filteredRosterMembers, customTitle = '') => {
+        if (!listToExport || listToExport.length === 0) {
+            showToast('No personnel records to export with current filters', 'error');
+            return;
+        }
+
+        const totalCount = listToExport.length;
+        const douloidCount = listToExport.filter(m => m.memberType !== 'Recruit' && m.status !== 'Recruit').length;
+        const recruitCount = listToExport.filter(m => m.memberType === 'Recruit' || m.status === 'Recruit').length;
+        const belayerCount = listToExport.filter(m => {
+            const { belay } = getMemberDetails(m);
+            return belay === 'Primary Belayer Certified' || belay === 'Belayer Qualified';
+        }).length;
+
+        const docTitle = customTitle || (
+            rosterRankFilter !== 'All' ? `${rosterRankFilter.toUpperCase()} ROSTER` :
+            rosterRoleFilter === 'Douloid' ? 'OFFICIAL DOULOID MEMBERSHIP ROSTER' :
+            rosterRoleFilter === 'Recruit' ? 'OFFICIAL RECRUITS PIPELINE ROSTER' :
+            'OFFICIAL DOULOS MEMBERSHIP ROSTER'
+        );
+
+        const campusDesc = rosterCampusFilter !== 'All' ? `• Campus: ${rosterCampusFilter}` : '• All Campuses (Athi River & Nairobi)';
+        const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const rowsHtml = listToExport.map((m, idx) => {
+            const { isRecruit, rank, belay, solo } = getMemberDetails(m);
+            const roleBadgeStyle = isRecruit 
+                ? 'background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A;'
+                : 'background: #F3E8FF; color: #7E22CE; border: 1px solid #E9D5FF;';
+            const belayBadgeStyle = belay === 'Primary Belayer Certified'
+                ? 'background: #DCFCE7; color: #166534; font-weight: 700;'
+                : belay === 'Belayer Qualified'
+                ? 'background: #E0F2FE; color: #075985; font-weight: 700;'
+                : 'color: #9CA3AF; font-size: 11px;';
+
+            return `
+                <tr style="border-bottom: 1px solid #E5E7EB; background: ${idx % 2 === 0 ? '#FFFFFF' : '#FAFAFC'};">
+                    <td style="padding: 9px 12px; font-weight: 700; color: #6B7280; font-size: 11px; width: 35px;">${idx + 1}</td>
+                    <td style="padding: 9px 12px;">
+                        <div style="font-weight: 800; color: #111827; font-size: 13px;">${m.name}</div>
+                        <div style="font-size: 11px; color: #6B7280; font-family: monospace;">${m.studentRegNo}</div>
+                    </td>
+                    <td style="padding: 9px 12px;">
+                        <span style="display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; ${roleBadgeStyle}">
+                            ${rank}
+                        </span>
+                    </td>
+                    <td style="padding: 9px 12px; font-size: 12px; font-weight: 600; color: #374151;">${m.campus || 'Athi River'}</td>
+                    <td style="padding: 9px 12px;">
+                        <span style="display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 11px; ${belayBadgeStyle}">
+                            ${belay}
+                        </span>
+                    </td>
+                    <td style="padding: 9px 12px; font-size: 11px; font-weight: 700; color: ${solo ? '#16A34A' : '#9CA3AF'};">
+                        ${solo ? '✓ Authorized' : 'Tandem Only'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const printHtml = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>${docTitle} - Daystar Doulos Ministry</title>
+                    <meta charset="utf-8" />
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+                        @page { size: A4 portrait; margin: 12mm 14mm 14mm; }
+                        * { box-sizing: border-box; }
+                        body {
+                            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            margin: 0; padding: 0; background: #FFFFFF; color: #111827;
+                            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                        }
+                        .header-bar {
+                            display: flex; justify-content: space-between; align-items: flex-start;
+                            border-bottom: 3px solid #6B5FA8; padding-bottom: 12px; margin-bottom: 14px;
+                        }
+                        .org-title {
+                            font-size: 18px; font-weight: 900; color: #6B5FA8; text-transform: uppercase; letter-spacing: 0.5px;
+                            margin: 0; line-height: 1.2;
+                        }
+                        .org-sub {
+                            font-size: 11px; font-weight: 700; color: #4B5563; margin-top: 2px;
+                        }
+                        .doc-heading {
+                            font-size: 14px; font-weight: 900; color: #1F2937; margin: 8px 0 2px;
+                            text-transform: uppercase; letter-spacing: 0.5px;
+                        }
+                        .doc-meta {
+                            font-size: 11px; color: #6B7280; font-weight: 500;
+                        }
+                        .stat-strip {
+                            display: flex; gap: 10px; margin-bottom: 14px;
+                        }
+                        .stat-card {
+                            flex: 1; border: 1px solid #E5E7EB; border-radius: 8px; padding: 6px 10px;
+                            background: #F9FAFB;
+                        }
+                        .stat-val { font-size: 16px; font-weight: 900; color: #111827; }
+                        .stat-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #6B7280; letter-spacing: 0.5px; margin-top: 1px; }
+                        table {
+                            width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11.5px;
+                        }
+                        th {
+                            background: #F3F4F6; color: #374151; font-weight: 800; font-size: 10.5px;
+                            text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 10px; text-align: left;
+                            border-top: 1px solid #D1D5DB; border-bottom: 2px solid #9CA3AF;
+                        }
+                        .footer {
+                            margin-top: 20px; padding-top: 10px; border-top: 1px solid #E5E7EB;
+                            display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #6B7280;
+                        }
+                        .signatures {
+                            display: flex; justify-content: space-between; margin-top: 30px; padding: 0 16px;
+                        }
+                        .sig-line {
+                            width: 170px; border-top: 1px solid #9CA3AF; text-align: center; font-size: 10px; font-weight: 700; color: #4B5563; padding-top: 4px;
+                        }
+                        @media print {
+                            body { margin: 0; }
+                            .no-print { display: none !important; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header-bar">
+                        <div>
+                            <h1 class="org-title">Daystar University Doulos Ministry</h1>
+                            <div class="org-sub">G5 Training Base & Leadership Directorate • Freedom Base, Athi River</div>
+                            <div class="doc-heading">${docTitle}</div>
+                            <div class="doc-meta">${dateStr} • ${timeStr} ${campusDesc}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="display: inline-block; padding: 5px 10px; background: #EDE9FE; color: #6B5FA8; font-weight: 800; font-size: 10px; border-radius: 6px; border: 1px solid #DDD6FE;">
+                                OFFICIAL REGISTRY
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-strip">
+                        <div class="stat-card">
+                            <div class="stat-val">${totalCount}</div>
+                            <div class="stat-lbl">Total Enlisted</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-val" style="color: #6B5FA8;">${douloidCount}</div>
+                            <div class="stat-lbl">Douloid Members</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-val" style="color: #D97706;">${recruitCount}</div>
+                            <div class="stat-lbl">Recruits Cohort</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-val" style="color: #16A34A;">${belayerCount}</div>
+                            <div class="stat-lbl">Safety Belayers</div>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Member Name & Reg</th>
+                                <th>Role & Rank</th>
+                                <th>Campus</th>
+                                <th>Belay Clearance</th>
+                                <th>Station Clearance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+
+                    <div class="signatures">
+                        <div class="sig-line">G5 Training Commander</div>
+                        <div class="sig-line">Base Safety Officer</div>
+                        <div class="sig-line">Patron / Ministry Oversight</div>
+                    </div>
+
+                    <div class="footer">
+                        <div>Daystar University Doulos Ministry • Freedom Base Athi River & Valley Road Campus</div>
+                        <div>Generated by ${username}</div>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        };
+                    </script>
+                </body>
+            </html>
+        `;
+
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write(printHtml);
+            win.document.close();
+            showToast(`Opening printable PDF document with ${listToExport.length} members...`);
+        } else {
+            showToast('Popup blocked! Please allow popups to download the PDF.', 'error');
+        }
+    };
 
     // GPS Geolocation Capture
     const handleCaptureGps = () => {
@@ -750,7 +1060,7 @@ const G5TrainingPortal = () => {
         { id: 'trainings_camps', label: 'Trainings & Camps', icon: Compass },
         { id: 'graduations', label: 'Recruit Graduations', icon: GraduationCap, badge: recruits.length },
         { id: 'promotions', label: 'Rank Promotions', icon: Award, badge: cadres.filter(c => c.douloidRank === 'Shadow Douloid' || c.douloidRank === 'Basic Douloid').length },
-        { id: 'cadres', label: 'Cadre Roster', icon: Users },
+        { id: 'cadres', label: 'Membership Roster', icon: Users },
         { id: 'contributions', label: 'Contributions', icon: CreditCard },
         { id: 'safety', label: 'Safety & Incidents', icon: ShieldAlert, badge: incidents.length > 0 ? incidents.length : null }
     ];
@@ -760,7 +1070,7 @@ const G5TrainingPortal = () => {
         { id: 'LOP-01', title: 'High Ropes Belay Safety & Rigging SOP', code: 'LOP-SOP-01', desc: 'Double-check carabiner squeeze, dynamic rope lifespan, ground anchor inspection.' },
         { id: 'LOP-02', title: 'Wilderness Evacuation & Extrication Tree', code: 'LOP-MED-02', desc: 'Lukenya ridge stretcher dispatch, spine stabilization, Daystar clinic hotline.' },
         { id: 'LOP-03', title: 'Severe Weather & Lightning Shutdown', code: 'LOP-ENV-03', desc: '30-second flash-to-bang rule, immediate course clearance & safe zone dispersal.' },
-        { id: 'LOP-04', title: 'Solo Station & Peer Coaching Clearance', code: 'LOP-CAD-04', desc: 'Prerequisites for Intermediate cadres operating zip line and pamper pole alone.' }
+        { id: 'LOP-04', title: 'Solo Station & Peer Coaching Clearance', code: 'LOP-CAD-04', desc: 'Prerequisites for Intermediate Douloids operating zip line and pamper pole alone.' }
     ];
 
     return (
@@ -1022,7 +1332,7 @@ const G5TrainingPortal = () => {
                                         {cadres.filter(c => c.douloidRank === 'Shadow Douloid' || c.douloidRank === 'Basic Douloid').length}
                                     </div>
                                     <span style={{ fontSize: '0.76rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                                        Shadow & Basic cadres in DB
+                                        Shadow & Basic Douloids in DB
                                     </span>
                                 </div>
 
@@ -1104,7 +1414,7 @@ const G5TrainingPortal = () => {
                                         <div className="g5-card-header" style={{ marginBottom: '1rem' }}>
                                             <div>
                                                 <div className="g5-card-title">Belay Safety Readiness</div>
-                                                <div className="g5-card-desc">Certified belayers in cadre roster</div>
+                                                <div className="g5-card-desc">Certified belayers in membership roster</div>
                                             </div>
                                             <Shield size={22} style={{ color: 'var(--color-status-active)' }} />
                                         </div>
@@ -1114,13 +1424,13 @@ const G5TrainingPortal = () => {
                                             </div>
                                             <div style={{ fontSize: '0.82rem', color: 'var(--color-text-main)', marginTop: '0.3rem', fontWeight: 600 }}>
                                                 {cadres.length > 0 
-                                                    ? `Out of ${cadres.length} total active cadres in database registry.`
-                                                    : 'Awaiting cadre roster enrollment.'}
+                                                    ? `Out of ${cadres.length} total active Douloids in database registry.`
+                                                    : 'Awaiting membership roster enrollment.'}
                                             </div>
                                         </div>
                                     </div>
                                     <button className="g5-btn-outline" style={{ marginTop: '1.25rem', width: '100%', justifyContent: 'center' }} onClick={() => setActiveTab('cadres')}>
-                                        Inspect Cadre Roster & Clearances <ChevronRight size={16} />
+                                        Inspect Membership Roster & Clearances <ChevronRight size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -2414,9 +2724,9 @@ const G5TrainingPortal = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Cadre Rank Promotions</h2>
+                                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Douloid Rank Promotions</h2>
                                         <span className="g5-pill g5-pill-purple">
-                                            <Award size={14} /> {cadres.length} Active Cadres
+                                            <Award size={14} /> {cadres.length} Active Douloids
                                         </span>
                                     </div>
                                     <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
@@ -2428,7 +2738,7 @@ const G5TrainingPortal = () => {
                             {/* RANK LADDER FILTER CHIPS */}
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 {[
-                                    { id: 'All', label: 'All Cadres', count: cadres.length, color: '#6B5FA8' },
+                                    { id: 'All', label: 'All Douloids', count: cadres.length, color: '#6B5FA8' },
                                     { id: 'Unranked', label: 'Unranked / Recruits', count: cadres.filter(c => !c.douloidRank || c.douloidRank === 'None').length, color: '#6B7280' },
                                     { id: 'Shadow Douloid', label: 'Shadow Douloids', count: cadres.filter(c => c.douloidRank === 'Shadow Douloid').length, color: '#7E22CE' },
                                     { id: 'Basic Douloid', label: 'Basic Douloids', count: cadres.filter(c => c.douloidRank === 'Basic Douloid').length, color: '#4F46E5' },
@@ -2705,8 +3015,8 @@ const G5TrainingPortal = () => {
                                                 <tr>
                                                     <td colSpan={7} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
                                                         <Users size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
-                                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>No cadres match your filters</div>
-                                                        <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Try clearing your search query or selecting "All Cadres".</div>
+                                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>No Douloids match your filters</div>
+                                                        <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Try clearing your search query or selecting "All Douloids".</div>
                                                     </td>
                                                 </tr>
                                             ) : (
@@ -2995,91 +3305,672 @@ const G5TrainingPortal = () => {
                     )}
 
                     {/* ========================================================= */}
-                    {/* TAB 7: CADRE ROSTER (REFERENCE TABLE) */}
+                    {/* TAB 7: MEMBERSHIP ROSTER & EXPORT STUDIO */}
                     {/* ========================================================= */}
                     {activeTab === 'cadres' && (
-                        <div className="g5-card">
-                            <div className="g5-card-header">
-                                <div>
-                                    <div className="g5-card-title">Douloid Cadre Roster</div>
-                                    <div className="g5-card-desc">Rank reference list and belay station clearance directory</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* TOP HEADER & SUB-TAB NAVIGATION */}
+                            <div className="g5-card" style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
+                                                Membership Roster & Export Studio
+                                            </h2>
+                                            <span className="g5-pill g5-pill-purple">
+                                                <Users size={14} /> {activeMembers.length} Total Enlisted
+                                            </span>
+                                        </div>
+                                        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', marginBottom: 0 }}>
+                                            Official personnel ledger for Douloid members and recruits. Filter by rank hierarchy, campus, or safety certifications, and generate official Daystar PDF documents or CSV spreadsheets.
+                                        </p>
+                                    </div>
+
+                                    {/* SUB-TAB TOGGLES */}
+                                    <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-page-bg)', padding: '0.3rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                        <button
+                                            type="button"
+                                            className={rosterSubTab === 'directory' ? 'g5-btn-primary' : 'g5-btn-secondary'}
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                                            onClick={() => setRosterSubTab('directory')}
+                                        >
+                                            <Users size={16} /> Personnel Directory ({filteredRosterMembers.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={rosterSubTab === 'export_studio' ? 'g5-btn-primary' : 'g5-btn-secondary'}
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                                            onClick={() => setRosterSubTab('export_studio')}
+                                        >
+                                            <Download size={16} /> Export & PDF Studio
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* QUICK STAT STRIP */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
+                                    <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Douloid Members</div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.2rem' }}>
+                                            {activeMembers.filter(m => m.memberType !== 'Recruit' && m.status !== 'Recruit').length}
+                                        </div>
+                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>Shadow through Senior Lead</div>
+                                    </div>
+
+                                    <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Recruits Pipeline</div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-accent-warm)', marginTop: '0.2rem' }}>
+                                            {activeMembers.filter(m => m.memberType === 'Recruit' || m.status === 'Recruit').length}
+                                        </div>
+                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>In-training candidates</div>
+                                    </div>
+
+                                    <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Certified Belayers</div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-status-active)', marginTop: '0.2rem' }}>
+                                            {activeMembers.filter(m => {
+                                                const { belay } = getMemberDetails(m);
+                                                return belay === 'Primary Belayer Certified' || belay === 'Belayer Qualified';
+                                            }).length}
+                                        </div>
+                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>High ropes safety cleared</div>
+                                    </div>
+
+                                    <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Filtered Output</div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)', marginTop: '0.2rem' }}>
+                                            {filteredRosterMembers.length}
+                                        </div>
+                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>Ready for print / export</div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="g5-table-wrap">
-                                <table className="g5-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Cadre Member</th>
-                                            <th>Campus</th>
-                                            <th>Rank Badge</th>
-                                            <th>Belay Clearance</th>
-                                            <th>Solo Station Permitted</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {cadres.map((cadre) => {
-                                            const rank = cadre.douloidRank || 'Shadow Douloid';
-                                            const color = getRankColor(rank);
-                                            return (
-                                                <tr key={cadre._id}>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                            <div className="g5-avatar" style={{ width: '38px', height: '38px' }}>
-                                                                {cadre.name.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ fontWeight: 700, color: 'var(--color-text-main)' }}>{cadre.name}</div>
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{cadre.studentRegNo}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ fontWeight: 600 }}>{cadre.campus}</td>
-                                                    <td>
-                                                        <span style={{
-                                                            background: color.bg,
-                                                            color: color.text,
-                                                            border: `1px solid ${color.border}`,
-                                                            padding: '0.3rem 0.75rem',
-                                                            borderRadius: '999px',
-                                                            fontWeight: 800,
-                                                            fontSize: '0.78rem'
-                                                        }}>
-                                                            {rank}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <span className={`g5-pill ${cadre.belayStatus === 'Primary Belayer Certified' ? 'g5-pill-active' : 'g5-pill-recruit'}`}>
-                                                            <Shield size={13} /> {cadre.belayStatus || 'Not Permitted'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {cadre.soloStationAllowed ? (
-                                                            <span style={{ color: 'var(--color-status-active)', fontWeight: 700, fontSize: '0.85rem' }}>
-                                                                ✓ Authorized
-                                                            </span>
-                                                        ) : (
-                                                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                                                                Tandem Only
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td>
+                            {/* ===================================================== */}
+                            {/* SUB-TAB 1: LIVE DIRECTORY */}
+                            {/* ===================================================== */}
+                            {rosterSubTab === 'directory' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    {/* CONTROLS & FILTER TOOLBAR */}
+                                    <div className="g5-card" style={{ padding: '1rem 1.25rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                            {/* Top Row: Search & Filters */}
+                                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <div className="g5-search-wrap" style={{ flex: '1 1 240px', height: '42px' }}>
+                                                    <Search size={16} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search member name, admission no, or phone..."
+                                                        value={rosterSearch}
+                                                        onChange={(e) => setRosterSearch(e.target.value)}
+                                                        className="g5-search-input"
+                                                        style={{ fontSize: '0.85rem' }}
+                                                    />
+                                                    {rosterSearch && (
                                                         <button
-                                                            className="g5-btn-secondary"
-                                                            style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
-                                                            onClick={() => setActiveTab('promotions')}
+                                                            type="button"
+                                                            onClick={() => setRosterSearch('')}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px' }}
                                                         >
-                                                            Evaluate Rank
+                                                            <X size={14} />
                                                         </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Role Filter */}
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '160px', height: '42px', fontSize: '0.85rem' }}
+                                                    value={rosterRoleFilter}
+                                                    onChange={(e) => setRosterRoleFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Roles</option>
+                                                    <option value="Douloid">Douloids Only</option>
+                                                    <option value="Recruit">Recruits Only</option>
+                                                </select>
+
+                                                {/* Rank Filter */}
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '190px', height: '42px', fontSize: '0.85rem' }}
+                                                    value={rosterRankFilter}
+                                                    onChange={(e) => setRosterRankFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Ranks</option>
+                                                    <option value="Senior Lead Douloid">Senior Lead Douloid</option>
+                                                    <option value="Lead Douloid">Lead Douloid</option>
+                                                    <option value="Intermediate Douloid">Intermediate Douloid</option>
+                                                    <option value="Basic Douloid">Basic Douloid</option>
+                                                    <option value="Shadow Douloid">Shadow Douloid</option>
+                                                    <option value="Recruit Candidate">Recruit Candidate</option>
+                                                </select>
+
+                                                {/* Campus Filter */}
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '150px', height: '42px', fontSize: '0.85rem' }}
+                                                    value={rosterCampusFilter}
+                                                    onChange={(e) => setRosterCampusFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Campuses</option>
+                                                    <option value="Athi River">Athi River</option>
+                                                    <option value="Valley Road">Valley Road</option>
+                                                </select>
+
+                                                {/* Belay Clearance Filter */}
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '190px', height: '42px', fontSize: '0.85rem' }}
+                                                    value={rosterBelayFilter}
+                                                    onChange={(e) => setRosterBelayFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Belay Clearances</option>
+                                                    <option value="Primary Belayer Certified">Primary Belayer Certified</option>
+                                                    <option value="Belayer Qualified">Belayer Qualified</option>
+                                                    <option value="Not Permitted">Not Permitted</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Bottom Row: Match Counter & Action Buttons */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                                                        Showing <strong style={{ color: 'var(--color-text-main)' }}>{filteredRosterMembers.length}</strong> of {activeMembers.length} personnel
+                                                    </span>
+                                                    {(rosterSearch || rosterRoleFilter !== 'All' || rosterRankFilter !== 'All' || rosterCampusFilter !== 'All' || rosterBelayFilter !== 'All') && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setRosterSearch('');
+                                                                setRosterRoleFilter('All');
+                                                                setRosterRankFilter('All');
+                                                                setRosterCampusFilter('All');
+                                                                setRosterBelayFilter('All');
+                                                            }}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                color: 'var(--color-primary)',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 700,
+                                                                textDecoration: 'underline'
+                                                            }}
+                                                        >
+                                                            Reset Filters
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem' }}
+                                                        onClick={() => handleDownloadRosterPDF(filteredRosterMembers)}
+                                                    >
+                                                        <Printer size={15} /> Download PDF ({filteredRosterMembers.length})
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem' }}
+                                                        onClick={() => handleExportRosterCSV(filteredRosterMembers, `${rosterRoleFilter}_${rosterRankFilter}`)}
+                                                    >
+                                                        <Download size={15} /> Export CSV ({filteredRosterMembers.length})
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-outline"
+                                                        style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
+                                                        onClick={() => setRosterSubTab('export_studio')}
+                                                    >
+                                                        <FileText size={15} /> Export Studio & Presets <ChevronRight size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* DIRECTORY TABLE */}
+                                    <div className="g5-card" style={{ padding: 0, overflow: 'hidden' }}>
+                                        <div className="g5-table-wrap">
+                                            <table className="g5-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ width: '45px', textAlign: 'center' }}>#</th>
+                                                        <th>Member</th>
+                                                        <th>Role</th>
+                                                        <th>Rank Hierarchy</th>
+                                                        <th>Campus</th>
+                                                        <th>Belay Clearance</th>
+                                                        <th>Solo Station</th>
+                                                        <th style={{ textAlign: 'right' }}>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredRosterMembers.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={8} style={{ textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--color-text-muted)' }}>
+                                                                <Users size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.35 }} />
+                                                                <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-text-main)' }}>
+                                                                    No personnel match the selected filters
+                                                                </div>
+                                                                <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
+                                                                    Try broadening your search query or reset the role and rank filters.
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    className="g5-btn-secondary"
+                                                                    style={{ marginTop: '1rem', display: 'inline-flex' }}
+                                                                    onClick={() => {
+                                                                        setRosterSearch('');
+                                                                        setRosterRoleFilter('All');
+                                                                        setRosterRankFilter('All');
+                                                                        setRosterCampusFilter('All');
+                                                                        setRosterBelayFilter('All');
+                                                                    }}
+                                                                >
+                                                                    Reset All Filters
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        filteredRosterMembers.map((member, index) => {
+                                                            const { isRecruit, rank, belay, solo } = getMemberDetails(member);
+                                                            const rankColor = getRankColor(rank);
+
+                                                            return (
+                                                                <tr key={member._id}>
+                                                                    <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                                                                        {index + 1}
+                                                                    </td>
+                                                                    <td>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                                                            <div className="g5-avatar" style={{ width: '38px', height: '38px', fontSize: '0.9rem' }}>
+                                                                                {(member.name || 'M').charAt(0)}
+                                                                            </div>
+                                                                            <div>
+                                                                                <div style={{ fontWeight: 700, color: 'var(--color-text-main)', fontSize: '0.9rem' }}>
+                                                                                    {member.name}
+                                                                                </div>
+                                                                                <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                                                                                    {member.studentRegNo || 'No Admission No'}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span className={`g5-pill ${isRecruit ? 'g5-pill-recruit' : 'g5-pill-purple'}`}>
+                                                                            {isRecruit ? 'Recruit' : 'Douloid'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span style={{
+                                                                            background: rankColor.bg,
+                                                                            color: rankColor.text,
+                                                                            border: `1px solid ${rankColor.border}`,
+                                                                            padding: '0.25rem 0.75rem',
+                                                                            borderRadius: '999px',
+                                                                            fontWeight: 800,
+                                                                            fontSize: '0.76rem',
+                                                                            display: 'inline-block'
+                                                                        }}>
+                                                                            {rank}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                                        {member.campus || 'Athi River'}
+                                                                    </td>
+                                                                    <td>
+                                                                        <span className={`g5-pill ${belay === 'Primary Belayer Certified' ? 'g5-pill-active' : belay === 'Belayer Qualified' ? 'g5-pill-blue' : 'g5-pill-recruit'}`}>
+                                                                            <Shield size={13} /> {belay}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        {solo ? (
+                                                                            <span style={{ color: 'var(--color-status-active)', fontWeight: 700, fontSize: '0.82rem' }}>
+                                                                                ✓ Authorized
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>
+                                                                                Tandem Only
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td style={{ textAlign: 'right' }}>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="g5-btn-secondary"
+                                                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
+                                                                            onClick={() => {
+                                                                                if (isRecruit) {
+                                                                                    setActiveTab('graduations');
+                                                                                } else {
+                                                                                    setActiveTab('promotions');
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {isRecruit ? 'Graduation' : 'Evaluate Rank'}
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ===================================================== */}
+                            {/* SUB-TAB 2: EXPORT & PDF STUDIO */}
+                            {/* ===================================================== */}
+                            {rosterSubTab === 'export_studio' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {/* PRESET EXPORT BUNDLES */}
+                                    <div className="g5-card" style={{ padding: '1.5rem' }}>
+                                        <div style={{ marginBottom: '1.25rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                                <Sparkles size={20} style={{ color: 'var(--color-primary)' }} />
+                                                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
+                                                    1-Click Preset Export Bundles
+                                                </h3>
+                                            </div>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', marginBottom: 0 }}>
+                                                Standardized administrative reports formatted with Daystar University Doulos Ministry letterhead, Freedom Base coordinates, and signature lines.
+                                            </p>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                                            {/* Preset 1: Full Ministry */}
+                                            <div style={{ background: 'var(--color-page-bg)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>Full Ministry Roster</span>
+                                                        <span className="g5-pill g5-pill-purple">{activeMembers.length} Enlisted</span>
+                                                    </div>
+                                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.4rem', marginBottom: 0 }}>
+                                                        Complete roster containing all active Douloids and recruits across both campuses with full safety clearances.
+                                                    </p>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleDownloadRosterPDF(activeMembers, 'DAYSTAR DOULOS FULL MINISTRY ROSTER')}
+                                                    >
+                                                        <Printer size={15} /> Print PDF
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleExportRosterCSV(activeMembers, 'full_ministry_all')}
+                                                    >
+                                                        <Download size={15} /> Export CSV
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Preset 2: Douloids by Rank */}
+                                            <div style={{ background: 'var(--color-page-bg)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>Douloids by Rank</span>
+                                                        <span className="g5-pill g5-pill-purple">
+                                                            {activeMembers.filter(m => m.memberType !== 'Recruit' && m.status !== 'Recruit').length} Douloids
+                                                        </span>
+                                                    </div>
+                                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.4rem', marginBottom: 0 }}>
+                                                        All active Douloid members grouped by rank ladder from Shadow Douloid up to Senior Lead Douloid.
+                                                    </p>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleDownloadRosterPDF(activeMembers.filter(m => m.memberType !== 'Recruit' && m.status !== 'Recruit'), 'DOULOID MEMBERS RANK & CLEARANCE ROSTER')}
+                                                    >
+                                                        <Printer size={15} /> Print PDF
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleExportRosterCSV(activeMembers.filter(m => m.memberType !== 'Recruit' && m.status !== 'Recruit'), 'douloids_only')}
+                                                    >
+                                                        <Download size={15} /> Export CSV
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Preset 3: Recruits Pipeline */}
+                                            <div style={{ background: 'var(--color-page-bg)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>Recruits Pipeline Cohort</span>
+                                                        <span className="g5-pill g5-pill-recruit">
+                                                            {activeMembers.filter(m => m.memberType === 'Recruit' || m.status === 'Recruit').length} Recruits
+                                                        </span>
+                                                    </div>
+                                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.4rem', marginBottom: 0 }}>
+                                                        Active recruit candidate cohort across Athi River and Valley Road in training for qualification camp.
+                                                    </p>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleDownloadRosterPDF(activeMembers.filter(m => m.memberType === 'Recruit' || m.status === 'Recruit'), 'ACTIVE RECRUITS PIPELINE COHORT')}
+                                                    >
+                                                        <Printer size={15} /> Print PDF
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleExportRosterCSV(activeMembers.filter(m => m.memberType === 'Recruit' || m.status === 'Recruit'), 'recruits_pipeline')}
+                                                    >
+                                                        <Download size={15} /> Export CSV
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Preset 4: Safety Belayers */}
+                                            <div style={{ background: 'var(--color-page-bg)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>Safety-Cleared Belayers</span>
+                                                        <span className="g5-pill g5-pill-active">
+                                                            {activeMembers.filter(m => {
+                                                                const { belay } = getMemberDetails(m);
+                                                                return belay === 'Primary Belayer Certified' || belay === 'Belayer Qualified';
+                                                            }).length} Belayers
+                                                        </span>
+                                                    </div>
+                                                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.4rem', marginBottom: 0 }}>
+                                                        Personnel certified and qualified for high-ropes, zip lines, and solo station operation.
+                                                    </p>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleDownloadRosterPDF(
+                                                            activeMembers.filter(m => {
+                                                                const { belay } = getMemberDetails(m);
+                                                                return belay === 'Primary Belayer Certified' || belay === 'Belayer Qualified';
+                                                            }),
+                                                            'SAFETY-CLEARED BELAYERS & RIGGERS DIRECTORY'
+                                                        )}
+                                                    >
+                                                        <Printer size={15} /> Print PDF
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.82rem', padding: '0.5rem' }}
+                                                        onClick={() => handleExportRosterCSV(
+                                                            activeMembers.filter(m => {
+                                                                const { belay } = getMemberDetails(m);
+                                                                return belay === 'Primary Belayer Certified' || belay === 'Belayer Qualified';
+                                                            }),
+                                                            'certified_belayers'
+                                                        )}
+                                                    >
+                                                        <Download size={15} /> Export CSV
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* CUSTOM EXPORT MATRIX BUILDER */}
+                                    <div className="g5-card" style={{ padding: '1.5rem' }}>
+                                        <div style={{ marginBottom: '1.25rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                                <Sliders size={20} style={{ color: 'var(--color-accent-warm)' }} />
+                                                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
+                                                    Custom Export Matrix Builder
+                                                </h3>
+                                            </div>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', marginBottom: 0 }}>
+                                                Choose your exact parameters below to generate a tailor-made print-ready PDF or raw CSV spreadsheet.
+                                            </p>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                                                    Role Filter
+                                                </label>
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '100%', height: '42px', marginTop: '0.35rem', fontSize: '0.85rem' }}
+                                                    value={rosterRoleFilter}
+                                                    onChange={(e) => setRosterRoleFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Personnel (Douloids + Recruits)</option>
+                                                    <option value="Douloid">Douloid Members Only</option>
+                                                    <option value="Recruit">Recruits Pipeline Only</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                                                    Rank Hierarchy
+                                                </label>
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '100%', height: '42px', marginTop: '0.35rem', fontSize: '0.85rem' }}
+                                                    value={rosterRankFilter}
+                                                    onChange={(e) => setRosterRankFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Ranks</option>
+                                                    <option value="Senior Lead Douloid">Senior Lead Douloid</option>
+                                                    <option value="Lead Douloid">Lead Douloid</option>
+                                                    <option value="Intermediate Douloid">Intermediate Douloid</option>
+                                                    <option value="Basic Douloid">Basic Douloid</option>
+                                                    <option value="Shadow Douloid">Shadow Douloid</option>
+                                                    <option value="Recruit Candidate">Recruit Candidate</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                                                    Campus
+                                                </label>
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '100%', height: '42px', marginTop: '0.35rem', fontSize: '0.85rem' }}
+                                                    value={rosterCampusFilter}
+                                                    onChange={(e) => setRosterCampusFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Campuses</option>
+                                                    <option value="Athi River">Athi River</option>
+                                                    <option value="Valley Road">Valley Road</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                                                    Belay Clearance
+                                                </label>
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '100%', height: '42px', marginTop: '0.35rem', fontSize: '0.85rem' }}
+                                                    value={rosterBelayFilter}
+                                                    onChange={(e) => setRosterBelayFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Belay Clearances</option>
+                                                    <option value="Primary Belayer Certified">Primary Belayer Certified</option>
+                                                    <option value="Belayer Qualified">Belayer Qualified</option>
+                                                    <option value="Not Permitted">Not Permitted</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* LIVE MATCH COUNTER & EXECUTE BUTTONS */}
+                                        <div style={{
+                                            marginTop: '1.5rem',
+                                            padding: '1.25rem',
+                                            background: 'linear-gradient(135deg, rgba(107, 95, 168, 0.08) 0%, rgba(224, 138, 77, 0.08) 100%)',
+                                            borderRadius: '14px',
+                                            border: '1.5px solid rgba(107, 95, 168, 0.2)',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            flexWrap: 'wrap',
+                                            gap: '1rem'
+                                        }}>
+                                            <div>
+                                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                    🎯 {filteredRosterMembers.length} Personnel Records Match Your Selection
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
+                                                    {filteredRosterMembers.filter(m => m.memberType !== 'Recruit' && m.status !== 'Recruit').length} Douloid Members • {filteredRosterMembers.filter(m => m.memberType === 'Recruit' || m.status === 'Recruit').length} Recruits Pipeline
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                <button
+                                                    type="button"
+                                                    className="g5-btn-warm"
+                                                    style={{ padding: '0.65rem 1.25rem', fontSize: '0.88rem' }}
+                                                    disabled={filteredRosterMembers.length === 0}
+                                                    onClick={() => handleDownloadRosterPDF(filteredRosterMembers)}
+                                                >
+                                                    <Printer size={16} /> Download Custom PDF Document
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="g5-btn-secondary"
+                                                    style={{ padding: '0.65rem 1.25rem', fontSize: '0.88rem' }}
+                                                    disabled={filteredRosterMembers.length === 0}
+                                                    onClick={() => handleExportRosterCSV(filteredRosterMembers, 'custom_matrix')}
+                                                >
+                                                    <Download size={16} /> Export Custom CSV Spreadsheet
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="g5-btn-outline"
+                                                    style={{ padding: '0.65rem 1rem', fontSize: '0.88rem' }}
+                                                    onClick={() => setRosterSubTab('directory')}
+                                                >
+                                                    <Users size={16} /> View in Directory
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -3090,7 +3981,7 @@ const G5TrainingPortal = () => {
                         <div className="g5-card">
                             <div className="g5-card-header">
                                 <div>
-                                    <div className="g5-card-title">Cadre & Recruit Contributions</div>
+                                    <div className="g5-card-title">Member & Recruit Contributions</div>
                                     <div className="g5-card-desc">Training dues liaison overview (read-only glance-and-nudge list)</div>
                                 </div>
                             </div>

@@ -152,7 +152,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
             );
             return {
                 ...record,
-                memberName: record.responses?.studentName || memberObj?.name || 'Cadre Member',
+                memberName: record.memberName || record.responses?.studentName || memberObj?.name || 'Member',
                 memberType: record.memberType || memberObj?.memberType || (memberObj?.status === 'Recruit' ? 'Recruit' : 'Douloid'),
                 campus: record.campus || memberObj?.campus || meeting?.campus || 'Athi River',
                 answer: record.responses?.answer || record.answer || null
@@ -628,7 +628,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         >
                             <div>
                                 <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    Douloid Cadres
+                                    Douloid Members
                                 </div>
                                 <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-primary)', marginTop: '0.1rem' }}>
                                     {attendedList.filter(a => a.memberType === 'Douloid').length}
@@ -1181,7 +1181,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                         <Radio size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
                                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Awaiting First Check-In</div>
                                         <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}>
-                                            Cadres and recruits entering code <strong>{meeting.code}</strong> will appear here live.
+                                            Douloids and recruits entering code <strong>{meeting.code}</strong> will appear here live.
                                         </div>
                                     </div>
                                 ) : (

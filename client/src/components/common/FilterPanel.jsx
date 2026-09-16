@@ -112,10 +112,10 @@ export default function FilterPanel({
                         </div>
                     </div>
 
-                    {/* Cadre Rank */}
+                    {/* Douloid Rank */}
                     <div>
                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.6rem' }}>
-                            Cadre Rank
+                            Douloid Rank
                         </label>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             {['All', 'Lead Douloid', 'Intermediate Douloid', 'Basic Douloid', 'Shadow Douloid', 'None'].map(r => (
@@ -141,7 +141,7 @@ export default function FilterPanel({
                                         onChange={() => setRankFilter(r)}
                                         style={{ accentColor: '#4B3F8C' }}
                                     />
-                                    {r === 'All' ? 'All Cadres' : r}
+                                    {r === 'All' ? 'All Douloids' : r}
                                 </label>
                             ))}
                         </div>

@@ -688,7 +688,7 @@ export default function MembersTab({
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Cadre Rank</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Douloid Rank</label>
                                     <select
                                         value={editingMember.douloidRank || 'None'}
                                         onChange={e => setEditingMember({ ...editingMember, douloidRank: e.target.value })}
