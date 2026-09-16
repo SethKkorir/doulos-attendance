@@ -1673,84 +1673,96 @@ const G5TrainingPortal = () => {
                     {activeTab === 'meetings' && (
                         <div>
                             {/* TAB 3 HEADER */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div className="g5-meetings-header-box">
                                 <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Training Meetings & Field Drills</h2>
-                                        <span className="g5-pill g5-pill-purple">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                        <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.3px' }}>
+                                            Training Meetings & Field Drills
+                                        </h2>
+                                        <span style={{
+                                            background: '#EFF6FF',
+                                            color: '#1D4ED8',
+                                            border: '1.5px solid #BFDBFE',
+                                            fontWeight: 800,
+                                            fontSize: '0.78rem',
+                                            padding: '3px 10px',
+                                            borderRadius: '999px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem'
+                                        }}>
+                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563EB' }} />
                                             {activeMeetings.length} Active Sessions
                                         </span>
                                         {archivedMeetings.length > 0 && (
-                                            <span className="g5-pill g5-pill-inactive">
-                                                🗄️ {archivedMeetings.length} Archived
+                                            <span style={{
+                                                background: '#FFFBEB',
+                                                color: '#B45309',
+                                                border: '1.5px solid #FDE68A',
+                                                fontWeight: 800,
+                                                fontSize: '0.78rem',
+                                                padding: '3px 10px',
+                                                borderRadius: '999px'
+                                            }}>
+                                                🗄️ {archivedMeetings.length} Archived Vault
                                             </span>
                                         )}
                                     </div>
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                                        Weekly sessions, live attendance feeds, who attended rosters, and safe archive repository
+                                    <p style={{ fontSize: '0.86rem', color: '#475569', marginTop: '0.25rem', fontWeight: 500 }}>
+                                        Weekly sessions, live attendance check-ins, who attended rosters, and safe archive repository
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <button className="g5-btn-warm" onClick={() => setShowNewMeetingModal(true)}>
+                                    <button
+                                        type="button"
+                                        className="g5-btn-blue-solid"
+                                        onClick={() => setShowNewMeetingModal(true)}
+                                    >
                                         <Plus size={18} /> + New Meeting
                                     </button>
                                 </div>
                             </div>
 
-                            {/* SUB-TABS: ACTIVE & RECENT vs ARCHIVED */}
-                            <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '2px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', flexWrap: 'nowrap' }}>
+                            {/* SUB-TABS: ACTIVE & RECENT vs ARCHIVED (SOLID BLUE & AMBER - NO TRANSPARENCY) */}
+                            <div style={{
+                                display: 'flex',
+                                gap: '0.75rem',
+                                borderBottom: '2px solid #DBEAFE',
+                                paddingBottom: '0.85rem',
+                                marginBottom: '1.5rem',
+                                overflowX: 'auto',
+                                WebkitOverflowScrolling: 'touch',
+                                flexWrap: 'nowrap'
+                            }}>
                                 <button
                                     type="button"
                                     onClick={() => setMeetingSubTab('active')}
-                                    style={{
-                                        background: meetingSubTab === 'active' ? 'var(--color-surface)' : 'transparent',
-                                        color: meetingSubTab === 'active' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                        border: meetingSubTab === 'active' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                                        padding: '0.6rem 1.25rem',
-                                        borderRadius: '10px',
-                                        fontWeight: 800,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        flexShrink: 0,
-                                        boxShadow: meetingSubTab === 'active' ? '0 2px 8px rgba(107, 95, 168, 0.15)' : 'none',
-                                        transition: 'all 0.18s ease'
-                                    }}
+                                    className={`g5-subtab-btn-blue ${meetingSubTab === 'active' ? 'active' : ''}`}
                                 >
                                     <Calendar size={17} /> Active & Recent Sessions ({activeMeetings.length})
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setMeetingSubTab('archived')}
-                                    style={{
-                                        background: meetingSubTab === 'archived' ? 'var(--color-surface)' : 'transparent',
-                                        color: meetingSubTab === 'archived' ? 'var(--color-accent-warm)' : 'var(--color-text-muted)',
-                                        border: meetingSubTab === 'archived' ? '2px solid var(--color-accent-warm)' : '1px solid var(--color-border)',
-                                        padding: '0.6rem 1.25rem',
-                                        borderRadius: '10px',
-                                        fontWeight: 800,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        flexShrink: 0,
-                                        boxShadow: meetingSubTab === 'archived' ? '0 2px 8px rgba(232, 163, 61, 0.15)' : 'none',
-                                        transition: 'all 0.18s ease'
-                                    }}
+                                    className={`g5-subtab-btn-amber ${meetingSubTab === 'archived' ? 'active' : ''}`}
                                 >
-                                    <Archive size={17} /> Archived Sessions ({archivedMeetings.length})
+                                    <Archive size={17} /> Archived Sessions Vault ({archivedMeetings.length})
                                 </button>
                             </div>
 
-                            {/* SEARCH & FILTERS BAR */}
-                            <div className="g5-card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+                            {/* SEARCH & FILTERS BAR (CRISP BLUE ACCENT & TOUCH PILLS) */}
+                            <div style={{
+                                background: '#FFFFFF',
+                                border: '1.5px solid #DBEAFE',
+                                borderRadius: '16px',
+                                padding: '1rem 1.25rem',
+                                marginBottom: '1.5rem',
+                                boxShadow: '0 4px 16px rgba(37, 99, 235, 0.05)'
+                            }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
-                                        <div style={{ position: 'relative', flex: 1 }}>
-                                            <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '280px', flexWrap: 'wrap' }}>
+                                        <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+                                            <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#2563EB' }} />
                                             <input
                                                 type="text"
                                                 placeholder="Search meeting by name or code..."
@@ -1758,33 +1770,44 @@ const G5TrainingPortal = () => {
                                                 onChange={(e) => setMeetingSearch(e.target.value)}
                                                 style={{
                                                     width: '100%',
-                                                    padding: '0.6rem 0.85rem 0.6rem 2.4rem',
+                                                    padding: '0.65rem 0.85rem 0.65rem 2.4rem',
                                                     borderRadius: '10px',
-                                                    border: '1px solid var(--color-border)',
-                                                    background: 'var(--color-page-bg)',
-                                                    color: 'var(--color-text-main)',
-                                                    fontSize: '0.88rem',
-                                                    fontWeight: 600
+                                                    border: '1.5px solid #CBD5E1',
+                                                    background: '#F8FAFC',
+                                                    color: '#0F172A',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 600,
+                                                    outline: 'none'
                                                 }}
                                             />
                                         </div>
-                                        <select
-                                            value={meetingCampusFilter}
-                                            onChange={(e) => setMeetingCampusFilter(e.target.value)}
-                                            style={{
-                                                padding: '0.6rem 1rem',
-                                                borderRadius: '10px',
-                                                border: '1px solid var(--color-border)',
-                                                background: 'var(--color-page-bg)',
-                                                color: 'var(--color-text-main)',
-                                                fontSize: '0.88rem',
-                                                fontWeight: 700
-                                            }}
-                                        >
-                                            <option value="All">All Campuses</option>
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Valley Road">Valley Road</option>
-                                        </select>
+
+                                        {/* TOUCH-FRIENDLY CAMPUS CHIPS (EASY ON MOBILE) */}
+                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                            {['All', 'Athi River', 'Valley Road'].map((campus) => {
+                                                const isSelected = meetingCampusFilter === campus;
+                                                return (
+                                                    <button
+                                                        key={campus}
+                                                        type="button"
+                                                        onClick={() => setMeetingCampusFilter(campus)}
+                                                        style={{
+                                                            padding: '0.55rem 0.85rem',
+                                                            borderRadius: '999px',
+                                                            border: isSelected ? '1.5px solid #1D4ED8' : '1.5px solid #E2E8F0',
+                                                            background: isSelected ? '#EFF6FF' : '#FFFFFF',
+                                                            color: isSelected ? '#1D4ED8' : '#475569',
+                                                            fontWeight: isSelected ? 800 : 600,
+                                                            fontSize: '0.82rem',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease'
+                                                        }}
+                                                    >
+                                                        {campus === 'All' ? '🌐 All Campuses' : campus}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
 
                                     {/* BATCH ARCHIVE ACTION BUTTON IN ACTIVE VIEW */}
@@ -1793,7 +1816,7 @@ const G5TrainingPortal = () => {
                                         return completedPast.length > 0 ? (
                                             <button
                                                 type="button"
-                                                className="g5-btn-secondary"
+                                                className="g5-btn-archive-amber"
                                                 onClick={handleBulkArchiveMeetings}
                                                 disabled={isArchivingMeetings}
                                                 style={{ fontSize: '0.84rem' }}
@@ -1812,51 +1835,76 @@ const G5TrainingPortal = () => {
                             {/* ========================================================= */}
                             {meetingSubTab === 'active' && (
                                 <div>
-                                    {/* ACTIVE LIVE BANNER IF ANY SESSION IS LIVE */}
+                                    {/* ACTIVE LIVE BANNER IF ANY SESSION IS LIVE (ROYAL BLUE HERO) */}
                                     {filteredActiveMeetings.filter(m => m.isActive).length > 0 && (() => {
                                         const activeM = filteredActiveMeetings.filter(m => m.isActive)[0];
                                         return (
                                             <div style={{
-                                                background: 'linear-gradient(135deg, #EAF7F0 0%, #E0F5E9 100%)',
-                                                border: '1.5px solid var(--color-status-active)',
-                                                borderRadius: 'var(--radius-card)',
-                                                padding: '1.25rem 1.75rem',
+                                                background: 'linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #1D4ED8 100%)',
+                                                border: '2px solid #60A5FA',
+                                                borderRadius: '18px',
+                                                padding: '1.35rem 1.6rem',
                                                 marginBottom: '1.75rem',
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center',
                                                 flexWrap: 'wrap',
                                                 gap: '1rem',
-                                                boxShadow: '0 4px 18px rgba(76, 175, 125, 0.15)'
+                                                boxShadow: '0 8px 24px rgba(37, 99, 235, 0.28)',
+                                                color: '#FFFFFF'
                                             }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <div className="g5-pulse-dot" style={{ width: '12px', height: '12px' }} />
+                                                    <div style={{
+                                                        width: '14px',
+                                                        height: '14px',
+                                                        borderRadius: '50%',
+                                                        backgroundColor: '#10B981',
+                                                        boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.35)',
+                                                        animation: 'g5Pulse 1.6s infinite'
+                                                    }} />
                                                     <div>
-                                                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
-                                                            Live Check-In Active: {activeM.name}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                            <span style={{
+                                                                background: '#10B981',
+                                                                color: '#FFFFFF',
+                                                                fontWeight: 800,
+                                                                fontSize: '0.72rem',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '999px',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                LIVE SESSION ACTIVE
+                                                            </span>
+                                                            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF' }}>
+                                                                {activeM.name}
+                                                            </span>
                                                         </div>
-                                                        <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                                                            {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: 'var(--color-primary)', letterSpacing: '1px' }}>{activeM.code}</strong>
+                                                        <div style={{ fontSize: '0.86rem', color: '#DBEAFE', marginTop: '0.25rem' }}>
+                                                            📍 {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: '#93C5FD', letterSpacing: '1px', fontFamily: 'monospace' }}>{activeM.code}</strong>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                                                     <button
                                                         type="button"
-                                                        className="g5-btn-warm"
-                                                        style={{ background: '#25AAE1', borderColor: '#25AAE1' }}
+                                                        className="g5-btn-qr-cyan"
+                                                        style={{ padding: '0.65rem 1rem', fontSize: '0.86rem' }}
                                                         onClick={() => setQrMeeting(activeM)}
                                                     >
                                                         <QrCode size={16} /> Display QR Code 📱
                                                     </button>
                                                     <button
-                                                        className="g5-btn-warm"
+                                                        type="button"
+                                                        className="g5-btn-blue-solid"
+                                                        style={{ background: '#FFFFFF', color: '#1D4ED8', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' }}
                                                         onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
                                                     >
-                                                        <Radio size={16} /> Open Live Attendance Feed
+                                                        <Radio size={16} style={{ color: '#10B981' }} /> Live Attendance Feed
                                                     </button>
                                                     <button
-                                                        className="g5-btn-secondary"
+                                                        type="button"
+                                                        className="g5-btn-blue-soft"
+                                                        style={{ background: '#EFF6FF', color: '#1D4ED8', borderColor: '#BFDBFE' }}
                                                         onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
                                                     >
                                                         <Users size={16} /> Who Attended ({activeM.attendanceCount ?? 0})
@@ -1867,101 +1915,174 @@ const G5TrainingPortal = () => {
                                     })()}
 
                                     {filteredActiveMeetings.length === 0 ? (
-                                        <div className="g5-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
-                                            <div className="g5-avatar" style={{ width: '64px', height: '64px', margin: '0 auto 1.25rem', fontSize: '1.8rem' }}>
+                                        <div style={{
+                                            background: '#FFFFFF',
+                                            border: '1.5px solid #DBEAFE',
+                                            borderRadius: '18px',
+                                            textAlign: 'center',
+                                            padding: '3.5rem 1.5rem',
+                                            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.05)'
+                                        }}>
+                                            <div style={{
+                                                width: '64px',
+                                                height: '64px',
+                                                margin: '0 auto 1.25rem',
+                                                fontSize: '1.8rem',
+                                                background: '#EFF6FF',
+                                                border: '1.5px solid #BFDBFE',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
                                                 📅
                                             </div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
                                                 {meetingSearch || meetingCampusFilter !== 'All' ? 'No Matching Meetings Found' : 'No Active Meetings Scheduled'}
                                             </h3>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', maxWidth: '420px', margin: '0.5rem auto 1.25rem' }}>
+                                            <p style={{ fontSize: '0.9rem', color: '#64748B', maxWidth: '420px', margin: '0.5rem auto 1.25rem' }}>
                                                 {meetingSearch || meetingCampusFilter !== 'All'
                                                     ? 'Try adjusting your search query or campus filter.'
                                                     : 'Schedule a new drill or weekly fellowship meeting using the button below.'}
                                             </p>
-                                            <button className="g5-btn-warm" onClick={() => setShowNewMeetingModal(true)}>
+                                            <button className="g5-btn-blue-solid" onClick={() => setShowNewMeetingModal(true)}>
                                                 <Plus size={18} /> Schedule New Meeting
                                             </button>
                                         </div>
                                     ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.35rem' }}>
                                             {filteredActiveMeetings.map((meeting) => (
                                                 <div
                                                     key={meeting._id || meeting.code || meeting.date}
-                                                    className="g5-card"
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        justifyContent: 'space-between',
-                                                        cursor: 'pointer',
-                                                        transition: 'transform 0.18s ease, box-shadow 0.18s ease',
-                                                        border: meeting.isActive ? '1.5px solid var(--color-status-active)' : '1px solid var(--color-border)'
-                                                    }}
+                                                    className={`g5-meeting-card-v2 ${meeting.isActive ? 'active-session' : ''}`}
                                                     onClick={() => setInsightMeeting({ ...meeting, initialTab: 'attended' })}
+                                                    style={{ cursor: 'pointer' }}
                                                 >
                                                     <div>
+                                                        {/* CARD TOP META */}
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                                                            <span className="g5-pill g5-pill-purple">
+                                                            <span style={{
+                                                                background: '#EFF6FF',
+                                                                color: '#1D4ED8',
+                                                                border: '1px solid #BFDBFE',
+                                                                padding: '0.3rem 0.65rem',
+                                                                borderRadius: '8px',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 700,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.35rem'
+                                                            }}>
                                                                 <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
                                                             </span>
                                                             <span
-                                                                className={`g5-pill ${meeting.isActive ? 'g5-pill-active' : 'g5-pill-inactive'}`}
+                                                                style={{
+                                                                    background: meeting.isActive ? '#ECFDF5' : '#F1F5F9',
+                                                                    color: meeting.isActive ? '#047857' : '#475569',
+                                                                    border: meeting.isActive ? '1.5px solid #A7F3D0' : '1.5px solid #CBD5E1',
+                                                                    padding: '0.3rem 0.7rem',
+                                                                    borderRadius: '999px',
+                                                                    fontSize: '0.76rem',
+                                                                    fontWeight: 800,
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.35rem'
+                                                                }}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                 }}
                                                             >
                                                                 {meeting.isActive ? (
-                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                                        <div className="g5-pulse-dot" style={{ width: '6px', height: '6px' }} />
+                                                                    <>
+                                                                        <div className="g5-pulse-dot" style={{ width: '6px', height: '6px', backgroundColor: '#10B981' }} />
                                                                         Live • Active
-                                                                    </span>
+                                                                    </>
                                                                 ) : (
                                                                     'Completed'
                                                                 )}
                                                             </span>
                                                         </div>
 
-                                                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>
+                                                        {/* TITLE */}
+                                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.55rem', lineHeight: 1.3 }}>
                                                             {meeting.name || 'Weekly Training Drill'}
                                                         </h3>
 
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '0.4rem' }}>
-                                                            <Clock size={15} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                                        {/* TIME & LOCATION */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                                                            <Clock size={15} style={{ color: '#2563EB' }} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
                                                         </div>
 
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                                                            <MapPin size={15} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
+                                                            <MapPin size={15} style={{ color: '#2563EB' }} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        </div>
+
+                                                        {/* JOIN CODE BOX (WITH 1-TAP COPY) */}
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '0.5rem 0.85rem',
+                                                            borderRadius: '10px',
+                                                            background: '#EFF6FF',
+                                                            border: '1.5px dashed #3B82F6',
+                                                            marginBottom: '0.85rem'
+                                                        }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>Join Code:</span>
+                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px' }}>
+                                                                    {meeting.code || 'DOULOS'}
+                                                                </span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(meeting.code || 'DOULOS');
+                                                                    showToast('Meeting code copied to clipboard! 📋');
+                                                                }}
+                                                                style={{
+                                                                    background: '#FFFFFF',
+                                                                    color: '#1D4ED8',
+                                                                    border: '1px solid #BFDBFE',
+                                                                    borderRadius: '6px',
+                                                                    padding: '0.25rem 0.6rem',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 700,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.3rem',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <Copy size={12} /> Copy
+                                                            </button>
                                                         </div>
                                                     </div>
 
-                                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-                                                                CODE: {meeting.code || 'DOULOS'}
-                                                            </span>
-                                                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-status-active)' }}>
-                                                                ✓ {meeting.campus}
-                                                            </span>
-                                                        </div>
-
+                                                    {/* CARD ACTION BUTTONS (MOBILE-OPTIMIZED TWO-TIER SYSTEM) */}
+                                                    <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                                                         {meeting.isActive ? (
-                                                            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                                                            <>
+                                                                {/* TIER 1: PRIMARY ACTION (FULL WIDTH TOUCH BUTTON) */}
                                                                 <button
-                                                                    className="g5-btn-warm"
-                                                                    style={{ width: '100%', justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
+                                                                    type="button"
+                                                                    className="g5-btn-blue-solid"
+                                                                    style={{ width: '100%', padding: '0.75rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setInsightMeeting({ ...meeting, initialTab: 'live' });
                                                                     }}
                                                                 >
-                                                                    <Radio size={15} /> Live Attendance Feed & Check-In
+                                                                    <Radio size={16} /> Live Attendance Feed & Check-In
                                                                 </button>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: '0.45rem' }}>
+
+                                                                {/* TIER 2: SECONDARY TOUCH GRID (ALL SOLID VIBRANT COLORS) */}
+                                                                <div className="g5-meeting-actions-grid">
                                                                     <button
                                                                         type="button"
-                                                                        className="g5-btn-secondary"
-                                                                        style={{ justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.35)' }}
+                                                                        className="g5-btn-qr-cyan"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             setQrMeeting(meeting);
@@ -1971,18 +2092,8 @@ const G5TrainingPortal = () => {
                                                                         <QrCode size={14} /> Display QR
                                                                     </button>
                                                                     <button
-                                                                        className="g5-btn-secondary"
-                                                                        style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem' }}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setInsightMeeting({ ...meeting, initialTab: 'attended' });
-                                                                        }}
-                                                                    >
-                                                                        <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
-                                                                    </button>
-                                                                    <button
-                                                                        className="g5-btn-outline"
-                                                                        style={{ padding: '0.6rem 0.75rem', fontSize: '0.82rem' }}
+                                                                        type="button"
+                                                                        className="g5-btn-archive-amber"
                                                                         title="Archive this active meeting session"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
@@ -1992,8 +2103,8 @@ const G5TrainingPortal = () => {
                                                                         <Archive size={14} /> Archive
                                                                     </button>
                                                                     <button
-                                                                        className="g5-btn-outline"
-                                                                        style={{ padding: '0.6rem 0.75rem', fontSize: '0.82rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+                                                                        type="button"
+                                                                        className="g5-btn-delete-rose"
                                                                         title="Permanently delete this meeting"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
@@ -2003,54 +2114,59 @@ const G5TrainingPortal = () => {
                                                                         <Trash2 size={14} /> Delete
                                                                     </button>
                                                                 </div>
-                                                            </div>
+                                                            </>
                                                         ) : (
-                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '0.45rem' }}>
+                                                            <>
+                                                                {/* TIER 1: PRIMARY ACTION */}
                                                                 <button
-                                                                    className="g5-btn-secondary"
-                                                                    style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
+                                                                    type="button"
+                                                                    className="g5-btn-blue-soft"
+                                                                    style={{ width: '100%', padding: '0.72rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                     }}
                                                                 >
-                                                                    <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                                    <Users size={16} /> Who Attended ({meeting.attendanceCount ?? 0})
                                                                 </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="g5-btn-secondary"
-                                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.35)' }}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setQrMeeting(meeting);
-                                                                    }}
-                                                                    title="Display QR code"
-                                                                >
-                                                                    <QrCode size={14} /> QR
-                                                                </button>
-                                                                <button
-                                                                    className="g5-btn-outline"
-                                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem' }}
-                                                                    title="Archive this completed session (attendance records remain safe in database)"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleArchiveMeeting(meeting);
-                                                                    }}
-                                                                >
-                                                                    <Archive size={15} /> Archive
-                                                                </button>
-                                                                <button
-                                                                    className="g5-btn-outline"
-                                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}
-                                                                    title="Permanently delete this meeting"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDeleteMeeting(meeting);
-                                                                    }}
-                                                                >
-                                                                    <Trash2 size={15} /> Delete
-                                                                </button>
-                                                            </div>
+
+                                                                {/* TIER 2: SECONDARY ACTIONS GRID */}
+                                                                <div className="g5-meeting-actions-grid">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-qr-cyan"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setQrMeeting(meeting);
+                                                                        }}
+                                                                        title="Display QR code"
+                                                                    >
+                                                                        <QrCode size={14} /> QR Code
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-archive-amber"
+                                                                        title="Archive this completed session (attendance records remain safe in database)"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleArchiveMeeting(meeting);
+                                                                        }}
+                                                                    >
+                                                                        <Archive size={14} /> Archive
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-delete-rose"
+                                                                        title="Permanently delete this meeting"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteMeeting(meeting);
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 size={14} /> Delete
+                                                                    </button>
+                                                                </div>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </div>
@@ -2061,152 +2177,230 @@ const G5TrainingPortal = () => {
                             )}
 
                             {/* ========================================================= */}
-                            {/* ARCHIVED MEETINGS VIEW */}
+                            {/* ARCHIVED MEETINGS VIEW (SAFE REPOSITORY - BLUE & GOLD) */}
                             {/* ========================================================= */}
                             {meetingSubTab === 'archived' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    {/* ARCHIVE NOTICE BANNER */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
+                                    {/* ARCHIVE NOTICE BANNER (SOLID BLUE VAULT BANNER) */}
                                     <div style={{
-                                        background: 'linear-gradient(135deg, rgba(232, 163, 61, 0.08), rgba(107, 95, 168, 0.08))',
-                                        border: '1.5px solid var(--color-border)',
-                                        borderRadius: '14px',
+                                        background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+                                        border: '1.5px solid #93C5FD',
+                                        borderRadius: '16px',
                                         padding: '1.25rem 1.5rem',
                                         display: 'flex',
                                         alignItems: 'flex-start',
-                                        gap: '1rem'
+                                        gap: '1rem',
+                                        boxShadow: '0 4px 16px rgba(37, 99, 235, 0.08)'
                                     }}>
                                         <div style={{
-                                            width: '42px',
-                                            height: '42px',
-                                            borderRadius: '10px',
-                                            backgroundColor: 'var(--color-accent-warm-soft)',
-                                            color: 'var(--color-accent-warm)',
+                                            width: '44px',
+                                            height: '44px',
+                                            borderRadius: '12px',
+                                            backgroundColor: '#1D4ED8',
+                                            color: '#FFFFFF',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            flexShrink: 0
+                                            flexShrink: 0,
+                                            boxShadow: '0 4px 12px rgba(29, 78, 216, 0.3)'
                                         }}>
                                             <Archive size={22} />
                                         </div>
                                         <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
-                                                    Archived Meeting Sessions
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E3A8A', margin: 0 }}>
+                                                    Archived Meeting Sessions Repository
                                                 </h3>
-                                                <span className="g5-pill g5-pill-active" style={{ fontSize: '0.72rem' }}>
+                                                <span style={{
+                                                    background: '#10B981',
+                                                    color: '#FFFFFF',
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 800,
+                                                    padding: '2px 8px',
+                                                    borderRadius: '999px'
+                                                }}>
                                                     🔒 Attendance Safely Preserved in Database
                                                 </span>
                                             </div>
-                                            <p style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', lineHeight: 1.5 }}>
+                                            <p style={{ fontSize: '0.86rem', color: '#1E40AF', marginTop: '0.35rem', lineHeight: 1.5 }}>
                                                 Archived meetings retain all member check-ins, attendance logs, and student points in MongoDB. You can inspect rosters, export reports, or restore any meeting back to the active list at any time.
                                             </p>
                                         </div>
                                     </div>
 
                                     {filteredArchivedMeetings.length === 0 ? (
-                                        <div className="g5-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
-                                            <div className="g5-avatar" style={{ width: '64px', height: '64px', margin: '0 auto 1.25rem', fontSize: '1.8rem', backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
+                                        <div style={{
+                                            background: '#FFFFFF',
+                                            border: '1.5px solid #DBEAFE',
+                                            borderRadius: '18px',
+                                            textAlign: 'center',
+                                            padding: '3.5rem 1.5rem',
+                                            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.05)'
+                                        }}>
+                                            <div style={{
+                                                width: '64px',
+                                                height: '64px',
+                                                margin: '0 auto 1.25rem',
+                                                fontSize: '1.8rem',
+                                                backgroundColor: '#EFF6FF',
+                                                color: '#1D4ED8',
+                                                border: '1.5px solid #BFDBFE',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
                                                 🗄️
                                             </div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
                                                 No Meetings in Archive
                                             </h3>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', maxWidth: '420px', margin: '0.5rem auto 0' }}>
+                                            <p style={{ fontSize: '0.9rem', color: '#64748B', maxWidth: '420px', margin: '0.5rem auto 0' }}>
                                                 Completed meetings from previous weeks or past semesters can be archived to keep your active dashboard clean.
                                             </p>
                                         </div>
                                     ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.35rem' }}>
                                             {filteredArchivedMeetings.map((meeting) => (
                                                 <div
                                                     key={meeting._id || meeting.code || meeting.date}
-                                                    className="g5-card"
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        justifyContent: 'space-between',
-                                                        cursor: 'pointer',
-                                                        border: '1px solid var(--color-border)'
-                                                    }}
+                                                    className="g5-meeting-card-v2"
+                                                    style={{ cursor: 'pointer' }}
                                                     onClick={() => setInsightMeeting({ ...meeting, initialTab: 'attended' })}
                                                 >
                                                     <div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-                                                            <span className="g5-pill g5-pill-purple">
+                                                            <span style={{
+                                                                background: '#EFF6FF',
+                                                                color: '#1D4ED8',
+                                                                border: '1px solid #BFDBFE',
+                                                                padding: '0.3rem 0.65rem',
+                                                                borderRadius: '8px',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 700,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.35rem'
+                                                            }}>
                                                                 <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
                                                             </span>
-                                                            <span className="g5-pill g5-pill-inactive">
+                                                            <span style={{
+                                                                background: '#FFFBEB',
+                                                                color: '#B45309',
+                                                                border: '1.5px solid #FDE68A',
+                                                                padding: '0.3rem 0.7rem',
+                                                                borderRadius: '999px',
+                                                                fontSize: '0.76rem',
+                                                                fontWeight: 800
+                                                            }}>
                                                                 🗄️ Archived {meeting.archivedAt ? `• ${new Date(meeting.archivedAt).toLocaleDateString()}` : ''}
                                                             </span>
                                                         </div>
 
-                                                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>
+                                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.55rem', lineHeight: 1.3 }}>
                                                             {meeting.name || 'Weekly Training Drill'}
                                                         </h3>
 
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '0.4rem' }}>
-                                                            <Clock size={15} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                                                            <Clock size={15} style={{ color: '#2563EB' }} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
                                                         </div>
 
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                                                            <MapPin size={15} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
+                                                            <MapPin size={15} style={{ color: '#2563EB' }} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        </div>
+
+                                                        {/* JOIN CODE BOX */}
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '0.5rem 0.85rem',
+                                                            borderRadius: '10px',
+                                                            background: '#EFF6FF',
+                                                            border: '1.5px dashed #3B82F6',
+                                                            marginBottom: '0.85rem'
+                                                        }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>Join Code:</span>
+                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px' }}>
+                                                                    {meeting.code || 'DOULOS'}
+                                                                </span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(meeting.code || 'DOULOS');
+                                                                    showToast('Meeting code copied to clipboard! 📋');
+                                                                }}
+                                                                style={{
+                                                                    background: '#FFFFFF',
+                                                                    color: '#1D4ED8',
+                                                                    border: '1px solid #BFDBFE',
+                                                                    borderRadius: '6px',
+                                                                    padding: '0.25rem 0.6rem',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 700,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.3rem',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <Copy size={12} /> Copy
+                                                            </button>
                                                         </div>
                                                     </div>
 
-                                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-                                                                CODE: {meeting.code || 'DOULOS'}
-                                                            </span>
-                                                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-status-active)' }}>
-                                                                🔒 Database Retained
-                                                            </span>
-                                                        </div>
+                                                    {/* TWO-TIER ACTION BUTTONS */}
+                                                    <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                                                        {/* TIER 1: WHO ATTENDED FULL-WIDTH TOUCH */}
+                                                        <button
+                                                            type="button"
+                                                            className="g5-btn-blue-soft"
+                                                            style={{ width: '100%', padding: '0.72rem' }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setInsightMeeting({ ...meeting, initialTab: 'attended' });
+                                                            }}
+                                                        >
+                                                            <Users size={16} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                        </button>
 
-                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '0.45rem' }}>
-                                                            <button
-                                                                className="g5-btn-secondary"
-                                                                style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setInsightMeeting({ ...meeting, initialTab: 'attended' });
-                                                                }}
-                                                            >
-                                                                <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
-                                                            </button>
+                                                        {/* TIER 2: SECONDARY TOUCH GRID */}
+                                                        <div className="g5-meeting-actions-grid">
                                                             <button
                                                                 type="button"
-                                                                className="g5-btn-secondary"
-                                                                style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#25AAE1', borderColor: 'rgba(37, 170, 225, 0.35)' }}
+                                                                className="g5-btn-qr-cyan"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setQrMeeting(meeting);
                                                                 }}
                                                                 title="Display QR code"
                                                             >
-                                                                <QrCode size={14} /> QR
+                                                                <QrCode size={14} /> QR Code
                                                             </button>
                                                             <button
-                                                                className="g5-btn-outline"
-                                                                style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', borderColor: 'var(--color-primary)' }}
+                                                                type="button"
+                                                                className="g5-btn-restore-indigo"
                                                                 title="Restore this meeting back to active & recent sessions"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleUnarchiveMeeting(meeting);
                                                                 }}
                                                             >
-                                                                <RotateCcw size={15} /> Restore
+                                                                <RotateCcw size={14} /> Restore
                                                             </button>
                                                             <button
-                                                                className="g5-btn-outline"
-                                                                style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+                                                                type="button"
+                                                                className="g5-btn-delete-rose"
                                                                 title="Permanently delete this meeting"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleDeleteMeeting(meeting);
                                                                 }}
                                                             >
-                                                                <Trash2 size={15} /> Delete
+                                                                <Trash2 size={14} /> Delete
                                                             </button>
                                                         </div>
                                                     </div>

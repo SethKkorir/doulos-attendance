@@ -1309,3 +1309,289 @@
   border-top: 1px solid var(--color-border);
   margin-top: 0.5rem;
 }
+
+/* ========================================================= */
+/* TRAINING MEETINGS & FIELD DRILLS - MOBILE UI & BLUE THEME */
+/* ========================================================= */
+
+.g5-subtab-btn-blue {
+  padding: 0.65rem 1.25rem;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1.5px solid #BFDBFE;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
+}
+
+.g5-subtab-btn-blue:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+}
+
+.g5-subtab-btn-blue.active {
+  background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%) !important;
+  color: #FFFFFF !important;
+  border-color: #1D4ED8 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
+.g5-subtab-btn-amber {
+  padding: 0.65rem 1.25rem;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1.5px solid #FDE68A;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08);
+}
+
+.g5-subtab-btn-amber:hover {
+  background: #FEF3C7;
+  border-color: #FCD34D;
+}
+
+.g5-subtab-btn-amber.active {
+  background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%) !important;
+  color: #FFFFFF !important;
+  border-color: #D97706 !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35) !important;
+}
+
+/* Meeting Cards V2 */
+.g5-meeting-card-v2 {
+  background: #FFFFFF;
+  border: 1.5px solid #DBEAFE;
+  border-radius: 18px;
+  padding: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.g5-meeting-card-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(37, 99, 235, 0.14);
+  border-color: #60A5FA;
+}
+
+.g5-meeting-card-v2.active-session {
+  border-color: #3B82F6;
+  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.16);
+}
+
+.g5-meeting-card-v2.active-session::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #1D4ED8, #3B82F6, #10B981);
+}
+
+/* High Contrast Solid Buttons (No transparent ghosts) */
+.g5-btn-blue-solid {
+  background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%);
+  color: #FFFFFF !important;
+  border: none;
+  border-radius: 12px;
+  padding: 0.72rem 1.25rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32);
+  transition: all 0.18s ease;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.g5-btn-blue-solid:hover {
+  background: linear-gradient(135deg, #1E40AF 0%, #1D4ED8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.42);
+}
+
+.g5-btn-blue-solid:active {
+  transform: scale(0.98);
+}
+
+.g5-btn-blue-soft {
+  background: #EFF6FF;
+  color: #1D4ED8 !important;
+  border: 1.5px solid #BFDBFE;
+  border-radius: 12px;
+  padding: 0.68rem 1.1rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.g5-btn-blue-soft:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+  color: #1E40AF !important;
+}
+
+.g5-btn-blue-soft:active {
+  transform: scale(0.97);
+}
+
+.g5-btn-qr-cyan {
+  background: #E0F2FE;
+  color: #0369A1 !important;
+  border: 1.5px solid #BAE6FD;
+  border-radius: 12px;
+  padding: 0.68rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.g5-btn-qr-cyan:hover {
+  background: #BAE6FD;
+  border-color: #7DD3FC;
+  color: #075985 !important;
+}
+
+.g5-btn-qr-cyan:active {
+  transform: scale(0.97);
+}
+
+.g5-btn-archive-amber {
+  background: #FEF3C7;
+  color: #92400E !important;
+  border: 1.5px solid #FDE68A;
+  border-radius: 12px;
+  padding: 0.68rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.g5-btn-archive-amber:hover {
+  background: #FDE68A;
+  border-color: #FCD34D;
+  color: #78350F !important;
+}
+
+.g5-btn-archive-amber:active {
+  transform: scale(0.97);
+}
+
+.g5-btn-delete-rose {
+  background: #FEE2E2;
+  color: #B91C1C !important;
+  border: 1.5px solid #FECACA;
+  border-radius: 12px;
+  padding: 0.68rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.g5-btn-delete-rose:hover {
+  background: #FECACA;
+  border-color: #FCA5A5;
+  color: #991B1B !important;
+}
+
+.g5-btn-delete-rose:active {
+  transform: scale(0.97);
+}
+
+.g5-btn-restore-indigo {
+  background: #EEF2FF;
+  color: #4338CA !important;
+  border: 1.5px solid #C7D2FE;
+  border-radius: 12px;
+  padding: 0.68rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.g5-btn-restore-indigo:hover {
+  background: #E0E7FF;
+  border-color: #A5B4FC;
+  color: #3730A3 !important;
+}
+
+.g5-btn-restore-indigo:active {
+  transform: scale(0.97);
+}
+
+/* Mobile Actions Layout */
+.g5-meeting-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .g5-meeting-card-v2 {
+    padding: 1.15rem;
+    border-radius: 16px;
+  }
+  .g5-meeting-actions-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+  .g5-meeting-actions-grid button {
+    padding: 0.65rem 0.4rem;
+    font-size: 0.78rem;
+  }
+}
+
