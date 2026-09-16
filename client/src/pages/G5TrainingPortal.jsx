@@ -60,6 +60,9 @@ import {
 const G5TrainingPortal = () => {
     const navigate = useNavigate();
 
+    // Active Navigation Tab (9 items strictly)
+    const [activeTab, setActiveTab] = useState('dashboard');
+
     // Responsive Mobile State
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -72,9 +75,6 @@ const G5TrainingPortal = () => {
         setMobileMoreOpen(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-
-    // Active Navigation Tab (9 items strictly)
-    const [activeTab, setActiveTab] = useState('dashboard');
     const [searchQuery, setSearchQuery] = useState('');
     const [campusFilter, setCampusFilter] = useState('All');
     const [toast, setToast] = useState(null);
