@@ -963,14 +963,14 @@ const G5TrainingPortal = () => {
                                             <button
                                                 className="g5-btn-warm"
                                                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'manual_checkin' })}
+                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
                                             >
                                                 <Radio size={14} /> Open Live Feed
                                             </button>
                                             <button
                                                 className="g5-btn-secondary"
                                                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'present' })}
+                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
                                             >
                                                 <Users size={14} /> Who Attended ({activeM.attendanceCount ?? 0})
                                             </button>
@@ -1156,7 +1156,7 @@ const G5TrainingPortal = () => {
                                     {meetings.slice(0, 4).map((m) => (
                                         <div
                                             key={m._id || m.code}
-                                            onClick={() => setInsightMeeting({ ...m, initialTab: m.isActive ? 'manual_checkin' : 'present' })}
+                                            onClick={() => setInsightMeeting({ ...m, initialTab: 'attended' })}
                                             style={{
                                                 background: m.isActive ? 'var(--color-status-active-soft)' : 'var(--color-page-bg)',
                                                 border: m.isActive ? '1.5px solid var(--color-status-active)' : '1px solid var(--color-border)',
@@ -1467,13 +1467,13 @@ const G5TrainingPortal = () => {
                                                     </button>
                                                     <button
                                                         className="g5-btn-warm"
-                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'manual_checkin' })}
+                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
                                                     >
                                                         <Radio size={16} /> Open Live Attendance Feed
                                                     </button>
                                                     <button
                                                         className="g5-btn-secondary"
-                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'present' })}
+                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
                                                     >
                                                         <Users size={16} /> Who Attended ({activeM.attendanceCount ?? 0})
                                                     </button>
@@ -1513,7 +1513,7 @@ const G5TrainingPortal = () => {
                                                         transition: 'transform 0.18s ease, box-shadow 0.18s ease',
                                                         border: meeting.isActive ? '1.5px solid var(--color-status-active)' : '1px solid var(--color-border)'
                                                     }}
-                                                    onClick={() => setInsightMeeting({ ...meeting, initialTab: meeting.isActive ? 'manual_checkin' : 'present' })}
+                                                    onClick={() => setInsightMeeting({ ...meeting, initialTab: 'attended' })}
                                                 >
                                                     <div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
@@ -1524,7 +1524,7 @@ const G5TrainingPortal = () => {
                                                                 className={`g5-pill ${meeting.isActive ? 'g5-pill-active' : 'g5-pill-inactive'}`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    setInsightMeeting({ ...meeting, initialTab: meeting.isActive ? 'manual_checkin' : 'present' });
+                                                                    setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                 }}
                                                             >
                                                                 {meeting.isActive ? (
@@ -1568,7 +1568,7 @@ const G5TrainingPortal = () => {
                                                                     style={{ width: '100%', justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setInsightMeeting({ ...meeting, initialTab: 'manual_checkin' });
+                                                                        setInsightMeeting({ ...meeting, initialTab: 'live' });
                                                                     }}
                                                                 >
                                                                     <Radio size={15} /> Live Attendance Feed & Check-In
@@ -1591,7 +1591,7 @@ const G5TrainingPortal = () => {
                                                                         style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.82rem' }}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                            setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                         }}
                                                                     >
                                                                         <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
@@ -1605,7 +1605,7 @@ const G5TrainingPortal = () => {
                                                                     style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                        setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                     }}
                                                                 >
                                                                     <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})
@@ -1711,7 +1711,7 @@ const G5TrainingPortal = () => {
                                                         cursor: 'pointer',
                                                         border: '1px solid var(--color-border)'
                                                     }}
-                                                    onClick={() => setInsightMeeting({ ...meeting, initialTab: 'present' })}
+                                                    onClick={() => setInsightMeeting({ ...meeting, initialTab: 'attended' })}
                                                 >
                                                     <div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
@@ -1752,7 +1752,7 @@ const G5TrainingPortal = () => {
                                                                 style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    setInsightMeeting({ ...meeting, initialTab: 'present' });
+                                                                    setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                 }}
                                                             >
                                                                 <Users size={15} /> Who Attended ({meeting.attendanceCount ?? 0})

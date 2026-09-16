@@ -29,10 +29,21 @@ import {
 } from 'lucide-react';
 
 const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
-    // Determine initial tab: prefer meeting.initialTab; if completed, start on 'attended', if active start on 'attended' if any attendees exist, else 'live'
-    const [activeTab, setActiveTab] = useState(
-        meeting?.initialTab || (meeting?.isActive ? 'attended' : 'attended')
-    );
+    // Automatically default to 'attended' ("Who Attended") so attendee roster displays immediately upon opening
+    const resolveInitialTab = (tab) => {
+        if (tab === 'live') return 'live';
+        if (tab === 'qrcode') return 'qrcode';
+        if (tab === 'answers') return 'answers';
+        if (tab === 'absent' || tab === 'checklist') return 'absent';
+        return 'attended';
+    };
+
+    const [activeTab, setActiveTab] = useState(() => resolveInitialTab(meeting?.initialTab));
+
+    useEffect(() => {
+        setActiveTab(resolveInitialTab(meeting?.initialTab));
+    }, [meeting?._id, meeting?.initialTab]);
+
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -73,8 +84,8 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
         try {
             const [attRes, memRes, meetingsRes] = await Promise.allSettled([
                 api.get(`/attendance/${meeting._id}`),
-                api.get(`/members?campus=${meeting.campus === 'Both' ? 'All' : (meeting.campus || 'All')}`),
-                api.get('/meetings')
+                api.get(`/members?campus=All&includeArchived=true`),
+                api.get('/meetings?includeArchived=true')
             ]);
 
             if (attRes.status === 'fulfilled') {
@@ -149,15 +160,21 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
         });
     }, [attendanceRecords, allMembers, meeting?.campus]);
 
-    // Absent members (in registry but not yet checked in)
+    // Absent members (in registry for this meeting's campus who have not yet checked in)
     const absentList = useMemo(() => {
         const attendedSet = new Set(
             attendanceRecords.map(a => String(a.studentRegNo || '').trim().toUpperCase())
         );
-        return allMembers.filter(
-            m => !attendedSet.has(String(m.studentRegNo || '').trim().toUpperCase())
+        const targetMembers = (meeting?.campus && meeting.campus !== 'Both' && meeting.campus !== 'All')
+            ? allMembers.filter(m => m.campus === meeting.campus)
+            : allMembers;
+
+        return targetMembers.filter(
+            m => !attendedSet.has(String(m.studentRegNo || '').trim().toUpperCase()) &&
+                 m.status !== 'Archived' &&
+                 m.status !== 'Archived-Concluded'
         );
-    }, [allMembers, attendanceRecords]);
+    }, [allMembers, attendanceRecords, meeting?.campus]);
 
     // Filtered lists based on search and role filter
     const filteredAttended = useMemo(() => {
