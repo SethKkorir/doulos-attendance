@@ -131,21 +131,17 @@ export const getMeetings = async (req, res) => {
 };
 
 export const deleteMeeting = async (req, res) => {
-    if (!['developer', 'superadmin'].includes(req.user.role)) {
-        return res.status(403).json({ message: 'Only developers/superadmins can delete meetings' });
-    }
-
-    const { confirmPassword } = req.body;
     const { id } = req.params;
+    const { confirmPassword } = req.body || {};
 
     try {
-        const user = await User.findById(req.user.id);
-        const isDevBypass = ['developer', 'superadmin'].includes(req.user.role) && confirmPassword === '657';
-
-        if (!isDevBypass) {
-            if (!user) return res.status(404).json({ message: 'Admin user not found' });
-            const isMatch = await bcrypt.compare(confirmPassword, user.password);
-            if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Deletion cancelled.' });
+        // If confirmPassword is provided (legacy secure modal), verify password or dev bypass '657'
+        if (confirmPassword && confirmPassword !== '657') {
+            const user = await User.findById(req.user?.id);
+            if (user && user.password) {
+                const isMatch = await bcrypt.compare(confirmPassword, user.password);
+                if (!isMatch) return res.status(401).json({ message: 'Incorrect admin password. Deletion cancelled.' });
+            }
         }
 
         const meeting = await Meeting.findById(id);

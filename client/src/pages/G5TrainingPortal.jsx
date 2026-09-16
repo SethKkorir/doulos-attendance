@@ -53,7 +53,8 @@ import {
     QrCode,
     Printer,
     Copy,
-    Menu
+    Menu,
+    Trash2
 } from 'lucide-react';
 
 const G5TrainingPortal = () => {
@@ -765,6 +766,18 @@ const G5TrainingPortal = () => {
         } catch (err) {
             console.error('Restore meeting failed:', err);
             showToast(err.response?.data?.message || 'Failed to restore meeting', 'error');
+        }
+    };
+
+    const handleDeleteMeeting = async (meeting) => {
+        if (!window.confirm(`Permanently DELETE meeting "${meeting.name}"?\n\nThis will remove the meeting and all associated check-in records immediately.`)) return;
+        try {
+            await api.delete(`/meetings/${meeting._id}`);
+            showToast(`Meeting "${meeting.name}" deleted successfully`);
+            setMeetings(prev => prev.filter(m => m._id !== meeting._id));
+        } catch (err) {
+            console.error('Delete meeting failed:', err);
+            showToast(err.response?.data?.message || 'Failed to delete meeting', 'error');
         }
     };
 
@@ -1883,7 +1896,7 @@ const G5TrainingPortal = () => {
                                                                 >
                                                                     <Radio size={15} /> Live Attendance Feed & Check-In
                                                                 </button>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: '0.45rem' }}>
                                                                     <button
                                                                         type="button"
                                                                         className="g5-btn-secondary"
@@ -1906,10 +1919,32 @@ const G5TrainingPortal = () => {
                                                                     >
                                                                         <Users size={14} /> Who Attended ({meeting.attendanceCount ?? 0})
                                                                     </button>
+                                                                    <button
+                                                                        className="g5-btn-outline"
+                                                                        style={{ padding: '0.6rem 0.75rem', fontSize: '0.82rem' }}
+                                                                        title="Archive this active meeting session"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleArchiveMeeting(meeting);
+                                                                        }}
+                                                                    >
+                                                                        <Archive size={14} /> Archive
+                                                                    </button>
+                                                                    <button
+                                                                        className="g5-btn-outline"
+                                                                        style={{ padding: '0.6rem 0.75rem', fontSize: '0.82rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+                                                                        title="Permanently delete this meeting"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteMeeting(meeting);
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 size={14} /> Delete
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '0.45rem' }}>
                                                                 <button
                                                                     className="g5-btn-secondary"
                                                                     style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
@@ -1942,6 +1977,17 @@ const G5TrainingPortal = () => {
                                                                     }}
                                                                 >
                                                                     <Archive size={15} /> Archive
+                                                                </button>
+                                                                <button
+                                                                    className="g5-btn-outline"
+                                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+                                                                    title="Permanently delete this meeting"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteMeeting(meeting);
+                                                                    }}
+                                                                >
+                                                                    <Trash2 size={15} /> Delete
                                                                 </button>
                                                             </div>
                                                         )}
@@ -2056,7 +2102,7 @@ const G5TrainingPortal = () => {
                                                             </span>
                                                         </div>
 
-                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '0.45rem' }}>
                                                             <button
                                                                 className="g5-btn-secondary"
                                                                 style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem' }}
@@ -2089,6 +2135,17 @@ const G5TrainingPortal = () => {
                                                                 }}
                                                             >
                                                                 <RotateCcw size={15} /> Restore
+                                                            </button>
+                                                            <button
+                                                                className="g5-btn-outline"
+                                                                style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+                                                                title="Permanently delete this meeting"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteMeeting(meeting);
+                                                                }}
+                                                            >
+                                                                <Trash2 size={15} /> Delete
                                                             </button>
                                                         </div>
                                                     </div>

@@ -149,13 +149,12 @@ const MeetingsTab = ({
 
     const handleDeleteMeeting = async (id, name) => {
         if (isGuest) return setMsg({ type: 'error', text: 'Action disabled in Guest Mode.' });
-        const password = window.prompt(`SECURITY CHECK: Enter admin password to PERMANENTLY DELETE "${name}" and all its attendance records:`);
-        if (!password) return;
+        if (!window.confirm(`PERMANENTLY DELETE meeting "${name}"?\n\nThis will remove the meeting and all associated attendance records immediately.`)) return;
 
         setImportLoading(true);
         try {
-            const res = await api.post(`/meetings/${id}/delete-secure`, { confirmPassword: password });
-            setMsg({ type: 'success', text: res.data.message });
+            const res = await api.delete(`/meetings/${id}`);
+            setMsg({ type: 'success', text: res.data.message || `Meeting "${name}" deleted successfully.` });
             fetchMeetings();
         } catch (err) {
             setMsg({ type: 'error', text: 'Deletion failed: ' + (err.response?.data?.message || 'Server error') });
@@ -1114,28 +1113,27 @@ const MeetingsTab = ({
                         </button>
                     )}
 
-                    {!m.isActive && ['developer', 'superadmin', 'SuperAdmin'].includes(userRole) && (
-                        <button
-                            className="btn"
-                            style={{
-                                flex: 0.8,
-                                background: 'rgba(239, 68, 68, 0.15)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                fontSize: '0.75rem',
-                                padding: '0.55rem',
-                                fontWeight: 800,
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.35rem'
-                            }}
-                            onClick={() => handleDeleteMeeting(m._id, m.name)}
-                        >
-                            <Trash2 size={14} /> Delete
-                        </button>
-                    )}
+                    <button
+                        className="btn"
+                        style={{
+                            flex: 0.8,
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            fontSize: '0.75rem',
+                            padding: '0.55rem',
+                            fontWeight: 800,
+                            borderRadius: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
+                        }}
+                        onClick={() => handleDeleteMeeting(m._id, m.name)}
+                        title="Permanently delete this meeting"
+                    >
+                        <Trash2 size={14} /> Delete
+                    </button>
                 </div>
             </div>
         );
