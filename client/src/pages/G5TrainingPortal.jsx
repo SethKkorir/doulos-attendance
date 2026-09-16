@@ -60,8 +60,18 @@ import {
 const G5TrainingPortal = () => {
     const navigate = useNavigate();
 
-    // Responsive Mobile Sidebar State
+    // Responsive Mobile State
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+    const moreTabIds = ['trainings_camps', 'graduations', 'promotions', 'contributions', 'safety'];
+    const isMoreActive = moreTabIds.includes(activeTab);
+
+    const handleSelectTab = (tabId) => {
+        setActiveTab(tabId);
+        setMobileSidebarOpen(false);
+        setMobileMoreOpen(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     // Active Navigation Tab (9 items strictly)
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -1181,43 +1191,94 @@ const G5TrainingPortal = () => {
             <div className="g5-main-wrapper">
                 {/* TOPBAR */}
                 <header className="g5-topbar">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
+                        {/* Mobile Brand (Shown on mobile viewports) */}
+                        <div
+                            className="g5-mobile-app-brand"
+                            onClick={() => handleSelectTab('dashboard')}
+                            style={{ display: 'none', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flexShrink: 0 }}
+                        >
+                            <div className="g5-brand-icon-box" style={{ width: '32px', height: '32px', borderRadius: '8px' }}>
+                                <Compass size={17} />
+                            </div>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-primary)', letterSpacing: '-0.2px' }}>
+                                Doulos G5
+                            </span>
+                        </div>
+
                         <button
                             type="button"
                             className="g5-menu-toggle"
-                            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+                            onClick={() => setMobileMoreOpen(!mobileMoreOpen)}
                             aria-label="Toggle Navigation Menu"
                         >
-                            {mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                            <Menu size={18} />
                         </button>
 
                         <div className="g5-search-wrap">
                             <Search size={17} />
                             <input
                                 type="text"
-                                placeholder="Search cadets, recruits, skills..."
+                                placeholder="Search personnel, skills, sessions..."
                                 className="g5-search-input"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px 4px' }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     <div className="g5-topbar-actions">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-primary-soft)', padding: '0.35rem 0.85rem', borderRadius: '999px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-status-active)' }}></span>
-                            <span className="g5-ministry-badge-text" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                                Outdoor Ministry Mode
-                            </span>
-                        </div>
+                        {activeMeetings.some(m => m.isActive) ? (
+                            <button
+                                type="button"
+                                onClick={() => handleSelectTab('meetings')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    background: 'var(--color-status-active-soft)',
+                                    border: '1px solid rgba(76, 175, 125, 0.3)',
+                                    padding: '0.35rem 0.75rem',
+                                    borderRadius: '999px',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-status-active)',
+                                    fontWeight: 800,
+                                    fontSize: '0.76rem'
+                                }}
+                            >
+                                <span className="g5-pulse-dot" style={{ width: '6px', height: '6px' }} />
+                                <span>Live Drill</span>
+                            </button>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-primary-soft)', padding: '0.35rem 0.85rem', borderRadius: '999px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-status-active)' }}></span>
+                                <span className="g5-ministry-badge-text" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                                    Outdoor Ministry
+                                </span>
+                            </div>
+                        )}
 
-                        <div className="g5-profile-block">
-                            <div className="g5-avatar">
-                                🧗
+                        <div
+                            className="g5-profile-block"
+                            onClick={() => setMobileMoreOpen(true)}
+                            style={{ cursor: 'pointer' }}
+                            title="Open Menu & Modules"
+                        >
+                            <div className="g5-avatar" style={{ width: '34px', height: '34px', fontSize: '0.85rem' }}>
+                                {username.charAt(0).toUpperCase()}
                             </div>
                             <div className="g5-profile-info">
                                 <span className="g5-profile-name">{username}</span>
-                                <span className="g5-profile-role">Training Coordinator</span>
+                                <span className="g5-profile-role">{userCampus}</span>
                             </div>
                         </div>
                     </div>
@@ -4920,6 +4981,145 @@ const G5TrainingPortal = () => {
                     </div>
                 </div>
             )}
+
+            {/* ===================================================== */}
+            {/* NATIVE-STYLE MOBILE BOTTOM NAVIGATION BAR */}
+            {/* ===================================================== */}
+            <nav className="g5-mobile-bottom-nav">
+                <button
+                    type="button"
+                    className={`g5-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('dashboard')}
+                    aria-label="Dashboard Home"
+                >
+                    <LayoutDashboard size={20} />
+                    <span>Home</span>
+                </button>
+
+                <button
+                    type="button"
+                    className={`g5-bottom-nav-item ${activeTab === 'attendance' ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('attendance')}
+                    aria-label="Attendance Ledger"
+                >
+                    <CalendarCheck size={20} />
+                    <span>Attend</span>
+                </button>
+
+                <button
+                    type="button"
+                    className={`g5-bottom-nav-item ${activeTab === 'meetings' ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('meetings')}
+                    aria-label="Field Meetings"
+                >
+                    <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <Calendar size={20} />
+                        {activeMeetings.some(m => m.isActive) && (
+                            <span className="g5-bottom-nav-dot" />
+                        )}
+                    </div>
+                    <span>Meetings</span>
+                </button>
+
+                <button
+                    type="button"
+                    className={`g5-bottom-nav-item ${activeTab === 'cadres' ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('cadres')}
+                    aria-label="Membership Roster"
+                >
+                    <Users size={20} />
+                    <span>Roster</span>
+                </button>
+
+                <button
+                    type="button"
+                    className={`g5-bottom-nav-item ${(isMoreActive || mobileMoreOpen) ? 'active' : ''}`}
+                    onClick={() => setMobileMoreOpen(!mobileMoreOpen)}
+                    aria-label="More Ministry Portals"
+                >
+                    <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <Layers size={20} />
+                        {(recruits.length > 0 || incidents.length > 0) && (
+                            <span className="g5-bottom-nav-badge">
+                                {recruits.length + incidents.length}
+                            </span>
+                        )}
+                    </div>
+                    <span>More</span>
+                </button>
+            </nav>
+
+            {/* ===================================================== */}
+            {/* MOBILE APP "MORE" ACTION SHEET / DRAWER */}
+            {/* ===================================================== */}
+            <div
+                className={`g5-mobile-sheet-backdrop ${mobileMoreOpen ? 'active' : ''}`}
+                onClick={() => setMobileMoreOpen(false)}
+            />
+            <div className={`g5-mobile-sheet ${mobileMoreOpen ? 'open' : ''}`}>
+                <div className="g5-mobile-sheet-handle" onClick={() => setMobileMoreOpen(false)} />
+                <div className="g5-mobile-sheet-header">
+                    <div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.2px' }}>
+                            Ministry Portals & Tools
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                            Daystar University Doulos Ministry • Freedom Base
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="g5-mobile-sheet-close"
+                        onClick={() => setMobileMoreOpen(false)}
+                        aria-label="Close sheet"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className="g5-mobile-sheet-grid">
+                    {navItems.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                type="button"
+                                className={`g5-sheet-item ${isActive ? 'active' : ''}`}
+                                onClick={() => handleSelectTab(item.id)}
+                            >
+                                <div className="g5-sheet-icon-box">
+                                    <Icon size={22} />
+                                    {item.badge ? (
+                                        <span className="g5-sheet-badge">{item.badge}</span>
+                                    ) : null}
+                                </div>
+                                <span className="g5-sheet-item-label">{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="g5-mobile-sheet-user">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div className="g5-avatar" style={{ width: '38px', height: '38px', fontSize: '0.9rem' }}>
+                            {username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>{username}</div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--color-primary)', fontWeight: 700 }}>{userRole} • {userCampus}</div>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="g5-btn-outline"
+                        style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                        onClick={handleLogout}
+                    >
+                        <LogOut size={14} /> Sign Out
+                    </button>
+                </div>
+            </div>
 
         </div>
     );
