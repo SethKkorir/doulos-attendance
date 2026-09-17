@@ -499,8 +499,11 @@ const StudentPortal = () => {
         setTimeout(() => setToast(null), 4000);
     };
 
-    const handleCheckInSuccess = (result) => {
-        handleLogin();
+    const handleCheckInSuccess = async (result) => {
+        const activeRegNo = result?.studentRegNo || data?.studentRegNo || regNo;
+        if (activeRegNo) {
+            await handleLogin(null, activeRegNo);
+        }
         showToast(result?.message || '🎉 Check-in verified! +10 Attendance Points recorded.', 'success');
     };
 
@@ -510,8 +513,8 @@ const StudentPortal = () => {
         }
     }, [data]);
 
-    const handleLogin = async (e) => {
-        if (e) e.preventDefault();
+    const handleLogin = async (e, customRegNo = null) => {
+        if (e && e.preventDefault) e.preventDefault();
         if (isGuest) {
             setData({
                 studentRegNo: 'GUEST-001', memberName: 'Guest Explorer', memberType: 'Visitor',
@@ -526,14 +529,16 @@ const StudentPortal = () => {
             setIsLoggedIn(true);
             return;
         }
-        if (!regNo) return;
+        const targetRegNo = (customRegNo || regNo || data?.studentRegNo || '').trim().toUpperCase();
+        if (!targetRegNo) return;
         setLoading(true); setError(null);
         try {
-            const res = await api.get(`/attendance/student/${regNo}`);
+            const res = await api.get(`/attendance/student/${targetRegNo}`);
             if (res.data.registrationRequired) { setRegistrationRequired(true); setLoading(false); return; }
             setData(res.data);
+            setRegNo(targetRegNo);
             setIsLoggedIn(true);
-            localStorage.setItem('studentSession', JSON.stringify({ regNo: regNo.toUpperCase(), expiry: Date.now() + SESSION_DURATION }));
+            localStorage.setItem('studentSession', JSON.stringify({ regNo: targetRegNo, expiry: Date.now() + SESSION_DURATION }));
         } catch (err) { setError(err.response?.data?.message || 'Something went wrong. Please try again.'); }
         finally { setLoading(false); }
     };

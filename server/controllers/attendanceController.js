@@ -224,6 +224,7 @@ export const submitAttendance = async (req, res) => {
 
         // 8. Device Handcuff Logic (Locking student to one phone)
         let isBypassed = false;
+        let shouldLinkDevice = false;
         if (member) {
             const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
             isBypassed = bypassSetting?.value === 'true';
@@ -233,8 +234,7 @@ export const submitAttendance = async (req, res) => {
                     return res.status(400).json({ message: 'Device Lock Error: Device signature is missing. Please ensure your browser supports local storage and cookies.' });
                 }
                 if (!member.linkedDeviceId && deviceId) {
-                    member.linkedDeviceId = deviceId;
-                    await member.save();
+                    shouldLinkDevice = true;
                 } else if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
                     await logScanError(studentRegNo, 'Device Signature Mismatch', `Attempted check-in on a second phone without resetting device link lock. Device ID: ${deviceId}`, meeting.campus);
                     return res.status(403).json({ message: 'Device Lock Error: This account is linked to another device. Please request a device reset from a G9 administrator.' });
@@ -319,6 +319,10 @@ export const submitAttendance = async (req, res) => {
 
         // 11. Record Attendance (Skip if Test Account)
         if (!member.isTestAccount) {
+            if (shouldLinkDevice && deviceId) {
+                await Member.findOneAndUpdate({ studentRegNo }, { $set: { linkedDeviceId: deviceId } });
+            }
+
             const attendance = new Attendance({
                 meeting: isTrainingModel ? undefined : meeting._id,
                 trainingId: isTrainingModel ? meeting._id : undefined,
@@ -407,22 +411,44 @@ export const getStudentPortalData = async (req, res) => {
 
         // 3. Find IDs of all meetings and trainings within the target semester
         let targetSemester = req.query.semester || currentSemester;
-        let semMeetings = await Meeting.find({ semester: targetSemester }, '_id');
+        let semMeetings = await Meeting.find({ 
+            $or: [
+                { semester: targetSemester },
+                { semester: new RegExp(`^${targetSemester}$`, 'i') },
+                { semester: { $exists: false } },
+                { semester: null },
+                { semester: '' }
+            ]
+        }, '_id');
         let semMeetingIds = semMeetings.map(m => m._id);
-        let semTrainings = await Training.find({ semester: targetSemester, campus: { $in: [member.campus, 'Both'] } });
+        let semTrainings = await Training.find({ 
+            $or: [
+                { semester: targetSemester },
+                { semester: new RegExp(`^${targetSemester}$`, 'i') },
+                { semester: { $exists: false } },
+                { semester: null },
+                { semester: '' }
+            ],
+            campus: { $in: [member.campus, 'Both'] } 
+        });
         let semTrainingIds = semTrainings.map(t => t._id);
 
         // 4. Query student's attendance records matching sessions
         const attendanceRecords = await Attendance.find({
-            studentRegNo,
-            $or: [
-                { meeting: { $in: semMeetingIds } },
-                { trainingId: { $in: semTrainingIds } }
-            ]
+            studentRegNo
         }).sort({ timestamp: -1 });
 
         // 5. Get all meetings of the student's default campus for the selected semester
-        const campusMeetings = await Meeting.find({ campus: member.campus, semester: targetSemester }).sort({ date: -1 });
+        const campusMeetings = await Meeting.find({ 
+            campus: member.campus, 
+            $or: [
+                { semester: targetSemester },
+                { semester: new RegExp(`^${targetSemester}$`, 'i') },
+                { semester: { $exists: false } },
+                { semester: null },
+                { semester: '' }
+            ]
+        }).sort({ date: -1 });
 
         // 6. Helper to get start of week (Sunday)
         const getWeekStart = (date) => {
@@ -1164,6 +1190,214 @@ export const getAbsenteeRadar = async (req, res) => {
     } catch (error) {
         console.error('Error in getAbsenteeRadar:', error);
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 4. Pre-Validation Check (Validates all rules before prompting user for question)
+export const preValidateAttendance = async (req, res) => {
+    try {
+        const { meetingCode, deviceId, studentRegNo, userLat, userLong, accuracy, campus } = req.body;
+
+        if (!meetingCode) {
+            return res.status(400).json({ message: 'Meeting code is required' });
+        }
+
+        const rawRegNo = studentRegNo || req.body?.responses?.studentRegNo;
+        if (!rawRegNo) {
+            return res.status(400).json({ message: 'Admission Number is required' });
+        }
+        const cleanRegNo = String(rawRegNo).trim().toUpperCase();
+
+        const rawCode = String(meetingCode).trim();
+        const preferredCampus = campus || null;
+
+        // 1. Resolve meeting / training session
+        const { meeting, isTraining, resolutionType, isSemesterLink } = await resolveMeetingOrTraining(rawCode, preferredCampus);
+
+        if (!meeting) {
+            if (isSemesterLink) {
+                return res.status(404).json({
+                    message: 'No active meeting or training in session for this semester right now. The Semester QR code only activates during live fellowship meetings and training sessions.'
+                });
+            }
+            if (resolutionType === 'campus_none') {
+                return res.status(404).json({
+                    message: `No active meeting or training found for ${rawCode} campus.`
+                });
+            }
+            return res.status(404).json({ message: 'Meeting/Training session not found or has expired.' });
+        }
+
+        const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+
+        // 2. Time Window Check
+        const now = getKenyanTime();
+        const meetingDate = new Date(meeting.date);
+
+        const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+        const meetingStr = `${meetingDate.getUTCFullYear()}-${String(meetingDate.getUTCMonth() + 1).padStart(2, '0')}-${String(meetingDate.getUTCDate()).padStart(2, '0')}`;
+
+        const [startHours, startMinutes] = (meeting.startTime || '00:00').split(':').map(Number);
+        const [endHours, endMinutes] = (meeting.endTime || '23:59').split(':').map(Number);
+        const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+        const startTotalMinutes = startHours * 60 + startMinutes;
+        const endTotalMinutes = endHours * 60 + endMinutes;
+
+        const isTimeStarted = currentMinutes >= (startTotalMinutes - 60); // 1hr grace
+        const isTimeEnded = currentMinutes > (endTotalMinutes + 30); // 30min buffer
+        const isToday = todayStr === meetingStr;
+
+        if (!isSuperUser && !meeting.isTestMeeting) {
+            if (!meeting.isActive) {
+                return res.status(403).json({ message: isTraining ? 'This training has been closed by the admin.' : 'This meeting has been manually closed by the admin.' });
+            }
+            if (!isTraining) {
+                if (!isToday) {
+                    return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}. It is not open today.` });
+                }
+                if (!isTimeStarted) {
+                    return res.status(403).json({
+                        message: `This meeting starts at ${meeting.startTime} EAT. Please wait until then.`
+                    });
+                }
+                if (isTimeEnded) {
+                    return res.status(403).json({
+                        message: `This meeting ended at ${meeting.endTime} EAT. Attendance is no longer being accepted.`
+                    });
+                }
+            }
+        }
+
+        // 3. Member Registry Lookup
+        let member = await Member.findOne({ studentRegNo: cleanRegNo });
+        if (!member) {
+            return res.status(403).json({
+                message: `Access Denied: Admission Number "${cleanRegNo}" is not in the Doulos Registry. Please verify or register.`
+            });
+        }
+
+        if (member.isActive === false) {
+            return res.status(403).json({
+                message: 'ACCESS DENIED: Your account is suspended/blocked. Please contact the administrator.'
+            });
+        }
+
+        if (member.status === 'Archived' && !isSuperUser) {
+            return res.status(403).json({
+                message: "Access Paused: Your account is currently archived. Please contact your leader for re-activation."
+            });
+        }
+
+        // 4. Geofencing Proximity Check
+        if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTraining) {
+            if (!userLat || !userLong) {
+                return res.status(400).json({ message: 'GPS data is required for this venue. Please enable location permissions.' });
+            }
+            const uLat = Number(userLat);
+            const uLong = Number(userLong);
+            const mLat = Number(meeting.location.latitude);
+            const mLong = Number(meeting.location.longitude);
+            const reportedAccuracy = Math.max(0, Number(accuracy) || 0);
+
+            if (isNaN(uLat) || isNaN(uLong)) {
+                return res.status(400).json({ message: 'Invalid GPS coordinates received. Please enable location.' });
+            }
+
+            const R = 6371e3;
+            const φ1 = (mLat * Math.PI) / 180;
+            const φ2 = (uLat * Math.PI) / 180;
+            const Δφ = ((uLat - mLat) * Math.PI) / 180;
+            const Δλ = ((uLong - mLong) * Math.PI) / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+
+            const baseRadius = meeting.location.radius || 200;
+            const effectiveDistance = Math.max(0, distance - reportedAccuracy);
+
+            if (effectiveDistance > (baseRadius + 100)) {
+                return res.status(403).json({
+                    message: `Location Mismatch: You are too far from ${meeting.location.name}. Please ensure you are at the correct venue.`
+                });
+            }
+        }
+
+        // 5. Device Lock Check
+        const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
+        const isBypassed = bypassSetting?.value === 'true';
+
+        if (!isBypassed && member.memberType !== 'Visitor') {
+            if (!deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
+                return res.status(400).json({ message: 'Device Lock Error: Device signature is missing. Please ensure your browser supports storage and cookies.' });
+            }
+            if (member.linkedDeviceId && deviceId && member.linkedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
+                return res.status(403).json({ message: 'Device Lock Error: This account is linked to another device. Please request a device reset from a G9 administrator.' });
+            }
+        }
+
+        // 6. Anti-Proxy Check
+        if (!isBypassed && deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount && member?.memberType !== 'Visitor') {
+            const deviceQuery = isTraining
+                ? { trainingId: meeting._id, deviceId, trainingDay: meeting.activeDay || 1, studentRegNo: { $ne: cleanRegNo } }
+                : { meeting: meeting._id, deviceId, studentRegNo: { $ne: cleanRegNo } };
+            const deviceUsed = await Attendance.findOne(deviceQuery);
+            if (deviceUsed) {
+                return res.status(403).json({ message: 'This device has already been used for a check-in for this session.' });
+            }
+        }
+
+        // 7. Session Duplicate Check
+        const dupQuery = isTraining
+            ? { trainingId: meeting._id, studentRegNo: cleanRegNo, trainingDay: meeting.activeDay || 1 }
+            : { meeting: meeting._id, studentRegNo: cleanRegNo };
+        const existing = await Attendance.findOne(dupQuery);
+        if (existing && !member?.isTestAccount) {
+            return res.status(409).json({ message: 'You have already signed in for this session.' });
+        }
+
+        // 8. Weekly Check-In Restriction
+        if (!isSuperUser && !meeting.isTestMeeting && !isTraining && !member?.isTestAccount) {
+            const { startOfWeek, endOfWeek } = getWeekRange(meeting.date);
+            const meetingsThisWeek = await Meeting.find({
+                date: { $gte: startOfWeek, $lte: endOfWeek },
+                _id: { $ne: meeting._id }
+            }).select('_id name campus');
+
+            const otherMeetingIds = meetingsThisWeek.map(m => m._id);
+            if (otherMeetingIds.length > 0) {
+                const attendedOther = await Attendance.findOne({
+                    studentRegNo: cleanRegNo,
+                    meeting: { $in: otherMeetingIds }
+                }).populate('meeting');
+
+                if (attendedOther) {
+                    const campusName = attendedOther.meeting.campus === 'Valley Road' ? 'Nairobi' : attendedOther.meeting.campus;
+                    return res.status(403).json({
+                        message: `ACCESS DENIED: A member can only attend one meeting per week. You have already attended "${attendedOther.meeting.name}" (${campusName}) this week.`
+                    });
+                }
+            }
+        }
+
+        // All Pre-Validation Rules Passed!
+        res.json({
+            valid: true,
+            meeting: {
+                _id: meeting._id,
+                name: meeting.name,
+                campus: meeting.campus,
+                category: isTraining ? 'Training' : (meeting.category || 'Meeting'),
+                questionOfDay: meeting.questionOfDay || '',
+                questionType: meeting.questionType || 'text',
+                questionOptions: meeting.questionOptions || []
+            },
+            hasQuestion: Boolean(meeting.questionOfDay && meeting.questionOfDay.trim() !== '')
+        });
+
+    } catch (error) {
+        console.error('Error in preValidateAttendance:', error);
+        res.status(500).json({ message: error.message });
     }
 };
 

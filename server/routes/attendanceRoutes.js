@@ -1,6 +1,7 @@
 import express from 'express';
 import {
     submitAttendance,
+    preValidateAttendance,
     getAttendance,
     deleteAttendance,
     getStudentPortalData,
@@ -20,7 +21,8 @@ router.get('/live', getLiveAttendance);
 router.get('/rollup', getAttendanceRollup);
 router.get('/absentees', getAbsenteeRadar);
 
-// Public route for students to submit
+// Pre-validation and submission
+router.post('/pre-validate', optionalVerify, preValidateAttendance);
 router.post('/submit', optionalVerify, submitAttendance);
 
 // Student Portal data

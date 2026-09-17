@@ -3,7 +3,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { 
     X, Camera, Flashlight, RefreshCw, CheckCircle2, AlertTriangle, 
     Sparkles, ShieldCheck, MapPin, Loader2, ArrowRight, HelpCircle,
-    Check, MessageSquare, Star
+    Check, MessageSquare, Star, Radio, Send
 } from 'lucide-react';
 import api from '../api';
 
@@ -85,7 +85,6 @@ const safeStopScanner = async (scanner) => {
             shouldStop = true;
         } else if (typeof scanner.getState === 'function') {
             const state = scanner.getState();
-            // 2: SCANNING, 3: PAUSED
             if (state === 2 || state === 3) {
                 shouldStop = true;
             }
@@ -115,9 +114,11 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
     const [retryCount, setRetryCount] = useState(0);
     const [checkInResult, setCheckInResult] = useState(null);
 
-    // Question Flow State
+    // Question Flow & Pre-validation State
     const [pendingMeetingCode, setPendingMeetingCode] = useState('');
     const [pendingMeetingData, setPendingMeetingData] = useState(null);
+    const [pendingUserLocation, setPendingUserLocation] = useState(null);
+    const [pendingDeviceId, setPendingDeviceId] = useState(null);
     const [userAnswer, setUserAnswer] = useState('');
     const [questionValidationError, setQuestionValidationError] = useState('');
 
@@ -175,7 +176,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
     };
 
     // Submits the check-in with the answered question to backend
-    const handleSubmitAttendance = async (finalAnswer) => {
+    const handleSubmitAttendance = async (finalAnswer, cachedLocation = null, cachedDeviceId = null) => {
         setScannerStatus('submitting');
         setStatusMessage('Preparing security credentials...');
 
@@ -192,30 +193,12 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                 console.warn('Token issue error, falling back to direct verification:', tErr);
             }
 
-            // 2. Step 2: Acquire Device Signature (Stage 4 & 5)
+            // 2. Step 2: Acquire Device Signature
             setStatusMessage('Checking device lock signature...');
-            const deviceId = await getPersistentDeviceId();
+            const deviceId = cachedDeviceId || pendingDeviceId || await getPersistentDeviceId();
 
-            // 3. Step 3: Acquire Geolocation (Stage 3)
-            setStatusMessage('Acquiring high-precision venue GPS fix...');
-            let userLocation = { lat: null, long: null, accuracy: null };
-
-            if (navigator.geolocation) {
-                try {
-                    const getPosition = (opts) => new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));
-                    let pos;
-                    try {
-                        pos = await getPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
-                    } catch {
-                        pos = await getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-                    }
-                    userLocation.lat = pos.coords.latitude;
-                    userLocation.long = pos.coords.longitude;
-                    userLocation.accuracy = pos.coords.accuracy || 0;
-                } catch (geoErr) {
-                    console.warn("GPS acquire error in portal scanner:", geoErr);
-                }
-            }
+            // 3. Step 3: Location
+            const userLocation = cachedLocation || pendingUserLocation || { lat: null, long: null, accuracy: null };
 
             // 4. Step 4: Submit Attendance to Pipeline (Stages 1 - 7)
             setStatusMessage('Recording official attendance & awarding points...');
@@ -237,16 +220,18 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
             // 5. Success Flow
             setScannerStatus('success');
-            setCheckInResult({
+            const resultData = {
                 meetingName: res.data.meetingName || pendingMeetingData?.name || code.toUpperCase(),
                 memberName: res.data.memberName || memberName,
+                studentRegNo: studentRegNo.trim().toUpperCase(),
                 memberType: res.data.memberType || 'Member',
                 pointsAwarded: 10
-            });
+            };
+            setCheckInResult(resultData);
 
             // Trigger parent state refresh
             if (onCheckInSuccess) {
-                onCheckInSuccess(res.data);
+                onCheckInSuccess({ ...res.data, studentRegNo: studentRegNo.trim().toUpperCase() });
             }
 
         } catch (err) {
@@ -257,7 +242,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
         }
     };
 
-    // Main scanning orchestrator
+    // Main scanning orchestrator: Strict Pre-Validation Before Showing Any Question
     const handleScannedCode = async (decodedText) => {
         if (isProcessingRef.current) return;
         isProcessingRef.current = true;
@@ -279,29 +264,60 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
         }
 
         setScannerStatus('processing');
-        setStatusMessage('Venue QR code recognized! Fetching session details...');
+        setStatusMessage('Acquiring location & pre-validating attendance rules...');
 
         try {
+            // 1. Acquire GPS Fix
+            let userLocation = { lat: null, long: null, accuracy: null };
+            if (navigator.geolocation) {
+                try {
+                    const getPosition = (opts) => new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));
+                    let pos;
+                    try {
+                        pos = await getPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+                    } catch {
+                        pos = await getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+                    }
+                    userLocation.lat = pos.coords.latitude;
+                    userLocation.long = pos.coords.longitude;
+                    userLocation.accuracy = pos.coords.accuracy || 0;
+                } catch (geoErr) {
+                    console.warn("GPS acquire error in portal scanner:", geoErr);
+                }
+            }
+
+            // 2. Acquire Device Signature
             const deviceId = await getPersistentDeviceId();
-            // Fetch meeting details to check for Question of the Day
-            const res = await api.get(`/meetings/code/${code}?deviceId=${deviceId}`);
-            const meeting = res.data;
 
             setPendingMeetingCode(code);
+            setPendingUserLocation(userLocation);
+            setPendingDeviceId(deviceId);
+
+            // 3. Strict Pre-Validation (Checks timing, location, device lock, duplicates, registry status)
+            const preValRes = await api.post('/attendance/pre-validate', {
+                meetingCode: code,
+                deviceId,
+                studentRegNo: studentRegNo.trim().toUpperCase(),
+                userLat: userLocation.lat,
+                userLong: userLocation.long,
+                accuracy: userLocation.accuracy
+            });
+
+            const { meeting, hasQuestion } = preValRes.data;
             setPendingMeetingData(meeting);
 
-            // If meeting has an interactive Question of the Day, prompt student before submitting
-            if (meeting && meeting.questionOfDay && meeting.questionOfDay.trim() !== '') {
+            // If meeting has an interactive Question of the Day, prompt student now that all rules passed
+            if (hasQuestion && meeting.questionOfDay && meeting.questionOfDay.trim() !== '') {
                 setUserAnswer('');
                 setQuestionValidationError('');
                 setScannerStatus('question');
             } else {
-                // If no question, directly submit check-in
-                await handleSubmitAttendance('');
+                // If no question, directly proceed to final check-in
+                await handleSubmitAttendance('', userLocation, deviceId);
             }
         } catch (err) {
-            console.error("Portal Meeting Verification Error:", err);
-            const errMsg = err.response?.data?.message || 'Verification failed. Please verify you are at the venue and try again.';
+            console.error("Attendance Pre-Validation Blocked:", err);
+            const errMsg = err.response?.data?.message || 'Verification blocked. Please verify session rules and venue location.';
             setScannerStatus('error');
             setErrorMessage(errMsg);
         }
@@ -311,11 +327,11 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
     const handleConfirmAnswer = (e) => {
         if (e) e.preventDefault();
         if (!userAnswer || (typeof userAnswer === 'string' && userAnswer.trim() === '')) {
-            setQuestionValidationError('Please answer the question before submitting your check-in.');
+            setQuestionValidationError('Please provide an answer before submitting.');
             return;
         }
         setQuestionValidationError('');
-        handleSubmitAttendance(userAnswer);
+        handleSubmitAttendance(userAnswer, pendingUserLocation, pendingDeviceId);
     };
 
     // Camera Lifecycle with Instant Hardware Acceleration
@@ -329,6 +345,8 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
         setCheckInResult(null);
         setPendingMeetingCode('');
         setPendingMeetingData(null);
+        setPendingUserLocation(null);
+        setPendingDeviceId(null);
         setUserAnswer('');
         setQuestionValidationError('');
 
@@ -438,6 +456,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginTop: '0.75rem' }}>
                         {['Yes', 'No'].map(opt => {
                             const isSelected = userAnswer === opt;
+                            const isYes = opt === 'Yes';
                             return (
                                 <button
                                     key={opt}
@@ -447,25 +466,31 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                         if (questionValidationError) setQuestionValidationError('');
                                     }}
                                     style={{
-                                        padding: '1.1rem',
-                                        borderRadius: '16px',
-                                        fontSize: '1rem',
+                                        padding: '1.15rem 1rem',
+                                        borderRadius: '18px',
+                                        fontSize: '1.05rem',
                                         fontWeight: 800,
                                         background: isSelected 
-                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.35) 0%, rgba(59, 130, 246, 0.25) 100%)' 
-                                            : 'rgba(30, 41, 59, 0.6)',
-                                        color: isSelected ? '#38BDF8' : '#CBD5E1',
-                                        border: isSelected ? '2px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.08)',
-                                        boxShadow: isSelected ? '0 0 20px rgba(56, 189, 248, 0.35)' : 'none',
+                                            ? (isYes 
+                                                ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%)' 
+                                                : 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.35) 100%)')
+                                            : 'rgba(30, 41, 59, 0.5)',
+                                        color: isSelected ? (isYes ? '#34D399' : '#F87171') : '#94A3B8',
+                                        border: isSelected 
+                                            ? (isYes ? '2px solid #10B981' : '2px solid #EF4444') 
+                                            : '1px solid rgba(255, 255, 255, 0.08)',
+                                        boxShadow: isSelected 
+                                            ? (isYes ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 0 20px rgba(239, 68, 68, 0.3)') 
+                                            : 'none',
                                         transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '0.5rem'
+                                        gap: '0.6rem'
                                     }}
                                 >
-                                    <span>{opt === 'Yes' ? '👍' : '👎'}</span>
+                                    <span style={{ fontSize: '1.25rem' }}>{isYes ? '👍' : '👎'}</span>
                                     <span>{opt}</span>
                                 </button>
                             );
@@ -488,27 +513,27 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                     }}
                                     style={{
                                         width: '100%',
-                                        padding: '0.9rem 1.1rem',
-                                        borderRadius: '14px',
+                                        padding: '0.95rem 1.15rem',
+                                        borderRadius: '16px',
                                         textAlign: 'left',
-                                        fontSize: '0.9rem',
+                                        fontSize: '0.92rem',
                                         fontWeight: 700,
                                         background: isSelected 
-                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%)' 
-                                            : 'rgba(30, 41, 59, 0.6)',
+                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.35) 0%, rgba(37, 99, 235, 0.25) 100%)' 
+                                            : 'rgba(30, 41, 59, 0.45)',
                                         color: isSelected ? '#FFFFFF' : '#CBD5E1',
                                         border: isSelected ? '2px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.08)',
-                                        boxShadow: isSelected ? '0 4px 15px rgba(56, 189, 248, 0.25)' : 'none',
+                                        boxShadow: isSelected ? '0 4px 18px rgba(56, 189, 248, 0.25)' : 'none',
                                         transition: 'all 0.2s ease',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.85rem'
+                                        gap: '0.9rem'
                                     }}
                                 >
                                     <div style={{
-                                        width: '18px',
-                                        height: '18px',
+                                        width: '20px',
+                                        height: '20px',
                                         borderRadius: '50%',
                                         border: '2px solid',
                                         borderColor: isSelected ? '#38BDF8' : 'rgba(255, 255, 255, 0.3)',
@@ -520,10 +545,10 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                         transition: 'all 0.2s'
                                     }}>
                                         {isSelected && (
-                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0F172A' }} />
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0F172A' }} />
                                         )}
                                     </div>
-                                    <span style={{ flex: 1 }}>{opt}</span>
+                                    <span style={{ flex: 1, lineHeight: 1.4 }}>{opt}</span>
                                 </button>
                             );
                         })}
@@ -552,28 +577,28 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                     }}
                                     style={{
                                         width: '100%',
-                                        padding: '0.9rem 1.1rem',
-                                        borderRadius: '14px',
+                                        padding: '0.95rem 1.15rem',
+                                        borderRadius: '16px',
                                         textAlign: 'left',
-                                        fontSize: '0.9rem',
+                                        fontSize: '0.92rem',
                                         fontWeight: 700,
                                         background: isSelected 
-                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%)' 
-                                            : 'rgba(30, 41, 59, 0.6)',
+                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.35) 0%, rgba(37, 99, 235, 0.25) 100%)' 
+                                            : 'rgba(30, 41, 59, 0.45)',
                                         color: isSelected ? '#FFFFFF' : '#CBD5E1',
                                         border: isSelected ? '2px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.08)',
-                                        boxShadow: isSelected ? '0 4px 15px rgba(56, 189, 248, 0.25)' : 'none',
+                                        boxShadow: isSelected ? '0 4px 18px rgba(56, 189, 248, 0.25)' : 'none',
                                         transition: 'all 0.2s ease',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.85rem'
+                                        gap: '0.9rem'
                                     }}
                                 >
                                     <div style={{
-                                        width: '18px',
-                                        height: '18px',
-                                        borderRadius: '5px',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '6px',
                                         border: '2px solid',
                                         borderColor: isSelected ? '#38BDF8' : 'rgba(255, 255, 255, 0.3)',
                                         display: 'flex',
@@ -583,9 +608,9 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                         flexShrink: 0,
                                         transition: 'all 0.2s'
                                     }}>
-                                        {isSelected && <Check size={12} color="#0F172A" strokeWidth={3} />}
+                                        {isSelected && <Check size={14} color="#0F172A" strokeWidth={3} />}
                                     </div>
-                                    <span style={{ flex: 1 }}>{opt}</span>
+                                    <span style={{ flex: 1, lineHeight: 1.4 }}>{opt}</span>
                                 </button>
                             );
                         })}
@@ -612,11 +637,11 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                             border: 'none',
                                             cursor: 'pointer',
                                             outline: 'none',
-                                            fontSize: '2.4rem',
+                                            fontSize: '2.5rem',
                                             transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                                             transform: isActive ? 'scale(1.2)' : 'scale(1.0)',
                                             color: isActive ? '#FBBF24' : 'rgba(255,255,255,0.15)',
-                                            textShadow: isActive ? '0 0 18px rgba(251, 191, 36, 0.6)' : 'none',
+                                            textShadow: isActive ? '0 0 20px rgba(251, 191, 36, 0.7)' : 'none',
                                             padding: '0.2rem'
                                         }}
                                     >
@@ -625,8 +650,8 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                 );
                             })}
                         </div>
-                        <span style={{ fontSize: '0.82rem', color: '#94A3B8', fontWeight: 700 }}>
-                            {userAnswer ? `${userAnswer} out of 5 Stars` : 'Tap to rate your experience'}
+                        <span style={{ fontSize: '0.86rem', color: '#94A3B8', fontWeight: 700 }}>
+                            {userAnswer ? `${userAnswer} out of 5 Stars` : 'Tap a star to rate'}
                         </span>
                     </div>
                 );
@@ -645,22 +670,28 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                             }}
                             style={{
                                 width: '100%',
-                                padding: '0.95rem 1.1rem',
-                                background: 'rgba(15, 23, 42, 0.85)',
-                                border: '1.5px solid rgba(255, 255, 255, 0.12)',
-                                borderRadius: '14px',
+                                padding: '1rem 1.15rem',
+                                background: 'rgba(2, 6, 23, 0.75)',
+                                border: '1.5px solid rgba(255, 255, 255, 0.14)',
+                                borderRadius: '16px',
                                 color: '#FFFFFF',
-                                fontSize: '0.92rem',
+                                fontSize: '0.94rem',
                                 fontWeight: 600,
                                 outline: 'none',
                                 resize: 'none',
                                 fontFamily: 'inherit',
                                 lineHeight: 1.5,
-                                transition: 'border-color 0.2s',
+                                transition: 'all 0.2s ease',
                                 boxSizing: 'border-box'
                             }}
-                            onFocus={(e) => e.target.style.borderColor = '#38BDF8'}
-                            onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                            onFocus={(e) => {
+                                e.target.style.borderColor = '#38BDF8';
+                                e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.2)';
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.14)';
+                                e.target.style.boxShadow = 'none';
+                            }}
                         />
                     </div>
                 );
@@ -672,8 +703,8 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
             position: 'fixed',
             inset: 0,
             background: 'rgba(15, 23, 42, 0.92)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -685,13 +716,13 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
             <div style={{
                 position: 'relative',
                 width: '100%',
-                maxWidth: '460px',
+                maxWidth: '470px',
                 margin: 'auto',
-                background: '#0F172A',
-                border: '1px solid rgba(255, 255, 255, 0.14)',
-                borderRadius: '30px',
+                background: '#0B1120',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '28px',
                 overflow: 'hidden',
-                boxShadow: '0 25px 70px rgba(0,0,0,0.8), 0 0 50px rgba(29, 78, 216, 0.2)',
+                boxShadow: '0 30px 80px rgba(0,0,0,0.85), 0 0 60px rgba(29, 78, 216, 0.25)',
                 display: 'flex',
                 flexDirection: 'column',
                 animation: 'popModalScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -701,19 +732,35 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '1.15rem 1.35rem',
-                    background: 'rgba(30, 41, 59, 0.75)',
-                    backdropFilter: 'blur(10px)',
+                    padding: '1.15rem 1.4rem',
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(12px)',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
                     zIndex: 10
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                        <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(29, 78, 216, 0.35)' }}>
-                            <Camera size={18} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ 
+                            width: '36px', 
+                            height: '36px', 
+                            borderRadius: '12px', 
+                            background: scannerStatus === 'question' 
+                                ? 'linear-gradient(135deg, #2563EB 0%, #38BDF8 100%)' 
+                                : 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            color: '#FFFFFF', 
+                            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)' 
+                        }}>
+                            {scannerStatus === 'question' ? <Sparkles size={19} /> : <Camera size={19} />}
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.01em' }}>Venue Scanner</div>
-                            <div style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700 }}>{studentRegNo} · {memberName}</div>
+                            <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+                                {scannerStatus === 'question' ? 'Meeting Check-In' : 'Venue Scanner'}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700 }}>
+                                {studentRegNo} · {memberName}
+                            </div>
                         </div>
                     </div>
 
@@ -856,7 +903,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
                     {/* Initializing State */}
                     {scannerStatus === 'initializing' && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', background: '#0F172A', color: '#94A3B8' }}>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', background: '#0B1120', color: '#94A3B8' }}>
                             <Loader2 className="animate-spin" size={40} color="#38BDF8" />
                             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#FFFFFF' }}>Activating Camera...</span>
                         </div>
@@ -864,17 +911,17 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
                     {/* Processing / Submitting State */}
                     {(scannerStatus === 'processing' || scannerStatus === 'submitting') && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.15rem', background: 'rgba(15, 23, 42, 0.96)', padding: '2rem', textAlign: 'center', animation: 'fadeIn 0.2s ease' }}>
-                            <div style={{ width: '68px', height: '68px', borderRadius: '50%', background: 'rgba(29, 78, 216, 0.2)', border: '2.5px solid #38BDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 25px rgba(56, 189, 248, 0.3)' }}>
-                                <ShieldCheck size={36} color="#38BDF8" />
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.15rem', background: 'rgba(11, 17, 32, 0.97)', padding: '2.5rem 2rem', textAlign: 'center', animation: 'fadeIn 0.2s ease' }}>
+                            <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(29, 78, 216, 0.2)', border: '2.5px solid #38BDF8', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(56, 189, 248, 0.35)' }}>
+                                <ShieldCheck size={40} color="#38BDF8" />
                             </div>
                             <div>
-                                <h4 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 0.4rem 0' }}>
-                                    {scannerStatus === 'submitting' ? 'Submitting Attendance' : 'Verifying Session'}
+                                <h4 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 0.4rem 0' }}>
+                                    {scannerStatus === 'submitting' ? 'Recording Attendance' : 'Verifying Requirements'}
                                 </h4>
-                                <p style={{ fontSize: '0.84rem', color: '#94A3B8', margin: 0, lineHeight: 1.5, maxWidth: '280px' }}>{statusMessage}</p>
+                                <p style={{ fontSize: '0.86rem', color: '#94A3B8', margin: 0, lineHeight: 1.5, maxWidth: '290px' }}>{statusMessage}</p>
                             </div>
-                            <div className="loading-spinner" style={{ width: '24px', height: '24px', borderWidth: '2.5px', borderTopColor: '#38BDF8' }} />
+                            <div className="loading-spinner" style={{ width: '26px', height: '26px', borderWidth: '3px', borderTopColor: '#38BDF8' }} />
                         </div>
                     )}
 
@@ -882,60 +929,85 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                     {scannerStatus === 'question' && (
                         <div style={{ 
                             width: '100%', 
-                            padding: '1.5rem 1.35rem 1.65rem', 
-                            background: '#0F172A', 
+                            padding: '1.4rem 1.4rem 1.6rem', 
+                            background: '#0B1120', 
                             display: 'flex', 
                             flexDirection: 'column',
                             animation: 'popScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                            maxHeight: '75vh',
+                            maxHeight: '80vh',
                             overflowY: 'auto'
                         }}>
-                            {/* Meeting Header Chip */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0.75rem', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '999px', fontSize: '0.74rem', fontWeight: 800, color: '#38BDF8' }}>
-                                    <MapPin size={12} />
-                                    <span>{pendingMeetingData?.campus || 'Fellowship Venue'}</span>
-                                </div>
-                                <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700 }}>
-                                    {pendingMeetingData?.name || 'Live Meeting'}
-                                </span>
-                            </div>
-
-                            {/* Question Card Title */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-                                <div style={{ width: '26px', height: '26px', borderRadius: '8px', background: 'rgba(251, 191, 36, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FBBF24' }}>
-                                    <Sparkles size={15} />
-                                </div>
-                                <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: '#FFFFFF', margin: 0 }}>
-                                    Question of the Day
-                                </h3>
-                            </div>
-
-                            {/* Question Prompt Display Box */}
+                            {/* Meeting Header Banner */}
                             <div style={{
-                                padding: '1rem 1.15rem',
-                                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                borderRadius: '16px',
-                                marginBottom: '0.85rem',
-                                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.08)'
+                                padding: '0.9rem 1.1rem',
+                                background: 'rgba(30, 41, 59, 0.4)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                borderRadius: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: '1.15rem'
                             }}>
-                                <p style={{
-                                    fontSize: '0.96rem',
-                                    fontWeight: 700,
-                                    color: '#F8FAFC',
-                                    margin: 0,
-                                    lineHeight: 1.5,
-                                    fontStyle: 'normal'
-                                }}>
-                                    "{pendingMeetingData?.questionOfDay}"
-                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#38BDF8', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <MapPin size={12} />
+                                        {pendingMeetingData?.campus || 'Fellowship Venue'}
+                                    </span>
+                                    <span style={{ fontSize: '1rem', fontWeight: 900, color: '#FFFFFF' }}>
+                                        {pendingMeetingData?.name || 'Live Meeting'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.7rem', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800, color: '#34D399' }}>
+                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34D399', boxShadow: '0 0 8px #34D399' }} />
+                                    <span>Rules Verified</span>
+                                </div>
                             </div>
 
-                            {/* Question Options / Input */}
+                            {/* Question Card Box */}
+                            <div style={{
+                                padding: '1.2rem 1.3rem',
+                                background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.22) 0%, rgba(15, 23, 42, 0.8) 100%)',
+                                border: '1.5px solid rgba(56, 189, 248, 0.3)',
+                                borderRadius: '20px',
+                                marginBottom: '1.15rem',
+                                boxShadow: '0 8px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.65rem' }}>
+                                    <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: 'rgba(251, 191, 36, 0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FBBF24' }}>
+                                        <Sparkles size={13} />
+                                    </div>
+                                    <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                        Question of the Day
+                                    </span>
+                                </div>
+
+                                <div style={{
+                                    borderLeft: '3.5px solid #38BDF8',
+                                    paddingLeft: '0.85rem',
+                                    marginTop: '0.4rem'
+                                }}>
+                                    <p style={{
+                                        fontSize: '1.05rem',
+                                        fontWeight: 800,
+                                        color: '#FFFFFF',
+                                        margin: 0,
+                                        lineHeight: 1.5,
+                                        letterSpacing: '-0.01em'
+                                    }}>
+                                        {pendingMeetingData?.questionOfDay}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Input Form Section */}
                             <div style={{ marginBottom: '1.25rem' }}>
-                                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '0.25rem' }}>
-                                    Your Response <span style={{ color: '#EF4444' }}>*</span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                        Your Answer <span style={{ color: '#EF4444' }}>*</span>
+                                    </span>
+                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
+                                        Required for check-in
+                                    </span>
                                 </div>
                                 {renderQuestionInput()}
                             </div>
@@ -945,45 +1017,46 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '0.5rem',
-                                    padding: '0.65rem 0.85rem',
-                                    background: 'rgba(239, 68, 68, 0.12)',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                    borderRadius: '12px',
+                                    gap: '0.55rem',
+                                    padding: '0.75rem 0.95rem',
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                                    borderRadius: '14px',
                                     color: '#FCA5A5',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.82rem',
                                     fontWeight: 700,
-                                    marginBottom: '1rem'
+                                    marginBottom: '1rem',
+                                    animation: 'fadeIn 0.2s ease'
                                 }}>
-                                    <AlertTriangle size={15} color="#EF4444" style={{ flexShrink: 0 }} />
+                                    <AlertTriangle size={16} color="#EF4444" style={{ flexShrink: 0 }} />
                                     <span>{questionValidationError}</span>
                                 </div>
                             )}
 
                             {/* Action Buttons */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
                                 <button
                                     type="button"
                                     onClick={handleConfirmAnswer}
                                     style={{
                                         width: '100%',
-                                        padding: '1rem',
-                                        background: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)',
+                                        padding: '1.05rem',
+                                        background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #0284C7 100%)',
                                         border: 'none',
-                                        borderRadius: '16px',
+                                        borderRadius: '18px',
                                         color: '#FFFFFF',
                                         fontWeight: 900,
-                                        fontSize: '0.98rem',
+                                        fontSize: '1rem',
                                         cursor: 'pointer',
-                                        boxShadow: '0 8px 25px rgba(29, 78, 216, 0.4)',
+                                        boxShadow: '0 8px 25px rgba(37, 99, 235, 0.45)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '0.55rem',
-                                        transition: 'all 0.2s'
+                                        gap: '0.6rem',
+                                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                                     }}
                                 >
-                                    <span>Submit & Check In</span>
+                                    <span>Submit & Complete Check-In</span>
                                     <ArrowRight size={18} />
                                 </button>
                                 <button
@@ -996,11 +1069,17 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                                         fontSize: '0.82rem',
                                         fontWeight: 700,
                                         cursor: 'pointer',
-                                        padding: '0.4rem',
-                                        textDecoration: 'underline'
+                                        padding: '0.35rem',
+                                        textDecoration: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.4rem',
+                                        opacity: 0.85
                                     }}
                                 >
-                                    Scan a different QR code
+                                    <RefreshCw size={13} />
+                                    <span>Scan a different QR code</span>
                                 </button>
                             </div>
                         </div>
@@ -1008,7 +1087,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
                     {/* Success State */}
                     {scannerStatus === 'success' && checkInResult && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: '2rem', textAlign: 'center', animation: 'popScale 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0B1120', padding: '2rem', textAlign: 'center', animation: 'popScale 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
                             <div style={{ width: '76px', height: '76px', borderRadius: '50%', background: '#ECFDF5', border: '3px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', marginBottom: '1.1rem', boxShadow: '0 12px 30px rgba(16, 185, 129, 0.35)' }}>
                                 <CheckCircle2 size={46} />
                             </div>
@@ -1026,7 +1105,12 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
                             <button
                                 type="button"
-                                onClick={onClose}
+                                onClick={() => {
+                                    if (onCheckInSuccess && checkInResult) {
+                                        onCheckInSuccess(checkInResult);
+                                    }
+                                    onClose();
+                                }}
                                 style={{
                                     width: '100%',
                                     padding: '1.05rem',
@@ -1047,7 +1131,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
                     {/* Error State */}
                     {scannerStatus === 'error' && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: '2rem', textAlign: 'center', animation: 'fadeUp 0.25s ease' }}>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0B1120', padding: '2rem', textAlign: 'center', animation: 'fadeUp 0.25s ease' }}>
                             <div style={{ width: '68px', height: '68px', borderRadius: '50%', background: '#FEF2F2', border: '2px solid #EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626', marginBottom: '1rem' }}>
                                 <AlertTriangle size={36} />
                             </div>
@@ -1099,7 +1183,7 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                 {/* ─── Bottom Security Note ─── */}
                 <div style={{
                     padding: '0.95rem 1.35rem',
-                    background: 'rgba(30, 41, 59, 0.5)',
+                    background: 'rgba(15, 23, 42, 0.65)',
                     borderTop: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
                     alignItems: 'center',

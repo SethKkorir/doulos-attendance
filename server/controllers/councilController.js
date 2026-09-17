@@ -641,12 +641,16 @@ export const updateBirthdayPosterStatus = async (req, res) => {
 export const resetDeviceLock = async (req, res) => {
     try {
         const { studentRegNo, reason } = req.body;
+        const cleanReg = String(studentRegNo || '').trim();
         const member = await Member.findOneAndUpdate(
-            { studentRegNo },
-            { linkedDeviceId: null },
+            { studentRegNo: { $regex: new RegExp(`^${cleanReg}$`, 'i') } },
+            { $set: { linkedDeviceId: null, isActive: true, status: 'Active' } },
             { new: true }
         );
         if (!member) return res.status(404).json({ message: 'Member not found' });
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.db.collection('scanerrors').deleteMany({ studentRegNo: member.studentRegNo });
+        }
         res.json({ message: `Device lock released for ${member.name}. They can now bind their new phone on next scan.`, member });
     } catch (error) {
         res.status(500).json({ message: error.message });

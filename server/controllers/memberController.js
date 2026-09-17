@@ -525,12 +525,12 @@ export const resetDeviceLock = async (req, res) => {
 
         let member;
         if (mongoose.isValidObjectId(idOrReg)) {
-            member = await Member.findByIdAndUpdate(idOrReg, { linkedDeviceId: null }, { new: true });
+            member = await Member.findByIdAndUpdate(idOrReg, { $set: { linkedDeviceId: null, isActive: true, status: 'Active' } }, { new: true });
         } else {
             const cleanReg = String(idOrReg).trim();
             member = await Member.findOneAndUpdate(
                 { studentRegNo: { $regex: new RegExp(`^${cleanReg}$`, 'i') } },
-                { linkedDeviceId: null },
+                { $set: { linkedDeviceId: null, isActive: true, status: 'Active' } },
                 { new: true }
             );
         }
