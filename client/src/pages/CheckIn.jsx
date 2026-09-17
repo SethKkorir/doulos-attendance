@@ -154,12 +154,18 @@ const CheckIn = () => {
     const [currentSemester, setCurrentSemester] = useState('');
     const [lastActiveSemester, setLastActiveSemester] = useState('');
     const [semesterTheme, setSemesterTheme] = useState('');
-    const [semesterVerse, setSemesterVerse] = useState('');
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlToken = searchParams.get('t') || searchParams.get('token') || '';
+    const [token, setToken] = useState(urlToken);
+    const [fallbackActive, setFallbackActive] = useState(false);
+    const [isStampingFallback, setIsStampingFallback] = useState(false);
+    const [locationErrorType, setLocationErrorType] = useState(null); // 'denied' | 'weak_signal' | null
+    const [preciseLocationWarning, setPreciseLocationWarning] = useState(false);
 
     useEffect(() => {
         let timer;
         if (msg) {
-            timer = setTimeout(() => setMsg(''), 6000);
+            timer = setTimeout(() => setMsg(''), 7000);
         }
         return () => clearTimeout(timer);
     }, [msg]);
@@ -242,6 +248,18 @@ const CheckIn = () => {
                 const meetingData = meetingRes.data;
                 setMeeting(meetingData);
                 setSystemStatus(statusRes.data || { recoveryMode: false });
+
+                // If no token in URL, issue a fresh single-use check-in token
+                if (!token) {
+                    try {
+                        const tokenRes = await api.post('/tokens/issue', { meetingCode });
+                        if (tokenRes.data?.token) {
+                            setToken(tokenRes.data.token);
+                        }
+                    } catch (tErr) {
+                        console.warn("Token issuance note:", tErr);
+                    }
+                }
 
                 // Initialize responses with empty strings for each required field
                 const initialResponses = {};
@@ -611,14 +629,41 @@ const CheckIn = () => {
         }
     };
 
-    const submitAttendanceRecord = async () => {
-        let userLocation = { lat: null, long: null };
+    const handleContinueWithoutLocation = async () => {
+        setIsStampingFallback(true);
+        try {
+            let activeToken = token;
+            if (!activeToken) {
+                const tokenRes = await api.post('/tokens/issue', { meetingCode });
+                activeToken = tokenRes.data?.token;
+                setToken(activeToken);
+            }
 
-        // Check if meeting requires location
-        if (meeting?.location?.latitude) {
+            const deviceId = await getPersistentDeviceId();
+            await api.post('/tokens/stamp-fallback', {
+                token: activeToken,
+                deviceId
+            });
+
+            setFallbackActive(true);
+            setLocationErrorType(null);
+            setStatus('idle');
+            setMsg("🛡️ Device verification active (2 min window). Please click Submit to complete check-in.");
+        } catch (err) {
+            setStatus('error');
+            setMsg(err.response?.data?.message || "Fallback verification failed. Please scan the QR again.");
+        } finally {
+            setIsStampingFallback(false);
+        }
+    };
+
+    const submitAttendanceRecord = async () => {
+        let userLocation = { lat: null, long: null, accuracy: null };
+
+        // Check if meeting requires location and fallback is not already active
+        if (meeting?.location?.latitude && !fallbackActive) {
             setIsLocating(true);
             try {
-                // Check if browser supports geolocation and is in a secure context
                 if (!navigator.geolocation) {
                     throw new Error("Geolocation not supported by this browser.");
                 }
@@ -629,7 +674,7 @@ const CheckIn = () => {
 
                 let position;
                 try {
-                    // Try High Accuracy first
+                    // Try High Accuracy first (15s timeout)
                     position = await getPosition({
                         enableHighAccuracy: true,
                         timeout: 15000,
@@ -637,32 +682,41 @@ const CheckIn = () => {
                     });
                 } catch (err) {
                     console.warn("High accuracy GPS failed, trying standard accuracy...", err);
-                    // Fallback to standard accuracy
                     position = await getPosition({
                         enableHighAccuracy: false,
                         timeout: 15000,
-                        maximumAge: 60000 // Allow 1-minute old cached location
+                        maximumAge: 60000
                     });
                 }
 
+                const acc = position.coords.accuracy || 0;
                 userLocation.lat = position.coords.latitude;
                 userLocation.long = position.coords.longitude;
+                userLocation.accuracy = acc;
+
+                // Detect if iOS Safari Precise Location is off (typically accuracy > 800m)
+                if (acc > 800) {
+                    setPreciseLocationWarning(true);
+                } else {
+                    setPreciseLocationWarning(false);
+                }
+
             } catch (error) {
                 console.error("GPS Failure:", error);
+                setIsLocating(false);
 
-                // CRITICAL: If Admin has enabled Manual Override for this meeting, 
-                // we allow submission even if GPS fails (useful for remote areas/insecure contexts)
                 const isRelaxed = meeting?.allowManualOverride || meeting?.category === 'Training';
                 if (!isRelaxed) {
-                    setIsLocating(false);
-                    setStatus('error');
-                    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
-                        setMsg("SECURITY BLOCK: Browsers disable GPS on non-HTTPS connections. Please use the Vercel link or Admin check-in.");
-                    } else if (error.code === 1) {
-                        setMsg("Location access denied. You must grant permission to check in.");
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        setLocationErrorType('denied');
+                        setStatus('error');
+                        setMsg("Location access denied. Click 'Continue without location' below to verify with your device.");
                     } else if (error.code === 2 || error.code === 3) {
-                        setMsg("GPS signal too weak. Try moving outdoors or wait a moment.");
+                        setLocationErrorType('weak_signal');
+                        setStatus('error');
+                        setMsg("GPS signal weak. Move outdoors or click 'Continue without location' below.");
                     } else {
+                        setStatus('error');
                         setMsg(`Location error: ${error.message || 'Verification failed'}`);
                     }
                     return;
@@ -678,8 +732,10 @@ const CheckIn = () => {
             const res = await api.post('/attendance/submit', {
                 meetingCode: meetingCode.toLowerCase(),
                 deviceId,
+                token,
                 userLat: userLocation.lat,
                 userLong: userLocation.long,
+                accuracy: userLocation.accuracy,
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
@@ -917,6 +973,59 @@ const CheckIn = () => {
                                 animation: 'fadeIn 0.3s ease-out'
                             }}>
                                 {status === 'error' ? '⚠️' : '✅'} {msg}
+                            </div>
+                        )}
+
+                        {/* Location Access Denied / Weak Signal Fallback Banner */}
+                        {locationErrorType && (
+                            <div style={{
+                                padding: '1.25rem',
+                                background: 'rgba(245, 158, 11, 0.08)',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                borderRadius: '1rem',
+                                textAlign: 'center',
+                                animation: 'fadeIn 0.3s ease-out'
+                            }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#FBBF24', marginBottom: '0.4rem' }}>
+                                    📍 GPS Location Unavailable
+                                </div>
+                                <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, margin: '0 0 1rem 0' }}>
+                                    Continue with device-bound check-in. Your single-use token will be locked to this exact phone for 2 minutes.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={handleContinueWithoutLocation}
+                                    disabled={isStampingFallback}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        background: '#F59E0B',
+                                        border: 'none',
+                                        borderRadius: '0.75rem',
+                                        color: '#0F172A',
+                                        fontWeight: 800,
+                                        fontSize: '0.88rem',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)'
+                                    }}
+                                >
+                                    {isStampingFallback ? 'Securing Device Signature...' : 'Continue Without Location 🛡️'}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Precise Location Recommendation Notice (iOS Safari) */}
+                        {preciseLocationWarning && (
+                            <div style={{
+                                padding: '0.85rem 1rem',
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                borderRadius: '0.75rem',
+                                fontSize: '0.78rem',
+                                color: '#93C5FD',
+                                lineHeight: 1.5
+                            }}>
+                                ℹ️ <strong>Improve GPS Accuracy:</strong> On iPhone/iPad, go to <em>Settings → Privacy & Security → Location Services → Safari</em> and switch <strong>Precise Location: ON</strong>.
                             </div>
                         )}
 

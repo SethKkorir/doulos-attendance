@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
     Settings as SettingsIcon, Calendar, Link as LinkIcon, 
     ShieldAlert, RotateCcw, CheckCircle, AlertTriangle, 
-    BookOpen, CheckSquare, Sparkles, Loader2
+    BookOpen, CheckSquare, Sparkles, Loader2, Printer, QrCode
 } from 'lucide-react';
 
 const SystemSettingsTab = ({ 
@@ -498,24 +498,50 @@ const SystemSettingsTab = ({
                             </p>
                         </div>
                     ) : (
-                        <button 
-                            onClick={handleStartRollover}
-                            className="btn btn-primary"
-                            style={{
-                                width: '100%',
-                                padding: '1rem',
-                                background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
-                                fontWeight: 800,
-                                letterSpacing: '1px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.75rem',
-                                boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important'
-                            }}
-                        >
-                            <RotateCcw size={18} /> Initiate Semester Rollover Wizard
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
+                            <button 
+                                onClick={handleStartRollover}
+                                className="btn btn-primary"
+                                style={{
+                                    width: '100%',
+                                    padding: '1rem',
+                                    background: 'linear-gradient(135deg, #25AAE1 0%, #175e82 100%) !important',
+                                    fontWeight: 800,
+                                    letterSpacing: '1px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.75rem',
+                                    boxShadow: '0 8px 25px rgba(37, 170, 225, 0.15) !important'
+                                }}
+                            >
+                                <RotateCcw size={18} /> Initiate Semester Rollover Wizard
+                            </button>
+
+                            <a
+                                href={`/api/rollover/qr-poster-pdf?semester=${encodeURIComponent(semester)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.85rem',
+                                    background: '#EFF6FF',
+                                    color: '#1D4ED8',
+                                    border: '1px solid #BFDBFE',
+                                    fontWeight: 800,
+                                    letterSpacing: '0.5px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    textDecoration: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            >
+                                <Printer size={16} /> Print Official Semester QR Poster (PDF)
+                            </a>
+                        </div>
                     )}
                 </div>
             </div>
@@ -754,16 +780,28 @@ const SystemSettingsTab = ({
                                     Your custom welcome theme is live.
                                 </p>
 
-                                <button 
-                                    onClick={() => {
-                                        setShowWizard(false);
-                                        window.location.reload(); // Reload dashboard to sync new settings
-                                    }}
-                                    className="btn btn-primary"
-                                    style={{ width: '100%', padding: '0.85rem', borderRadius: '0.6rem', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', marginTop: '1rem' }}
-                                >
-                                    Complete & Refresh 🌟
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.75rem', width: '100%', flexDirection: 'column', marginTop: '0.5rem' }}>
+                                    <a 
+                                        href={`/api/rollover/qr-poster-pdf?semester=${encodeURIComponent(semester)}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-primary"
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '0.6rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxSizing: 'border-box' }}
+                                    >
+                                        <Printer size={16} /> Print Semester QR Poster (PDF) 📄
+                                    </a>
+
+                                    <button 
+                                        onClick={() => {
+                                            setShowWizard(false);
+                                            window.location.reload(); // Reload dashboard to sync new settings
+                                        }}
+                                        className="btn"
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '0.6rem', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', background: 'rgba(255,255,255,0.05)', color: '#1E1B39', borderColor: '#EBEBF2' }}
+                                    >
+                                        Complete & Refresh 🌟
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

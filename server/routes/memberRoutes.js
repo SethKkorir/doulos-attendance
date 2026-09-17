@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    getMembers, importMembers, updateMember, createMember, addPoints,
+    getMembers, importMembers, updateMember, createMember, addPoints, deleteMember,
     syncMembersFromAttendance, graduateAllRecruits, archiveAllRecruits, undoGraduation, setupTestAccount,
     resetAllMemberPoints, deleteMemberWithPassword, resetDeviceLock,
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
@@ -24,10 +24,12 @@ router.post('/undo-graduation', verifyAdmin, undoGraduation);
 router.post('/reset-all-points', verifyAdmin, resetAllMemberPoints);
 router.post('/setup-test-account', verifyAdmin, setupTestAccount);
 router.post('/enroll', enrollMember);
+router.delete('/:id', verifyAdmin, deleteMember);
 router.post('/:id/delete-secure', verifyAdmin, deleteMemberWithPassword);
 router.patch('/:id', verifyAdmin, updateMember);
 router.post('/:id/points', verifyAdmin, addPoints);
 router.post('/:id/reset-device', verifyAdmin, resetDeviceLock);
+router.post('/reset-device', verifyAdmin, resetDeviceLock);
 router.post('/:id/graduate', verifyAdmin, graduateMember);
 router.post('/:id/archive', verifyAdmin, archiveMember);
 router.post('/:id/unarchive', verifyAdmin, unarchiveMember);

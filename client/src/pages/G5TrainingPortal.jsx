@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { usePortalData } from '../hooks/usePortalQuery';
+import { StatCardSkeleton, TableRowSkeleton, CardSkeleton, ListSkeleton } from '../components/common/SkeletonLoader';
+import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import QRCode from 'react-qr-code';
 import api from '../api';
 import G5MeetingModal from '../components/G5MeetingModal';
 import CampScheduleStudio from '../components/dashboard/CampScheduleStudio';
+import Logo from '../components/Logo';
 import '../styles/g5Portal.css';
 import {
     LayoutDashboard,
@@ -54,11 +60,15 @@ import {
     Printer,
     Copy,
     Menu,
-    Trash2
+    Trash2,
+    Smartphone,
+    Unlock,
+    Lock
 } from 'lucide-react';
 
 const G5TrainingPortal = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     // Active Navigation Tab (9 items strictly)
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -83,6 +93,46 @@ const G5TrainingPortal = () => {
     const username = localStorage.getItem('username') || 'g5_training';
     const userRole = localStorage.getItem('role') || 'trainer';
     const userCampus = localStorage.getItem('campus') || 'Athi River';
+
+    const isDoulosAccount = useMemo(() => {
+        const lower = (username || '').toLowerCase();
+        return lower.includes('doulos') || lower.includes('training') || lower === 'admin' || lower === 'g5_training' || !username;
+    }, [username]);
+
+    const renderUserAvatar = (size = 36, fontSize = '0.85rem') => {
+        if (isDoulosAccount) {
+            return (
+                <div
+                    className="g5-avatar g5-avatar-logo"
+                    style={{
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        padding: '2px',
+                        background: '#FFFFFF',
+                        border: '1.5px solid #BFDBFE',
+                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.15)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                    }}
+                    title="Doulos Ministry"
+                >
+                    <img
+                        src="/logo.png"
+                        alt="Doulos Logo"
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                </div>
+            );
+        }
+        return (
+            <div className="g5-avatar" style={{ width: `${size}px`, height: `${size}px`, fontSize, flexShrink: 0 }}>
+                {(username || '?').charAt(0).toUpperCase()}
+            </div>
+        );
+    };
 
     // Data states
     const [loading, setLoading] = useState(true);
@@ -113,15 +163,38 @@ const G5TrainingPortal = () => {
         location: {
             name: 'Doulos Store',
             radius: 200,
-            latitude: -1.44800,
-            longitude: 37.01500
+            latitude: null,
+            longitude: null
         }
     });
     const [meetingCreating, setMeetingCreating] = useState(false);
     const [allowMultipleMeeting, setAllowMultipleMeeting] = useState(false);
     const [gpsCapturing, setGpsCapturing] = useState(false);
+    const [gpsCaptured, setGpsCaptured] = useState(false);
 
-    const VENUE_PRESETS = [
+    // 1. Live G5 Dashboard Stats
+    const {
+        data: g5StatsData,
+        isLoading: statsLoading,
+        isError: statsError,
+        refetch: refetchG5Stats
+    } = usePortalData('g5-stats', '/g5/stats');
+
+    const g5Stats = g5StatsData?.stats || {
+        attendancePercentage: 0,
+        totalAttended: 0,
+        recruitsReadyToGraduate: 0,
+        totalRecruits: 0,
+        archivedRecruitsCount: 0,
+        promotionsPending: 0,
+        upcomingTrainings: 0,
+        absenteeFlags: 0,
+        activeLiveSession: null
+    };
+
+    // 2. Venues Query from DB
+    const { data: venuesData } = usePortalData('venues', '/venues');
+    const VENUE_PRESETS = (venuesData?.venues && venuesData.venues.length > 0) ? venuesData.venues : [
         {
             title: 'Doulos Store',
             sub: 'Athi River Campus',
@@ -142,15 +215,48 @@ const G5TrainingPortal = () => {
         }
     ];
 
+    // 3. Evaluation Domains Query from DB
+    const { data: evalDomainsData } = usePortalData('eval-domains', '/ranking/evaluation-domains');
+    const evaluationDomains = (evalDomainsData?.domains && evalDomainsData.domains.length > 0) ? evalDomainsData.domains : [
+        { key: 'team', label: 'Team Building', tag: 'Facilitation', desc: 'Group dynamics, debrief facilitation, activity structuring & debrief synthesis' },
+        { key: 'base', label: 'Freedom Base', tag: 'Operations', desc: 'Base station hardware, equipment definition, maintenance audits & anchor security' },
+        { key: 'ropes', label: 'High Ropes', tag: 'Hardware & Rigging', desc: 'Hardware rigging, carabiner squeeze check, challenge element navigation' },
+        { key: 'rescue', label: 'Rescue & Extrication', tag: 'Emergency', desc: 'Mid-element rescues, spine board extrication, litter extraction, descent control' },
+        { key: 'firstAid', label: 'First Aid', tag: 'Medical Protocol', desc: 'Wilderness triage, incident response, CPR/wound care, medical protocol execution' },
+        { key: 'safety', label: 'Safety & Risk Management', tag: 'Risk Assessment', desc: 'Environmental hazard assessment, participant briefings, double-check commands' },
+        { key: 'mentorship', label: 'Curriculum & Mentorship', tag: 'Strategy', desc: 'Program strategy, apprentice development, facilitator guidance' }
+    ];
+
+    // 4. LOP Safety SOP Docs Query from DB
+    const { data: lopDocsData } = usePortalData('safety-lop-docs', '/safety/lop-docs');
+    const lopDocs = lopDocsData?.docs || [];
+
+    // 5. Equipment Readiness Query from DB
+    const { data: equipData } = usePortalData('equipment-readiness', '/equipment/readiness');
+    const equipmentReadiness = equipData?.readiness || null;
+
+    // 6. Contributions Status Query from DB
+    const { data: contribData } = usePortalData('contributions-status', '/finance/contributions/status');
+    const contributionsStatus = contribData?.status || null;
+
+    // 7. Live Graduation Queue Query from DB
+    const { data: gradQueueData, refetch: refetchGradQueue } = usePortalData('graduation-queue', '/membership/graduation-queue');
+    const graduationQueue = gradQueueData?.queue || [];
+
+    // 8. Candidates Query from DB
+    const { data: candidatesData, refetch: refetchCandidates } = usePortalData('promotion-candidates', '/ranking/candidates');
+    const promotionCandidates = candidatesData?.candidates || [];
+
     const applyVenuePreset = (preset) => {
+        if (!preset) return;
         setNewMeetingForm(prev => ({
             ...prev,
             campus: preset.campus,
             location: {
                 name: preset.name,
-                radius: preset.radius,
-                latitude: preset.lat,
-                longitude: preset.lng
+                radius: preset.radius || 200,
+                latitude: preset.lat || preset.latitude || 0,
+                longitude: preset.lng || preset.longitude || 0
             }
         }));
         showToast(`Venue set to ${preset.name} (${preset.campus})`);
@@ -200,7 +306,14 @@ const G5TrainingPortal = () => {
     const [rosterRankFilter, setRosterRankFilter] = useState('All'); // 'All' | rank | 'Recruit'
     const [rosterCampusFilter, setRosterCampusFilter] = useState('All'); // 'All' | 'Athi River' | 'Valley Road'
     const [rosterBelayFilter, setRosterBelayFilter] = useState('All'); // 'All' | 'Primary Belayer Certified' | 'Belayer Qualified' | 'Not Permitted'
+    const [rosterDeviceFilter, setRosterDeviceFilter] = useState('All'); // 'All' | 'Bound' | 'Unbound'
     const [rosterSearch, setRosterSearch] = useState('');
+
+    // Real-Time Device Lock Removal State
+    const [resettingDeviceMemberId, setResettingDeviceMemberId] = useState(null);
+    const [showQuickUnlockModal, setShowQuickUnlockModal] = useState(false);
+    const [quickUnlockQuery, setQuickUnlockQuery] = useState('');
+    const [quickUnlockLoading, setQuickUnlockLoading] = useState(false);
 
     const showToast = (msg, type = 'success') => {
         setToast({ text: msg, type });
@@ -281,12 +394,28 @@ const G5TrainingPortal = () => {
     }, [members]);
 
     const recruits = useMemo(() => {
-        return members.filter(m => (m.memberType === 'Recruit' || m.status === 'Recruit') && m.status !== 'Archived' && m.status !== 'Archived-Concluded');
+        return members.filter(m => 
+            m.memberType === 'Recruit' && 
+            m.status !== 'Archived' && 
+            m.status !== 'Archived-Concluded'
+        );
     }, [members]);
 
     const archivedRecruits = useMemo(() => {
-        return members.filter(m => (m.memberType === 'Recruit' || m.status === 'Recruit' || m.archivedAt) && m.status === 'Archived');
+        return members.filter(m => 
+            m.memberType === 'Recruit' && 
+            m.status === 'Archived'
+        );
     }, [members]);
+
+    const nextUpcomingMeeting = useMemo(() => {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const upcoming = meetings
+            .filter(m => !m.isArchived && (new Date(m.date) >= now || m.isActive))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        return upcoming[0] || null;
+    }, [meetings]);
 
     const filteredRecruits = useMemo(() => {
         return recruits.filter(r => {
@@ -337,7 +466,8 @@ const G5TrainingPortal = () => {
     }, [archivedMeetings, meetingSearch, meetingCampusFilter]);
 
     const totalAttended = meetings.reduce((sum, m) => sum + (m.attendanceCount || 0), 0);
-    const totalExpected = activeMeetings.length > 0 && activeMembers.length > 0 ? activeMeetings.length * activeMembers.length : 0;
+    const relevantMeetingsCount = activeMeetings.length > 0 ? activeMeetings.length : meetings.length;
+    const totalExpected = relevantMeetingsCount > 0 && activeMembers.length > 0 ? relevantMeetingsCount * activeMembers.length : 0;
     const attendancePercentage = totalExpected > 0 ? Math.min(100, Math.round((totalAttended / totalExpected) * 100)) : 0;
 
     // Filtered cadres for Rank Promotions Tab
@@ -400,6 +530,10 @@ const G5TrainingPortal = () => {
                 }
             }
 
+            // Device binding filter
+            if (rosterDeviceFilter === 'Bound' && !m.linkedDeviceId) return false;
+            if (rosterDeviceFilter === 'Unbound' && m.linkedDeviceId) return false;
+
             // Search query
             if (rosterSearch.trim()) {
                 const q = rosterSearch.toLowerCase();
@@ -411,7 +545,7 @@ const G5TrainingPortal = () => {
 
             return true;
         });
-    }, [activeMembers, cadres, rosterRoleFilter, rosterRankFilter, rosterCampusFilter, rosterBelayFilter, rosterSearch]);
+    }, [activeMembers, cadres, rosterRoleFilter, rosterRankFilter, rosterCampusFilter, rosterBelayFilter, rosterDeviceFilter, rosterSearch]);
 
     // Export Roster to CSV
     const handleExportRosterCSV = (listToExport = filteredRosterMembers, filenameSuffix = '') => {
@@ -667,25 +801,26 @@ const G5TrainingPortal = () => {
         }
         setGpsCapturing(true);
         navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                setGpsCapturing(false);
-                setNewMeetingForm(prev => ({
-                    ...prev,
-                    location: {
-                        ...prev.location,
-                        latitude: parseFloat(pos.coords.latitude.toFixed(6)),
-                        longitude: parseFloat(pos.coords.longitude.toFixed(6))
-                    }
-                }));
-                showToast(`GPS captured: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
-            },
-            (err) => {
-                setGpsCapturing(false);
-                console.error('GPS error:', err);
-                showToast('GPS permission denied or unavailable', 'error');
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
+             (pos) => {
+                 setGpsCapturing(false);
+                 setGpsCaptured(true);
+                 setNewMeetingForm(prev => ({
+                     ...prev,
+                     location: {
+                         ...prev.location,
+                         latitude: parseFloat(pos.coords.latitude.toFixed(6)),
+                         longitude: parseFloat(pos.coords.longitude.toFixed(6))
+                     }
+                 }));
+                 showToast(`Device GPS locked: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+             },
+             (err) => {
+                 setGpsCapturing(false);
+                 console.error('GPS error:', err);
+                 showToast('GPS access denied or unavailable. Please enable device location.', 'error');
+             },
+             { enableHighAccuracy: true, timeout: 12000 }
+         );
     };
 
     // Helper: calculate Monday-Sunday week range for date
@@ -720,6 +855,30 @@ const G5TrainingPortal = () => {
     // Meeting Creation handler (Full Session Details & Geofencing)
     const handleCreateMeeting = async (e) => {
         e.preventDefault();
+
+        // 1. Mandatory Question Validation
+        const trimmedQuestion = (newMeetingForm.questionOfDay || '').trim();
+        if (!trimmedQuestion) {
+            showToast('Mandatory requirement: Please enter an interactive roll-call question for this meeting.', 'error');
+            return;
+        }
+
+        if (['multiple_choice', 'checkboxes'].includes(newMeetingForm.questionType)) {
+            const validOptions = (newMeetingForm.questionOptions || []).filter(o => o && o.trim());
+            if (validOptions.length < 2) {
+                showToast('Please provide at least 2 choices for your multiple choice / checkbox question.', 'error');
+                return;
+            }
+        }
+
+        // 2. Mandatory Device GPS Capture Validation
+        const lat = Number(newMeetingForm.location.latitude);
+        const lng = Number(newMeetingForm.location.longitude);
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+            showToast('Mandatory requirement: You must capture device GPS coordinates before creating the meeting.', 'error');
+            return;
+        }
+
         if (existingConflictMeeting && !allowMultipleMeeting) {
             showToast(`A meeting is already scheduled for ${newMeetingForm.campus} this week. Check the override toggle to schedule an additional session.`, 'warning');
             return;
@@ -734,22 +893,23 @@ const G5TrainingPortal = () => {
                 endTime: newMeetingForm.endTime,
                 allowMultiple: allowMultipleMeeting,
                 semester: 'MAY-AUG 2026',
-                questionType: newMeetingForm.questionType,
-                questionOfDay: newMeetingForm.questionOfDay,
+                questionType: newMeetingForm.questionType || 'text',
+                questionOfDay: trimmedQuestion,
                 questionOptions: (newMeetingForm.questionType === 'multiple_choice' || newMeetingForm.questionType === 'checkboxes')
                     ? newMeetingForm.questionOptions.filter(o => o && o.trim())
                     : [],
                 location: {
                     name: newMeetingForm.location.name,
                     radius: Number(newMeetingForm.location.radius) || 200,
-                    latitude: Number(newMeetingForm.location.latitude),
-                    longitude: Number(newMeetingForm.location.longitude)
+                    latitude: lat,
+                    longitude: lng
                 }
             };
             const res = await api.post('/meetings', payload);
             showToast('Meeting session created successfully!');
             setShowNewMeetingModal(false);
             setAllowMultipleMeeting(false);
+            setGpsCaptured(false);
             setMeetings(prev => [res.data || payload, ...prev]);
         } catch (err) {
             console.error('Meeting creation failed:', err);
@@ -986,15 +1146,18 @@ const G5TrainingPortal = () => {
     // Confirm Rank Promotion
     const handleConfirmPromotion = async (cadre, nextRank, customBelay, customSolo, notes) => {
         try {
-            const scores = promotionScores[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 };
-            const belay = customBelay || cadre.belayStatus || (nextRank === 'Shadow Douloid' || nextRank === 'None' ? 'Not Permitted' : 'Secondary Belayer');
-            const solo = customSolo !== undefined ? customSolo : (nextRank === 'Intermediate Douloid' || nextRank === 'Lead Douloid' || nextRank === 'Senior Lead Douloid');
+            const scores = promotionScores[cadre._id] || { team: 4, base: 4, ropes: 4, rescue: 4, firstAid: 4, safety: 4, mentorship: 4 };
+            const belay = customBelay || cadre.belayStatus || (
+                nextRank === 'Intermediate Douloid' || nextRank === 'Lead Douloid' ? 'Primary Belayer Certified' :
+                nextRank === 'Basic Douloid' ? 'Secondary Belayer' : 'Not Permitted'
+            );
+            const solo = customSolo !== undefined ? customSolo : (nextRank === 'Intermediate Douloid' || nextRank === 'Lead Douloid');
 
             await api.put(`/trainings/members/${cadre._id}/rank`, {
                 douloidRank: nextRank,
                 belayStatus: belay,
                 soloStationAllowed: solo,
-                notes: notes || `Promoted to ${nextRank} through G5 Evaluation. Avg Score: ${(Object.values(scores).reduce((a,b)=>a+b,0)/5).toFixed(1)}★`,
+                notes: notes || `Promoted to ${nextRank} through G5 Evaluation. Avg Score: ${(Object.values(scores).reduce((a,b)=>a+b,0)/Object.values(scores).length).toFixed(1)}★`,
                 promotedBy: username
             });
             showToast(`🌟 Promoted ${cadre.name} to ${nextRank}!`);
@@ -1007,6 +1170,54 @@ const G5TrainingPortal = () => {
         } catch (err) {
             console.error('Promotion error:', err);
             showToast(err.response?.data?.message || 'Failed to update rank', 'error');
+        }
+    };
+
+    // Real-Time Device Lock Removal (Phone Change / Reset Binding)
+    const handleResetDeviceLock = async (member) => {
+        if (!member) return;
+        setResettingDeviceMemberId(member._id);
+        try {
+            const res = await api.post(`/members/${member._id}/reset-device`);
+            showToast(res.data.message || `Device ID removed for ${member.name}! Phone lock cleared 📱🔓`);
+            // Immediate real-time optimistic state updates across all rosters
+            setMembers(prev => prev.map(m => (m._id === member._id || m.studentRegNo === member.studentRegNo) ? { ...m, linkedDeviceId: null } : m));
+            setCadres(prev => prev.map(c => (c._id === member._id || c.studentRegNo === member.studentRegNo) ? { ...c, linkedDeviceId: null } : c));
+            queryClient.invalidateQueries({ queryKey: ['portal-data'] });
+        } catch (err) {
+            console.error('Device reset error:', err);
+            showToast(err.response?.data?.message || 'Failed to remove device ID', 'error');
+        } finally {
+            setResettingDeviceMemberId(null);
+        }
+    };
+
+    // Quick Device Unlock via Admission Number
+    const handleQuickUnlockByRegNo = async (regNo) => {
+        const cleanReg = (regNo || quickUnlockQuery || '').trim();
+        if (!cleanReg) {
+            return showToast('Please enter a student admission number to unlock', 'error');
+        }
+        setQuickUnlockLoading(true);
+        try {
+            const res = await api.post(`/members/${encodeURIComponent(cleanReg)}/reset-device`);
+            showToast(res.data.message || `Device unlocked for student ${cleanReg}! 📱🔓`);
+            const updatedMember = res.data.member;
+            if (updatedMember) {
+                setMembers(prev => prev.map(m => (m._id === updatedMember._id || m.studentRegNo === updatedMember.studentRegNo) ? { ...m, linkedDeviceId: null } : m));
+                setCadres(prev => prev.map(c => (c._id === updatedMember._id || c.studentRegNo === updatedMember.studentRegNo) ? { ...c, linkedDeviceId: null } : c));
+            } else {
+                setMembers(prev => prev.map(m => m.studentRegNo?.toUpperCase() === cleanReg.toUpperCase() ? { ...m, linkedDeviceId: null } : m));
+                setCadres(prev => prev.map(c => c.studentRegNo?.toUpperCase() === cleanReg.toUpperCase() ? { ...c, linkedDeviceId: null } : c));
+            }
+            queryClient.invalidateQueries({ queryKey: ['portal-data'] });
+            setShowQuickUnlockModal(false);
+            setQuickUnlockQuery('');
+        } catch (err) {
+            console.error('Quick unlock error:', err);
+            showToast(err.response?.data?.message || `Failed to unlock device for "${cleanReg}"`, 'error');
+        } finally {
+            setQuickUnlockLoading(false);
         }
     };
 
@@ -1056,24 +1267,23 @@ const G5TrainingPortal = () => {
         }
     };
 
-    // Promotion helper - correct sequential rank progression ladder
+    // Promotion helper - correct sequential rank progression ladder (4 Levels)
     const getNextRank = (currentRank) => {
         if (!currentRank || currentRank === 'None' || currentRank === 'Recruit') return 'Shadow Douloid';
         switch (currentRank) {
             case 'Shadow Douloid': return 'Basic Douloid';
             case 'Basic Douloid': return 'Intermediate Douloid';
             case 'Intermediate Douloid': return 'Lead Douloid';
-            case 'Lead Douloid': return 'Senior Lead Douloid';
+            case 'Lead Douloid': return 'Lead Douloid'; // Highest facilitator rank
             default: return 'Basic Douloid';
         }
     };
 
     const getRankColor = (rank) => {
         switch (rank) {
-            case 'Senior Lead Douloid': return { bg: '#FEF3C7', text: '#B45309', border: '#FCD34D' };
-            case 'Lead Douloid': return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A' };
+            case 'Lead Douloid': return { bg: '#FEF3C7', text: '#B45309', border: '#FDE68A' };
             case 'Intermediate Douloid': return { bg: '#E0F2FE', text: '#0284C7', border: '#BAE6FD' };
-            case 'Basic Douloid': return { bg: '#E0E7FF', text: '#4F46E5', border: '#C7D2FE' };
+            case 'Basic Douloid': return { bg: '#E0E7FF', text: '#4338CA', border: '#C7D2FE' };
             case 'Shadow Douloid': return { bg: '#F3E8FF', text: '#7E22CE', border: '#E9D5FF' };
             default: return { bg: '#F3F4F6', text: '#6B7280', border: '#E5E7EB' };
         }
@@ -1085,15 +1295,15 @@ const G5TrainingPortal = () => {
         { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
         { id: 'meetings', label: 'Meetings', icon: Calendar },
         { id: 'trainings_camps', label: 'Trainings & Camps', icon: Compass },
-        { id: 'graduations', label: 'Recruit Graduations', icon: GraduationCap, badge: recruits.length },
-        { id: 'promotions', label: 'Rank Promotions', icon: Award, badge: cadres.filter(c => c.douloidRank === 'Shadow Douloid' || c.douloidRank === 'Basic Douloid').length },
+        { id: 'graduations', label: 'Recruit Graduations', icon: GraduationCap, badge: g5Stats.totalRecruits || recruits.length },
+        { id: 'promotions', label: 'Rank Promotions', icon: Award, badge: g5Stats.promotionsPending || cadres.filter(c => c.douloidRank === 'Shadow Douloid' || c.douloidRank === 'Basic Douloid').length },
         { id: 'cadres', label: 'Membership Roster', icon: Users },
         { id: 'contributions', label: 'Contributions', icon: CreditCard },
         { id: 'safety', label: 'Safety & Incidents', icon: ShieldAlert, badge: incidents.length > 0 ? incidents.length : null }
     ];
 
-    // Standard LOPs
-    const lops = [
+    // Standard LOPs from Database (fallback to reference documents if initial load)
+    const lops = (lopDocs && lopDocs.length > 0) ? lopDocs : [
         { id: 'LOP-01', title: 'High Ropes Belay Safety & Rigging SOP', code: 'LOP-SOP-01', desc: 'Double-check carabiner squeeze, dynamic rope lifespan, ground anchor inspection.' },
         { id: 'LOP-02', title: 'Wilderness Evacuation & Extrication Tree', code: 'LOP-MED-02', desc: 'Lukenya ridge stretcher dispatch, spine stabilization, Daystar clinic hotline.' },
         { id: 'LOP-03', title: 'Severe Weather & Lightning Shutdown', code: 'LOP-ENV-03', desc: '30-second flash-to-bang rule, immediate course clearance & safe zone dispersal.' },
@@ -1112,8 +1322,8 @@ const G5TrainingPortal = () => {
             <aside className={`g5-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
                 <div className="g5-sidebar-brand" style={{ justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                        <div className="g5-brand-icon-box">
-                            <Compass size={24} />
+                        <div className="g5-brand-icon-box" title="Doulos G5 Logo">
+                            <Logo size={34} showText={false} />
                         </div>
                         <div>
                             <div className="g5-brand-title">Doulos G5</div>
@@ -1163,9 +1373,7 @@ const G5TrainingPortal = () => {
 
                 <div className="g5-sidebar-footer">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                        <div className="g5-avatar" style={{ width: '36px', height: '36px', fontSize: '0.85rem' }}>
-                            {username.charAt(0).toUpperCase()}
-                        </div>
+                        {renderUserAvatar(36, '0.85rem')}
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
                                 {username}
@@ -1202,8 +1410,8 @@ const G5TrainingPortal = () => {
                             onClick={() => handleSelectTab('dashboard')}
                             style={{ display: 'none', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flexShrink: 0 }}
                         >
-                            <div className="g5-brand-icon-box" style={{ width: '32px', height: '32px', borderRadius: '8px' }}>
-                                <Compass size={17} />
+                            <div className="g5-brand-icon-box" style={{ width: '34px', height: '34px', borderRadius: '9px', padding: '2px' }} title="Doulos G5 Logo">
+                                <Logo size={26} showText={false} />
                             </div>
                             <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-primary)', letterSpacing: '-0.2px' }}>
                                 Doulos G5
@@ -1263,9 +1471,9 @@ const G5TrainingPortal = () => {
                                 <span>Live Drill</span>
                             </button>
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-primary-soft)', padding: '0.35rem 0.85rem', borderRadius: '999px' }}>
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-status-active)' }}></span>
-                                <span className="g5-ministry-badge-text" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '0.35rem 0.85rem', borderRadius: '999px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#1D4ED8' }}></span>
+                                <span className="g5-ministry-badge-text" style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1D4ED8' }}>
                                     Outdoor Ministry
                                 </span>
                             </div>
@@ -1277,9 +1485,7 @@ const G5TrainingPortal = () => {
                             style={{ cursor: 'pointer' }}
                             title="Open Menu & Modules"
                         >
-                            <div className="g5-avatar" style={{ width: '34px', height: '34px', fontSize: '0.85rem' }}>
-                                {username.charAt(0).toUpperCase()}
-                            </div>
+                            {renderUserAvatar(34, '0.85rem')}
                             <div className="g5-profile-info">
                                 <span className="g5-profile-name">{username}</span>
                                 <span className="g5-profile-role">{userCampus}</span>
@@ -1288,26 +1494,64 @@ const G5TrainingPortal = () => {
                     </div>
                 </header>
 
-                {/* TOAST NOTIFICATION */}
+                {/* TOAST NOTIFICATION (RESPONSIVE & SCREEN-CONSTRAINED) */}
                 {toast && (
                     <div style={{
                         position: 'fixed',
-                        top: '86px',
-                        right: '2rem',
-                        zIndex: 9999,
-                        background: toast.type === 'error' ? 'var(--color-status-inactive)' : 'var(--color-accent-warm)',
+                        top: '1.25rem',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 99999,
+                        width: 'calc(100% - 2rem)',
+                        maxWidth: '460px',
+                        boxSizing: 'border-box',
+                        background: toast.type === 'error' ? '#DC2626' : (toast.type === 'warning' ? '#D97706' : '#1D4ED8'),
                         color: '#FFFFFF',
-                        padding: '0.85rem 1.4rem',
-                        borderRadius: 'var(--radius-button)',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '14px',
+                        boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0,0,0,0.15)',
                         fontWeight: 700,
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem'
+                        justifyContent: 'space-between',
+                        gap: '0.65rem',
+                        backdropFilter: 'blur(8px)',
+                        border: '1.5px solid rgba(255, 255, 255, 0.25)'
                     }}>
-                        {toast.type === 'error' ? <AlertTriangle size={18} /> : <Sparkles size={18} />}
-                        <span>{toast.text}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, flex: 1 }}>
+                            <span style={{ flexShrink: 0, display: 'flex' }}>
+                                {toast.type === 'error' ? <AlertTriangle size={18} /> : (toast.type === 'warning' ? <AlertTriangle size={18} /> : <Sparkles size={18} />)}
+                            </span>
+                            <span style={{
+                                wordBreak: 'break-word',
+                                overflowWrap: 'anywhere',
+                                lineHeight: 1.4,
+                                fontSize: '0.84rem'
+                            }}>
+                                {toast.text}
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setToast(null)}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.2)',
+                                border: 'none',
+                                color: '#FFFFFF',
+                                borderRadius: '50%',
+                                width: '24px',
+                                height: '24px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                marginLeft: '0.25rem'
+                            }}
+                        >
+                            <X size={13} />
+                        </button>
                     </div>
                 )}
 
@@ -1323,191 +1567,226 @@ const G5TrainingPortal = () => {
                             {meetings.some(m => m.isActive) && (() => {
                                 const activeM = meetings.find(m => m.isActive);
                                 return (
-                                    <div style={{
-                                        background: 'linear-gradient(135deg, #EAF7F0 0%, #E0F5E9 100%)',
-                                        border: '1.5px solid var(--color-status-active)',
-                                        borderRadius: 'var(--radius-card)',
-                                        padding: '1rem 1.5rem',
-                                        marginBottom: '1.5rem',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        flexWrap: 'wrap',
-                                        gap: '1rem',
-                                        boxShadow: '0 4px 18px rgba(76, 175, 125, 0.12)'
-                                    }}>
+                                    <div className="g5-dashboard-live-banner">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                                             <div className="g5-pulse-dot" style={{ width: '10px', height: '10px' }} />
                                             <div>
-                                                <div style={{ fontWeight: 800, color: 'var(--color-text-main)', fontSize: '0.98rem' }}>
+                                                <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.98rem' }}>
                                                     Live Check-In Active: {activeM.name}
                                                 </div>
-                                                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
-                                                    {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: 'var(--color-primary)' }}>{activeM.code}</strong>
+                                                <div style={{ color: '#475569', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                                                    {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: '#1D4ED8' }}>{activeM.code}</strong>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <div className="g5-dashboard-banner-actions">
                                             <button
-                                                className="g5-btn-warm"
-                                                style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
+                                                className="g5-btn-blue-solid"
                                                 onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
                                             >
-                                                <Radio size={14} /> Open Live Feed
+                                                <Radio size={15} /> Open Live Feed
                                             </button>
                                             <button
-                                                className="g5-btn-secondary"
-                                                style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
+                                                className="g5-btn-blue-soft"
                                                 onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
                                             >
-                                                <Users size={14} /> Who Attended ({activeM.attendanceCount ?? 0})
+                                                <Users size={15} /> Who Attended ({activeM.attendanceCount ?? 0})
                                             </button>
                                         </div>
                                     </div>
                                 );
                             })()}
 
-                            {/* 5 Glanceable Stat Cards in a Row */}
-                            <div className="g5-stat-grid">
-                                <div className="g5-stat-card">
-                                    <div className="g5-stat-top">
-                                        <span className="g5-stat-label">Overall Attendance</span>
-                                        <div className="g5-stat-icon-wrap" style={{ backgroundColor: 'var(--color-status-active-soft)', color: 'var(--color-status-active)' }}>
-                                            <CalendarCheck size={20} />
-                                        </div>
-                                    </div>
-                                    <div className="g5-stat-number">
-                                        {attendancePercentage}%
-                                    </div>
-                                    <span style={{ fontSize: '0.76rem', color: 'var(--color-status-active)', fontWeight: 600 }}>
-                                        {totalAttended} total attendances recorded
-                                    </span>
+                            {/* 5 Glanceable Stat Cards in a Balanced Responsive Grid */}
+                            {statsLoading ? (
+                                <div className="g5-stat-grid">
+                                    <StatCardSkeleton />
+                                    <StatCardSkeleton />
+                                    <StatCardSkeleton />
+                                    <StatCardSkeleton />
+                                    <StatCardSkeleton />
                                 </div>
+                            ) : statsError ? (
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <ErrorState message="Could not load G5 operational statistics." onRetry={refetchG5Stats} />
+                                </div>
+                            ) : (
+                                <div className="g5-stat-grid">
+                                    <div className="g5-stat-card">
+                                        <div className="g5-stat-top">
+                                            <span className="g5-stat-label">Overall Attendance</span>
+                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8' }}>
+                                                <CalendarCheck size={19} />
+                                            </div>
+                                        </div>
+                                        <div className="g5-stat-number" style={{ color: '#1D4ED8' }}>
+                                            {g5Stats.attendancePercentage}%
+                                        </div>
+                                        <span style={{ fontSize: '0.74rem', color: '#2563EB', fontWeight: 700 }}>
+                                            {g5Stats.totalAttended} attendances across {g5Stats.totalMeetingsCount || meetings.length} sessions
+                                        </span>
+                                    </div>
 
-                                <div className="g5-stat-card">
-                                    <div className="g5-stat-top">
-                                        <span className="g5-stat-label">Recruits in Pipeline</span>
-                                        <div className="g5-stat-icon-wrap" style={{ backgroundColor: 'var(--color-accent-warm-soft)', color: 'var(--color-accent-warm)' }}>
-                                            <GraduationCap size={20} />
+                                    <div className="g5-stat-card">
+                                        <div className="g5-stat-top">
+                                            <span className="g5-stat-label">Recruits Pipeline</span>
+                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#E0F2FE', color: '#0284C7' }}>
+                                                <GraduationCap size={19} />
+                                            </div>
                                         </div>
+                                        <div className="g5-stat-number" style={{ color: '#0284C7' }}>
+                                            {g5Stats.totalRecruits}
+                                        </div>
+                                        <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 600 }}>
+                                            {g5Stats.totalRecruits > 0 ? `${g5Stats.archivedRecruitsCount} in holding archive` : 'No recruits enrolled currently'}
+                                        </span>
                                     </div>
-                                    <div className="g5-stat-number" style={{ color: 'var(--color-accent-warm)' }}>
-                                        {recruits.length}
-                                    </div>
-                                    <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                                        {archivedRecruits.length} in 20-day holding archive
-                                    </span>
-                                </div>
 
-                                <div className="g5-stat-card">
-                                    <div className="g5-stat-top">
-                                        <span className="g5-stat-label">Promotions Pending</span>
-                                        <div className="g5-stat-icon-wrap" style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
-                                            <Award size={20} />
+                                    <div className="g5-stat-card">
+                                        <div className="g5-stat-top">
+                                            <span className="g5-stat-label">Promotions Pending</span>
+                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#EFF6FF', color: '#2563EB' }}>
+                                                <Award size={19} />
+                                            </div>
                                         </div>
+                                        <div className="g5-stat-number" style={{ color: '#1D4ED8' }}>
+                                            {g5Stats.promotionsPending}
+                                        </div>
+                                        <span style={{ fontSize: '0.74rem', color: '#1D4ED8', fontWeight: 700 }}>
+                                            Shadow & Basic Douloids
+                                        </span>
                                     </div>
-                                    <div className="g5-stat-number">
-                                        {cadres.filter(c => c.douloidRank === 'Shadow Douloid' || c.douloidRank === 'Basic Douloid').length}
-                                    </div>
-                                    <span style={{ fontSize: '0.76rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                                        Shadow & Basic Douloids in DB
-                                    </span>
-                                </div>
 
-                                <div className="g5-stat-card">
-                                    <div className="g5-stat-top">
-                                        <span className="g5-stat-label">Upcoming Trainings</span>
-                                        <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#E0F2FE', color: '#0284C7' }}>
-                                            <Compass size={20} />
+                                    <div className="g5-stat-card">
+                                        <div className="g5-stat-top">
+                                            <span className="g5-stat-label">Upcoming Trainings</span>
+                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#E0F2FE', color: '#0284C7' }}>
+                                                <Compass size={19} />
+                                            </div>
                                         </div>
+                                        <div className="g5-stat-number" style={{ color: '#0284C7' }}>
+                                            {g5Stats.upcomingTrainings}
+                                        </div>
+                                        <span style={{ fontSize: '0.74rem', color: '#0284C7', fontWeight: 600 }}>
+                                            {g5Stats.upcomingTrainings > 0 ? 'Active drill modules in DB' : `${trainings.length} completed in database`}
+                                        </span>
                                     </div>
-                                    <div className="g5-stat-number">
-                                        {trainings.length}
-                                    </div>
-                                    <span style={{ fontSize: '0.76rem', color: '#0284C7', fontWeight: 600 }}>
-                                        Active drill modules in DB
-                                    </span>
-                                </div>
 
-                                <div className="g5-stat-card">
-                                    <div className="g5-stat-top">
-                                        <span className="g5-stat-label">Absentee Flags</span>
-                                        <div className="g5-stat-icon-wrap" style={{ backgroundColor: 'var(--color-status-inactive-soft)', color: 'var(--color-status-inactive)' }}>
-                                            <AlertTriangle size={20} />
+                                    <div className="g5-stat-card">
+                                        <div className="g5-stat-top">
+                                            <span className="g5-stat-label">Absentee Flags</span>
+                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+                                                <AlertTriangle size={19} />
+                                            </div>
                                         </div>
+                                        <div className="g5-stat-number" style={{ color: '#D97706' }}>
+                                            {g5Stats.absenteeFlags}
+                                        </div>
+                                        <span style={{ fontSize: '0.74rem', color: '#B45309', fontWeight: 700 }}>
+                                            3+ consecutive misses
+                                        </span>
                                     </div>
-                                    <div className="g5-stat-number" style={{ color: 'var(--color-status-inactive)' }}>
-                                        {absenteeMembers.length}
-                                    </div>
-                                    <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                                        2+ consecutive misses
-                                    </span>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Warm Glanceable Overview Cards */}
                             <div className="g5-overview-split">
-                                <div className="g5-card">
+                                <div className="g5-card g5-dashboard-session-card">
                                     <div className="g5-card-header">
                                         <div>
-                                            <div className="g5-card-title">Next Scheduled Meeting / Session</div>
-                                            <div className="g5-card-desc">{meetings[0]?.name || 'No meeting scheduled yet in database'}</div>
+                                            <div className="g5-card-title">
+                                                {nextUpcomingMeeting ? 'Next Scheduled Meeting / Session' : 'Next Scheduled Meeting / Session'}
+                                            </div>
+                                            <div className="g5-card-desc" style={{ color: nextUpcomingMeeting ? '#1D4ED8' : '#64748B', fontWeight: 700 }}>
+                                                {nextUpcomingMeeting ? nextUpcomingMeeting.name : 'Term Intersession — No Live Session Today'}
+                                            </div>
                                         </div>
-                                        <span className={`g5-pill ${meetings[0]?.isActive ? 'g5-pill-active' : 'g5-pill-recruit'}`}>
-                                            <Check size={14} /> {meetings[0]?.isActive ? 'Live Now' : 'Scheduled'}
+                                        <span className={`g5-pill ${nextUpcomingMeeting?.isActive ? 'g5-pill-active' : nextUpcomingMeeting ? 'g5-pill-blue' : 'g5-pill-soft'}`}>
+                                            <Check size={14} /> {nextUpcomingMeeting?.isActive ? 'Live Now' : nextUpcomingMeeting ? 'Scheduled' : 'Concluded Term'}
                                         </span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', background: 'var(--color-page-bg)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                                        <div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>DATE & TIME</div>
-                                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)', marginTop: '0.2rem' }}>
-                                                {meetings[0]?.date ? `${new Date(meetings[0].date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' })} • ${meetings[0].startTime || 'TBD'}` : 'None'}
+
+                                    {nextUpcomingMeeting ? (
+                                        <div className="g5-dashboard-meeting-meta-grid">
+                                            <div className="g5-dashboard-meta-item">
+                                                <div className="g5-dashboard-meta-label">DATE & TIME</div>
+                                                <div className="g5-dashboard-meta-val">
+                                                    {new Date(nextUpcomingMeeting.date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' })} • {nextUpcomingMeeting.startTime || 'TBD'}
+                                                </div>
+                                            </div>
+                                            <div className="g5-dashboard-meta-item">
+                                                <div className="g5-dashboard-meta-label">LOCATION</div>
+                                                <div className="g5-dashboard-meta-val">
+                                                    {nextUpcomingMeeting.location?.name || nextUpcomingMeeting.venue || nextUpcomingMeeting.campus || 'Not specified'}
+                                                </div>
+                                            </div>
+                                            <div className="g5-dashboard-meta-item">
+                                                <div className="g5-dashboard-meta-label">CAMPUS</div>
+                                                <div className="g5-dashboard-meta-val" style={{ color: '#1D4ED8' }}>
+                                                    {nextUpcomingMeeting.campus || 'All Campuses'}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>LOCATION</div>
-                                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)', marginTop: '0.2rem' }}>
-                                                {meetings[0]?.location?.name || meetings[0]?.venue || meetings[0]?.campus || 'Not specified'}
+                                    ) : (
+                                        <div className="g5-dashboard-meeting-meta-grid">
+                                            <div className="g5-dashboard-meta-item">
+                                                <div className="g5-dashboard-meta-label">LATEST CONCLUDED</div>
+                                                <div className="g5-dashboard-meta-val">
+                                                    {meetings[0]?.name ? `${meetings[0].name} (${new Date(meetings[0].date).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })})` : 'None in history'}
+                                                </div>
+                                            </div>
+                                            <div className="g5-dashboard-meta-item">
+                                                <div className="g5-dashboard-meta-label">ARCHIVED SESSIONS</div>
+                                                <div className="g5-dashboard-meta-val">
+                                                    {meetings.length} sessions logged in DB
+                                                </div>
+                                            </div>
+                                            <div className="g5-dashboard-meta-item">
+                                                <div className="g5-dashboard-meta-label">CAMPUS REGION</div>
+                                                <div className="g5-dashboard-meta-val" style={{ color: '#1D4ED8' }}>
+                                                    {meetings[0]?.campus || 'Athi River & VR'}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>CAMPUS</div>
-                                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-accent-warm)', marginTop: '0.2rem' }}>
-                                                {meetings[0]?.campus || 'All Campuses'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-                                        <button className="g5-btn-warm" onClick={() => setActiveTab('graduations')}>
-                                            <GraduationCap size={18} /> View Recruit Graduations ({recruits.length})
+                                    )}
+
+                                    <div className="g5-dashboard-card-actions">
+                                        <button className="g5-btn-blue-solid" onClick={() => setActiveTab('graduations')}>
+                                            <GraduationCap size={16} /> View Recruit Graduations ({recruits.length})
                                         </button>
-                                        <button className="g5-btn-secondary" onClick={() => setActiveTab('meetings')}>
-                                            <Calendar size={18} /> View Field Meetings ({activeMeetings.length})
+                                        <button className="g5-btn-blue-soft" onClick={() => setActiveTab('meetings')}>
+                                            <Calendar size={16} /> View Session Archive ({meetings.length})
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="g5-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <div className="g5-card g5-dashboard-belay-card">
                                     <div>
                                         <div className="g5-card-header" style={{ marginBottom: '1rem' }}>
                                             <div>
                                                 <div className="g5-card-title">Belay Safety Readiness</div>
                                                 <div className="g5-card-desc">Certified belayers in membership roster</div>
                                             </div>
-                                            <Shield size={22} style={{ color: 'var(--color-status-active)' }} />
+                                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Shield size={20} />
+                                            </div>
                                         </div>
-                                        <div style={{ background: 'var(--color-status-active-soft)', padding: '1rem', borderRadius: '14px', border: '1px solid rgba(76,175,125,0.2)' }}>
-                                            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-status-active)' }}>
+                                        <div style={{ background: '#EFF6FF', padding: '1.1rem', borderRadius: '14px', border: '1.5px solid #BFDBFE' }}>
+                                            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#1D4ED8' }}>
                                                 {cadres.filter(c => c.belayStatus === 'Primary Belayer Certified' || c.douloidRank === 'Lead Douloid' || c.douloidRank === 'Intermediate Douloid').length} Certified Belayers
                                             </div>
-                                            <div style={{ fontSize: '0.82rem', color: 'var(--color-text-main)', marginTop: '0.3rem', fontWeight: 600 }}>
+                                            <div style={{ fontSize: '0.82rem', color: '#334155', marginTop: '0.35rem', fontWeight: 600 }}>
                                                 {cadres.length > 0 
-                                                    ? `Out of ${cadres.length} total active Douloids in database registry.`
+                                                    ? `Out of ${cadres.filter(c => c.douloidRank && c.douloidRank !== 'None').length} Douloids in active roster (${cadres.length} total active members registered).`
                                                     : 'Awaiting membership roster enrollment.'}
                                             </div>
                                         </div>
                                     </div>
-                                    <button className="g5-btn-outline" style={{ marginTop: '1.25rem', width: '100%', justifyContent: 'center' }} onClick={() => setActiveTab('cadres')}>
+                                    <button 
+                                        className="g5-btn-blue-soft" 
+                                        style={{ marginTop: '1.25rem', width: '100%', justifyContent: 'center', padding: '0.72rem' }} 
+                                        onClick={() => setActiveTab('cadres')}
+                                    >
                                         Inspect Membership Roster & Clearances <ChevronRight size={16} />
                                     </button>
                                 </div>
@@ -1525,14 +1804,14 @@ const G5TrainingPortal = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                                     <div>
                                         <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <CalendarCheck size={18} style={{ color: 'var(--color-primary)' }} /> Inspect Specific Session Attendance & Live Feeds
+                                            <CalendarCheck size={18} style={{ color: '#1D4ED8' }} /> Inspect Specific Session Attendance & Live Feeds
                                         </div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
                                             Click any session below to view full attendee roster, scan times, survey answers, or live ticker
                                         </div>
                                     </div>
                                     <button
-                                        className="g5-btn-outline"
+                                        className="g5-btn-blue-soft"
                                         style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
                                         onClick={() => setActiveTab('meetings')}
                                     >
@@ -1540,38 +1819,30 @@ const G5TrainingPortal = () => {
                                     </button>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.85rem' }}>
-                                    {meetings.slice(0, 4).map((m) => (
+                                <div className="g5-quick-sessions-container">
+                                    {meetings.slice(0, 6).map((m) => (
                                         <div
                                             key={m._id || m.code}
                                             onClick={() => setInsightMeeting({ ...m, initialTab: 'attended' })}
-                                            style={{
-                                                background: m.isActive ? 'var(--color-status-active-soft)' : 'var(--color-page-bg)',
-                                                border: m.isActive ? '1.5px solid var(--color-status-active)' : '1px solid var(--color-border)',
-                                                borderRadius: '12px',
-                                                padding: '0.85rem 1rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                justifyContent: 'space-between',
-                                                gap: '0.4rem'
-                                            }}
+                                            className={`g5-quick-session-card ${m.isActive ? 'is-active' : ''}`}
                                         >
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                                                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1D4ED8', background: '#EFF6FF', padding: '0.18rem 0.55rem', borderRadius: '6px' }}>
                                                     {new Date(m.date).toLocaleDateString()}
                                                 </span>
-                                                <span className={`g5-pill ${m.isActive ? 'g5-pill-active' : 'g5-pill-inactive'}`} style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}>
+                                                <span className={`g5-pill ${m.isActive ? 'g5-pill-active' : 'g5-pill-blue'}`} style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}>
                                                     {m.isActive ? 'Live' : 'Done'}
                                                 </span>
                                             </div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {m.name}
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                                <span>{m.location?.name || (m.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
-                                                <span style={{ fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem', color: '#64748B' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>
+                                                    <MapPin size={12} style={{ color: '#1D4ED8', flexShrink: 0 }} />
+                                                    {m.location?.name || (m.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                </span>
+                                                <span style={{ fontWeight: 800, color: '#1D4ED8', background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '0.15rem 0.5rem', borderRadius: '999px', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
                                                     {m.attendanceCount ?? 0} attended →
                                                 </span>
                                             </div>
@@ -1580,95 +1851,200 @@ const G5TrainingPortal = () => {
                                 </div>
                             </div>
 
-                            <div className="g5-card">
-                            <div className="g5-card-header">
-                                <div>
-                                    <div className="g5-card-title">Attendance Tracking</div>
-                                    <div className="g5-card-desc">Live member drill attendance, semester rollups, and pastoral absentee radar</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                    <select
-                                        className="g5-form-select"
-                                        style={{ width: '160px', padding: '0.5rem 0.75rem' }}
-                                        value={campusFilter}
-                                        onChange={(e) => setCampusFilter(e.target.value)}
-                                    >
-                                        <option value="All">All Campuses</option>
-                                        <option value="Athi River">Athi River</option>
-                                        <option value="Valley Road">Valley Road</option>
-                                    </select>
-                                </div>
-                            </div>
+                            {/* ATTENDANCE TRACKING & MEMBER ROSTER */}
+                            {(() => {
+                                const filteredAttendanceMembers = members
+                                    .filter(m => campusFilter === 'All' || m.campus === campusFilter)
+                                    .filter(m => !searchQuery || m.name?.toLowerCase().includes(searchQuery.toLowerCase()) || (m.studentRegNo && m.studentRegNo.toLowerCase().includes(searchQuery.toLowerCase())));
 
-                            <div className="g5-table-wrap">
-                                <table className="g5-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Member</th>
-                                            <th>Campus</th>
-                                            <th>Role Type</th>
-                                            <th>Attendance Rate</th>
-                                            <th>Consecutive Absences</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {members
-                                            .filter(m => campusFilter === 'All' || m.campus === campusFilter)
-                                            .filter(m => !searchQuery || m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.studentRegNo.toLowerCase().includes(searchQuery.toLowerCase()))
-                                            .slice(0, 15)
-                                            .map((member) => {
-                                                const rate = member.totalPoints ? Math.min(100, Math.round((member.totalPoints / 80) * 100)) : 85;
-                                                const isAbsentFlag = (member.consecutiveAbsences || 0) >= 2;
-                                                return (
-                                                    <tr key={member._id}>
-                                                        <td>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                                <div className="g5-avatar" style={{ width: '38px', height: '38px' }}>
-                                                                    {member.name.charAt(0)}
+                                return (
+                                    <div className="g5-card" style={{ padding: '1.35rem 1.5rem' }}>
+                                        <div className="g5-card-header" style={{ marginBottom: '1.25rem' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                                    <div className="g5-card-title">Attendance Tracking</div>
+                                                    <span className="g5-pill g5-pill-blue">
+                                                        <Users size={13} /> {filteredAttendanceMembers.length} Members
+                                                    </span>
+                                                </div>
+                                                <div className="g5-card-desc">Live member drill attendance, semester rollups, and pastoral absentee radar</div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <select
+                                                    className="g5-form-select"
+                                                    style={{ width: '160px', padding: '0.55rem 0.85rem', borderColor: '#BFDBFE', background: '#EFF6FF', color: '#1D4ED8', fontWeight: 800, borderRadius: '10px' }}
+                                                    value={campusFilter}
+                                                    onChange={(e) => setCampusFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Campuses</option>
+                                                    <option value="Athi River">Athi River</option>
+                                                    <option value="Valley Road">Valley Road</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* MOBILE ATTENDANCE CARDS (< 860px) */}
+                                        <div className="g5-attendance-mobile-cards">
+                                            {filteredAttendanceMembers.length === 0 ? (
+                                                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748B' }}>
+                                                    <Users size={28} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
+                                                    <div style={{ fontWeight: 700 }}>No members found matching filter</div>
+                                                </div>
+                                            ) : (
+                                                filteredAttendanceMembers.slice(0, 30).map((member) => {
+                                                    const rate = member.totalPoints ? Math.min(100, Math.round((member.totalPoints / 80) * 100)) : 85;
+                                                    const isAbsentFlag = (member.consecutiveAbsences || 0) >= 2;
+                                                    return (
+                                                        <div key={member._id} className="g5-attendance-member-card">
+                                                            {/* Top Row: Avatar + Name + RegNo + Active Status */}
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                                                                    <div className="g5-avatar" style={{ width: '40px', height: '40px', fontSize: '0.95rem', flexShrink: 0, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+                                                                        {member.name.charAt(0)}
+                                                                    </div>
+                                                                    <div style={{ minWidth: 0 }}>
+                                                                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                            {member.name}
+                                                                        </div>
+                                                                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                                                                            {member.studentRegNo ? `${member.studentRegNo} • ` : ''}{member.campus}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <div style={{ fontWeight: 700, color: 'var(--color-text-main)' }}>{member.name}</div>
-                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.studentRegNo}</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ fontWeight: 600 }}>{member.campus}</td>
-                                                        <td>
-                                                            <span className={`g5-pill ${member.memberType === 'Douloid' ? 'g5-pill-active' : 'g5-pill-recruit'}`}>
-                                                                {member.memberType || 'Recruit'}
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                                                                <div style={{ flex: 1, maxWidth: '100px', height: '7px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden' }}>
-                                                                    <div style={{ width: `${rate}%`, height: '100%', background: rate >= 80 ? 'var(--color-status-active)' : 'var(--color-accent-warm)' }} />
-                                                                </div>
-                                                                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{rate}%</span>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            {isAbsentFlag ? (
-                                                                <span className="g5-pill g5-pill-inactive">
-                                                                    <AlertTriangle size={13} /> {member.consecutiveAbsences} missed
+                                                                <span className={`g5-pill ${member.isActive !== false ? 'g5-pill-active' : 'g5-pill-inactive'}`} style={{ flexShrink: 0 }}>
+                                                                    {member.isActive !== false ? 'Active' : 'Inactive'}
                                                                 </span>
-                                                            ) : (
-                                                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Nominal</span>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            <span className={`g5-pill ${member.isActive !== false ? 'g5-pill-active' : 'g5-pill-inactive'}`}>
-                                                                {member.isActive !== false ? 'Active' : 'Inactive'}
-                                                            </span>
-                                                        </td>
+                                                            </div>
+
+                                                            {/* Badges Row */}
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                    <span style={{
+                                                                        fontSize: '0.72rem',
+                                                                        fontWeight: 800,
+                                                                        padding: '0.2rem 0.55rem',
+                                                                        borderRadius: '999px',
+                                                                        background: member.memberType === 'Douloid' ? '#EFF6FF' : '#FEF3C7',
+                                                                        color: member.memberType === 'Douloid' ? '#1D4ED8' : '#B45309',
+                                                                        border: `1px solid ${member.memberType === 'Douloid' ? '#BFDBFE' : '#FDE68A'}`
+                                                                    }}>
+                                                                        {member.memberType || 'Recruit'}
+                                                                    </span>
+
+                                                                    {member.douloidRank && member.douloidRank !== 'None' && (
+                                                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '0.2rem 0.55rem', borderRadius: '999px', background: '#F1F5F9', color: '#334155' }}>
+                                                                            {member.douloidRank}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div>
+                                                                    {isAbsentFlag ? (
+                                                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#DC2626', background: '#FEE2E2', border: '1px solid #FECACA', padding: '0.18rem 0.55rem', borderRadius: '999px' }}>
+                                                                            ⚠️ {member.consecutiveAbsences} missed
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '0.18rem 0.55rem', borderRadius: '999px' }}>
+                                                                            ✓ Nominal
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Attendance Rate Progress Bar */}
+                                                            <div style={{ background: '#F8FAFC', padding: '0.65rem 0.85rem', borderRadius: '10px', border: '1px solid #DBEAFE' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                                                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B' }}>Attendance Rate</span>
+                                                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: rate >= 80 ? '#1D4ED8' : '#D97706' }}>{rate}%</span>
+                                                                </div>
+                                                                <div style={{ width: '100%', height: '7px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                                                                    <div style={{ width: `${rate}%`, height: '100%', background: rate >= 80 ? 'linear-gradient(90deg, #1D4ED8, #3B82F6)' : 'linear-gradient(90deg, #D97706, #F59E0B)', borderRadius: '999px' }} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+
+                                        {/* DESKTOP ATTENDANCE TABLE (>= 860px) */}
+                                        <div className="g5-attendance-desktop-table g5-table-wrap">
+                                            <table className="g5-table" style={{ minWidth: '820px' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Member</th>
+                                                        <th>Campus</th>
+                                                        <th>Role Type</th>
+                                                        <th>Attendance Rate</th>
+                                                        <th>Consecutive Absences</th>
+                                                        <th>Status</th>
                                                     </tr>
-                                                );
-                                            })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredAttendanceMembers.slice(0, 30).map((member) => {
+                                                        const rate = member.totalPoints ? Math.min(100, Math.round((member.totalPoints / 80) * 100)) : 85;
+                                                        const isAbsentFlag = (member.consecutiveAbsences || 0) >= 2;
+                                                        return (
+                                                            <tr key={member._id}>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                                                        <div className="g5-avatar" style={{ width: '38px', height: '38px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+                                                                            {member.name.charAt(0)}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div style={{ fontWeight: 700, color: '#0F172A' }}>{member.name}</div>
+                                                                            {member.studentRegNo ? <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{member.studentRegNo}</div> : null}
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td style={{ fontWeight: 600 }}>{member.campus}</td>
+                                                                <td>
+                                                                    <span style={{
+                                                                        fontSize: '0.74rem',
+                                                                        fontWeight: 800,
+                                                                        padding: '0.22rem 0.6rem',
+                                                                        borderRadius: '999px',
+                                                                        background: member.memberType === 'Douloid' ? '#EFF6FF' : '#FEF3C7',
+                                                                        color: member.memberType === 'Douloid' ? '#1D4ED8' : '#B45309',
+                                                                        border: `1px solid ${member.memberType === 'Douloid' ? '#BFDBFE' : '#FDE68A'}`
+                                                                    }}>
+                                                                        {member.memberType || 'Recruit'}
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                                                        <div style={{ flex: 1, maxWidth: '100px', height: '7px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                                                                            <div style={{ width: `${rate}%`, height: '100%', background: rate >= 80 ? 'linear-gradient(90deg, #1D4ED8, #3B82F6)' : 'linear-gradient(90deg, #D97706, #F59E0B)' }} />
+                                                                        </div>
+                                                                        <span style={{ fontWeight: 800, fontSize: '0.85rem', color: rate >= 80 ? '#1D4ED8' : '#D97706' }}>{rate}%</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    {isAbsentFlag ? (
+                                                                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#DC2626', background: '#FEE2E2', border: '1px solid #FECACA', padding: '0.2rem 0.6rem', borderRadius: '999px' }}>
+                                                                            <AlertTriangle size={13} style={{ display: 'inline', marginRight: '3px' }} /> {member.consecutiveAbsences} missed
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span style={{ color: '#059669', fontWeight: 700, fontSize: '0.82rem', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '0.18rem 0.55rem', borderRadius: '999px' }}>
+                                                                            ✓ Nominal
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td>
+                                                                    <span className={`g5-pill ${member.isActive !== false ? 'g5-pill-active' : 'g5-pill-inactive'}`}>
+                                                                        {member.isActive !== false ? 'Active' : 'Inactive'}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
-                    </div>
                     )}
 
                     {/* ========================================================= */}
@@ -1676,82 +2052,63 @@ const G5TrainingPortal = () => {
                     {/* ========================================================= */}
                     {activeTab === 'meetings' && (
                         <div>
-                            {/* TAB 3 HEADER */}
-                            <div className="g5-meetings-header-box">
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-                                        <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.3px' }}>
-                                            Training Meetings & Field Drills
-                                        </h2>
-                                        <span style={{
-                                            background: '#EFF6FF',
-                                            color: '#1D4ED8',
-                                            border: '1.5px solid #BFDBFE',
-                                            fontWeight: 800,
-                                            fontSize: '0.78rem',
-                                            padding: '3px 10px',
-                                            borderRadius: '999px',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '0.35rem'
-                                        }}>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563EB' }} />
-                                            {activeMeetings.length} Active Sessions
-                                        </span>
-                                        {archivedMeetings.length > 0 && (
-                                            <span style={{
-                                                background: '#FFFBEB',
-                                                color: '#B45309',
-                                                border: '1.5px solid #FDE68A',
-                                                fontWeight: 800,
-                                                fontSize: '0.78rem',
-                                                padding: '3px 10px',
-                                                borderRadius: '999px'
-                                            }}>
-                                                🗄️ {archivedMeetings.length} Archived Vault
-                                            </span>
-                                        )}
+                            {/* TAB 3 HERO CARD & SEGMENTED CONTROLS (HIGH CONTRAST & MOBILE FIRST) */}
+                            <div className="g5-meetings-hero-card">
+                                <div className="g5-meetings-hero-top">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                        <div className="g5-meetings-hero-icon">
+                                            <Calendar size={22} style={{ color: '#FFFFFF' }} />
+                                        </div>
+                                        <div>
+                                            <h2 className="g5-meetings-hero-title">
+                                                Training Meetings & Field Drills
+                                            </h2>
+                                            <p className="g5-meetings-hero-desc">
+                                                Weekly sessions, live attendance check-ins, who attended rosters & archive vault
+                                            </p>
+                                        </div>
                                     </div>
-                                    <p style={{ fontSize: '0.86rem', color: '#475569', marginTop: '0.25rem', fontWeight: 500 }}>
-                                        Weekly sessions, live attendance check-ins, who attended rosters, and safe archive repository
-                                    </p>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+
                                     <button
                                         type="button"
-                                        className="g5-btn-blue-solid"
+                                        className="g5-meetings-cta-btn"
                                         onClick={() => setShowNewMeetingModal(true)}
                                     >
-                                        <Plus size={18} /> + New Meeting
+                                        <Plus size={18} />
+                                        <span>+ New Meeting</span>
                                     </button>
                                 </div>
-                            </div>
 
-                            {/* SUB-TABS: ACTIVE & RECENT vs ARCHIVED (SOLID BLUE & AMBER - NO TRANSPARENCY) */}
-                            <div style={{
-                                display: 'flex',
-                                gap: '0.75rem',
-                                borderBottom: '2px solid #DBEAFE',
-                                paddingBottom: '0.85rem',
-                                marginBottom: '1.5rem',
-                                overflowX: 'auto',
-                                WebkitOverflowScrolling: 'touch',
-                                flexWrap: 'nowrap'
-                            }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setMeetingSubTab('active')}
-                                    className={`g5-subtab-btn-blue ${meetingSubTab === 'active' ? 'active' : ''}`}
-                                >
-                                    <Calendar size={17} /> Active & Recent Sessions ({activeMeetings.length})
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMeetingSubTab('archived')}
-                                    className={`g5-subtab-btn-amber ${meetingSubTab === 'archived' ? 'active' : ''}`}
-                                >
-                                    <Archive size={17} /> Archived Sessions Vault ({archivedMeetings.length})
-                                </button>
+                                {/* MODERN SEGMENTED PILL SWITCH (NATIVE APP EXPERIENCE) */}
+                                <div className="g5-meetings-segmented-bar">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMeetingSubTab('active')}
+                                        className={`g5-segmented-item ${meetingSubTab === 'active' ? 'active-blue' : ''}`}
+                                    >
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                                            <Calendar size={16} />
+                                            <span>Active & Recent Sessions</span>
+                                        </span>
+                                        <span className={`g5-segmented-counter ${meetingSubTab === 'active' ? 'counter-blue' : ''}`}>
+                                            {activeMeetings.length}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setMeetingSubTab('archived')}
+                                        className={`g5-segmented-item ${meetingSubTab === 'archived' ? 'active-amber' : ''}`}
+                                    >
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                                            <Archive size={16} />
+                                            <span>Archived Sessions Vault</span>
+                                        </span>
+                                        <span className={`g5-segmented-counter ${meetingSubTab === 'archived' ? 'counter-amber' : ''}`}>
+                                            {archivedMeetings.length}
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
 
                             {/* SEARCH & FILTERS BAR (CRISP BLUE ACCENT & TOUCH PILLS) */}
@@ -1844,20 +2201,7 @@ const G5TrainingPortal = () => {
                                     {filteredActiveMeetings.filter(m => m.isActive).length > 0 && (() => {
                                         const activeM = filteredActiveMeetings.filter(m => m.isActive)[0];
                                         return (
-                                            <div style={{
-                                                background: 'linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #1D4ED8 100%)',
-                                                border: '2px solid #60A5FA',
-                                                borderRadius: '18px',
-                                                padding: '1.35rem 1.6rem',
-                                                marginBottom: '1.75rem',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                flexWrap: 'wrap',
-                                                gap: '1rem',
-                                                boxShadow: '0 8px 24px rgba(37, 99, 235, 0.28)',
-                                                color: '#FFFFFF'
-                                            }}>
+                                            <div className="g5-live-banner">
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                     <div style={{
                                                         width: '14px',
@@ -1865,7 +2209,8 @@ const G5TrainingPortal = () => {
                                                         borderRadius: '50%',
                                                         backgroundColor: '#10B981',
                                                         boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.35)',
-                                                        animation: 'g5Pulse 1.6s infinite'
+                                                        animation: 'g5Pulse 1.6s infinite',
+                                                        flexShrink: 0
                                                     }} />
                                                     <div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1889,30 +2234,72 @@ const G5TrainingPortal = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                                <div className="g5-live-banner-actions">
                                                     <button
                                                         type="button"
-                                                        className="g5-btn-qr-cyan"
-                                                        style={{ padding: '0.65rem 1rem', fontSize: '0.86rem' }}
                                                         onClick={() => setQrMeeting(activeM)}
+                                                        style={{
+                                                            background: 'linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%)',
+                                                            color: '#FFFFFF',
+                                                            border: 'none',
+                                                            borderRadius: '12px',
+                                                            padding: '0.65rem 1.15rem',
+                                                            fontSize: '0.86rem',
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35)',
+                                                            transition: 'all 0.18s ease'
+                                                        }}
                                                     >
-                                                        <QrCode size={16} /> Display QR Code 📱
+                                                        <QrCode size={16} />
+                                                        <span>Display QR Code 📱</span>
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        className="g5-btn-blue-solid"
-                                                        style={{ background: '#FFFFFF', color: '#1D4ED8', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' }}
                                                         onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
+                                                        style={{
+                                                            background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                                                            color: '#FFFFFF',
+                                                            border: 'none',
+                                                            borderRadius: '12px',
+                                                            padding: '0.65rem 1.15rem',
+                                                            fontSize: '0.86rem',
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.45)',
+                                                            transition: 'all 0.18s ease'
+                                                        }}
                                                     >
-                                                        <Radio size={16} style={{ color: '#10B981' }} /> Live Attendance Feed
+                                                        <Radio size={16} />
+                                                        <span>Live Attendance Feed</span>
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        className="g5-btn-blue-soft"
-                                                        style={{ background: '#EFF6FF', color: '#1D4ED8', borderColor: '#BFDBFE' }}
                                                         onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
+                                                        style={{
+                                                            background: '#FFFFFF',
+                                                            color: '#1D4ED8',
+                                                            border: '2px solid #BFDBFE',
+                                                            borderRadius: '12px',
+                                                            padding: '0.65rem 1.15rem',
+                                                            fontSize: '0.86rem',
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            boxShadow: '0 2px 10px rgba(37, 99, 235, 0.15)',
+                                                            transition: 'all 0.18s ease'
+                                                        }}
                                                     >
-                                                        <Users size={16} /> Who Attended ({activeM.attendanceCount ?? 0})
+                                                        <Users size={16} />
+                                                        <span>Who Attended ({activeM.attendanceCount ?? 0})</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -1971,7 +2358,7 @@ const G5TrainingPortal = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.35rem' }}>
+                                        <div className="g5-meetings-grid">
                                             {filteredActiveMeetings.map((meeting) => (
                                                 <div
                                                     key={meeting._id || meeting.code || meeting.date}
@@ -1981,7 +2368,7 @@ const G5TrainingPortal = () => {
                                                 >
                                                     <div>
                                                         {/* CARD TOP META */}
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                             <span style={{
                                                                 background: '#EFF6FF',
                                                                 color: '#1D4ED8',
@@ -1994,7 +2381,7 @@ const G5TrainingPortal = () => {
                                                                 alignItems: 'center',
                                                                 gap: '0.35rem'
                                                             }}>
-                                                                <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
+                                                                <Calendar size={13} style={{ flexShrink: 0 }} /> {new Date(meeting.date).toLocaleDateString()}
                                                             </span>
                                                             <span
                                                                 style={{
@@ -2007,7 +2394,8 @@ const G5TrainingPortal = () => {
                                                                     fontWeight: 800,
                                                                     display: 'inline-flex',
                                                                     alignItems: 'center',
-                                                                    gap: '0.35rem'
+                                                                    gap: '0.35rem',
+                                                                    flexShrink: 0
                                                                 }}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -2026,17 +2414,17 @@ const G5TrainingPortal = () => {
                                                         </div>
 
                                                         {/* TITLE */}
-                                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.55rem', lineHeight: 1.3 }}>
+                                                        <h3 style={{ fontSize: '1.18rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.55rem', lineHeight: 1.35, wordBreak: 'break-word' }}>
                                                             {meeting.name || 'Weekly Training Drill'}
                                                         </h3>
 
                                                         {/* TIME & LOCATION */}
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.4rem', fontWeight: 600 }}>
-                                                            <Clock size={15} style={{ color: '#2563EB' }} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                                            <Clock size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span>{meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}</span>
                                                         </div>
 
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
-                                                            <MapPin size={15} style={{ color: '#2563EB' }} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                            <MapPin size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
                                                         </div>
 
                                                         {/* JOIN CODE BOX (WITH 1-TAP COPY) */}
@@ -2048,11 +2436,12 @@ const G5TrainingPortal = () => {
                                                             borderRadius: '10px',
                                                             background: '#EFF6FF',
                                                             border: '1.5px dashed #3B82F6',
-                                                            marginBottom: '0.85rem'
+                                                            marginBottom: '0.85rem',
+                                                            gap: '0.5rem'
                                                         }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>Join Code:</span>
-                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Join Code:</span>
+                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' }}>
                                                                     {meeting.code || 'DOULOS'}
                                                                 </span>
                                                             </div>
@@ -2074,7 +2463,8 @@ const G5TrainingPortal = () => {
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     gap: '0.3rem',
-                                                                    cursor: 'pointer'
+                                                                    cursor: 'pointer',
+                                                                    flexShrink: 0
                                                                 }}
                                                             >
                                                                 <Copy size={12} /> Copy
@@ -2082,7 +2472,7 @@ const G5TrainingPortal = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* CARD ACTION BUTTONS (MOBILE-OPTIMIZED TWO-TIER SYSTEM) */}
+                                                    {/* CARD ACTION BUTTONS (MOBILE & DESKTOP OPTIMIZED TWO-TIER SYSTEM) */}
                                                     <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                                                         {meeting.isActive ? (
                                                             <>
@@ -2090,13 +2480,13 @@ const G5TrainingPortal = () => {
                                                                 <button
                                                                     type="button"
                                                                     className="g5-btn-blue-solid"
-                                                                    style={{ width: '100%', padding: '0.75rem' }}
+                                                                    style={{ width: '100%', padding: '0.72rem 0.75rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setInsightMeeting({ ...meeting, initialTab: 'live' });
                                                                     }}
                                                                 >
-                                                                    <Radio size={16} /> Live Attendance Feed & Check-In
+                                                                    <Radio size={16} style={{ flexShrink: 0 }} /> <span>Live Attendance Feed & Check-In</span>
                                                                 </button>
 
                                                                 {/* TIER 2: SECONDARY TOUCH GRID (ALL SOLID VIBRANT COLORS) */}
@@ -2110,7 +2500,7 @@ const G5TrainingPortal = () => {
                                                                         }}
                                                                         title="Display QR code on screen"
                                                                     >
-                                                                        <QrCode size={14} /> Display QR
+                                                                        <QrCode size={14} style={{ flexShrink: 0 }} /> <span>Display QR</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -2121,7 +2511,7 @@ const G5TrainingPortal = () => {
                                                                             handleArchiveMeeting(meeting);
                                                                         }}
                                                                     >
-                                                                        <Archive size={14} /> Archive
+                                                                        <Archive size={14} style={{ flexShrink: 0 }} /> <span>Archive</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -2132,7 +2522,7 @@ const G5TrainingPortal = () => {
                                                                             handleDeleteMeeting(meeting);
                                                                         }}
                                                                     >
-                                                                        <Trash2 size={14} /> Delete
+                                                                        <Trash2 size={14} style={{ flexShrink: 0 }} /> <span>Delete</span>
                                                                     </button>
                                                                 </div>
                                                             </>
@@ -2142,13 +2532,13 @@ const G5TrainingPortal = () => {
                                                                 <button
                                                                     type="button"
                                                                     className="g5-btn-blue-soft"
-                                                                    style={{ width: '100%', padding: '0.72rem' }}
+                                                                    style={{ width: '100%', padding: '0.72rem 0.75rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                     }}
                                                                 >
-                                                                    <Users size={16} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                                    <Users size={16} style={{ flexShrink: 0 }} /> <span>Who Attended ({meeting.attendanceCount ?? 0})</span>
                                                                 </button>
 
                                                                 {/* TIER 2: SECONDARY ACTIONS GRID */}
@@ -2162,7 +2552,7 @@ const G5TrainingPortal = () => {
                                                                         }}
                                                                         title="Display QR code"
                                                                     >
-                                                                        <QrCode size={14} /> QR Code
+                                                                        <QrCode size={14} style={{ flexShrink: 0 }} /> <span>Display QR</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -2173,7 +2563,7 @@ const G5TrainingPortal = () => {
                                                                             handleArchiveMeeting(meeting);
                                                                         }}
                                                                     >
-                                                                        <Archive size={14} /> Archive
+                                                                        <Archive size={14} style={{ flexShrink: 0 }} /> <span>Archive</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -2184,7 +2574,7 @@ const G5TrainingPortal = () => {
                                                                             handleDeleteMeeting(meeting);
                                                                         }}
                                                                     >
-                                                                        <Trash2 size={14} /> Delete
+                                                                        <Trash2 size={14} style={{ flexShrink: 0 }} /> <span>Delete</span>
                                                                     </button>
                                                                 </div>
                                                             </>
@@ -2281,7 +2671,7 @@ const G5TrainingPortal = () => {
                                             </p>
                                         </div>
                                     ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.35rem' }}>
+                                        <div className="g5-meetings-grid">
                                             {filteredArchivedMeetings.map((meeting) => (
                                                 <div
                                                     key={meeting._id || meeting.code || meeting.date}
@@ -2290,7 +2680,7 @@ const G5TrainingPortal = () => {
                                                     onClick={() => setInsightMeeting({ ...meeting, initialTab: 'attended' })}
                                                 >
                                                     <div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                             <span style={{
                                                                 background: '#EFF6FF',
                                                                 color: '#1D4ED8',
@@ -2303,7 +2693,7 @@ const G5TrainingPortal = () => {
                                                                 alignItems: 'center',
                                                                 gap: '0.35rem'
                                                             }}>
-                                                                <Calendar size={13} /> {new Date(meeting.date).toLocaleDateString()}
+                                                                <Calendar size={13} style={{ flexShrink: 0 }} /> {new Date(meeting.date).toLocaleDateString()}
                                                             </span>
                                                             <span style={{
                                                                 background: '#FFFBEB',
@@ -2312,22 +2702,23 @@ const G5TrainingPortal = () => {
                                                                 padding: '0.3rem 0.7rem',
                                                                 borderRadius: '999px',
                                                                 fontSize: '0.76rem',
-                                                                fontWeight: 800
+                                                                fontWeight: 800,
+                                                                flexShrink: 0
                                                             }}>
                                                                 🗄️ Archived {meeting.archivedAt ? `• ${new Date(meeting.archivedAt).toLocaleDateString()}` : ''}
                                                             </span>
                                                         </div>
 
-                                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.55rem', lineHeight: 1.3 }}>
+                                                        <h3 style={{ fontSize: '1.18rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.55rem', lineHeight: 1.35, wordBreak: 'break-word' }}>
                                                             {meeting.name || 'Weekly Training Drill'}
                                                         </h3>
 
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.4rem', fontWeight: 600 }}>
-                                                            <Clock size={15} style={{ color: '#2563EB' }} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                                            <Clock size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span>{meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}</span>
                                                         </div>
 
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
-                                                            <MapPin size={15} style={{ color: '#2563EB' }} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                            <MapPin size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
                                                         </div>
 
                                                         {/* JOIN CODE BOX */}
@@ -2339,11 +2730,12 @@ const G5TrainingPortal = () => {
                                                             borderRadius: '10px',
                                                             background: '#EFF6FF',
                                                             border: '1.5px dashed #3B82F6',
-                                                            marginBottom: '0.85rem'
+                                                            marginBottom: '0.85rem',
+                                                            gap: '0.5rem'
                                                         }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>Join Code:</span>
-                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Join Code:</span>
+                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' }}>
                                                                     {meeting.code || 'DOULOS'}
                                                                 </span>
                                                             </div>
@@ -2365,7 +2757,8 @@ const G5TrainingPortal = () => {
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     gap: '0.3rem',
-                                                                    cursor: 'pointer'
+                                                                    cursor: 'pointer',
+                                                                    flexShrink: 0
                                                                 }}
                                                             >
                                                                 <Copy size={12} /> Copy
@@ -2379,13 +2772,13 @@ const G5TrainingPortal = () => {
                                                         <button
                                                             type="button"
                                                             className="g5-btn-blue-soft"
-                                                            style={{ width: '100%', padding: '0.72rem' }}
+                                                            style={{ width: '100%', padding: '0.72rem 0.75rem' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                             }}
                                                         >
-                                                            <Users size={16} /> Who Attended ({meeting.attendanceCount ?? 0})
+                                                            <Users size={16} style={{ flexShrink: 0 }} /> <span>Who Attended ({meeting.attendanceCount ?? 0})</span>
                                                         </button>
 
                                                         {/* TIER 2: SECONDARY TOUCH GRID */}
@@ -2399,7 +2792,7 @@ const G5TrainingPortal = () => {
                                                                 }}
                                                                 title="Display QR code"
                                                             >
-                                                                <QrCode size={14} /> QR Code
+                                                                <QrCode size={14} style={{ flexShrink: 0 }} /> <span>Display QR</span>
                                                             </button>
                                                             <button
                                                                 type="button"
@@ -2410,7 +2803,7 @@ const G5TrainingPortal = () => {
                                                                     handleUnarchiveMeeting(meeting);
                                                                 }}
                                                             >
-                                                                <RotateCcw size={14} /> Restore
+                                                                <RotateCcw size={14} style={{ flexShrink: 0 }} /> <span>Restore</span>
                                                             </button>
                                                             <button
                                                                 type="button"
@@ -2421,7 +2814,7 @@ const G5TrainingPortal = () => {
                                                                     handleDeleteMeeting(meeting);
                                                                 }}
                                                             >
-                                                                <Trash2 size={14} /> Delete
+                                                                <Trash2 size={14} style={{ flexShrink: 0 }} /> <span>Delete</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -2859,8 +3252,33 @@ const G5TrainingPortal = () => {
                                                                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                                     {recruit.name}
                                                                 </h3>
-                                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '0.15rem' }}>
-                                                                    {recruit.studentRegNo} • {recruit.campus}
+                                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                                    <span>{recruit.studentRegNo}</span>
+                                                                    <span>•</span>
+                                                                    <span>{recruit.campus}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleResetDeviceLock(recruit)}
+                                                                        disabled={resettingDeviceMemberId === recruit._id}
+                                                                        title={recruit.linkedDeviceId ? "Locked to phone device. Click to unlink/reset" : "Phone is unlocked. Click to clear"}
+                                                                        style={{
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '3px',
+                                                                            fontSize: '0.7rem',
+                                                                            fontWeight: 700,
+                                                                            padding: '0.12rem 0.45rem',
+                                                                            borderRadius: '999px',
+                                                                            border: recruit.linkedDeviceId ? '1px solid #BFDBFE' : '1px solid var(--color-border)',
+                                                                            background: recruit.linkedDeviceId ? '#EFF6FF' : 'var(--color-page-bg)',
+                                                                            color: recruit.linkedDeviceId ? '#1D4ED8' : 'var(--color-text-muted)',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.15s ease'
+                                                                        }}
+                                                                    >
+                                                                        <Smartphone size={10} />
+                                                                        {resettingDeviceMemberId === recruit._id ? 'Clearing...' : recruit.linkedDeviceId ? 'Bound' : 'Free'}
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -3073,11 +3491,10 @@ const G5TrainingPortal = () => {
                                 {[
                                     { id: 'All', label: 'All Douloids', count: cadres.length, color: '#6B5FA8' },
                                     { id: 'Unranked', label: 'Unranked / Recruits', count: cadres.filter(c => !c.douloidRank || c.douloidRank === 'None').length, color: '#6B7280' },
-                                    { id: 'Shadow Douloid', label: 'Shadow Douloids', count: cadres.filter(c => c.douloidRank === 'Shadow Douloid').length, color: '#7E22CE' },
-                                    { id: 'Basic Douloid', label: 'Basic Douloids', count: cadres.filter(c => c.douloidRank === 'Basic Douloid').length, color: '#4F46E5' },
-                                    { id: 'Intermediate Douloid', label: 'Intermediate Douloids', count: cadres.filter(c => c.douloidRank === 'Intermediate Douloid').length, color: '#0284C7' },
-                                    { id: 'Lead Douloid', label: 'Lead Douloids', count: cadres.filter(c => c.douloidRank === 'Lead Douloid').length, color: '#D97706' },
-                                    { id: 'Senior Lead Douloid', label: 'Senior Leads', count: cadres.filter(c => c.douloidRank === 'Senior Lead Douloid').length, color: '#B45309' }
+                                    { id: 'Shadow Douloid', label: 'Shadow Facilitators', count: cadres.filter(c => c.douloidRank === 'Shadow Douloid').length, color: '#7E22CE' },
+                                    { id: 'Basic Douloid', label: 'Basic Facilitators', count: cadres.filter(c => c.douloidRank === 'Basic Douloid').length, color: '#4F46E5' },
+                                    { id: 'Intermediate Douloid', label: 'Intermediate Facilitators', count: cadres.filter(c => c.douloidRank === 'Intermediate Douloid').length, color: '#0284C7' },
+                                    { id: 'Lead Douloid', label: 'Lead Facilitators', count: cadres.filter(c => c.douloidRank === 'Lead Douloid').length, color: '#D97706' }
                                 ].map(chip => (
                                     <button
                                         key={chip.id}
@@ -3175,34 +3592,24 @@ const G5TrainingPortal = () => {
 
                             {/* BATCH PROMOTION ACTION BAR (STICKY WHEN 1 OR MORE CADRES SELECTED) */}
                             {selectedCadres.length > 0 && (
-                                <div style={{
-                                    background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
-                                    color: '#FFFFFF',
-                                    padding: '1.25rem 1.5rem',
-                                    borderRadius: '16px',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
-                                    gap: '1rem',
-                                    boxShadow: '0 10px 30px rgba(49, 46, 129, 0.25)',
-                                    border: '1.5px solid #4338CA'
-                                }}>
+                                <div className="g5-batch-action-bar">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                                         <div style={{
-                                            background: '#4F46E5',
-                                            width: '38px',
-                                            height: '38px',
-                                            borderRadius: '10px',
+                                            background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
+                                            width: '42px',
+                                            height: '42px',
+                                            borderRadius: '12px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            color: '#FFFFFF'
+                                            color: '#FFFFFF',
+                                            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)',
+                                            flexShrink: 0
                                         }}>
-                                            <Award size={20} />
+                                            <Award size={22} />
                                         </div>
                                         <div>
-                                            <div style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.2px' }}>
+                                            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.2px' }}>
                                                 {selectedCadres.length} Student{selectedCadres.length > 1 ? 's' : ''} Selected for Batch Promotion
                                             </div>
                                             <div style={{ fontSize: '0.78rem', color: '#C7D2FE', marginTop: '0.15rem' }}>
@@ -3211,16 +3618,22 @@ const G5TrainingPortal = () => {
                                         </div>
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                    <div className="g5-batch-controls-grid">
                                         {/* Target Rank Picker */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#C7D2FE', textTransform: 'uppercase' }}>Target Rank</label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '150px' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#C7D2FE', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Rank</label>
                                             <select
                                                 value={batchRank}
                                                 onChange={(e) => {
                                                     const r = e.target.value;
                                                     setBatchRank(r);
-                                                    if (r === 'Shadow Douloid' || r === 'None') {
+                                                    if (r === 'Lead Douloid' || r === 'Intermediate Douloid') {
+                                                        setBatchBelayStatus('Primary Belayer Certified');
+                                                        setBatchSoloAllowed(true);
+                                                    } else if (r === 'Basic Douloid') {
+                                                        setBatchBelayStatus('Secondary Belayer');
+                                                        setBatchSoloAllowed(false);
+                                                    } else if (r === 'Shadow Douloid' || r === 'None') {
                                                         setBatchBelayStatus('Not Permitted');
                                                         setBatchSoloAllowed(false);
                                                     }
@@ -3229,23 +3642,23 @@ const G5TrainingPortal = () => {
                                                     background: '#FFFFFF',
                                                     color: '#1E1B4B',
                                                     border: 'none',
-                                                    padding: '0.5rem 0.85rem',
-                                                    borderRadius: '8px',
+                                                    padding: '0.6rem 0.85rem',
+                                                    borderRadius: '10px',
                                                     fontWeight: 700,
-                                                    fontSize: '0.85rem'
+                                                    fontSize: '0.85rem',
+                                                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                                                 }}
                                             >
                                                 <option value="Shadow Douloid">Shadow Douloid</option>
                                                 <option value="Basic Douloid">Basic Douloid</option>
                                                 <option value="Intermediate Douloid">Intermediate Douloid</option>
                                                 <option value="Lead Douloid">Lead Douloid</option>
-                                                <option value="Senior Lead Douloid">Senior Lead Douloid</option>
                                             </select>
                                         </div>
 
                                         {/* Belay Clearance Picker */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#C7D2FE', textTransform: 'uppercase' }}>Belay Clearance</label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '170px' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#C7D2FE', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Belay Clearance</label>
                                             <select
                                                 value={batchBelayStatus}
                                                 onChange={(e) => setBatchBelayStatus(e.target.value)}
@@ -3254,11 +3667,12 @@ const G5TrainingPortal = () => {
                                                     background: '#FFFFFF',
                                                     color: '#1E1B4B',
                                                     border: 'none',
-                                                    padding: '0.5rem 0.85rem',
-                                                    borderRadius: '8px',
+                                                    padding: '0.6rem 0.85rem',
+                                                    borderRadius: '10px',
                                                     fontWeight: 700,
                                                     fontSize: '0.85rem',
-                                                    opacity: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 0.6 : 1
+                                                    opacity: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 0.6 : 1,
+                                                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                                                 }}
                                             >
                                                 <option value="Not Permitted">Not Permitted</option>
@@ -3269,56 +3683,224 @@ const G5TrainingPortal = () => {
 
                                         {/* Solo Station Checkbox */}
                                         <label style={{
-                                            display: 'flex',
+                                            display: 'inline-flex',
                                             alignItems: 'center',
-                                            gap: '0.45rem',
+                                            gap: '0.5rem',
                                             fontSize: '0.82rem',
                                             fontWeight: 700,
                                             cursor: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 'not-allowed' : 'pointer',
                                             opacity: (batchRank === 'Shadow Douloid' || batchRank === 'None') ? 0.5 : 1,
-                                            marginTop: '1rem'
+                                            background: 'rgba(255, 255, 255, 0.12)',
+                                            padding: '0.55rem 0.9rem',
+                                            borderRadius: '10px',
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            userSelect: 'none'
                                         }}>
                                             <input
                                                 type="checkbox"
                                                 checked={batchSoloAllowed}
                                                 disabled={batchRank === 'Shadow Douloid' || batchRank === 'None'}
                                                 onChange={(e) => setBatchSoloAllowed(e.target.checked)}
-                                                style={{ width: '16px', height: '16px', accentColor: '#E8A33D' }}
+                                                style={{ width: '16px', height: '16px', accentColor: '#E8A33D', cursor: 'pointer' }}
                                             />
-                                            Solo Station
+                                            Solo Station Cleared
                                         </label>
 
                                         {/* Batch Promote Button */}
-                                        <button
-                                            type="button"
-                                            className="g5-btn-warm"
-                                            style={{
-                                                padding: '0.55rem 1.25rem',
-                                                fontSize: '0.88rem',
-                                                marginTop: '0.8rem',
-                                                boxShadow: '0 4px 14px rgba(232, 163, 61, 0.4)'
-                                            }}
-                                            disabled={batchSubmitting}
-                                            onClick={handleBatchPromote}
-                                        >
-                                            {batchSubmitting ? (
-                                                <>
-                                                    <RefreshCw size={15} className="g5-spin" /> Promoting...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Sparkles size={16} /> Promote {selectedCadres.length} Selected to {batchRank}
-                                                </>
-                                            )}
-                                        </button>
+                                        <div className="g5-batch-btn-wrap">
+                                            <button
+                                                type="button"
+                                                className="g5-btn-warm"
+                                                style={{
+                                                    padding: '0.62rem 1.4rem',
+                                                    fontSize: '0.88rem',
+                                                    fontWeight: 800,
+                                                    borderRadius: '10px',
+                                                    boxShadow: '0 4px 14px rgba(232, 163, 61, 0.4)'
+                                                }}
+                                                disabled={batchSubmitting}
+                                                onClick={handleBatchPromote}
+                                            >
+                                                {batchSubmitting ? (
+                                                    <>
+                                                        <RefreshCw size={15} className="g5-spin" /> Promoting...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Sparkles size={16} /> Promote {selectedCadres.length} Selected to {batchRank}
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* CADRES PROMOTION ROSTER TABLE */}
-                            <div className="g5-card" style={{ padding: 0, overflow: 'hidden' }}>
+                            {/* MOBILE FACILITATOR CARDS (< 860px) */}
+                            <div className="g5-promotion-mobile-cards">
+                                {filteredCadres.length === 0 ? (
+                                    <div className="g5-card" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
+                                        <Users size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>No Douloids match your filters</div>
+                                        <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Try clearing your search query or selecting "All Douloids".</div>
+                                    </div>
+                                ) : (
+                                    filteredCadres.map((cadre) => {
+                                        const currentRank = cadre.douloidRank || 'None';
+                                        const nextRank = getNextRank(currentRank);
+                                        const currentColor = getRankColor(currentRank);
+                                        const nextColor = getRankColor(nextRank);
+                                        const isSelected = selectedCadres.includes(cadre._id);
+
+                                        return (
+                                            <div 
+                                                key={cadre._id}
+                                                className="g5-card"
+                                                style={{
+                                                    padding: '1.15rem',
+                                                    borderRadius: '16px',
+                                                    border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                                    backgroundColor: isSelected ? 'rgba(107, 95, 168, 0.04)' : '#FFFFFF',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '0.85rem'
+                                                }}
+                                            >
+                                                {/* Card Header: Checkbox + Avatar + Name + Campus */}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => {
+                                                                setSelectedCadres(prev => 
+                                                                    prev.includes(cadre._id) ? prev.filter(id => id !== cadre._id) : [...prev, cadre._id]
+                                                                );
+                                                            }}
+                                                            style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }}
+                                                        />
+                                                        <div className="g5-avatar" style={{ width: '40px', height: '40px', fontSize: '1rem', flexShrink: 0 }}>
+                                                            {cadre.name.charAt(0)}
+                                                        </div>
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--color-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {cadre.name}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                                                {cadre.studentRegNo ? <span>{cadre.studentRegNo} • </span> : null}
+                                                                <span style={{ fontWeight: 600 }}>{cadre.campus}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleResetDeviceLock(cadre)}
+                                                                    disabled={resettingDeviceMemberId === cadre._id}
+                                                                    title={cadre.linkedDeviceId ? "Locked to phone. Click to unlink/reset" : "Device is unlocked. Click to clear"}
+                                                                    style={{
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '3px',
+                                                                        fontSize: '0.7rem',
+                                                                        fontWeight: 700,
+                                                                        padding: '0.1rem 0.45rem',
+                                                                        borderRadius: '999px',
+                                                                        border: cadre.linkedDeviceId ? '1px solid #BFDBFE' : '1px solid var(--color-border)',
+                                                                        background: cadre.linkedDeviceId ? '#EFF6FF' : 'var(--color-page-bg)',
+                                                                        color: cadre.linkedDeviceId ? '#1D4ED8' : 'var(--color-text-muted)',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.15s ease'
+                                                                    }}
+                                                                >
+                                                                    <Smartphone size={10} />
+                                                                    {resettingDeviceMemberId === cadre._id ? '...' : cadre.linkedDeviceId ? 'Locked' : 'Free'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span style={{
+                                                        background: currentColor.bg,
+                                                        color: currentColor.text,
+                                                        border: `1px solid ${currentColor.border}`,
+                                                        padding: '0.2rem 0.55rem',
+                                                        borderRadius: '999px',
+                                                        fontWeight: 800,
+                                                        fontSize: '0.72rem',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        {currentRank}
+                                                    </span>
+                                                </div>
+
+                                                {/* Rank Progression Strip */}
+                                                <div style={{
+                                                    background: 'var(--color-page-bg)',
+                                                    borderRadius: '10px',
+                                                    padding: '0.65rem 0.85rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    border: '1px solid var(--color-border)',
+                                                    gap: '0.5rem',
+                                                    flexWrap: 'wrap'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
+                                                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>Target:</span>
+                                                        <span style={{
+                                                            background: nextColor.bg,
+                                                            color: nextColor.text,
+                                                            border: `1px solid ${nextColor.border}`,
+                                                            padding: '0.18rem 0.55rem',
+                                                            borderRadius: '6px',
+                                                            fontWeight: 800,
+                                                            fontSize: '0.74rem'
+                                                        }}>
+                                                            {nextRank}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.74rem' }}>
+                                                        <span style={{ fontWeight: 600, color: 'var(--color-text-main)' }}>{cadre.belayStatus || 'Not Permitted'}</span>
+                                                        {cadre.soloStationAllowed && (
+                                                            <span style={{ color: 'var(--color-status-active)', fontWeight: 800 }}>• Solo ✓</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ padding: '0.55rem 0.65rem', fontSize: '0.82rem', justifyContent: 'center' }}
+                                                        onClick={() => {
+                                                            setEvaluatingCadre(cadre);
+                                                            if (!promotionScores[cadre._id]) {
+                                                                setPromotionScores(prev => ({
+                                                                    ...prev,
+                                                                    [cadre._id]: { team: 4, base: 4, ropes: 4, rescue: 4, firstAid: 4, safety: 4, mentorship: 4 }
+                                                                }));
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Sliders size={14} /> 7-Area Eval
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ padding: '0.55rem 0.65rem', fontSize: '0.82rem', justifyContent: 'center' }}
+                                                        onClick={() => handleConfirmPromotion(cadre, nextRank)}
+                                                    >
+                                                        <Award size={14} /> Promote
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+
+                            {/* DESKTOP CADRES PROMOTION ROSTER TABLE (>= 860px) */}
+                            <div className="g5-promotion-desktop-table g5-card" style={{ padding: 0, overflow: 'hidden' }}>
                                 <div className="g5-table-wrap">
-                                    <table className="g5-table">
+                                    <table className="g5-table" style={{ minWidth: '920px' }}>
                                         <thead>
                                             <tr>
                                                 <th style={{ width: '40px', textAlign: 'center' }}>
@@ -3389,9 +3971,11 @@ const G5TrainingPortal = () => {
                                                                         <div style={{ fontWeight: 700, color: 'var(--color-text-main)', fontSize: '0.92rem' }}>
                                                                             {cadre.name}
                                                                         </div>
-                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                                                            {cadre.studentRegNo || 'No Reg No'}
-                                                                        </div>
+                                                                        {cadre.studentRegNo ? (
+                                                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                                                                {cadre.studentRegNo}
+                                                                            </div>
+                                                                        ) : null}
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -3440,7 +4024,33 @@ const G5TrainingPortal = () => {
                                                                 </div>
                                                             </td>
                                                             <td style={{ textAlign: 'right' }}>
-                                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.45rem', alignItems: 'center' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-outline"
+                                                                        style={{
+                                                                            width: '32px',
+                                                                            height: '32px',
+                                                                            padding: 0,
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            borderRadius: '8px',
+                                                                            borderColor: cadre.linkedDeviceId ? '#BFDBFE' : 'var(--color-border)',
+                                                                            color: cadre.linkedDeviceId ? '#1D4ED8' : 'var(--color-text-muted)',
+                                                                            background: cadre.linkedDeviceId ? '#EFF6FF' : 'transparent'
+                                                                        }}
+                                                                        disabled={resettingDeviceMemberId === cadre._id}
+                                                                        onClick={() => handleResetDeviceLock(cadre)}
+                                                                        title={cadre.linkedDeviceId ? "Locked to phone device. Click to reset/unlink" : "Device is unlocked (click to clear)"}
+                                                                    >
+                                                                        {resettingDeviceMemberId === cadre._id ? (
+                                                                            <RefreshCw size={13} className="g5-spin" />
+                                                                        ) : (
+                                                                            <Smartphone size={13} />
+                                                                        )}
+                                                                    </button>
+
                                                                     <button
                                                                         type="button"
                                                                         className="g5-btn-secondary"
@@ -3450,12 +4060,12 @@ const G5TrainingPortal = () => {
                                                                             if (!promotionScores[cadre._id]) {
                                                                                 setPromotionScores(prev => ({
                                                                                     ...prev,
-                                                                                    [cadre._id]: { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 }
+                                                                                    [cadre._id]: { team: 4, base: 4, ropes: 4, rescue: 4, firstAid: 4, safety: 4, mentorship: 4 }
                                                                                 }));
                                                                             }
                                                                         }}
                                                                     >
-                                                                        <Sliders size={13} /> 5-Domain Evaluation
+                                                                        <Sliders size={13} /> 7-Area Eval
                                                                     </button>
 
                                                                     <button
@@ -3464,7 +4074,7 @@ const G5TrainingPortal = () => {
                                                                         style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem' }}
                                                                         onClick={() => handleConfirmPromotion(cadre, nextRank)}
                                                                     >
-                                                                        <Award size={13} /> Promote to {nextRank}
+                                                                        <Award size={13} /> Promote
                                                                     </button>
                                                                 </div>
                                                             </td>
@@ -3477,158 +4087,232 @@ const G5TrainingPortal = () => {
                                 </div>
                             </div>
 
-                            {/* 5-DOMAIN EVALUATION MODAL */}
+                            {/* 7-AREA EVALUATION MODAL */}
                             {evaluatingCadre && (() => {
                                 const cadre = evaluatingCadre;
                                 const currentRank = cadre.douloidRank || 'None';
                                 const nextRank = getNextRank(currentRank);
-                                const scores = promotionScores[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 };
-                                const avgScore = (Object.values(scores).reduce((a, b) => a + b, 0) / 5).toFixed(1);
+                                const scores = promotionScores[cadre._id] || { team: 4, base: 4, ropes: 4, rescue: 4, firstAid: 4, safety: 4, mentorship: 4 };
+                                const avgScore = (Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length).toFixed(1);
+                                const numAvg = Number(avgScore);
 
                                 const updateScore = (domain, val) => {
                                     setPromotionScores(prev => ({
                                         ...prev,
                                         [cadre._id]: {
-                                            ...(prev[cadre._id] || { team: 4, ropes: 4, base: 4, rescue: 4, firstAid: 4 }),
+                                            ...(prev[cadre._id] || { team: 4, base: 4, ropes: 4, rescue: 4, firstAid: 4, safety: 4, mentorship: 4 }),
                                             [domain]: Number(val)
                                         }
                                     }));
                                 };
 
+                                const targetBelay = (nextRank === 'Lead Douloid' || nextRank === 'Intermediate Douloid') 
+                                    ? 'Primary Belayer Certified' 
+                                    : (nextRank === 'Basic Douloid' ? 'Secondary Belayer' : 'Not Permitted');
+                                
+                                const targetSolo = (nextRank === 'Lead Douloid' || nextRank === 'Intermediate Douloid');
+
                                 return (
-                                    <div style={{
-                                        position: 'fixed',
-                                        inset: 0,
-                                        backgroundColor: 'rgba(30, 27, 75, 0.65)',
-                                        backdropFilter: 'blur(6px)',
-                                        zIndex: 9999,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: '1.5rem'
-                                    }}>
-                                        <div style={{
-                                            background: '#FFFFFF',
-                                            borderRadius: '24px',
-                                            maxWidth: '560px',
-                                            width: '100%',
-                                            maxHeight: '90vh',
-                                            overflowY: 'auto',
-                                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                                            border: '1px solid var(--color-border)',
-                                            padding: '2rem'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                                    <div className="g5-eval-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setEvaluatingCadre(null); }}>
+                                        <div className="g5-eval-modal-card">
+                                            {/* Header */}
+                                            <div className="g5-eval-modal-header">
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                    <div className="g5-avatar" style={{ width: '48px', height: '48px', fontSize: '1.2rem' }}>
+                                                    <div className="g5-avatar" style={{ width: '46px', height: '46px', fontSize: '1.15rem' }}>
                                                         {cadre.name.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-main)', margin: 0 }}>
                                                             {cadre.name}
                                                         </h3>
-                                                        <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                                                            {cadre.studentRegNo} • {cadre.campus}
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                                                            {cadre.studentRegNo ? `${cadre.studentRegNo} • ` : ''}{cadre.campus}
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <button
                                                     type="button"
                                                     onClick={() => setEvaluatingCadre(null)}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '0.35rem', borderRadius: '8px' }}
                                                 >
                                                     <X size={20} />
                                                 </button>
                                             </div>
 
-                                            {/* Current Rank vs Next Rank Progression Pill */}
-                                            <div style={{
-                                                background: 'var(--color-page-bg)',
-                                                borderRadius: '14px',
-                                                padding: '0.85rem 1.25rem',
-                                                marginBottom: '1.5rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                border: '1px solid var(--color-border)'
-                                            }}>
-                                                <div>
-                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>CURRENT RANK</div>
-                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text-main)', marginTop: '0.15rem' }}>
-                                                        {currentRank}
+                                            {/* Scrollable Body */}
+                                            <div className="g5-eval-modal-body">
+                                                {/* Current Rank vs Next Rank Progression Pill */}
+                                                <div style={{
+                                                    background: 'linear-gradient(135deg, #F8FAFC 0%, #EEF2F6 100%)',
+                                                    borderRadius: '16px',
+                                                    padding: '1rem 1.25rem',
+                                                    border: '1.5px solid #E2E8F0',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '0.75rem'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CURRENT RANK</div>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text-main)', marginTop: '0.15rem' }}>
+                                                                {currentRank}
+                                                            </div>
+                                                        </div>
+                                                        <ArrowUpRight size={20} style={{ color: 'var(--color-accent-warm)' }} />
+                                                        <div>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>TARGET PROMOTION</div>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-primary)', marginTop: '0.15rem' }}>
+                                                                {nextRank}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ textAlign: 'right' }}>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVG SCORE</div>
+                                                            <div style={{ fontWeight: 800, fontSize: '1.15rem', color: numAvg >= 4.0 ? '#10B981' : numAvg >= 3.0 ? 'var(--color-accent-warm)' : '#EF4444', marginTop: '0.1rem' }}>
+                                                                {avgScore}★
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Belay & Solo Clearance Notice */}
+                                                    <div style={{
+                                                        borderTop: '1px solid #E2E8F0',
+                                                        paddingTop: '0.65rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        fontSize: '0.76rem',
+                                                        flexWrap: 'wrap',
+                                                        gap: '0.5rem'
+                                                    }}>
+                                                        <div style={{ color: '#475569', fontWeight: 600 }}>
+                                                            Clearance Granted: <strong style={{ color: '#1E293B' }}>{targetBelay}</strong>
+                                                        </div>
+                                                        <span style={{
+                                                            fontSize: '0.72rem',
+                                                            fontWeight: 800,
+                                                            color: targetSolo ? '#059669' : '#D97706',
+                                                            background: targetSolo ? '#ECFDF5' : '#FFFBEB',
+                                                            border: `1px solid ${targetSolo ? '#A7F3D0' : '#FDE68A'}`,
+                                                            padding: '0.2rem 0.6rem',
+                                                            borderRadius: '999px'
+                                                        }}>
+                                                            {targetSolo ? '✓ Solo Station Cleared' : 'Supervised Station Only'}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                <ArrowUpRight size={20} style={{ color: 'var(--color-accent-warm)' }} />
+
+                                                {/* 7 Key Evaluation Areas */}
                                                 <div>
-                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>TARGET PROMOTION</div>
-                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-primary)', marginTop: '0.15rem' }}>
-                                                        {nextRank}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                            7 Key Evaluation Areas (1 to 5 Stars)
+                                                        </div>
+                                                        <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 600 }}>
+                                                            Tap any star to score
+                                                        </span>
                                                     </div>
-                                                </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>AVG SCORE</div>
-                                                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-accent-warm)', marginTop: '0.15rem' }}>
-                                                        {avgScore}★
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                                        {evaluationDomains.map(domain => {
+                                                            const currentScore = scores[domain.key] || 4;
+                                                            const levelLabels = { 1: 'Novice', 2: 'Developing', 3: 'Competent', 4: 'Proficient', 5: 'Mastery' };
+
+                                                            return (
+                                                                <div key={domain.key} className="g5-eval-domain-card">
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-text-main)' }}>
+                                                                                {domain.label}
+                                                                            </span>
+                                                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+                                                                                {domain.tag}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span style={{
+                                                                            fontSize: '0.82rem',
+                                                                            fontWeight: 800,
+                                                                            color: currentScore >= 4 ? '#D97706' : '#64748B',
+                                                                            background: currentScore >= 4 ? '#FEF3C7' : '#F1F5F9',
+                                                                            padding: '0.15rem 0.55rem',
+                                                                            borderRadius: '999px'
+                                                                        }}>
+                                                                            {currentScore}★ • {levelLabels[currentScore]}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: '1.35' }}>
+                                                                        {domain.desc}
+                                                                    </div>
+
+                                                                    {/* 5-Star Interactive Button Selector */}
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.2rem' }}>
+                                                                        <div className="g5-star-btn-group">
+                                                                            {[1, 2, 3, 4, 5].map(star => (
+                                                                                <button
+                                                                                    key={star}
+                                                                                    type="button"
+                                                                                    className={`g5-star-btn ${currentScore === star ? 'active' : ''}`}
+                                                                                    onClick={() => updateScore(domain.key, star)}
+                                                                                >
+                                                                                    {star}★
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+
+                                                                        <input
+                                                                            type="range"
+                                                                            min="1"
+                                                                            max="5"
+                                                                            value={currentScore}
+                                                                            onChange={(e) => updateScore(domain.key, e.target.value)}
+                                                                            style={{ width: '90px', accentColor: 'var(--color-accent-warm)', cursor: 'pointer' }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* 5-Domain Competency Sliders */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.75rem' }}>
-                                                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                    5-Domain Competency Scoring (1 to 5 Stars)
+                                            {/* Fixed/Sticky Footer */}
+                                            <div className="g5-eval-modal-footer">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>Overall Avg:</span>
+                                                    <span style={{
+                                                        fontSize: '0.88rem',
+                                                        fontWeight: 800,
+                                                        color: numAvg >= 4.0 ? '#059669' : 'var(--color-accent-warm)',
+                                                        background: numAvg >= 4.0 ? '#ECFDF5' : '#FFFBEB',
+                                                        padding: '0.2rem 0.6rem',
+                                                        borderRadius: '6px',
+                                                        border: `1px solid ${numAvg >= 4.0 ? '#A7F3D0' : '#FDE68A'}`
+                                                    }}>
+                                                        {avgScore}★ {numAvg >= 4.0 ? '• Qualified' : ''}
+                                                    </span>
                                                 </div>
 
-                                                {[
-                                                    { key: 'team', label: 'Team Building Debriefs', desc: 'Group dynamics, spiritual discipleship, debrief synthesis' },
-                                                    { key: 'ropes', label: 'High Ropes & Dynamic Belaying', desc: 'Hardware rigging, carabiner squeeze, double-check commands' },
-                                                    { key: 'base', label: 'Freedom Base Hardware Audits', desc: 'Helmet inspection, dynamic rope life cycle, anchor security' },
-                                                    { key: 'rescue', label: 'Ridge Rescue & Fall Arrest', desc: 'Spine board extrication, litter extraction, descent control' },
-                                                    { key: 'firstAid', label: 'Wilderness Triage & First Aid', desc: 'Wilderness incident management, trauma response, hydration' }
-                                                ].map(domain => (
-                                                    <div key={domain.key} style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '0.85rem 1rem' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
-                                                                {domain.label}
-                                                            </span>
-                                                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-accent-warm)' }}>
-                                                                {scores[domain.key]}★
-                                                            </span>
-                                                        </div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.65rem' }}>
-                                                            {domain.desc}
-                                                        </div>
-                                                        <input
-                                                            type="range"
-                                                            min="1"
-                                                            max="5"
-                                                            value={scores[domain.key]}
-                                                            onChange={(e) => updateScore(domain.key, e.target.value)}
-                                                            style={{ width: '100%', accentColor: 'var(--color-accent-warm)' }}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Action Buttons */}
-                                            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                                                <button
-                                                    type="button"
-                                                    className="g5-btn-secondary"
-                                                    onClick={() => setEvaluatingCadre(null)}
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="g5-btn-warm"
-                                                    onClick={async () => {
-                                                        await handleConfirmPromotion(cadre, nextRank);
-                                                        setEvaluatingCadre(null);
-                                                    }}
-                                                >
-                                                    <Award size={16} /> Confirm Promotion to {nextRank}
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '0.65rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-secondary"
+                                                        style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
+                                                        onClick={() => setEvaluatingCadre(null)}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-warm"
+                                                        style={{ padding: '0.55rem 1.25rem', fontSize: '0.85rem', fontWeight: 800 }}
+                                                        onClick={async () => {
+                                                            await handleConfirmPromotion(cadre, nextRank, targetBelay, targetSolo);
+                                                            setEvaluatingCadre(null);
+                                                        }}
+                                                    >
+                                                        <Award size={16} /> Confirm Promotion to {nextRank}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -3681,7 +4365,7 @@ const G5TrainingPortal = () => {
                                 </div>
 
                                 {/* QUICK STAT STRIP */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
                                     <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
                                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Douloid Members</div>
                                         <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.2rem' }}>
@@ -3707,6 +4391,14 @@ const G5TrainingPortal = () => {
                                             }).length}
                                         </div>
                                         <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>High ropes safety cleared</div>
+                                    </div>
+
+                                    <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Device Bindings</div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563EB', marginTop: '0.2rem' }}>
+                                            {activeMembers.filter(m => !!m.linkedDeviceId).length}
+                                        </div>
+                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>Active locked phones</div>
                                     </div>
 
                                     <div style={{ background: 'var(--color-page-bg)', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
@@ -3753,7 +4445,7 @@ const G5TrainingPortal = () => {
                                                 {/* Role Filter */}
                                                 <select
                                                     className="g5-form-input"
-                                                    style={{ width: '160px', height: '42px', fontSize: '0.85rem' }}
+                                                    style={{ width: '150px', height: '42px', fontSize: '0.85rem' }}
                                                     value={rosterRoleFilter}
                                                     onChange={(e) => setRosterRoleFilter(e.target.value)}
                                                 >
@@ -3765,7 +4457,7 @@ const G5TrainingPortal = () => {
                                                 {/* Rank Filter */}
                                                 <select
                                                     className="g5-form-input"
-                                                    style={{ width: '190px', height: '42px', fontSize: '0.85rem' }}
+                                                    style={{ width: '180px', height: '42px', fontSize: '0.85rem' }}
                                                     value={rosterRankFilter}
                                                     onChange={(e) => setRosterRankFilter(e.target.value)}
                                                 >
@@ -3781,7 +4473,7 @@ const G5TrainingPortal = () => {
                                                 {/* Campus Filter */}
                                                 <select
                                                     className="g5-form-input"
-                                                    style={{ width: '150px', height: '42px', fontSize: '0.85rem' }}
+                                                    style={{ width: '140px', height: '42px', fontSize: '0.85rem' }}
                                                     value={rosterCampusFilter}
                                                     onChange={(e) => setRosterCampusFilter(e.target.value)}
                                                 >
@@ -3793,14 +4485,26 @@ const G5TrainingPortal = () => {
                                                 {/* Belay Clearance Filter */}
                                                 <select
                                                     className="g5-form-input"
-                                                    style={{ width: '190px', height: '42px', fontSize: '0.85rem' }}
+                                                    style={{ width: '175px', height: '42px', fontSize: '0.85rem' }}
                                                     value={rosterBelayFilter}
                                                     onChange={(e) => setRosterBelayFilter(e.target.value)}
                                                 >
-                                                    <option value="All">All Belay Clearances</option>
+                                                    <option value="All">All Clearances</option>
                                                     <option value="Primary Belayer Certified">Primary Belayer Certified</option>
                                                     <option value="Belayer Qualified">Belayer Qualified</option>
                                                     <option value="Not Permitted">Not Permitted</option>
+                                                </select>
+
+                                                {/* Device Status Filter */}
+                                                <select
+                                                    className="g5-form-input"
+                                                    style={{ width: '175px', height: '42px', fontSize: '0.85rem' }}
+                                                    value={rosterDeviceFilter}
+                                                    onChange={(e) => setRosterDeviceFilter(e.target.value)}
+                                                >
+                                                    <option value="All">All Device Locks</option>
+                                                    <option value="Bound">📱 Bound Phones</option>
+                                                    <option value="Unbound">🔓 Unbound / Free</option>
                                                 </select>
                                             </div>
 
@@ -3810,7 +4514,7 @@ const G5TrainingPortal = () => {
                                                     <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
                                                         Showing <strong style={{ color: 'var(--color-text-main)' }}>{filteredRosterMembers.length}</strong> of {activeMembers.length} personnel
                                                     </span>
-                                                    {(rosterSearch || rosterRoleFilter !== 'All' || rosterRankFilter !== 'All' || rosterCampusFilter !== 'All' || rosterBelayFilter !== 'All') && (
+                                                    {(rosterSearch || rosterRoleFilter !== 'All' || rosterRankFilter !== 'All' || rosterCampusFilter !== 'All' || rosterBelayFilter !== 'All' || rosterDeviceFilter !== 'All') && (
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -3819,6 +4523,7 @@ const G5TrainingPortal = () => {
                                                                 setRosterRankFilter('All');
                                                                 setRosterCampusFilter('All');
                                                                 setRosterBelayFilter('All');
+                                                                setRosterDeviceFilter('All');
                                                             }}
                                                             style={{
                                                                 background: 'none',
@@ -3836,6 +4541,14 @@ const G5TrainingPortal = () => {
                                                 </div>
 
                                                 <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="g5-btn-primary"
+                                                        style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                                        onClick={() => setShowQuickUnlockModal(true)}
+                                                    >
+                                                        <Smartphone size={15} /> Quick Device Unlock ⚡
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         className="g5-btn-warm"
@@ -3876,8 +4589,8 @@ const G5TrainingPortal = () => {
                                                         <th>Role</th>
                                                         <th>Rank Hierarchy</th>
                                                         <th>Campus</th>
+                                                        <th>Device Binding</th>
                                                         <th>Belay Clearance</th>
-                                                        <th>Solo Station</th>
                                                         <th style={{ textAlign: 'right' }}>Actions</th>
                                                     </tr>
                                                 </thead>
@@ -3902,6 +4615,7 @@ const G5TrainingPortal = () => {
                                                                         setRosterRankFilter('All');
                                                                         setRosterCampusFilter('All');
                                                                         setRosterBelayFilter('All');
+                                                                        setRosterDeviceFilter('All');
                                                                     }}
                                                                 >
                                                                     Reset All Filters
@@ -3927,8 +4641,12 @@ const G5TrainingPortal = () => {
                                                                                 <div style={{ fontWeight: 700, color: 'var(--color-text-main)', fontSize: '0.9rem' }}>
                                                                                     {member.name}
                                                                                 </div>
-                                                                                <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
-                                                                                    {member.studentRegNo || 'No Admission No'}
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem' }}>
+                                                                                    {member.studentRegNo ? (
+                                                                                        <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
+                                                                                            {member.studentRegNo}
+                                                                                        </span>
+                                                                                    ) : null}
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -3956,36 +4674,85 @@ const G5TrainingPortal = () => {
                                                                         {member.campus || 'Athi River'}
                                                                     </td>
                                                                     <td>
+                                                                        {member.linkedDeviceId ? (
+                                                                            <span style={{
+                                                                                background: '#EFF6FF',
+                                                                                color: '#1D4ED8',
+                                                                                border: '1px solid #BFDBFE',
+                                                                                padding: '0.2rem 0.55rem',
+                                                                                borderRadius: '999px',
+                                                                                fontSize: '0.72rem',
+                                                                                fontWeight: 800,
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '0.3rem'
+                                                                            }} title={`Locked to device: ${member.linkedDeviceId}`}>
+                                                                                <Smartphone size={12} /> Bound
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span style={{
+                                                                                background: '#ECFDF5',
+                                                                                color: '#047857',
+                                                                                border: '1px solid #A7F3D0',
+                                                                                padding: '0.2rem 0.55rem',
+                                                                                borderRadius: '999px',
+                                                                                fontSize: '0.72rem',
+                                                                                fontWeight: 800,
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '0.3rem'
+                                                                            }}>
+                                                                                <Unlock size={12} /> Free
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td>
                                                                         <span className={`g5-pill ${belay === 'Primary Belayer Certified' ? 'g5-pill-active' : belay === 'Belayer Qualified' ? 'g5-pill-blue' : 'g5-pill-recruit'}`}>
                                                                             <Shield size={13} /> {belay}
                                                                         </span>
                                                                     </td>
-                                                                    <td>
-                                                                        {solo ? (
-                                                                            <span style={{ color: 'var(--color-status-active)', fontWeight: 700, fontSize: '0.82rem' }}>
-                                                                                ✓ Authorized
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>
-                                                                                Tandem Only
-                                                                            </span>
-                                                                        )}
-                                                                    </td>
                                                                     <td style={{ textAlign: 'right' }}>
-                                                                        <button
-                                                                            type="button"
-                                                                            className="g5-btn-secondary"
-                                                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
-                                                                            onClick={() => {
-                                                                                if (isRecruit) {
-                                                                                    setActiveTab('graduations');
-                                                                                } else {
-                                                                                    setActiveTab('promotions');
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            {isRecruit ? 'Graduation' : 'Evaluate Rank'}
-                                                                        </button>
+                                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', justifyContent: 'flex-end' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="g5-btn-secondary"
+                                                                                style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}
+                                                                                onClick={() => {
+                                                                                    if (isRecruit) {
+                                                                                        setActiveTab('graduations');
+                                                                                    } else {
+                                                                                        setActiveTab('promotions');
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                {isRecruit ? 'Graduation' : 'Evaluate'}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="g5-btn-outline"
+                                                                                style={{
+                                                                                    width: '32px',
+                                                                                    height: '32px',
+                                                                                    padding: 0,
+                                                                                    display: 'inline-flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center',
+                                                                                    borderRadius: '8px',
+                                                                                    borderColor: member.linkedDeviceId ? '#BFDBFE' : 'var(--color-border)',
+                                                                                    color: member.linkedDeviceId ? '#1D4ED8' : 'var(--color-text-muted)',
+                                                                                    background: member.linkedDeviceId ? '#EFF6FF' : 'transparent'
+                                                                                }}
+                                                                                disabled={resettingDeviceMemberId === member._id}
+                                                                                onClick={() => handleResetDeviceLock(member)}
+                                                                                title={member.linkedDeviceId ? "Clear bound phone device ID (Real-time)" : "Phone is unlocked (Click to clear)"}
+                                                                            >
+                                                                                {resettingDeviceMemberId === member._id ? (
+                                                                                    <RefreshCw size={13} className="g5-spin" />
+                                                                                ) : (
+                                                                                    <Smartphone size={13} />
+                                                                                )}
+                                                                            </button>
+                                                                        </div>
                                                                     </td>
                                                                 </tr>
                                                             );
@@ -4544,8 +5311,8 @@ const G5TrainingPortal = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateMeeting}>
-                            <div className="g5-modal-body" style={{ padding: '1.5rem 1.75rem' }}>
+                        <form onSubmit={handleCreateMeeting} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                            <div className="g5-modal-body" style={{ padding: '1.25rem 1.75rem', overflowY: 'auto', flex: 1 }}>
                                 {/* ACTIVE SESSION CONFLICT NOTICE WITH 1-CLICK OVERRIDE */}
                                 {existingConflictMeeting && (
                                     <div style={{
@@ -4668,16 +5435,43 @@ const G5TrainingPortal = () => {
                                             </div>
                                         </div>
 
-                                        {/* QUESTION / POLL STUDIO */}
-                                        <div style={{ background: '#F8FAFC', padding: '1.1rem', borderRadius: '14px', border: '1.5px solid #CBD5E1' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.75rem' }}>
-                                                <Lightbulb size={16} style={{ color: '#2563EB' }} />
-                                                <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
-                                                    Interactive Roll-Call Question
+                                        {/* MANDATORY ROLL-CALL QUESTION STUDIO */}
+                                        <div style={{
+                                            background: '#F8FAFC',
+                                            border: '1.5px solid #93C5FD',
+                                            borderRadius: '14px',
+                                            padding: '0.95rem 1rem',
+                                            marginTop: '0.45rem',
+                                            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.04)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                                                    <Lightbulb size={18} style={{ color: '#2563EB' }} />
+                                                    <div>
+                                                        <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                            Interactive Roll-Call Question
+                                                            <span style={{ color: '#DC2626', fontSize: '0.95rem', fontWeight: 900 }}>*</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.72rem', color: '#2563EB', fontWeight: 700 }}>
+                                                            Mandatory — Students must answer during scan check-in
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span style={{
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 800,
+                                                    background: '#EFF6FF',
+                                                    color: '#1D4ED8',
+                                                    border: '1px solid #BFDBFE',
+                                                    borderRadius: '6px',
+                                                    padding: '0.15rem 0.45rem',
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    Required
                                                 </span>
                                             </div>
 
-                                            <div className="g5-type-chip-grid" style={{ marginBottom: '0.85rem' }}>
+                                            <div className="g5-type-chip-grid" style={{ marginBottom: '0.75rem' }}>
                                                 {[
                                                     { id: 'text', label: 'Open Text', icon: FileText },
                                                     { id: 'yes_no', label: 'Yes / No', icon: CheckCircle2 },
@@ -4702,27 +5496,35 @@ const G5TrainingPortal = () => {
                                             </div>
 
                                             <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label" style={{ fontSize: '0.8rem' }}>Question Prompt</label>
+                                                <label className="g5-form-label" style={{ fontSize: '0.8rem' }}>
+                                                    Question Prompt <span style={{ color: '#DC2626' }}>*</span>
+                                                </label>
                                                 <input
                                                     type="text"
                                                     className="g5-form-input"
-                                                    style={{ padding: '0.65rem 0.85rem', fontSize: '0.88rem' }}
-                                                    placeholder="e.g. Belay station check-in or Rate readiness"
+                                                    style={{
+                                                        padding: '0.6rem 0.8rem',
+                                                        fontSize: '0.86rem',
+                                                        borderColor: !newMeetingForm.questionOfDay ? '#FCA5A5' : '#CBD5E1',
+                                                        background: '#FFFFFF'
+                                                    }}
+                                                    placeholder="e.g. Rate your readiness or Belay station reflection..."
+                                                    required
                                                     value={newMeetingForm.questionOfDay}
                                                     onChange={(e) => setNewMeetingForm({ ...newMeetingForm, questionOfDay: e.target.value })}
                                                 />
                                             </div>
 
                                             {(newMeetingForm.questionType === 'multiple_choice' || newMeetingForm.questionType === 'checkboxes') && (
-                                                <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1.5px dashed #CBD5E1' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.55rem' }}>
-                                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1D4ED8' }}>
-                                                            Poll Choices
+                                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed #CBD5E1' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                                                        <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#1D4ED8' }}>
+                                                            Poll Choices (Minimum 2 required) <span style={{ color: '#DC2626' }}>*</span>
                                                         </span>
                                                         <button
                                                             type="button"
                                                             className="g5-btn-blue-soft"
-                                                            style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem' }}
+                                                            style={{ padding: '0.25rem 0.65rem', fontSize: '0.74rem' }}
                                                             onClick={() => setNewMeetingForm(prev => ({
                                                                 ...prev,
                                                                 questionOptions: [...prev.questionOptions, '']
@@ -4731,15 +5533,16 @@ const G5TrainingPortal = () => {
                                                             + Add Choice
                                                         </button>
                                                     </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                         {newMeetingForm.questionOptions.map((opt, idx) => (
-                                                            <div key={idx} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
-                                                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', minWidth: '18px' }}>{idx + 1}.</span>
+                                                            <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#475569', minWidth: '16px' }}>{idx + 1}.</span>
                                                                 <input
                                                                     type="text"
                                                                     className="g5-form-input"
-                                                                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
+                                                                    style={{ padding: '0.45rem 0.7rem', fontSize: '0.84rem', background: '#FFFFFF' }}
                                                                     placeholder={`Choice ${idx + 1}`}
+                                                                    required
                                                                     value={opt}
                                                                     onChange={(e) => {
                                                                         const updated = [...newMeetingForm.questionOptions];
@@ -4751,13 +5554,13 @@ const G5TrainingPortal = () => {
                                                                     <button
                                                                         type="button"
                                                                         className="g5-btn-delete-rose"
-                                                                        style={{ padding: '0.45rem 0.65rem' }}
+                                                                        style={{ padding: '0.4rem 0.55rem' }}
                                                                         onClick={() => {
                                                                             const updated = newMeetingForm.questionOptions.filter((_, i) => i !== idx);
                                                                             setNewMeetingForm({ ...newMeetingForm, questionOptions: updated });
                                                                         }}
                                                                     >
-                                                                        <X size={14} />
+                                                                        <X size={13} />
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -4831,22 +5634,35 @@ const G5TrainingPortal = () => {
                                                     </span>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                    <div className="g5-pulse-dot" style={{ backgroundColor: '#10B981' }} />
-                                                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>
-                                                        High-Accuracy Geofence
-                                                    </span>
+                                                    {gpsCaptured ? (
+                                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#047857', background: '#ECFDF5', padding: '0.15rem 0.45rem', borderRadius: '6px', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            <CheckCircle2 size={12} /> Device Locked
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#B91C1C', background: '#FEF2F2', padding: '0.15rem 0.45rem', borderRadius: '6px', border: '1px solid #FECACA' }}>
+                                                            Required *
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
                                             <button
                                                 type="button"
-                                                className="g5-btn-blue-solid"
-                                                style={{ width: '100%', justifyContent: 'center', padding: '0.72rem', fontSize: '0.88rem' }}
+                                                className={gpsCaptured ? "g5-btn-emerald-solid" : "g5-btn-blue-solid"}
+                                                style={{
+                                                    width: '100%',
+                                                    justifyContent: 'center',
+                                                    padding: '0.75rem',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 800,
+                                                    background: gpsCaptured ? '#059669' : '#1D4ED8',
+                                                    boxShadow: gpsCaptured ? '0 3px 10px rgba(5, 150, 105, 0.25)' : '0 3px 10px rgba(29, 78, 216, 0.25)'
+                                                }}
                                                 onClick={handleCaptureGps}
                                                 disabled={gpsCapturing}
                                             >
                                                 <Navigation size={16} />
-                                                {gpsCapturing ? 'Locating Device Coordinates...' : 'Capture Device GPS'}
+                                                {gpsCapturing ? 'Locating Device Satellites...' : gpsCaptured ? '✓ Device GPS Locked (Tap to Re-lock)' : '📡 Capture Device GPS (Mandatory)'}
                                             </button>
 
                                             <div style={{
@@ -4854,70 +5670,91 @@ const G5TrainingPortal = () => {
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center',
                                                 background: '#FFFFFF',
+                                                padding: '0.65rem 0.95rem',
+                                                borderRadius: '10px',
+                                                border: `1.5px solid ${gpsCaptured ? '#86EFAC' : '#FCA5A5'}`
+                                            }}>
+                                                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#475569' }}>COORDINATES PIN:</span>
+                                                <span style={{ fontSize: '0.88rem', fontWeight: 800, color: gpsCaptured ? '#059669' : '#DC2626', fontFamily: 'monospace' }}>
+                                                    {gpsCaptured && newMeetingForm.location.latitude && newMeetingForm.location.longitude
+                                                        ? `${Number(newMeetingForm.location.latitude).toFixed(5)}, ${Number(newMeetingForm.location.longitude).toFixed(5)}`
+                                                        : '⚠️ No device GPS captured yet'}
+                                                </span>
+                                            </div>
+
+                                            {/* COMPACT GEOFENCE RADIUS (CLEAN & MINIMAL HEIGHT) */}
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '0.75rem',
+                                                background: '#FFFFFF',
                                                 padding: '0.6rem 0.95rem',
                                                 borderRadius: '10px',
                                                 border: '1.5px solid #BFDBFE'
                                             }}>
-                                                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#475569' }}>COORDINATES:</span>
-                                                <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace' }}>
-                                                    {Number(newMeetingForm.location.latitude).toFixed(5)}, {Number(newMeetingForm.location.longitude).toFixed(5)}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* GEOFENCE RADIUS & COORDINATES GRID */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.65rem' }}>
-                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                                                    <label className="g5-form-label" style={{ fontSize: '0.78rem', marginBottom: 0 }}>Radius (m) *</label>
-                                                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1D4ED8' }}>
-                                                        {newMeetingForm.location.radius}m
-                                                    </span>
+                                                <div>
+                                                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A' }}>
+                                                        Geofence Radius (m) *
+                                                    </div>
+                                                    <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                                                        Allowed check-in perimeter around pin
+                                                    </div>
                                                 </div>
-                                                <input
-                                                    type="number"
-                                                    className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.88rem' }}
-                                                    required
-                                                    value={newMeetingForm.location.radius}
-                                                    onChange={(e) => setNewMeetingForm({
-                                                        ...newMeetingForm,
-                                                        location: { ...newMeetingForm.location, radius: parseInt(e.target.value) || 200 }
-                                                    })}
-                                                />
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    <input
+                                                        type="number"
+                                                        className="g5-form-input"
+                                                        style={{ width: '90px', padding: '0.4rem 0.6rem', fontSize: '0.9rem', textAlign: 'right', fontWeight: 800 }}
+                                                        required
+                                                        min="20"
+                                                        max="2500"
+                                                        value={newMeetingForm.location.radius}
+                                                        onChange={(e) => setNewMeetingForm({
+                                                            ...newMeetingForm,
+                                                            location: { ...newMeetingForm.location, radius: parseInt(e.target.value) || 200 }
+                                                        })}
+                                                    />
+                                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>m</span>
+                                                </div>
                                             </div>
 
-                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Latitude *</label>
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.88rem' }}
-                                                    required
-                                                    value={newMeetingForm.location.latitude}
-                                                    onChange={(e) => setNewMeetingForm({
-                                                        ...newMeetingForm,
-                                                        location: { ...newMeetingForm.location, latitude: parseFloat(e.target.value) }
-                                                    })}
-                                                />
-                                            </div>
-
-                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
-                                                <label className="g5-form-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Longitude *</label>
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    className="g5-form-input"
-                                                    style={{ padding: '0.6rem 0.75rem', fontSize: '0.88rem' }}
-                                                    required
-                                                    value={newMeetingForm.location.longitude}
-                                                    onChange={(e) => setNewMeetingForm({
-                                                        ...newMeetingForm,
-                                                        location: { ...newMeetingForm.location, longitude: parseFloat(e.target.value) }
-                                                    })}
-                                                />
-                                            </div>
+                                            {/* COLLAPSIBLE MANUAL COORDINATES (HIDDEN BY DEFAULT TO SAVE SCREEN SPACE) */}
+                                            <details style={{ fontSize: '0.74rem', color: '#64748B', padding: '0.2rem 0.35rem' }}>
+                                                <summary style={{ cursor: 'pointer', userSelect: 'none', color: '#2563EB', fontWeight: 700 }}>
+                                                    ⚙️ Advanced: Adjust coordinates manually
+                                                </summary>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginTop: '0.5rem' }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px', color: '#475569' }}>Latitude</label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            className="g5-form-input"
+                                                            style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
+                                                            value={newMeetingForm.location.latitude}
+                                                            onChange={(e) => setNewMeetingForm({
+                                                                ...newMeetingForm,
+                                                                location: { ...newMeetingForm.location, latitude: parseFloat(e.target.value) }
+                                                            })}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px', color: '#475569' }}>Longitude</label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            className="g5-form-input"
+                                                            style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
+                                                            value={newMeetingForm.location.longitude}
+                                                            onChange={(e) => setNewMeetingForm({
+                                                                ...newMeetingForm,
+                                                                location: { ...newMeetingForm.location, longitude: parseFloat(e.target.value) }
+                                                            })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </details>
                                         </div>
 
                                     </div>
@@ -4925,19 +5762,30 @@ const G5TrainingPortal = () => {
                                 </div>
                             </div>
 
-                            <div className="g5-modal-footer" style={{ justifyContent: 'space-between', padding: '1.15rem 1.75rem', background: '#FFFFFF', borderTop: '2px solid #E2E8F0' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
-                                        {newMeetingForm.campus} • {newMeetingForm.location.radius}m perimeter verified
+                            {/* STICKY MODAL FOOTER - COMPACT & SAFE FROM STATUS BAR COLLISION */}
+                            <div className="g5-modal-footer" style={{
+                                position: 'sticky',
+                                bottom: 0,
+                                zIndex: 30,
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '0.75rem 1.25rem',
+                                background: '#FFFFFF',
+                                borderTop: '1.5px solid #E2E8F0',
+                                boxShadow: '0 -4px 14px rgba(0, 0, 0, 0.05)'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981', flexShrink: 0 }} />
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                                        {newMeetingForm.campus} ({newMeetingForm.location.radius}m)
                                     </span>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <button
                                         type="button"
                                         className="g5-btn-blue-soft"
-                                        style={{ background: '#F1F5F9', color: '#334155', borderColor: '#CBD5E1' }}
+                                        style={{ background: '#F1F5F9', color: '#334155', borderColor: '#CBD5E1', padding: '0.48rem 0.8rem', fontSize: '0.82rem', fontWeight: 700 }}
                                         onClick={() => setShowNewMeetingModal(false)}
                                     >
                                         Cancel
@@ -4947,13 +5795,17 @@ const G5TrainingPortal = () => {
                                         className="g5-btn-blue-solid"
                                         disabled={meetingCreating || (!!existingConflictMeeting && !allowMultipleMeeting)}
                                         style={{
+                                            padding: '0.48rem 0.95rem',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            gap: '0.35rem',
                                             opacity: (existingConflictMeeting && !allowMultipleMeeting) ? 0.6 : 1,
                                             cursor: (existingConflictMeeting && !allowMultipleMeeting) ? 'not-allowed' : 'pointer'
                                         }}
                                         title={existingConflictMeeting && !allowMultipleMeeting ? 'Check the override box above to allow multiple sessions this week' : ''}
                                     >
-                                        <Sparkles size={16} />
-                                        {meetingCreating ? 'Creating Session...' : (existingConflictMeeting && !allowMultipleMeeting) ? 'Override Required' : '+ Create Meeting Session'}
+                                        <Sparkles size={14} />
+                                        {meetingCreating ? 'Creating...' : (existingConflictMeeting && !allowMultipleMeeting) ? 'Override Required' : '+ Create Meeting'}
                                     </button>
                                 </div>
                             </div>
@@ -5236,6 +6088,213 @@ const G5TrainingPortal = () => {
                 </div>
             )}
 
+            {/* ========================================================= */}
+            {/* QUICK REAL-TIME DEVICE UNLOCK MODAL */}
+            {/* ========================================================= */}
+            {showQuickUnlockModal && (
+                <div className="g5-modal-backdrop" onClick={() => setShowQuickUnlockModal(false)}>
+                    <div className="g5-modal g5-modal-scrollable" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
+                        {/* MODAL HEADER: ROYAL BLUE & HIGH CONTRAST */}
+                        <div className="g5-modal-header" style={{
+                            padding: '1.25rem 1.75rem',
+                            background: 'linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%)',
+                            color: '#FFFFFF'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                <div style={{
+                                    width: '42px',
+                                    height: '42px',
+                                    borderRadius: '12px',
+                                    background: '#FFFFFF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#1D4ED8',
+                                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+                                    flexShrink: 0
+                                }}>
+                                    <Smartphone size={22} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2, margin: 0 }}>
+                                        Quick Device Unlock
+                                    </h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#DBEAFE', margin: '0.2rem 0 0' }}>
+                                        Instant real-time phone hardware unlock for student scans
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowQuickUnlockModal(false)}
+                                style={{
+                                    border: 'none',
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    borderRadius: '50%',
+                                    width: '34px',
+                                    height: '34px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: '#FFFFFF',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="g5-modal-body" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                            <div style={{
+                                background: '#EFF6FF',
+                                border: '1px solid #BFDBFE',
+                                borderRadius: '12px',
+                                padding: '0.75rem 1rem',
+                                fontSize: '0.82rem',
+                                color: '#1E3A8A',
+                                lineHeight: 1.45
+                            }}>
+                                💡 <strong>When to use:</strong> If a student changed phones, lost their phone, or borrows a friend's phone to check in, unlocking clears their locked hardware ID so their next scan succeeds immediately.
+                            </div>
+
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleQuickUnlockByRegNo();
+                                }}
+                            >
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    Search by Admission No or Name
+                                </label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <div className="g5-search-wrap" style={{ flex: 1, height: '42px' }}>
+                                        <Search size={16} />
+                                        <input
+                                            type="text"
+                                            className="g5-search-input"
+                                            placeholder="e.g. 23-1450, 22-0981 or Student Name..."
+                                            value={quickUnlockQuery}
+                                            onChange={(e) => setQuickUnlockQuery(e.target.value)}
+                                            autoFocus
+                                            style={{ fontSize: '0.88rem' }}
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        className="g5-btn-warm"
+                                        disabled={quickUnlockLoading || !quickUnlockQuery.trim()}
+                                        style={{ padding: '0 1.25rem', height: '42px', fontSize: '0.85rem' }}
+                                    >
+                                        {quickUnlockLoading ? 'Unlocking...' : '⚡ Unlock'}
+                                    </button>
+                                </div>
+                            </form>
+
+                            {/* LIVE MATCH SUGGESTIONS */}
+                            {quickUnlockQuery.trim().length > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '0.5rem' }}>
+                                        Matching Roster Members ({members.filter(m => {
+                                            const q = quickUnlockQuery.toLowerCase();
+                                            return (m.name || '').toLowerCase().includes(q) ||
+                                                (m.studentRegNo || '').toLowerCase().includes(q);
+                                        }).length})
+                                    </div>
+                                    <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.45rem', paddingRight: '0.15rem' }}>
+                                        {members.filter(m => {
+                                            const q = quickUnlockQuery.toLowerCase();
+                                            return (m.name || '').toLowerCase().includes(q) ||
+                                                (m.studentRegNo || '').toLowerCase().includes(q);
+                                        }).slice(0, 6).map(m => {
+                                            const isBound = Boolean(m.linkedDeviceId);
+                                            const isResettingThis = resettingDeviceMemberId === m._id;
+                                            return (
+                                                <div
+                                                    key={m._id}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        padding: '0.65rem 0.85rem',
+                                                        background: 'var(--color-surface)',
+                                                        border: '1px solid var(--color-border)',
+                                                        borderRadius: '12px',
+                                                        gap: '0.75rem'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                                                        <div className="g5-avatar" style={{ width: '34px', height: '34px', fontSize: '0.85rem', flexShrink: 0 }}>
+                                                            {(m.name || 'M').charAt(0)}
+                                                        </div>
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--color-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {m.name}
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>
+                                                                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--color-text-main)' }}>{m.studentRegNo}</span>
+                                                                <span>•</span>
+                                                                <span>{m.douloidRank || m.memberType || 'Member'}</span>
+                                                                <span>•</span>
+                                                                <span style={{
+                                                                    color: isBound ? '#1D4ED8' : '#059669',
+                                                                    fontWeight: 700,
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.2rem'
+                                                                }}>
+                                                                    {isBound ? <Lock size={11} /> : <Unlock size={11} />}
+                                                                    {isBound ? 'Bound' : 'Unlocked'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isResettingThis}
+                                                        onClick={() => handleResetDeviceLock(m)}
+                                                        className={isBound ? "g5-btn-warm" : "g5-btn-secondary"}
+                                                        style={{
+                                                            padding: '0.35rem 0.75rem',
+                                                            fontSize: '0.78rem',
+                                                            whiteSpace: 'nowrap',
+                                                            flexShrink: 0
+                                                        }}
+                                                    >
+                                                        {isResettingThis ? (
+                                                            'Clearing...'
+                                                        ) : (
+                                                            <>
+                                                                <Unlock size={12} />
+                                                                {isBound ? 'Unlock Phone' : 'Clear'}
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="g5-modal-footer" style={{ padding: '0.85rem 1.5rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)' }}>
+                            <button
+                                type="button"
+                                className="g5-btn-outline"
+                                style={{ padding: '0.45rem 1rem', fontSize: '0.82rem' }}
+                                onClick={() => {
+                                    setShowQuickUnlockModal(false);
+                                    setQuickUnlockQuery('');
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ===================================================== */}
             {/* NATIVE-STYLE MOBILE BOTTOM NAVIGATION BAR */}
             {/* ===================================================== */}
@@ -5356,9 +6415,7 @@ const G5TrainingPortal = () => {
 
                 <div className="g5-mobile-sheet-user">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div className="g5-avatar" style={{ width: '38px', height: '38px', fontSize: '0.9rem' }}>
-                            {username.charAt(0).toUpperCase()}
-                        </div>
+                        {renderUserAvatar(38, '0.9rem')}
                         <div>
                             <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>{username}</div>
                             <div style={{ fontSize: '0.74rem', color: 'var(--color-primary)', fontWeight: 700 }}>{userRole} • {userCampus}</div>

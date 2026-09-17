@@ -5,23 +5,23 @@
    ========================================================================== */
 
 :root {
-    --color-sidebar-bg: #4B3F8C;        /* deep indigo-purple */
-    --color-sidebar-active-bg: #DCD6F7;  /* light lavender highlight for active nav item */
-    --color-sidebar-active-text: #4B3F8C;
-    --color-sidebar-text: #E4E1F5;       /* muted lavender-white for inactive items */
-    --color-sidebar-hover-bg: rgba(220, 214, 247, 0.12);
-    --color-accent-corner: #A79AE8;      /* the light purple wash top-left of the page background */
+    --color-sidebar-bg: #1E3A8A;        /* deep royal blue */
+    --color-sidebar-active-bg: #EFF6FF;  /* light blue highlight for active nav item */
+    --color-sidebar-active-text: #1D4ED8;
+    --color-sidebar-text: #DBEAFE;       /* muted blue-white for inactive items */
+    --color-sidebar-hover-bg: rgba(219, 234, 254, 0.15);
+    --color-accent-corner: #93C5FD;      /* light blue wash top-left of the page background */
     --color-surface: #FFFFFF;            /* main content card */
-    --color-page-bg: #F1F1F5;            /* outer page background */
-    --color-border-subtle: #EBEBF2;      /* soft table/card divider */
+    --color-page-bg: #F8FAFC;            /* outer page background */
+    --color-border-subtle: #DBEAFE;      /* soft table/card divider */
 
     /* Statuses */
-    --color-status-active-bg: #E4F6E9;
-    --color-status-active-text: #3CB371;
+    --color-status-active-bg: #ECFDF5;
+    --color-status-active-text: #059669;
     --color-status-recruit-bg: #FEF3C7;
     --color-status-recruit-text: #D97706;
-    --color-status-inactive-bg: #FBE7E7;
-    --color-status-inactive-text: #D9534F;
+    --color-status-inactive-bg: #FEE2E2;
+    --color-status-inactive-text: #DC2626;
     --color-status-probation-bg: #FEE2E2;
     --color-status-probation-text: #DC2626;
     --color-status-archived-bg: #F3F4F6;
@@ -38,9 +38,9 @@
     --color-rank-lead-text: #B45309;
 
     /* Buttons */
-    --color-button-primary-bg: #4B3F8C;
+    --color-button-primary-bg: #1D4ED8;
     --color-button-primary-text: #FFFFFF;
-    --color-button-primary-hover: #3D3277;
+    --color-button-primary-hover: #1E40AF;
     --color-button-dark-bg: #2E2A4D;     /* the "Login / View Portal" action button */
     --color-button-dark-text: #FFFFFF;
     --color-button-dark-hover: #1F1B38;
@@ -565,8 +565,8 @@
 .doulos-surface-card select:focus,
 .doulos-surface-card textarea:focus,
 .doulos-surface-card .modern-input:focus {
-    border-color: #4B3F8C !important;
-    box-shadow: 0 0 0 3px rgba(75, 63, 140, 0.15) !important;
+    border-color: #1D4ED8 !important;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15) !important;
     outline: none !important;
 }
 
@@ -577,9 +577,9 @@
 }
 
 .doulos-surface-card table th {
-    background-color: #F8F8FC !important;
-    color: #6E6893 !important;
-    border-bottom: 1px solid #EBEBF2 !important;
+    background-color: #EFF6FF !important;
+    color: #1E40AF !important;
+    border-bottom: 1.5px solid #DBEAFE !important;
     font-size: 0.72rem !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
@@ -592,28 +592,28 @@
 }
 
 .doulos-surface-card table tr:hover td {
-    background-color: #FBFBFE !important;
+    background-color: #F8FAFC !important;
 }
 
 /* Primary Action Buttons */
 .doulos-surface-card .btn-primary,
 .doulos-surface-card button[type="submit"]:not(.btn-outline),
 .doulos-surface-card .submit-btn-premium {
-    background: #4B3F8C !important;
+    background: #1D4ED8 !important;
     background-image: none !important;
     color: #FFFFFF !important;
     border: none !important;
     border-radius: 10px !important;
     font-weight: 700 !important;
-    box-shadow: 0 4px 14px rgba(75, 63, 140, 0.25) !important;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25) !important;
     transition: all 0.15s ease !important;
 }
 
 .doulos-surface-card .btn-primary:hover,
 .doulos-surface-card button[type="submit"]:not(.btn-outline):hover,
 .doulos-surface-card .submit-btn-premium:hover {
-    background: #3D3277 !important;
-    box-shadow: 0 6px 18px rgba(75, 63, 140, 0.35) !important;
+    background: #1E40AF !important;
+    box-shadow: 0 6px 18px rgba(29, 78, 216, 0.35) !important;
 }
 
 /* Cyan to Purple Harmonization */

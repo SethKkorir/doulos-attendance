@@ -17,7 +17,22 @@ import activityRoutes from './routes/activityRoutes.js';
 import trainingRoutes from './routes/trainingRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import councilRoutes from './routes/councilRoutes.js';
+import g5Routes from './routes/g5Routes.js';
+import g2Routes from './routes/g2Routes.js';
+import rankingRoutes from './routes/rankingRoutes.js';
+import rosterRoutes from './routes/rosterRoutes.js';
+import membershipRoutes from './routes/membershipRoutes.js';
+import venueRoutes from './routes/venueRoutes.js';
+import rolloverRoutes from './routes/rolloverRoutes.js';
+import safetyRoutes from './routes/safetyRoutes.js';
+import financeRoutes from './routes/financeRoutes.js';
+import delegationRoutes from './routes/delegationRoutes.js';
+import crewsRoutes from './routes/crewsRoutes.js';
+import registerRoutes from './routes/registerRoutes.js';
+import equipmentRoutes from './routes/equipmentRoutes.js';
+import tokenRoutes from './routes/tokenRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
+import { seedReferenceData } from './utils/seedReferenceData.js';
 
 import downtimeManager from './middleware/downtimeManager.js';
 
@@ -58,6 +73,13 @@ import './models/IncidentLog.js';
 import './models/CouncilMinutes.js';
 import './models/HandoverDossier.js';
 import './models/SemesterRolloverSnapshot.js';
+import './models/RankDefinition.js';
+import './models/EvaluationDomain.js';
+import './models/Evaluation.js';
+import './models/Venue.js';
+import './models/LopDoc.js';
+import './models/Crew.js';
+import './models/CheckInToken.js';
 
 const connectDB = async () => {
     if (cachedConnection && mongoose.connection.readyState === 1) {
@@ -157,6 +179,9 @@ const connectDB = async () => {
                     await existing.save();
                 }
             }
+
+            // Seed reference data (Ranks, Domains, Venues, LOP Docs)
+            await seedReferenceData();
         })().catch(err => console.error('Seeding Error:', err.message));
 
         return conn;
@@ -211,6 +236,20 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/trainings', trainingRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/council', councilRoutes);
+app.use('/api/g5', g5Routes);
+app.use('/api/g2', g2Routes);
+app.use('/api/ranking', rankingRoutes);
+app.use('/api/roster', rosterRoutes);
+app.use('/api/membership', membershipRoutes);
+app.use('/api/venues', venueRoutes);
+app.use('/api/rollover', rolloverRoutes);
+app.use('/api/safety', safetyRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/delegation', delegationRoutes);
+app.use('/api/crews', crewsRoutes);
+app.use('/api/register', registerRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/tokens', tokenRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

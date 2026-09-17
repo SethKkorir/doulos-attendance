@@ -17,10 +17,12 @@ export const verifyAdmin = (req, res, next) => {
     verifyToken(req, res, () => {
         const allowedRoles = [
             'admin', 'superadmin', 'developer', 'trainer',
-            'g1_coordinator', 'g2_vice', 'g3_secretary', 'g4_logistics', 
-            'g5_training', 'g6_welfare', 'g7_treasurer', 'g8_assets', 'g9_media'
+            'g1_coordinator', 'g1', 'g2_vice', 'g2_operations', 'g2_assistant', 'g2', 'operations',
+            'g3_secretary', 'g3', 'g4_logistics', 'g4',
+            'g5_training', 'g5', 'g6_welfare', 'g6', 'g7_treasurer', 'g7', 'g8_assets', 'g8', 'g9_media', 'g9'
         ];
-        if (allowedRoles.includes(req.user?.role) || (req.user?.role && req.user.role.startsWith('g'))) {
+        const userRole = (req.user?.role || '').toLowerCase();
+        if (allowedRoles.includes(userRole) || userRole.startsWith('g')) {
             next();
         } else {
             res.status(403).json({ message: 'G-Council or Admin access required' });

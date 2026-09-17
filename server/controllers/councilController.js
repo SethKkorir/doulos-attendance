@@ -11,6 +11,7 @@ import Training from '../models/Training.js';
 import Attendance from '../models/Attendance.js';
 import Settings from '../models/Settings.js';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { getKenyanTime, getKenyanDate } from '../utils/kenyanTime.js';
 
 // ========================================================
@@ -798,11 +799,37 @@ export const executeSemesterRollover = async (req, res) => {
         const newQrToken = 'DOULOS-MASTER-' + toSemester + '-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         await Settings.findOneAndUpdate({ key: 'master_semester_qr_token' }, { key: 'master_semester_qr_token', value: newQrToken }, { upsert: true });
 
+        // 6. Reset member attendance points and absences
+        await Member.updateMany(
+            { status: 'Active' },
+            { 
+                $set: { 
+                    totalPoints: 0, 
+                    consecutiveAbsences: 0, 
+                    lastActiveSemester: toSemester 
+                } 
+            }
+        );
+
+        // 7. Universal Device Link Reset: Clears hardware locks for ALL members
+        await Member.updateMany({}, { $set: { linkedDeviceId: null } });
+
+        // 8. Purge stale scan errors / device conflict records
+        if (mongoose.connection?.readyState === 1) {
+            try {
+                await mongoose.connection.db.collection('scanerrors').deleteMany({});
+            } catch (err) {
+                console.warn('Note: scanerrors purge skipped:', err.message);
+            }
+        }
+
         res.json({
-            message: `Semester Rollover to ${toSemester} executed successfully!`,
+            message: `Semester Rollover to ${toSemester} executed successfully! All member device links and attendance counters have been reset.`,
             promotedRecruitsCount: eligibleRecruits.length,
             snapshotId: snapshot._id,
-            newMasterQrToken: newQrToken
+            newMasterQrToken: newQrToken,
+            deviceLinksReset: true,
+            posterDownloadUrl: `/api/rollover/qr-poster-pdf?semester=${encodeURIComponent(toSemester)}`
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -854,3 +881,16 @@ export const rollbackSemesterRollover = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const getRolloverSnapshots = async (req, res) => {
+    try {
+        const snapshots = await SemesterRolloverSnapshot.find()
+            .select('-backupPayload')
+            .sort({ createdAt: -1 })
+            .limit(20);
+        res.json(snapshots);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+

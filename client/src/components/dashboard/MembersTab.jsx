@@ -219,22 +219,23 @@ export default function MembersTab({
         }
     };
 
-    // Secure Delete / Archive
+    // Secure Delete
     const handleDeleteMember = async (member) => {
         if (isGuest) {
             setMsg?.({ type: 'error', text: 'Delete disabled in Guest Mode.' });
             return;
         }
 
-        const confirmDelete = window.confirm(`Are you sure you want to delete/archive ${member.name} (${member.studentRegNo})?`);
+        const confirmDelete = window.confirm(`Permanently DELETE ${member.name} (${member.studentRegNo}) from the database? This removes the member and their attendance history.`);
         if (!confirmDelete) return;
 
         try {
-            await api.post(`/members/${member._id}/archive`);
-            setMsg?.({ type: 'success', text: `${member.name} has been archived.` });
+            await api.delete(`/members/${member._id}`);
+            setMsg?.({ type: 'success', text: `${member.name} (${member.studentRegNo}) has been deleted.` });
+            if (editingMember?._id === member._id) setEditingMember(null);
             fetchMembers({ activeThisSemester: !showAllSemesters });
         } catch (err) {
-            setMsg?.({ type: 'error', text: err.response?.data?.message || 'Failed to archive member.' });
+            setMsg?.({ type: 'error', text: err.response?.data?.message || 'Failed to delete member.' });
         }
     };
 
@@ -482,12 +483,12 @@ export default function MembersTab({
 
                     {subTab === 'members' && (
                         <>
-                            {/* Primary Button: "Add Recruit" (Visually First) */}
+                            {/* Primary Button: "Add Member / Recruit" */}
                             <PrimaryButton
                                 icon={UserPlus}
                                 onClick={() => setIsAddRecruitOpen(true)}
                             >
-                                Add Recruit
+                                Add Member / Recruit
                             </PrimaryButton>
 
                             {/* Secondary: Import members */}
@@ -638,7 +639,7 @@ export default function MembersTab({
                 >
                     <div
                         style={{
-                            backgroundcolor: "#1E1B39",
+                            backgroundColor: "#FFFFFF",
                             borderRadius: '16px',
                             padding: '2rem',
                             maxWidth: '480px',
@@ -652,15 +653,34 @@ export default function MembersTab({
                             <button onClick={() => setEditingMember(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Full Name</label>
-                                <input
-                                    type="text"
-                                    value={editingMember.name || ''}
-                                    onChange={e => setEditingMember({ ...editingMember, name: e.target.value })}
-                                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
-                                />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>
+                                        Admission No (Reg No) <span style={{ color: '#EF4444' }}>*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editingMember.studentRegNo || ''}
+                                        onChange={e => setEditingMember({ ...editingMember, studentRegNo: e.target.value.toUpperCase() })}
+                                        placeholder="e.g. 24-1234"
+                                        style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB', fontWeight: 700, fontFamily: 'monospace' }}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>
+                                        Full Name <span style={{ color: '#EF4444' }}>*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editingMember.name || ''}
+                                        onChange={e => setEditingMember({ ...editingMember, name: e.target.value })}
+                                        style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
+                                        required
+                                    />
+                                </div>
                             </div>
+
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Campus</label>
@@ -674,18 +694,19 @@ export default function MembersTab({
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Status</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Category / Type</label>
                                     <select
-                                        value={editingMember.status || 'Active'}
-                                        onChange={e => setEditingMember({ ...editingMember, status: e.target.value })}
+                                        value={editingMember.memberType || 'Douloid'}
+                                        onChange={e => setEditingMember({ ...editingMember, memberType: e.target.value })}
                                         style={{ width: '100%', height: '40px', padding: '0 0.5rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
                                     >
-                                        <option value="Active">Active</option>
-                                        <option value="Archived">Archived</option>
-                                        <option value="Graduated">Graduated</option>
+                                        <option value="Douloid">Douloid</option>
+                                        <option value="Recruit">Recruit</option>
+                                        <option value="Visitor">Visitor</option>
                                     </select>
                                 </div>
                             </div>
+
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Douloid Rank</label>
@@ -702,6 +723,21 @@ export default function MembersTab({
                                     </select>
                                 </div>
                                 <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Status</label>
+                                    <select
+                                        value={editingMember.status || 'Active'}
+                                        onChange={e => setEditingMember({ ...editingMember, status: e.target.value })}
+                                        style={{ width: '100%', height: '40px', padding: '0 0.5rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
+                                    >
+                                        <option value="Active">Active</option>
+                                        <option value="Archived">Archived</option>
+                                        <option value="Graduated">Graduated</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Belay Permission</label>
                                     <select
                                         value={editingMember.belayStatus || 'Not Permitted'}
@@ -713,19 +749,64 @@ export default function MembersTab({
                                         <option value="Primary Belayer Certified">Primary Belayer Certified</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Session Points</label>
+                                    <input
+                                        type="number"
+                                        value={editingMember.totalPoints ?? 0}
+                                        onChange={e => setEditingMember({ ...editingMember, totalPoints: Number(e.target.value) })}
+                                        style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Mobile / Phone</label>
-                                <input
-                                    type="text"
-                                    value={editingMember.phone || ''}
-                                    onChange={e => setEditingMember({ ...editingMember, phone: e.target.value })}
-                                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
-                                />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Mobile / Phone</label>
+                                    <input
+                                        type="text"
+                                        value={editingMember.phone || ''}
+                                        onChange={e => setEditingMember({ ...editingMember, phone: e.target.value })}
+                                        placeholder="+254 7..."
+                                        style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#6B6882', marginBottom: '0.35rem' }}>Email</label>
+                                    <input
+                                        type="email"
+                                        value={editingMember.email || ''}
+                                        onChange={e => setEditingMember({ ...editingMember, email: e.target.value })}
+                                        placeholder="user@daystar.ac.ke"
+                                        style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid #E5E5EB' }}
+                                    />
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                                <OutlineButton onClick={() => setEditingMember(null)} style={{ flex: 1 }}>Cancel</OutlineButton>
-                                <PrimaryButton type="submit" style={{ flex: 1.5 }}>Save Changes</PrimaryButton>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', borderTop: '1px solid #F1F1F5', paddingTop: '1rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteMember(editingMember)}
+                                    style={{
+                                        background: '#FEE2E2',
+                                        color: '#DC2626',
+                                        border: '1px solid #FCA5A5',
+                                        borderRadius: '8px',
+                                        padding: '0.6rem 1rem',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem'
+                                    }}
+                                >
+                                    <Trash2 size={14} /> Delete Member
+                                </button>
+                                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                                    <OutlineButton type="button" onClick={() => setEditingMember(null)}>Cancel</OutlineButton>
+                                    <PrimaryButton type="submit">Save Changes</PrimaryButton>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -750,7 +831,7 @@ export default function MembersTab({
                 >
                     <div
                         style={{
-                            backgroundcolor: "#1E1B39",
+                            backgroundColor: "#FFFFFF",
                             borderRadius: '16px',
                             padding: '2rem',
                             maxWidth: '440px',

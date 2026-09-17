@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
     BarChart3, Activity, Users, Search, X, ShieldAlert as Ghost, Trash2,
-    MessageSquare, UserX, Clock, HelpCircle
+    MessageSquare, UserX, Clock, HelpCircle, Smartphone, Unlock
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -23,6 +23,22 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [selectedRegs, setSelectedRegs] = useState(new Set());
     const [bulkChecking, setBulkChecking] = useState(false);
+    const [resettingDeviceRegNo, setResettingDeviceRegNo] = useState(null);
+
+    const handleResetDeviceLock = async (studentRegNo, studentName) => {
+        if (!studentRegNo) return;
+        setResettingDeviceRegNo(studentRegNo);
+        try {
+            const res = await api.post(`/members/${encodeURIComponent(studentRegNo)}/reset-device`);
+            alert(res.data.message || `Phone device lock cleared for ${studentName || studentRegNo}! 📱🔓`);
+            setAllMembers(prev => prev.map(m => m.studentRegNo?.toUpperCase() === studentRegNo.toUpperCase() ? { ...m, linkedDeviceId: null } : m));
+        } catch (err) {
+            console.error("Failed to reset device lock", err);
+            alert(err.response?.data?.message || 'Failed to remove device ID');
+        } finally {
+            setResettingDeviceRegNo(null);
+        }
+    };
 
 
     useEffect(() => {
@@ -864,6 +880,27 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                     borderRadius: '0.35rem', textTransform: 'uppercase'
                                 }}>{m.memberType}</span>
                                 <button
+                                    type="button"
+                                    onClick={() => handleResetDeviceLock(m.studentRegNo, m.name)}
+                                    disabled={resettingDeviceRegNo === m.studentRegNo}
+                                    style={{
+                                        padding: '0.45rem',
+                                        background: 'rgba(37, 99, 235, 0.08)',
+                                        border: '1px solid rgba(37, 99, 235, 0.25)',
+                                        borderRadius: '0.6rem',
+                                        color: '#2563EB',
+                                        fontSize: '0.72rem',
+                                        cursor: resettingDeviceRegNo === m.studentRegNo ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    title="Unlink Phone / Reset Device Lock"
+                                >
+                                    <Smartphone size={13} />
+                                </button>
+                                <button
                                     onClick={() => handleToggleRegular(m)}
                                     disabled={isToggling}
                                     style={{
@@ -1021,24 +1058,48 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                         <div style={{ fontSize: '0.7rem', color: "#7E7A9B", fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <Clock size={12} /> {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </div>
-                                        <button
-                                            onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
-                                            style={{
-                                                background: 'rgba(239, 68, 68, 0.12)',
-                                                border: '1px solid rgba(239, 68, 68, 0.25)',
-                                                borderRadius: '8px',
-                                                color: '#f87171',
-                                                padding: '0.45rem 0.75rem',
-                                                fontSize: '0.7rem',
-                                                fontWeight: 800,
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                        >
-                                            <Trash2 size={12} /> Remove
-                                        </button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleResetDeviceLock(a.studentRegNo, a.responses?.studentName)}
+                                                disabled={resettingDeviceRegNo === a.studentRegNo}
+                                                style={{
+                                                    background: 'rgba(37, 99, 235, 0.08)',
+                                                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                                                    borderRadius: '8px',
+                                                    color: '#2563EB',
+                                                    padding: '0.45rem 0.65rem',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 800,
+                                                    cursor: resettingDeviceRegNo === a.studentRegNo ? 'not-allowed' : 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                title="Unlink Phone / Reset Device ID"
+                                            >
+                                                <Smartphone size={12} /> Unlink Phone
+                                            </button>
+                                            <button
+                                                onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
+                                                style={{
+                                                    background: 'rgba(239, 68, 68, 0.12)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                    borderRadius: '8px',
+                                                    color: '#f87171',
+                                                    padding: '0.45rem 0.75rem',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 800,
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <Trash2 size={12} /> Remove
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1088,26 +1149,48 @@ const MeetingInsights = ({ meeting, onClose, api, onQuickCheckIn, isTraining }) 
                                                 {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </td>
                                             <td style={{ padding: '1.15rem 1rem', textAlign: 'right' }}>
-                                                <button
-                                                    onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
-                                                    style={{
-                                                        background: 'rgba(239, 68, 68, 0.12)',
-                                                        border: '1px solid rgba(239, 68, 68, 0.25)',
-                                                        borderRadius: '8px',
-                                                        color: '#f87171',
-                                                        padding: '0.45rem',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s'
-                                                    }}
-                                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.color = '#f87171'; }}
-                                                    title="Remove Attendance Record"
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleResetDeviceLock(a.studentRegNo, a.responses?.studentName)}
+                                                        disabled={resettingDeviceRegNo === a.studentRegNo}
+                                                        style={{
+                                                            background: 'rgba(37, 99, 235, 0.08)',
+                                                            border: '1px solid rgba(37, 99, 235, 0.25)',
+                                                            borderRadius: '8px',
+                                                            color: '#2563EB',
+                                                            padding: '0.45rem',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: resettingDeviceRegNo === a.studentRegNo ? 'not-allowed' : 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        title="Unlink Phone / Reset Device ID"
+                                                    >
+                                                        <Smartphone size={13} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRemoveCheckIn(a._id, a.studentRegNo, a.responses?.studentName)}
+                                                        style={{
+                                                            background: 'rgba(239, 68, 68, 0.12)',
+                                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                            borderRadius: '8px',
+                                                            color: '#f87171',
+                                                            padding: '0.45rem',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.3s'
+                                                        }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.color = '#f87171'; }}
+                                                        title="Remove Attendance Record"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

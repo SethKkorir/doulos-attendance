@@ -16,26 +16,46 @@ export default function RankBadge({ rank, showIcon = true }) {
     let border = '#E5E7EB';
     let label = r;
 
-    if (r.toLowerCase().includes('lead')) {
+    if (r === 'Lead Douloid' || r === 'Lead Facilitator' || r === 'Lead') {
         bg = '#FEF3C7';
         text = '#B45309';
         border = '#FDE68A';
-        label = 'Lead';
-    } else if (r.toLowerCase().includes('intermediate')) {
-        bg = '#CCFBF1';
-        text = '#0D9488';
-        border = '#99F6E4';
-        label = 'Intermediate';
-    } else if (r.toLowerCase().includes('basic')) {
+        label = 'Lead Facilitator';
+    } else if (r === 'Intermediate Douloid' || r === 'Intermediate Facilitator' || r === 'Intermediate') {
         bg = '#E0F2FE';
         text = '#0284C7';
         border = '#BAE6FD';
-        label = 'Basic';
+        label = 'Intermediate Facilitator';
+    } else if (r === 'Basic Douloid' || r === 'Basic Facilitator' || r === 'Basic') {
+        bg = '#E0E7FF';
+        text = '#4338CA';
+        border = '#C7D2FE';
+        label = 'Basic Facilitator';
+    } else if (r === 'Shadow Douloid' || r === 'Shadow Facilitator' || r === 'Shadow') {
+        bg = '#F3E8FF';
+        text = '#7E22CE';
+        border = '#E9D5FF';
+        label = 'Shadow Facilitator';
+    } else if (r.toLowerCase().includes('lead')) {
+        bg = '#FEF3C7';
+        text = '#B45309';
+        border = '#FDE68A';
+        label = 'Lead Facilitator';
+    } else if (r.toLowerCase().includes('intermediate')) {
+        bg = '#E0F2FE';
+        text = '#0284C7';
+        border = '#BAE6FD';
+        label = 'Intermediate Facilitator';
+    } else if (r.toLowerCase().includes('basic')) {
+        bg = '#E0E7FF';
+        text = '#4338CA';
+        border = '#C7D2FE';
+        label = 'Basic Facilitator';
     } else if (r.toLowerCase().includes('shadow')) {
-        bg = '#F1F5F9';
-        text = '#64748B';
-        border = '#E2E8F0';
-        label = 'Shadow';
+        bg = '#F3E8FF';
+        text = '#7E22CE';
+        border = '#E9D5FF';
+        label = 'Shadow Facilitator';
     } else if (r === 'None' || !r) {
         bg = '#F9FAFB';
         text = '#9CA3AF';

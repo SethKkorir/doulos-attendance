@@ -66,9 +66,13 @@ const AdminLogin = () => {
             const u = res.data.username;
             if (u === 'supersuperadmin') {
                 navigate('/superadmin');
-            } else if (u === 'g1_coordinator' || u === 'g2_vice') {
+            } else if (u === 'g1_coordinator') {
                 localStorage.setItem('initialTab', 'g1_radar');
                 navigate('/admin/dashboard');
+            } else if (u === 'g2_vice' || u === 'g2_assistant' || res.data.role === 'g2_vice' || res.data.role === 'g2_assistant') {
+                localStorage.setItem('initialTab', 'dashboard');
+                window.open('/g2/portal', '_blank');
+                navigate('/g2/portal');
             } else if (u === 'g3_secretary') {
                 localStorage.setItem('initialTab', 'g3_secretariat');
                 navigate('/admin/dashboard');
@@ -338,6 +342,7 @@ const AdminLogin = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
                             {[
                                 { user: 'g1_coordinator', pass: 'doulos2026', label: 'G1 Coordinator' },
+                                { user: 'g2_vice', pass: 'doulos2026', label: 'G2 Operations' },
                                 { user: 'g3_secretary', pass: 'doulos2026', label: 'G3 Secretary' },
                                 { user: 'g4_logistics', pass: 'doulos2026', label: 'G4 Logistics' },
                                 { user: 'trainer_athi', pass: 'trainer123', label: 'G5 Training' },

@@ -4,8 +4,10 @@ import Training from '../models/Training.js';
 import Member from '../models/Member.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Settings from '../models/Settings.js';
+import CheckInToken from '../models/CheckInToken.js';
 import mongoose from 'mongoose';
 import { getKenyanTime, getKenyanDate, getWeekRange } from '../utils/kenyanTime.js';
+import { resolveMeetingOrTraining } from '../utils/sessionResolver.js';
 
 const logScanError = async (studentRegNo, errorType, desc, campus) => {
     try {
@@ -24,50 +26,71 @@ const logScanError = async (studentRegNo, errorType, desc, campus) => {
 };
 
 export const submitAttendance = async (req, res) => {
-    const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong } = req.body;
+    const { meetingCode, responses, memberType, secretCode, deviceId, serverStartTime, userLat, userLong, token, accuracy, campus } = req.body;
 
     try {
-        let meeting;
-        let isTrainingModel = false;
-        let isTrainingSession = false;
+        const prelimRegNo = responses?.studentRegNo || responses?.regNo || responses?.admNo || req.body.studentRegNo || 'UNKNOWN';
+        const preferredCampus = campus || responses?.campus || null;
 
-        if (meetingCode.toLowerCase() === 'athi-river') {
-            meeting = await Meeting.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
-            if (!meeting) {
-                meeting = await Training.findOne({ campus: { $in: ['Athi River', 'Both'] }, isActive: true }).sort({ date: -1 });
-                if (meeting) {
-                    isTrainingModel = true;
-                    isTrainingSession = true;
-                }
-            }
-            if (!meeting) {
-                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Code', `Attempted check-in to Athi River but no active session found`, 'Athi River');
-                return res.status(404).json({ message: 'No active meeting or training found for Athi River campus.' });
-            }
-        } else {
-            // Find in Meeting collection first, then Training collection
-            meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
+        const { meeting, isTraining, resolutionType, isSemesterLink } = await resolveMeetingOrTraining(meetingCode, preferredCampus);
 
-            if (!meeting) {
-                // Check Training collection
-                const training = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
-                if (!training) {
-                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Code', `Attempted check-in with invalid meeting code: ${meetingCode}`, 'Athi River');
-                    return res.status(404).json({ message: 'Invalid Meeting/Training Code' });
-                }
-                // Wrap training as a meeting-like object so downstream logic works
-                meeting = training;
-                isTrainingModel = true;
-                isTrainingSession = true;
+        if (!meeting) {
+            const errorCampus = preferredCampus || 'Athi River';
+            if (isSemesterLink) {
+                await logScanError(prelimRegNo, 'No Active Session', `Semester QR check-in attempted with no active meeting`, errorCampus);
+                return res.status(404).json({
+                    message: 'No active meeting or training in session for this semester right now. The Semester QR code only activates during live fellowship meetings and training sessions.'
+                });
             }
+            if (resolutionType === 'campus_none') {
+                await logScanError(prelimRegNo, 'No Active Session', `Attempted check-in to ${meetingCode} but no active session found`, errorCampus);
+                return res.status(404).json({ message: `No active meeting or training found for ${meetingCode} campus.` });
+            }
+            await logScanError(prelimRegNo, 'Invalid Code', `Attempted check-in with invalid meeting code: ${meetingCode}`, errorCampus);
+            return res.status(404).json({ message: 'Invalid or expired Meeting/Training Code' });
         }
 
-        if (meeting && meeting.category === 'Training') {
-            isTrainingSession = true;
-        }
+        const isTrainingModel = isTraining;
+        const isTrainingSession = isTraining || meeting.category === 'Training';
 
         // 2. User & Role check
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
+
+        // 2.5. Stage 0: Token Issuance & Single-Use Burning Check
+        let tokenDoc = null;
+        if (token) {
+            tokenDoc = await CheckInToken.findOneAndUpdate(
+                {
+                    token,
+                    isUsed: false,
+                    expiresAt: { $gt: new Date() }
+                },
+                {
+                    $set: {
+                        isUsed: true,
+                        usedAt: new Date()
+                    }
+                },
+                { new: true }
+            );
+
+            if (!tokenDoc && !isSuperUser && !meeting.isTestMeeting) {
+                const existing = await CheckInToken.findOne({ token });
+                if (existing && existing.isUsed) {
+                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Token Reused', `Attempted re-use of burned check-in token`, meeting.campus);
+                    return res.status(403).json({ message: 'This check-in link/token has already been used. Please scan the QR code again.' });
+                }
+                if (existing && existing.expiresAt <= new Date()) {
+                    await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Token Expired', `Attempted submission with expired token`, meeting.campus);
+                    return res.status(410).json({ message: 'Check-in token expired. Please scan the QR code again.' });
+                }
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Invalid Token', `Attempted submission with invalid token: ${token}`, meeting.campus);
+                return res.status(403).json({ message: 'Invalid or expired check-in token. Please scan the QR code again.' });
+            }
+        } else if (!isSuperUser && !meeting.isTestMeeting) {
+            await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Missing Token', `Direct check-in attempted without QR token`, meeting.campus);
+            return res.status(403).json({ message: 'Security verification required: Please scan the official venue QR code to check in.' });
+        }
 
         // 3. Activity Check (Bypass for SuperUser or Test Meetings)
         if (!meeting.isActive && !isSuperUser && !meeting.isTestMeeting) {
@@ -149,8 +172,16 @@ export const submitAttendance = async (req, res) => {
             return res.status(403).json({ message: 'ACCESS DENIED: Your account is suspended/blocked. Please contact the administrator.' });
         }
 
-        // 7. Location Check (Geofence)
-        if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTrainingSession) {
+        // 7. Stage 3: Geofencing Check (Accuracy-Aware + Fallback Stamped Path)
+        const isFallbackPath = tokenDoc?.fallbackUsed && tokenDoc?.stampedDeviceId;
+        if (isFallbackPath) {
+            // Validate that the submitting device matches the stamped device
+            if (tokenDoc.stampedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting) {
+                await logScanError(studentRegNo, 'Device Signature Mismatch', `Fallback token device mismatch: stamped=${tokenDoc.stampedDeviceId}, current=${deviceId}`, meeting.campus);
+                return res.status(403).json({ message: 'Device signature mismatch: This fallback check-in can only be redeemed on the device that requested it.' });
+            }
+            // Location check is bypassed because fallback path was verified & device-stamped!
+        } else if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTrainingSession) {
             if (!userLat || !userLong) {
                 await logScanError(req.body.studentRegNo || 'UNKNOWN', 'GPS Required', `Location disabled for geofenced meeting: ${meeting.name}`, meeting.campus);
                 return res.status(400).json({ message: 'GPS data is required for this meeting. Please enable location.' });
@@ -160,6 +191,7 @@ export const submitAttendance = async (req, res) => {
             const uLong = Number(userLong);
             const mLat = Number(meeting.location.latitude);
             const mLong = Number(meeting.location.longitude);
+            const reportedAccuracy = Math.max(0, Number(accuracy) || 0);
 
             if (isNaN(uLat) || isNaN(uLong)) {
                 return res.status(400).json({ message: 'Invalid GPS coordinates sent. Please enable location and try again.' });
@@ -177,8 +209,13 @@ export const submitAttendance = async (req, res) => {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distance = R * c;
 
-            if (distance > ((meeting.location.radius || 200) + 100)) { // 100m grace buffer for GPS drift
-                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Geofence Violation', `Outside range for ${meeting.location.name} (${Math.round(distance)}m). Required: <${(meeting.location.radius || 200) + 100}m`, meeting.campus);
+            const baseRadius = meeting.location.radius || 200;
+            // Accuracy-aware standard: confident reading held tighter than uncertain one
+            // We evaluate effectiveDistance = max(0, distance - reportedAccuracy)
+            const effectiveDistance = Math.max(0, distance - reportedAccuracy);
+
+            if (effectiveDistance > (baseRadius + 100)) { // 100m grace buffer
+                await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Geofence Violation', `Outside range for ${meeting.location.name} (dist=${Math.round(distance)}m, acc=${Math.round(reportedAccuracy)}m, eff=${Math.round(effectiveDistance)}m). Required: <${baseRadius + 100}m`, meeting.campus);
                 return res.status(403).json({
                     message: `Location Mismatch: You are too far from ${meeting.location.name}. Please ensure you are at the correct venue.`
                 });
@@ -368,13 +405,14 @@ export const getStudentPortalData = async (req, res) => {
         const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
         const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
 
-        // 3. Find IDs of all meetings and trainings within the current semester
-        const semMeetings = await Meeting.find({ semester: currentSemester }, '_id');
-        const semMeetingIds = semMeetings.map(m => m._id);
-        const semTrainings = await Training.find({ semester: currentSemester, campus: { $in: [member.campus, 'Both'] } });
-        const semTrainingIds = semTrainings.map(t => t._id);
+        // 3. Find IDs of all meetings and trainings within the target semester
+        let targetSemester = req.query.semester || currentSemester;
+        let semMeetings = await Meeting.find({ semester: targetSemester }, '_id');
+        let semMeetingIds = semMeetings.map(m => m._id);
+        let semTrainings = await Training.find({ semester: targetSemester, campus: { $in: [member.campus, 'Both'] } });
+        let semTrainingIds = semTrainings.map(t => t._id);
 
-        // 4. Query student's attendance records matching only this semester's sessions
+        // 4. Query student's attendance records matching sessions
         const attendanceRecords = await Attendance.find({
             studentRegNo,
             $or: [
@@ -383,8 +421,8 @@ export const getStudentPortalData = async (req, res) => {
             ]
         }).sort({ timestamp: -1 });
 
-        // 5. Get all meetings of the student's default campus for the current semester
-        const campusMeetings = await Meeting.find({ campus: member.campus, semester: currentSemester }).sort({ date: -1 });
+        // 5. Get all meetings of the student's default campus for the selected semester
+        const campusMeetings = await Meeting.find({ campus: member.campus, semester: targetSemester }).sort({ date: -1 });
 
         // 6. Helper to get start of week (Sunday)
         const getWeekStart = (date) => {
@@ -623,6 +661,11 @@ export const getStudentPortalData = async (req, res) => {
             studentRegNo,
             memberName: member.name || 'Visitor',
             memberType: member.memberType || 'Visitor',
+            douloidRank: member.douloidRank || 'None',
+            belayStatus: member.belayStatus || 'Not Permitted',
+            soloStationAllowed: member.soloStationAllowed || false,
+            rankHistory: member.rankHistory || [],
+            evaluations: member.evaluations || [],
             status: member.status,
             wateringDays: member.wateringDays,
             groupName: member.groupName || null,
@@ -654,9 +697,10 @@ export const getStudentPortalData = async (req, res) => {
 };
 
 export const manualCheckIn = async (req, res) => {
-    const { meetingId, studentRegNo, name, trainingDay } = req.body;
+    const { meetingId, studentRegNo, name, memberId, trainingDay } = req.body;
     try {
-        const regNo = studentRegNo.trim().toUpperCase();
+        const regNo = (studentRegNo || '').trim().toUpperCase();
+        const memberName = (name || '').trim();
 
         let meeting = await Meeting.findById(meetingId);
         let isTraining = false;
@@ -667,11 +711,25 @@ export const manualCheckIn = async (req, res) => {
             isTraining = true;
         }
 
+        // Lookup member Registry first by regNo, name, or memberId
+        let member = null;
+        if (regNo) {
+            member = await Member.findOne({ studentRegNo: regNo });
+        }
+        if (!member && memberName) {
+            member = await Member.findOne({ name: { $regex: new RegExp(`^${memberName}$`, 'i') } });
+        }
+        if (!member && memberId) {
+            member = await Member.findById(memberId).catch(() => null);
+        }
+
+        const effectiveReg = member ? (member.studentRegNo || member.name) : (regNo || memberName || 'MANUAL-ENTRY');
+
         const targetDay = isTraining ? (Number(trainingDay) || meeting.activeDay || 1) : undefined;
 
         const dupQuery = isTraining
-            ? { trainingId: meetingId, studentRegNo: regNo, trainingDay: targetDay }
-            : { meeting: meetingId, studentRegNo: regNo };
+            ? { trainingId: meetingId, studentRegNo: effectiveReg, trainingDay: targetDay }
+            : { meeting: meetingId, studentRegNo: effectiveReg };
 
         const existing = await Attendance.findOne(dupQuery);
         if (existing) return res.status(409).json({ message: 'Already checked in for this session' });
@@ -687,21 +745,20 @@ export const manualCheckIn = async (req, res) => {
             const otherIds = otherMeetings.map(m => m._id);
             if (otherIds.length > 0) {
                 const attendedOther = await Attendance.findOne({
-                    studentRegNo: regNo,
+                    studentRegNo: effectiveReg,
                     meeting: { $in: otherIds }
                 }).populate('meeting');
 
                 if (attendedOther) {
                     const campusName = attendedOther.meeting.campus === 'Valley Road' ? 'Nairobi' : attendedOther.meeting.campus;
                     return res.status(400).json({
-                        message: `Policy Restriction: ${regNo} has already attended "${attendedOther.meeting.name}" (${campusName}) this week. A member can only attend one meeting per week.`
+                        message: `Policy Restriction: ${member?.name || effectiveReg} has already attended "${attendedOther.meeting.name}" (${campusName}) this week. A member can only attend one meeting per week.`
                     });
                 }
             }
         }
 
         // Security: Lock manual check-in after 24-48 hours (Bypass for SuperAdmin)
-        // Exempt training from strict lock for flexibility
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
         if (!isSuperUser && !isTraining) {
             const now = new Date();
@@ -716,8 +773,6 @@ export const manualCheckIn = async (req, res) => {
             }
         }
 
-        // Lookup member Registry
-        let member = await Member.findOne({ studentRegNo: regNo });
         if (!member) {
             const { registrationData } = req.body;
             member = new Member({
@@ -728,7 +783,7 @@ export const manualCheckIn = async (req, res) => {
                 status: 'Active'
             });
             await member.save();
-            console.log(`[ADMIN-AUTO-REGISTER] New student created: ${regNo} (${member.name})`);
+            console.log(`[ADMIN-AUTO-REGISTER] New student created: ${regNo || member.name} (${member.name})`);
         }
 
         const attendance = new Attendance({
@@ -736,16 +791,16 @@ export const manualCheckIn = async (req, res) => {
             trainingId: isTraining ? meetingId : undefined,
             meetingName: meeting.name,
             campus: meeting.campus,
-            studentRegNo: regNo,
+            studentRegNo: effectiveReg,
             memberType: member.memberType,
-            responses: { studentName: member.name },
+            responses: { studentName: member.name, studentRegNo: member.studentRegNo || '' },
             trainingDay: isTraining ? targetDay : undefined
         });
 
         await attendance.save();
 
         // Award Points and reset device lock on manual override
-        await Member.findOneAndUpdate({ studentRegNo: regNo }, { 
+        await Member.findByIdAndUpdate(member._id, { 
             $inc: { totalPoints: 10 },
             $set: { linkedDeviceId: null }
         });
@@ -828,22 +883,34 @@ export const bulkManualCheckIn = async (req, res) => {
             const regNo = String(rawReg).trim().toUpperCase();
             const studentName = typeof item === 'object' ? item.name : undefined;
 
+            let dbMember = null;
+            if (regNo && regNo.length > 0) {
+                dbMember = await Member.findOne({ studentRegNo: regNo });
+            }
+            if (!dbMember && studentName) {
+                dbMember = await Member.findOne({ name: { $regex: new RegExp(`^${studentName.trim()}$`, 'i') } });
+            }
+            if (!dbMember && typeof item === 'object' && item._id) {
+                dbMember = await Member.findById(item._id).catch(() => null);
+            }
+
+            const effectiveReg = dbMember ? (dbMember.studentRegNo || dbMember.name) : (regNo || studentName || 'BULK-ENTRY');
+
             const dupQuery = isTraining
-                ? { trainingId: meetingId, studentRegNo: regNo, trainingDay: targetDay }
-                : { meeting: meetingId, studentRegNo: regNo };
+                ? { trainingId: meetingId, studentRegNo: effectiveReg, trainingDay: targetDay }
+                : { meeting: meetingId, studentRegNo: effectiveReg };
 
             const existing = await Attendance.findOne(dupQuery);
             if (existing) {
-                skipped.push({ regNo, reason: 'Already checked in for this session' });
+                skipped.push({ regNo: effectiveReg, reason: 'Already checked in for this session' });
                 continue;
             }
 
-            if (weeklyAttendedMap.has(regNo)) {
-                skipped.push({ regNo, reason: `Already attended ${weeklyAttendedMap.get(regNo)} this week` });
+            if (weeklyAttendedMap.has(effectiveReg)) {
+                skipped.push({ regNo: effectiveReg, reason: `Already attended ${weeklyAttendedMap.get(effectiveReg)} this week` });
                 continue;
             }
 
-            let dbMember = await Member.findOne({ studentRegNo: regNo });
             if (!dbMember) {
                 dbMember = new Member({
                     studentRegNo: regNo,
@@ -860,15 +927,15 @@ export const bulkManualCheckIn = async (req, res) => {
                 trainingId: isTraining ? meetingId : undefined,
                 meetingName: meeting.name,
                 campus: meeting.campus,
-                studentRegNo: regNo,
+                studentRegNo: effectiveReg,
                 memberType: dbMember.memberType,
-                responses: { studentName: dbMember.name },
+                responses: { studentName: dbMember.name, studentRegNo: dbMember.studentRegNo || '' },
                 trainingDay: isTraining ? targetDay : undefined
             });
 
             await attendance.save();
 
-            await Member.findOneAndUpdate({ studentRegNo: regNo }, { 
+            await Member.findByIdAndUpdate(dbMember._id, { 
                 $inc: { totalPoints: 10 },
                 $set: { linkedDeviceId: null }
             });
@@ -955,3 +1022,148 @@ export const toggleExemption = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// 1. Live Check-In Feed (Polling or WebSocket feed)
+export const getLiveAttendance = async (req, res) => {
+    try {
+        const { meetingId } = req.query;
+        let meetingQuery = { isActive: true, isArchived: false };
+        if (meetingId) {
+            meetingQuery = { _id: meetingId };
+        }
+
+        const meeting = await Meeting.findOne(meetingQuery);
+        if (!meeting) {
+            return res.json({
+                success: true,
+                hasActiveMeeting: false,
+                meeting: null,
+                count: 0,
+                attendees: []
+            });
+        }
+
+        const attendees = await Attendance.find({ meeting: meeting._id })
+            .sort({ timestamp: -1 })
+            .limit(100);
+
+        res.json({
+            success: true,
+            hasActiveMeeting: true,
+            meeting: {
+                id: meeting._id,
+                name: meeting.name,
+                campus: meeting.campus,
+                code: meeting.code,
+                date: meeting.date,
+                startTime: meeting.startTime,
+                endTime: meeting.endTime,
+                location: meeting.location
+            },
+            count: attendees.length,
+            lastScanned: attendees[0] || null,
+            attendees
+        });
+    } catch (error) {
+        console.error('Error in getLiveAttendance:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 2. Server-computed Weekly/Semester Attendance Rollup
+export const getAttendanceRollup = async (req, res) => {
+    try {
+        const { semester, campus } = req.query;
+        const semSetting = await Setting.findOne({ key: 'current_semester' });
+        let targetSemester = semester || semSetting?.value || 'MAY-AUG 2026';
+
+        const meetingQuery = {};
+        if (targetSemester && targetSemester !== 'All') meetingQuery.semester = targetSemester;
+        if (campus && campus !== 'All') meetingQuery.campus = campus;
+
+        let meetings = await Meeting.find(meetingQuery).sort({ date: 1 });
+        
+        // If target semester has no meetings yet and was not explicitly queried, check latest semester with meetings
+        if (meetings.length === 0 && !semester) {
+            const latestSession = await Meeting.findOne({}).sort({ date: -1 });
+            if (latestSession && latestSession.semester) {
+                targetSemester = latestSession.semester;
+                const fallbackQuery = { semester: targetSemester };
+                if (campus && campus !== 'All') fallbackQuery.campus = campus;
+                meetings = await Meeting.find(fallbackQuery).sort({ date: 1 });
+            }
+        }
+
+        const meetingIds = meetings.map(m => m._id);
+
+        const attendanceQuery = { meeting: { $in: meetingIds } };
+        const records = await Attendance.find(attendanceQuery);
+
+        const memberQuery = { status: 'Active' };
+        if (campus && campus !== 'All') memberQuery.campus = campus;
+        const totalActiveMembers = await Member.countDocuments(memberQuery);
+
+        const totalMeetings = meetings.length;
+        const totalAttended = records.length;
+        const totalPossible = totalMeetings * totalActiveMembers;
+        const overallRate = totalPossible > 0 ? Math.round((totalAttended / totalPossible) * 100) : 0;
+
+        // Breakdown per meeting
+        const meetingBreakdown = meetings.map(m => {
+            const count = records.filter(r => r.meeting?.toString() === m._id.toString()).length;
+            const rate = totalActiveMembers > 0 ? Math.round((count / totalActiveMembers) * 100) : 0;
+            return {
+                id: m._id,
+                name: m.name,
+                date: m.date,
+                campus: m.campus,
+                attendeesCount: count,
+                rate
+            };
+        });
+
+        res.json({
+            success: true,
+            semester: targetSemester,
+            campus: campus || 'All',
+            summary: {
+                totalMeetings,
+                totalActiveMembers,
+                totalAttended,
+                overallRate
+            },
+            meetings: meetingBreakdown
+        });
+    } catch (error) {
+        console.error('Error in getAttendanceRollup:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 3. Absentee Flags (Configurable consecutive threshold)
+export const getAbsenteeRadar = async (req, res) => {
+    try {
+        const threshold = Number(req.query.consecutiveThreshold) || 3;
+        const { campus } = req.query;
+
+        const query = {
+            status: 'Active',
+            consecutiveAbsences: { $gte: threshold }
+        };
+
+        if (campus && campus !== 'All') query.campus = campus;
+
+        const absentees = await Member.find(query).sort({ consecutiveAbsences: -1 });
+
+        res.json({
+            success: true,
+            threshold,
+            count: absentees.length,
+            absentees
+        });
+    } catch (error) {
+        console.error('Error in getAbsenteeRadar:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

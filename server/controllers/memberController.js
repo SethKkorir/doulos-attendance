@@ -6,22 +6,42 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 export const importMembers = async (req, res) => {
-    const { members } = req.body; // Expecting array of { studentRegNo, name, memberType, campus }
+    const { members } = req.body; // Expecting array of { studentRegNo, name, memberType, campus, phone, email }
 
     try {
-        const operations = members.map(m => ({
-            updateOne: {
-                filter: { studentRegNo: m.studentRegNo.trim().toUpperCase() },
-                update: {
-                    $set: {
-                        name: m.name,
-                        memberType: m.memberType || 'Visitor',
-                        campus: m.campus || 'Athi River'
-                    }
-                },
-                upsert: true
-            }
-        }));
+        if (!Array.isArray(members) || members.length === 0) {
+            return res.status(400).json({ message: 'No members provided for import' });
+        }
+
+        const operations = members.map(m => {
+            const rawReg = m.studentRegNo || m.admissionNumber || m.regNo || '';
+            const regNo = rawReg.trim().toUpperCase() || ('TMP-' + Date.now() + '-' + Math.floor(Math.random() * 1000));
+            
+            let campus = m.campus || 'Athi River';
+            if (campus === 'Nairobi') campus = 'Valley Road';
+
+            return {
+                updateOne: {
+                    filter: { studentRegNo: regNo },
+                    update: {
+                        $set: {
+                            name: (m.name || 'Doulos Member').trim(),
+                            memberType: m.memberType || 'Recruit',
+                            campus: campus,
+                            phone: (m.phone || '').trim(),
+                            email: (m.email || '').trim(),
+                            status: m.status || 'Active'
+                        },
+                        $setOnInsert: {
+                            douloidRank: m.douloidRank || 'None',
+                            totalPoints: m.totalPoints || 10,
+                            studentRegNo: regNo
+                        }
+                    },
+                    upsert: true
+                }
+            };
+        });
 
         await Member.bulkWrite(operations);
         res.json({ message: `Successfully processed ${members.length} members` });
@@ -121,8 +141,44 @@ export const getMembers = async (req, res) => {
 
 export const updateMember = async (req, res) => {
     try {
-        const member = await Member.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const { id } = req.params;
+        const updates = { ...req.body };
+
+        if (updates.studentRegNo) {
+            const cleanReg = updates.studentRegNo.trim().toUpperCase();
+            const existing = await Member.findOne({ studentRegNo: cleanReg, _id: { $ne: id } });
+            if (existing) {
+                return res.status(400).json({ message: `Admission number ${cleanReg} is already assigned to ${existing.name}.` });
+            }
+            // Cascade regNo change to attendance
+            const oldMember = await Member.findById(id);
+            if (oldMember && oldMember.studentRegNo && oldMember.studentRegNo !== cleanReg) {
+                await Attendance.updateMany(
+                    { studentRegNo: oldMember.studentRegNo },
+                    { $set: { studentRegNo: cleanReg } }
+                );
+            }
+            updates.studentRegNo = cleanReg;
+        }
+
+        const member = await Member.findByIdAndUpdate(id, updates, { new: true });
+        if (!member) return res.status(404).json({ message: 'Member not found' });
         res.json(member);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteMember = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const member = await Member.findById(id);
+        if (!member) return res.status(404).json({ message: 'Member not found' });
+
+        await Attendance.deleteMany({ studentRegNo: member.studentRegNo });
+        await Member.findByIdAndDelete(id);
+
+        res.json({ message: `Member ${member.name} (${member.studentRegNo}) permanently deleted.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -462,11 +518,35 @@ export const deleteMemberWithPassword = async (req, res) => {
 
 export const resetDeviceLock = async (req, res) => {
     try {
-        const member = await Member.findByIdAndUpdate(req.params.id, { linkedDeviceId: null });
-        if (member && mongoose.connection.readyState === 1) {
+        const idOrReg = req.params.id || req.body?.studentRegNo || req.body?.id;
+        if (!idOrReg) {
+            return res.status(400).json({ message: 'Member ID or Admission Number is required to reset device link.' });
+        }
+
+        let member;
+        if (mongoose.isValidObjectId(idOrReg)) {
+            member = await Member.findByIdAndUpdate(idOrReg, { linkedDeviceId: null }, { new: true });
+        } else {
+            const cleanReg = String(idOrReg).trim();
+            member = await Member.findOneAndUpdate(
+                { studentRegNo: { $regex: new RegExp(`^${cleanReg}$`, 'i') } },
+                { linkedDeviceId: null },
+                { new: true }
+            );
+        }
+
+        if (!member) {
+            return res.status(404).json({ message: `Member not found matching "${idOrReg}"` });
+        }
+
+        if (mongoose.connection.readyState === 1) {
             await mongoose.connection.db.collection('scanerrors').deleteMany({ studentRegNo: member.studentRegNo });
         }
-        res.json({ message: 'Device link reset successfully. The student can now use a new phone.' });
+
+        res.json({ 
+            message: `Device lock removed successfully for ${member.name} (${member.studentRegNo || 'Member'}). They can now scan and check in on their new phone immediately.`, 
+            member 
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

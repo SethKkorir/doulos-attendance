@@ -2,23 +2,64 @@ import Meeting from '../models/Meeting.js';
 import Training from '../models/Training.js';
 import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
+import Venue from '../models/Venue.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getKenyanTime, getWeekRange } from '../utils/kenyanTime.js';
+import { resolveMeetingOrTraining } from '../utils/sessionResolver.js';
 
 export const createMeeting = async (req, res) => {
-    const { name, date, campus, startTime, endTime, semester, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions } = req.body;
+    const { name, date, campus, startTime, endTime, semester, requiredFields, location, venueId, isTestMeeting, questionOfDay, questionType, questionOptions } = req.body;
 
     try {
+        let venueLocation = location;
+        let selectedCampus = campus;
+
+        // If venueId is provided, pull preset directly from DB
+        if (venueId) {
+            const venue = await Venue.findById(venueId);
+            if (venue) {
+                selectedCampus = venue.campus === 'Both' ? campus : venue.campus;
+                venueLocation = {
+                    name: venue.name,
+                    latitude: venue.latitude,
+                    longitude: venue.longitude,
+                    radius: venue.radius || 200
+                };
+            }
+        }
         if (!date || !campus) {
             return res.status(400).json({ message: 'Date and Campus are required to schedule a meeting' });
+        }
+
+        // --- MANDATORY INTERACTIVE QUESTION ---
+        const trimmedQuestion = (questionOfDay || '').trim();
+        if (!trimmedQuestion) {
+            return res.status(400).json({ message: 'Mandatory Requirement: An interactive roll-call question is required to create a meeting.' });
+        }
+
+        // If multiple choice or checkboxes, at least 2 choices required
+        if (['multiple_choice', 'checkboxes'].includes(questionType)) {
+            const validOptions = (questionOptions || []).filter(o => o && o.trim());
+            if (validOptions.length < 2) {
+                return res.status(400).json({ message: 'At least 2 choices are required for multiple choice / checkbox questions.' });
+            }
+        }
+
+        // --- MANDATORY GPS DEVICE LOCATION ---
+        const lat = venueLocation?.latitude;
+        const lng = venueLocation?.longitude;
+        if (lat === undefined || lat === null || isNaN(Number(lat)) ||
+            lng === undefined || lng === null || isNaN(Number(lng)) ||
+            Number(lat) === 0 || Number(lng) === 0) {
+            return res.status(400).json({ message: 'Mandatory Requirement: Capturing valid device GPS coordinates (latitude & longitude) is required to create a meeting.' });
         }
 
         // --- ENFORCE STRICT RULE: 1 ACTIVE MEETING PER WEEK PER CAMPUS ---
         if (!isTestMeeting && !req.body.allowMultiple) {
             const { startOfWeek, endOfWeek } = getWeekRange(date);
             const existingMeeting = await Meeting.findOne({
-                campus,
+                campus: selectedCampus,
                 isArchived: { $ne: true },
                 date: { $gte: startOfWeek, $lte: endOfWeek }
             });
@@ -26,14 +67,31 @@ export const createMeeting = async (req, res) => {
             if (existingMeeting) {
                 const existingDateStr = new Date(existingMeeting.date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' });
                 return res.status(400).json({
-                    message: `Policy Violation: Only one active meeting per week is allowed for ${campus}. "${existingMeeting.name}" is already scheduled for ${existingDateStr} (${existingMeeting.startTime} - ${existingMeeting.endTime}).`
+                    message: `Policy Violation: Only one active meeting per week is allowed for ${selectedCampus}. "${existingMeeting.name}" is already scheduled for ${existingDateStr} (${existingMeeting.startTime} - ${existingMeeting.endTime}).`
                 });
             }
         }
 
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name, date, campus, startTime, endTime, semester, code, requiredFields, location, isTestMeeting, questionOfDay, questionType, questionOptions
+            name,
+            date,
+            campus: selectedCampus,
+            startTime,
+            endTime,
+            semester,
+            code,
+            requiredFields,
+            location: {
+                name: venueLocation?.name || (selectedCampus === 'Valley Road' ? 'DAC 506' : 'Doulos Store'),
+                latitude: Number(lat),
+                longitude: Number(lng),
+                radius: Number(venueLocation?.radius) || 200
+            },
+            isTestMeeting,
+            questionOfDay: trimmedQuestion,
+            questionType: questionType || 'text',
+            questionOptions: (questionOptions || []).filter(o => o && o.trim())
         });
         await meeting.save();
         res.status(201).json(meeting);
@@ -83,7 +141,7 @@ export const getMeetings = async (req, res) => {
         }
         // --- END AUTO-CLOSE ---
 
-        const { includeArchived } = req.query;
+        const { includeArchived, range } = req.query;
 
         // 1. Fetch meetings with attendance count
         const pipeline = [];
@@ -91,6 +149,21 @@ export const getMeetings = async (req, res) => {
         if (includeArchived !== 'true') {
             pipeline.push({
                 $match: { isArchived: { $ne: true } }
+            });
+        }
+
+        // Support range=upcoming|past filter
+        if (range === 'upcoming') {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            pipeline.push({
+                $match: { date: { $gte: startOfToday } }
+            });
+        } else if (range === 'past') {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            pipeline.push({
+                $match: { date: { $lt: startOfToday } }
             });
         }
 
@@ -112,7 +185,31 @@ export const getMeetings = async (req, res) => {
             { $sort: { date: -1 } }
         );
 
-        const meetings = await Meeting.aggregate(pipeline);
+        let meetings = await Meeting.aggregate(pipeline);
+
+        // Enrich with server-computed noticeComplianceStatus (14-day rule)
+        meetings = meetings.map(m => {
+            const createdTime = new Date(m.createdAt || m.date).getTime();
+            const meetingTime = new Date(m.date).getTime();
+            const noticeDays = Math.round((meetingTime - createdTime) / (1000 * 60 * 60 * 24));
+            let noticeComplianceStatus = 'Compliant (14+ Days Notice)';
+            let isCompliant = true;
+
+            if (noticeDays < 7) {
+                noticeComplianceStatus = 'Urgent Notice (<7 Days Notice)';
+                isCompliant = false;
+            } else if (noticeDays < 14) {
+                noticeComplianceStatus = 'Notice Warning (7-13 Days Notice)';
+                isCompliant = false;
+            }
+
+            return {
+                ...m,
+                noticeComplianceStatus,
+                isNoticeCompliant: isCompliant,
+                noticeDaysLeadTime: noticeDays
+            };
+        });
 
         // Sort: Active First, then Date Descending
         meetings.sort((a, b) => {
@@ -211,32 +308,23 @@ export const setMeetingLocation = async (req, res) => {
 
 export const getMeetingByCode = async (req, res) => {
     try {
-        let isTraining = false;
-        const meetingCode = req.params.code;
-        let meeting;
+        const rawCode = req.params.code;
+        const preferredCampus = req.query.campus || null;
+        
+        const { meeting, isTraining, resolutionType, isSemesterLink } = await resolveMeetingOrTraining(rawCode, preferredCampus);
 
-        if (meetingCode.toLowerCase() === 'athi-river') {
-            meeting = await Meeting.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
-            if (!meeting) {
-                meeting = await Training.findOne({ campus: 'Athi River', isActive: true }).sort({ date: -1 });
-                if (meeting) {
-                    isTraining = true;
-                }
+        if (!meeting) {
+            if (isSemesterLink) {
+                return res.status(404).json({
+                    message: 'No active meeting or training in session for this semester right now. The Semester QR code only activates during live fellowship meetings and training sessions.'
+                });
             }
-            if (!meeting) {
-                return res.status(404).json({ message: 'No active meeting or training found for Athi River campus.' });
+            if (resolutionType === 'campus_none') {
+                return res.status(404).json({
+                    message: `No active meeting or training found for ${rawCode} campus.`
+                });
             }
-        } else {
-            meeting = await Meeting.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
-            if (!meeting) {
-                meeting = await Training.findOne({ code: { $regex: new RegExp(`^${meetingCode}$`, 'i') } });
-                if (!meeting) return res.status(404).json({ message: 'Meeting/Training not found' });
-                isTraining = true;
-            }
-        }
-
-        if (meeting && meeting.category === 'Training') {
-            isTraining = true;
+            return res.status(404).json({ message: 'Meeting/Training session not found or has expired.' });
         }
 
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);

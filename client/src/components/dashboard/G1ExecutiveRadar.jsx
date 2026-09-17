@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     Activity, ShieldAlert, Award, RefreshCw, CheckCircle2, 
     AlertTriangle, ArrowRight, RotateCcw, FileText, Check, 
-    X, Layers, Landmark, Users, Clock, Compass
+    X, Layers, Landmark, Users, Clock, Compass, Printer, QrCode
 } from 'lucide-react';
 import defaultApi from '../../api';
 
@@ -22,6 +22,8 @@ const G1ExecutiveRadar = ({ api, setMsg, isGuest, userRole }) => {
     const [rolloverForm, setRolloverForm] = useState({
         fromSemester: 'MAY-AUG 2026',
         toSemester: 'SEP-DEC 2026',
+        startDate: '',
+        endDate: '',
         spiritualTheme: 'Anchored in Competence, Formed in Faith',
         anchorScripture: 'Colossians 3:23-24'
     });
@@ -95,6 +97,12 @@ const G1ExecutiveRadar = ({ api, setMsg, isGuest, userRole }) => {
             notify({ type: 'success', text: res.data.message });
             setShowRolloverModal(false);
             fetchRadar();
+            // Automatically open printable QR poster in new tab
+            if (res.data?.posterDownloadUrl) {
+                window.open(res.data.posterDownloadUrl, '_blank');
+            } else {
+                window.open(`/api/rollover/qr-poster-pdf?semester=${encodeURIComponent(rolloverForm.toSemester)}`, '_blank');
+            }
         } catch (err) {
             notify({ type: 'error', text: err.response?.data?.message || 'Semester rollover failed' });
         } finally {
@@ -118,43 +126,40 @@ const G1ExecutiveRadar = ({ api, setMsg, isGuest, userRole }) => {
         }
     };
 
+    const currentSemester = radar?.currentSemester || 'SEP-DEC 2026';
+
     if (loading) {
         return (
             <div style={{ padding: '3rem', textAlign: 'center', color: '#7E7A9B' }}>
-                <div style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid #EBEBF2', borderTopColor: '#4B3F8C', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                <p style={{ marginTop: '1rem', fontWeight: 700 }}>Synchronizing G1/G2 Executive Command Center...</p>
+                <Activity size={32} className="animate-spin" style={{ margin: '0 auto 1rem', display: 'block', opacity: 0.5 }} />
+                <p>Loading G1 Executive Radar & Cross-Campus Governance...</p>
             </div>
         );
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-            {/* HERO EXECUTIVE BANNER */}
-            <div style={{ 
-                background: '#FFFFFF', 
-                border: '1px solid #EBEBF2', 
-                borderRadius: '20px', 
-                padding: '1.75rem',
-                boxShadow: '0 4px 16px rgba(75, 63, 140, 0.04)',
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.4s ease-out' }}>
+            {/* EXECUTIVE SUMMARY BAR */}
+            <div style={{
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                padding: '1.5rem 2rem',
+                border: '1px solid #EBEBF2',
                 display: 'flex',
-                flexWrap: 'wrap',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '1.25rem'
+                flexWrap: 'wrap',
+                gap: '1.25rem',
+                boxShadow: '0 4px 20px rgba(75, 63, 140, 0.05)'
             }}>
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
-                        <div style={{ background: '#FEF3C7', color: '#D97706', padding: '0.35rem', borderRadius: '8px', display: 'flex' }}>
-                            <Landmark size={20} />
-                        </div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#B45309' }}>
-                            EXECUTIVE COMMAND CENTER (G1 & G2)
-                        </span>
-                        <span style={{ fontSize: '0.7rem', color: '#7E7A9B', fontWeight: 700 }}>
-                            • GLOBAL GOVERNANCE RADAR
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                        <Compass size={22} color="#4B3F8C" />
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#4B3F8C', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                            G1 EXECUTIVE RADAR & LIFECYCLE
                         </span>
                     </div>
-                    <h2 style={{ margin: 0, color: '#1E1B39', fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, color: '#1E1B39' }}>
                         Cross-Campus Alignment & Executive Governance
                     </h2>
                     <p style={{ margin: '0.25rem 0 0 0', color: '#7E7A9B', fontSize: '0.85rem' }}>
@@ -163,6 +168,29 @@ const G1ExecutiveRadar = ({ api, setMsg, isGuest, userRole }) => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <a
+                        href={`/api/rollover/qr-poster-pdf?semester=${encodeURIComponent(currentSemester)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                            background: '#EFF6FF',
+                            color: '#1D4ED8',
+                            border: '1px solid #BFDBFE',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            padding: '0.6rem 1.1rem',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            cursor: 'pointer',
+                            textDecoration: 'none'
+                        }}
+                    >
+                        <Printer size={16} />
+                        <span>Print QR Poster (PDF)</span>
+                    </a>
+
                     <button
                         onClick={() => setShowRolloverModal(true)}
                         style={{
@@ -468,6 +496,33 @@ const G1ExecutiveRadar = ({ api, setMsg, isGuest, userRole }) => {
                                         type="text"
                                         value={rolloverForm.toSemester}
                                         onChange={(e) => setRolloverForm({ ...rolloverForm, toSemester: e.target.value })}
+                                        style={{ width: '100%', background: '#FFFFFF', border: '1px solid #D1D1DB', color: '#1E1B39', padding: '0.6rem', borderRadius: '8px', boxSizing: 'border-box' }}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', color: '#666280', fontWeight: 700, marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                                        START DATE <span style={{ color: '#EF4444' }}>*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={rolloverForm.startDate}
+                                        onChange={(e) => setRolloverForm({ ...rolloverForm, startDate: e.target.value })}
+                                        style={{ width: '100%', background: '#FFFFFF', border: '1px solid #D1D1DB', color: '#1E1B39', padding: '0.6rem', borderRadius: '8px', boxSizing: 'border-box' }}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', color: '#666280', fontWeight: 700, marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                                        END DATE <span style={{ color: '#EF4444' }}>*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={rolloverForm.endDate}
+                                        onChange={(e) => setRolloverForm({ ...rolloverForm, endDate: e.target.value })}
                                         style={{ width: '100%', background: '#FFFFFF', border: '1px solid #D1D1DB', color: '#1E1B39', padding: '0.6rem', borderRadius: '8px', boxSizing: 'border-box' }}
                                         required
                                     />

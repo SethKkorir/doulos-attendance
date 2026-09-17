@@ -422,7 +422,7 @@ export const saveCampProgram = async (req, res) => {
 export const getCadresAndRecruits = async (req, res) => {
     try {
         const { campus, rank, search } = req.query;
-        const query = { isActive: true };
+        const query = { status: { $nin: ['Archived', 'Archived-Concluded'] } };
 
         if (campus && campus !== 'Both' && campus !== 'Joint') {
             query.campus = campus;
@@ -446,7 +446,7 @@ export const getCadresAndRecruits = async (req, res) => {
         const members = await Member.find(query).sort({ totalPoints: -1, douloidRank: 1, name: 1 });
 
         // Calculate Directorate metrics
-        const allCadresQuery = { isActive: true };
+        const allCadresQuery = { status: { $nin: ['Archived', 'Archived-Concluded'] } };
         if (campus && campus !== 'Both' && campus !== 'Joint') {
             allCadresQuery.campus = campus;
         }
@@ -454,7 +454,8 @@ export const getCadresAndRecruits = async (req, res) => {
 
         const metrics = {
             totalCadres: allMembers.filter(m => m.douloidRank && m.douloidRank !== 'None').length,
-            recruitsInPipeline: allMembers.filter(m => !m.douloidRank || m.douloidRank === 'None').length,
+            recruitsInPipeline: allMembers.filter(m => m.memberType === 'Recruit').length,
+            unrankedDouloids: allMembers.filter(m => m.memberType === 'Douloid' && (!m.douloidRank || m.douloidRank === 'None')).length,
             shadowDouloids: allMembers.filter(m => m.douloidRank === 'Shadow Douloid').length,
             basicDouloids: allMembers.filter(m => m.douloidRank === 'Basic Douloid').length,
             intermediateDouloids: allMembers.filter(m => m.douloidRank === 'Intermediate Douloid').length,
@@ -578,7 +579,15 @@ export const evaluateMember = async (req, res) => {
         const { id } = req.params;
         const { domain, score, notes, passed, evaluator } = req.body;
 
-        const validDomains = ['Team Building', 'Freedom Base Operations', 'High Ropes', 'Rescue & Extrication', 'First Aid & Wellbeing'];
+        const validDomains = [
+            'Team Building',
+            'Freedom Base',
+            'High Ropes',
+            'Rescue & Extrication',
+            'First Aid',
+            'Safety & Risk Management',
+            'Curriculum & Mentorship'
+        ];
         if (!validDomains.includes(domain)) {
             return res.status(400).json({ message: `Invalid domain. Must be one of: ${validDomains.join(', ')}` });
         }

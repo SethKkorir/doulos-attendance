@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const memberSchema = new mongoose.Schema({
-    studentRegNo: { type: String, required: true, unique: true },
+    studentRegNo: { type: String, default: '', trim: true },
     name: { type: String, required: true },
     memberType: {
         type: String,
@@ -36,10 +36,10 @@ const memberSchema = new mongoose.Schema({
     needsGraduationCongrats: { type: Boolean, default: false },
     linkedDeviceId: { type: String, default: null },
     
-    // G5 Training & Competency Specification
+    // G5 Training & Competency Specification (4 Levels of Facilitator Ranking)
     douloidRank: {
         type: String,
-        enum: ['None', 'Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid', 'Senior Lead Douloid'],
+        enum: ['None', 'Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid'],
         default: 'None'
     },
     belayStatus: {
@@ -56,7 +56,15 @@ const memberSchema = new mongoose.Schema({
         evaluator: { type: String, default: 'G5 Directorate' },
         domain: {
             type: String,
-            enum: ['Team Building', 'Freedom Base Operations', 'High Ropes', 'Rescue & Extrication', 'First Aid & Wellbeing']
+            enum: [
+                'Team Building',
+                'Freedom Base',
+                'High Ropes',
+                'Rescue & Extrication',
+                'First Aid',
+                'Safety & Risk Management',
+                'Curriculum & Mentorship'
+            ]
         },
         score: { type: Number, min: 1, max: 5, default: 3 },
         notes: { type: String, default: '' },
@@ -88,4 +96,15 @@ const memberSchema = new mongoose.Schema({
     environmentalStreak: { type: Number, default: 0 }
 }, { timestamps: true });
 
-export default mongoose.model('Member', memberSchema);
+memberSchema.index(
+    { studentRegNo: 1 },
+    { 
+        unique: true, 
+        partialFilterExpression: { studentRegNo: { $type: "string", $gt: "" } } 
+    }
+);
+
+const Member = mongoose.model('Member', memberSchema);
+Member.collection.dropIndex('studentRegNo_1').catch(() => {});
+
+export default Member;

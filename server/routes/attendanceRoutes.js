@@ -1,8 +1,24 @@
 import express from 'express';
-import { submitAttendance, getAttendance, deleteAttendance, getStudentPortalData, manualCheckIn, bulkManualCheckIn, toggleExemption } from '../controllers/attendanceController.js';
+import {
+    submitAttendance,
+    getAttendance,
+    deleteAttendance,
+    getStudentPortalData,
+    manualCheckIn,
+    bulkManualCheckIn,
+    toggleExemption,
+    getLiveAttendance,
+    getAttendanceRollup,
+    getAbsenteeRadar
+} from '../controllers/attendanceController.js';
 import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Live feed, rollup, and absentee radar (Must precede /:meetingId)
+router.get('/live', getLiveAttendance);
+router.get('/rollup', getAttendanceRollup);
+router.get('/absentees', getAbsenteeRadar);
 
 // Public route for students to submit
 router.post('/submit', optionalVerify, submitAttendance);

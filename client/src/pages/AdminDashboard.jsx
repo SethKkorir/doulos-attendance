@@ -779,10 +779,14 @@ const AdminDashboard = () => {
                 </div>
                 <div 
                     className="doulos-identity-avatar"
-                    style={{ width: '34px', height: '34px', fontSize: '0.9rem', cursor: 'pointer' }}
+                    style={{ width: '34px', height: '34px', fontSize: '0.9rem', cursor: 'pointer', overflow: 'hidden', padding: (localStorage.getItem('username') || '').toLowerCase().includes('doulos') ? '2px' : undefined, background: (localStorage.getItem('username') || '').toLowerCase().includes('doulos') ? '#FFFFFF' : undefined }}
                     onClick={() => { setActiveTab('identity'); setMobileNavOpen(false); }}
                 >
-                    {(localStorage.getItem('username') || userRole).charAt(0).toUpperCase()}
+                    {(localStorage.getItem('username') || '').toLowerCase().includes('doulos') ? (
+                        <img src="/logo.png" alt="Doulos" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                        (localStorage.getItem('username') || userRole).charAt(0).toUpperCase()
+                    )}
                 </div>
             </header>
 
@@ -932,8 +936,15 @@ const AdminDashboard = () => {
                                     onClick={() => setActiveTab('identity')}
                                     title="Account Settings"
                                 >
-                                    <div className="doulos-identity-avatar">
-                                        {(localStorage.getItem('username') || userRole).charAt(0).toUpperCase()}
+                                    <div 
+                                        className="doulos-identity-avatar"
+                                        style={{ overflow: 'hidden', padding: (localStorage.getItem('username') || '').toLowerCase().includes('doulos') ? '2px' : undefined, background: (localStorage.getItem('username') || '').toLowerCase().includes('doulos') ? '#FFFFFF' : undefined }}
+                                    >
+                                        {(localStorage.getItem('username') || '').toLowerCase().includes('doulos') ? (
+                                            <img src="/logo.png" alt="Doulos" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        ) : (
+                                            (localStorage.getItem('username') || userRole).charAt(0).toUpperCase()
+                                        )}
                                     </div>
                                     <div className="doulos-identity-info">
                                         <span className="doulos-identity-name">

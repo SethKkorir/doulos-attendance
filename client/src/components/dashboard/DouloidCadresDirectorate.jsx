@@ -6,11 +6,13 @@ import {
 } from 'lucide-react';
 
 const DOMAINS = [
-    { id: 'Team Building', label: 'Team Building', desc: 'Group dynamics, initiatives & experiential debriefs' },
-    { id: 'Freedom Base Operations', label: 'Freedom Base Operations', desc: 'Hardware logs, helmet audits & site safety' },
-    { id: 'High Ropes', label: 'High Ropes Course', desc: 'Anchor rigging, carabiner squeeze & dynamic belaying' },
-    { id: 'Rescue & Extrication', label: 'Rescue & Extrication', desc: 'Lukenya ridge rescue, litter haul & fall arrest' },
-    { id: 'First Aid & Wellbeing', label: 'First Aid & Wellbeing', desc: 'Wilderness triage, hydration & shock protocols' }
+    { id: 'Team Building', label: '1. Team Building', desc: 'Client handling, initiatives, briefing/debriefing & group dynamics' },
+    { id: 'Freedom Base', label: '2. Freedom Base', desc: 'Equipment procedures, camp regulations, set & set down, daily checks' },
+    { id: 'High Ropes', label: '3. High Ropes', desc: 'Elements knowledge, belaying techniques, safety procedures & PPE inspection' },
+    { id: 'Rescue & Extrication', label: '4. Rescue & Extrication', desc: 'Traversing, suspension trauma, rope rescue systems & pick-off rescues' },
+    { id: 'First Aid', label: '5. First Aid', desc: 'Basic first aid skills, emergency response, evacuation & wilderness first aid' },
+    { id: 'Safety & Risk Management', label: '6. Safety & Risk Management', desc: 'Dynamic risk assessment, incident prevention & SOP compliance' },
+    { id: 'Curriculum & Mentorship', label: '7. Curriculum & Mentorship', desc: 'Facilitator mentoring, program strategy & client protocol' }
 ];
 
 const DouloidCadresDirectorate = ({ api, campus, setMsg, isGuest, userRole }) => {
@@ -349,7 +351,7 @@ const DouloidCadresDirectorate = ({ api, campus, setMsg, isGuest, userRole }) =>
                                                     {c.name}
                                                 </h5>
                                                 <div style={{ fontSize: '0.78rem', color: "#7E7A9B", marginTop: '0.15rem' }}>
-                                                    {c.studentRegNo} • <span style={{ color: '#25AAE1' }}>{c.campus}</span>
+                                                    {c.studentRegNo ? `${c.studentRegNo} • ` : ''}<span style={{ color: '#25AAE1' }}>{c.campus}</span>
                                                 </div>
                                             </div>
 
@@ -417,7 +419,7 @@ const DouloidCadresDirectorate = ({ api, campus, setMsg, isGuest, userRole }) =>
                                         {/* 5-Domain Assessments Status */}
                                         <div style={{ marginTop: '0.85rem', background: 'rgba(255,255,255,0.02)', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: "#7E7A9B", marginBottom: '0.25rem' }}>
-                                                <span>5-Domain Evaluations:</span>
+                                                <span>7 Evaluation Areas:</span>
                                                 <span style={{ color: "#1E1B39", fontWeight: 700 }}>
                                                     {passedCount} Passed ({evalCount} Total)
                                                 </span>
@@ -505,13 +507,13 @@ const DouloidCadresDirectorate = ({ api, campus, setMsg, isGuest, userRole }) =>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                             <div>
                                 <span style={{ fontSize: '0.72rem', color: '#25AAE1', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                    5-DOMAIN ASSESSMENT RECORD
+                                    7-DOMAIN ASSESSMENT RECORD
                                 </span>
                                 <h3 style={{ margin: '0.2rem 0 0 0', color: "#1E1B39", fontWeight: 800, fontSize: '1.2rem' }}>
                                     Evaluate: {evaluatingMember.name}
                                 </h3>
                                 <p style={{ margin: '0.2rem 0 0 0', color: "#7E7A9B", fontSize: '0.8rem' }}>
-                                    Reg: {evaluatingMember.studentRegNo} • Rank: {evaluatingMember.douloidRank || 'Recruit'}
+                                    {evaluatingMember.studentRegNo ? `Reg: ${evaluatingMember.studentRegNo} • ` : ''}Rank: {evaluatingMember.douloidRank || 'Recruit'}
                                 </p>
                             </div>
                             <button onClick={() => setEvaluatingMember(null)} style={{ background: 'transparent', border: 'none', color: "#7E7A9B", cursor: 'pointer' }}>
@@ -535,28 +537,53 @@ const DouloidCadresDirectorate = ({ api, campus, setMsg, isGuest, userRole }) =>
                                 </select>
                             </div>
 
-                            {/* Score Slider (1-5) */}
+                            {/* Score Selector (1-5 Stars) */}
                             <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                     <label style={{ fontSize: '0.75rem', color: "#7E7A9B", fontWeight: 700 }}>
                                         PROFICIENCY SCORE (1-5)
                                     </label>
-                                    <span style={{ color: '#fbbf24', fontWeight: 900, fontSize: '1.1rem' }}>
-                                        {evaluationForm.score} / 5 Stars
+                                    <span style={{ color: '#D97706', fontWeight: 800, fontSize: '0.95rem', background: '#FEF3C7', padding: '0.15rem 0.55rem', borderRadius: '999px' }}>
+                                        {evaluationForm.score}★ {evaluationForm.score >= 4 ? '• Proficient' : evaluationForm.score === 3 ? '• Competent' : '• Developing'}
                                     </span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="5"
-                                    value={evaluationForm.score}
-                                    onChange={(e) => setEvaluationForm({ ...evaluationForm, score: Number(e.target.value) })}
-                                    style={{ width: '100%', accentColor: '#25AAE1', cursor: 'pointer' }}
-                                />
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: "#7E7A9B", marginTop: '0.2rem' }}>
-                                    <span>1: Novice / Needs Guidance</span>
-                                    <span>3: Competent Operator</span>
-                                    <span>5: Master Instructor</span>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                        {[1, 2, 3, 4, 5].map(s => (
+                                            <button
+                                                key={s}
+                                                type="button"
+                                                onClick={() => setEvaluationForm({ ...evaluationForm, score: s })}
+                                                style={{
+                                                    padding: '0.35rem 0.65rem',
+                                                    borderRadius: '8px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 800,
+                                                    border: evaluationForm.score === s ? '1.5px solid #E8A33D' : '1px solid #E2E8F0',
+                                                    background: evaluationForm.score === s ? '#FFFBEB' : '#F8FAFC',
+                                                    color: evaluationForm.score === s ? '#B45309' : '#64748B',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s ease'
+                                                }}
+                                            >
+                                                {s}★
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="5"
+                                        value={evaluationForm.score}
+                                        onChange={(e) => setEvaluationForm({ ...evaluationForm, score: Number(e.target.value) })}
+                                        style={{ width: '90px', accentColor: '#E8A33D', cursor: 'pointer' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: "#7E7A9B", marginTop: '0.35rem' }}>
+                                    <span>1: Novice / Guidance</span>
+                                    <span>3: Competent</span>
+                                    <span>5: Mastery</span>
                                 </div>
                             </div>
 

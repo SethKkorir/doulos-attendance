@@ -37,7 +37,7 @@ const StudentEvents = () => {
                 <div style={{ position: 'absolute', left: '0', top: '0', bottom: '0', width: '2px', background: '#EBEBF2' }}></div>
                 
                 {events.map((e, idx) => (
-                    <div key={e._id} style={{ position: 'relative', marginBottom: '1.5rem', paddingLeft: '1.5rem' }}>
+                    <div key={e._id ? `${e._id}-${idx}` : `event-${idx}`} style={{ position: 'relative', marginBottom: '1.5rem', paddingLeft: '1.5rem' }}>
                         <div style={{ 
                             position: 'absolute', left: '-5px', top: '5px', width: '12px', height: '12px', 
                             background: 'hsl(var(--color-primary))', borderRadius: '50%', border: '2px solid var(--color-bg)' 

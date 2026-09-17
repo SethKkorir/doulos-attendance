@@ -12,6 +12,8 @@ export default function AddRecruitModal({ isOpen, onClose, onMemberAdded, api, s
         name: '',
         studentRegNo: '',
         campus: 'Athi River',
+        memberType: 'Douloid',
+        douloidRank: 'None',
         phone: '',
         email: ''
     });
@@ -21,10 +23,7 @@ export default function AddRecruitModal({ isOpen, onClose, onMemberAdded, api, s
     if (!isOpen) return null;
 
     const handleRegNoChange = (e) => {
-        let v = e.target.value.replace(/\D/g, '');
-        if (v.length > 2) {
-            v = v.slice(0, 2) + '-' + v.slice(2, 6);
-        }
+        const v = e.target.value.toUpperCase();
         setFormData(prev => ({ ...prev, studentRegNo: v }));
     };
 
@@ -48,14 +47,15 @@ export default function AddRecruitModal({ isOpen, onClose, onMemberAdded, api, s
                 name: formData.name.trim(),
                 studentRegNo: formData.studentRegNo.trim().toUpperCase(),
                 campus: formData.campus,
+                memberType: formData.memberType,
+                douloidRank: formData.douloidRank,
                 phone: formData.phone.trim(),
                 email: formData.email.trim(),
-                memberType: 'Recruit',
                 status: 'Active'
             };
 
             const res = await api.post('/members', payload);
-            setMsg?.({ type: 'success', text: `Recruit ${payload.name.split(' ')[0]} added to register!` });
+            setMsg?.({ type: 'success', text: `Member ${payload.name.split(' ')[0]} added to register!` });
             
             // Callback to update parent table immediately without full reload
             if (onMemberAdded) {
@@ -118,10 +118,10 @@ export default function AddRecruitModal({ isOpen, onClose, onMemberAdded, api, s
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#2D2D3A', letterSpacing: '-0.01em' }}>
-                                Add Recruit
+                                Register Member / Recruit
                             </h3>
                             <span style={{ fontSize: '0.76rem', color: '#8E8B9F', fontWeight: 500 }}>
-                                Fast one-screen recruit intake
+                                One-screen intake: Full Name, Admission Number, Campus, Category & Rank
                             </span>
                         </div>
                     </div>
@@ -194,15 +194,15 @@ export default function AddRecruitModal({ isOpen, onClose, onMemberAdded, api, s
                     {/* Admission Number */}
                     <div>
                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#4A4560', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.45rem' }}>
-                            Admission Number <span style={{ color: '#EF4444' }}>*</span>
+                            Admission Number (Reg No) <span style={{ color: '#EF4444' }}>*</span>
                         </label>
                         <input
                             type="text"
                             required
-                            placeholder="e.g. 21-1234"
+                            placeholder="e.g. 24-0578 or 21-1234"
                             value={formData.studentRegNo}
                             onChange={handleRegNoChange}
-                            maxLength={7}
+                            maxLength={30}
                             style={{
                                 width: '100%',
                                 height: '44px',
@@ -245,6 +245,60 @@ export default function AddRecruitModal({ isOpen, onClose, onMemberAdded, api, s
                                     {camp}
                                 </button>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Member Category & Douloid Rank */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#4A4560', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.45rem' }}>
+                                Category <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <select
+                                value={formData.memberType}
+                                onChange={e => setFormData({ ...formData, memberType: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    height: '42px',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #E5E5EB',
+                                    padding: '0 0.75rem',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    color: '#2D2D3A',
+                                    backgroundColor: '#FFFFFF'
+                                }}
+                            >
+                                <option value="Douloid">Douloid (Facilitator)</option>
+                                <option value="Recruit">Recruit</option>
+                                <option value="Visitor">Visitor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#4A4560', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.45rem' }}>
+                                Initial Rank
+                            </label>
+                            <select
+                                value={formData.douloidRank}
+                                onChange={e => setFormData({ ...formData, douloidRank: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    height: '42px',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #E5E5EB',
+                                    padding: '0 0.75rem',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    color: '#2D2D3A',
+                                    backgroundColor: '#FFFFFF'
+                                }}
+                            >
+                                <option value="None">None</option>
+                                <option value="Shadow Douloid">Shadow Douloid</option>
+                                <option value="Basic Douloid">Basic Douloid</option>
+                                <option value="Intermediate Douloid">Intermediate Douloid</option>
+                                <option value="Lead Douloid">Lead Douloid</option>
+                            </select>
                         </div>
                     </div>
 

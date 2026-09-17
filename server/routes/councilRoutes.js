@@ -28,7 +28,8 @@ import {
     submitHandoverDossier,
     sealHandoverDossier,
     executeSemesterRollover,
-    rollbackSemesterRollover
+    rollbackSemesterRollover,
+    getRolloverSnapshots
 } from '../controllers/councilController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -36,6 +37,7 @@ const router = express.Router();
 
 // Executive (G1 / G2)
 router.get('/executive-radar', verifyAdmin, getExecutiveRadar);
+router.get('/rollover/snapshots', verifyAdmin, getRolloverSnapshots);
 router.post('/rollover/execute', verifyAdmin, executeSemesterRollover);
 router.post('/rollover/rollback', verifyAdmin, rollbackSemesterRollover);
 
