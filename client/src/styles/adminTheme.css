@@ -647,19 +647,19 @@ div[style*="position: fixed"] div[style*="#0d111b"] {
 
 div[style*="position: fixed"] h1,
 div[style*="position: fixed"] h2,
-div[style*="position: fixed"] h3,
-div[style*="position: fixed"] h4 {
+div[style*="position: fixed"]:not(.portal-scanner-overlay):not([data-scanner-modal="true"]) h3,
+div[style*="position: fixed"]:not(.portal-scanner-overlay):not([data-scanner-modal="true"]) h4 {
     color: #1E1B39 !important;
 }
 
-div[style*="position: fixed"] label {
+div[style*="position: fixed"]:not(.portal-scanner-overlay):not([data-scanner-modal="true"]) label {
     color: #666280 !important;
     font-weight: 700 !important;
 }
 
-div[style*="position: fixed"] input,
-div[style*="position: fixed"] select,
-div[style*="position: fixed"] textarea {
+div[style*="position: fixed"]:not(.portal-scanner-overlay):not([data-scanner-modal="true"]) input,
+div[style*="position: fixed"]:not(.portal-scanner-overlay):not([data-scanner-modal="true"]) select,
+div[style*="position: fixed"]:not(.portal-scanner-overlay):not([data-scanner-modal="true"]) textarea {
     background: #FFFFFF !important;
     border: 1.5px solid #D1D1DB !important;
     color: #1E1B39 !important;
