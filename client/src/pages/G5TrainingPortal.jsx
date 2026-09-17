@@ -1892,7 +1892,7 @@ const G5TrainingPortal = () => {
                                                 </div>
                                             ) : (
                                                 filteredAttendanceMembers.slice(0, 30).map((member) => {
-                                                    const rate = member.totalPoints ? Math.min(100, Math.round((member.totalPoints / 80) * 100)) : 85;
+                                                    const rate = member.totalPoints ? Math.min(100, Math.max(0, Math.round((member.totalPoints / 80) * 100))) : 0;
                                                     const isAbsentFlag = (member.consecutiveAbsences || 0) >= 2;
                                                     return (
                                                         <div key={member._id} className="g5-attendance-member-card">
@@ -1982,7 +1982,7 @@ const G5TrainingPortal = () => {
                                                 </thead>
                                                 <tbody>
                                                     {filteredAttendanceMembers.slice(0, 30).map((member) => {
-                                                        const rate = member.totalPoints ? Math.min(100, Math.round((member.totalPoints / 80) * 100)) : 85;
+                                                        const rate = member.totalPoints ? Math.min(100, Math.max(0, Math.round((member.totalPoints / 80) * 100))) : 0;
                                                         const isAbsentFlag = (member.consecutiveAbsences || 0) >= 2;
                                                         return (
                                                             <tr key={member._id}>

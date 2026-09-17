@@ -63,6 +63,7 @@ router.patch('/incidents/:id/close', verifyAdmin, closeIncidentLog);
 // Welfare & Live Cockpit (G6)
 router.get('/welfare/ticker', verifyAdmin, getWelfareLiveTicker);
 router.get('/welfare/absence-radar', verifyAdmin, getAbsenceRadar);
+router.get('/absence-radar', verifyAdmin, getAbsenceRadar);
 router.post('/welfare/manual-checkin', verifyAdmin, executeManualCheckin);
 
 // Treasury & MPESA (G7)
