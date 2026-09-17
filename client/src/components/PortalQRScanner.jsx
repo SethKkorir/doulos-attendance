@@ -352,6 +352,14 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
         const startCamera = async () => {
             try {
+                if (html5QrCodeRef.current) {
+                    await safeStopScanner(html5QrCodeRef.current);
+                    html5QrCodeRef.current = null;
+                }
+
+                const container = document.getElementById(scannerId);
+                if (!container || !isMounted) return;
+
                 // Initialize with hardware-accelerated BarcodeDetector if browser supports it
                 const qrScanner = new Html5Qrcode(scannerId, { 
                     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
@@ -836,7 +844,6 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
                 {/* ─── Viewfinder Container (Active during camera scanning only) ─── */}
                 <div 
-                    id={scannerId} 
                     className={scannerStatus === 'question' ? 'scanner-hidden' : ''}
                     style={{ 
                         position: 'relative',
@@ -849,7 +856,19 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                         overflow: 'hidden'
                     }} 
                 >
-                    {/* iOS Viewfinder Reticle */}
+                    {/* Dedicated HTML5-QRCode container - MUST NOT HAVE ANY REACT CHILDREN */}
+                    <div 
+                        id={scannerId} 
+                        style={{ 
+                            width: '100%', 
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    />
+
+                    {/* iOS Viewfinder Reticle (Rendered as sibling overlay so React doesn't mutate scanner container) */}
                     {scannerStatus === 'scanning' && (
                         <div style={{
                             position: 'absolute',
