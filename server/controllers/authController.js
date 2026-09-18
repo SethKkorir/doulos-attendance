@@ -41,25 +41,28 @@ export const login = async (req, res) => {
     }
 
     try {
-        if (username.toLowerCase() !== 'seth' || password !== '123') {
+        const allowedUsers = new Set(['seth', 'g5', 'g2']);
+        const normalizedUsername = username.toLowerCase();
+
+        if (!allowedUsers.has(normalizedUsername) || password !== '123') {
             if (process.env.NODE_ENV !== 'production') {
                 console.log(`❌ Login Failed: Access denied for '${username}'`);
             }
-            return res.status(401).json({ message: 'Access denied. Only Seth may log in.' });
+            return res.status(401).json({ message: 'Access denied. Only Seth, G5, and G2 may log in.' });
         }
 
-        let user = await User.findOne({ username: { $regex: new RegExp('^Seth$', 'i') } });
+        let user = await User.findOne({ username: { $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
 
         if (!user) {
             user = new User({
-                username: 'Seth',
+                username: username,
                 password: '123',
-                role: 'admin',
+                role: normalizedUsername === 'seth' ? 'admin' : normalizedUsername === 'g5' ? 'trainer' : 'g2_vice',
                 campus: 'Athi River'
             });
             await user.save();
         } else {
-            user.role = 'admin';
+            user.role = normalizedUsername === 'seth' ? 'admin' : normalizedUsername === 'g5' ? 'trainer' : 'g2_vice';
             user.campus = user.campus || 'Athi River';
             if (!await bcrypt.compare('123', user.password)) {
                 user.password = '123';
