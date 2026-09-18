@@ -297,13 +297,12 @@ const G2OperationsPortal = () => {
                 status: memberToEdit.status || 'Active'
             });
             showToast(`Member details updated for ${memberToEdit.name}`);
+            setMemberToEdit(null);
             queryClient.invalidateQueries({ queryKey: ['roster-members'] });
             queryClient.invalidateQueries({ queryKey: ['g2-stats'] });
         } catch (err) {
             console.error('Error updating member:', err);
             showToast(err.response?.data?.message || 'Failed to update member', 'error');
-        } finally {
-            setMemberToEdit(null);
         }
     };
 

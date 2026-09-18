@@ -63,7 +63,8 @@ import {
     Trash2,
     Smartphone,
     Unlock,
-    Lock
+    Lock,
+    Edit
 } from 'lucide-react';
 
 const G5TrainingPortal = () => {
@@ -163,14 +164,21 @@ const G5TrainingPortal = () => {
         location: {
             name: 'Doulos Store',
             radius: 200,
-            latitude: null,
-            longitude: null
+            latitude: '',
+            longitude: ''
         }
     });
     const [meetingCreating, setMeetingCreating] = useState(false);
     const [allowMultipleMeeting, setAllowMultipleMeeting] = useState(false);
     const [gpsCapturing, setGpsCapturing] = useState(false);
     const [gpsCaptured, setGpsCaptured] = useState(false);
+
+    // Edit Meeting State
+    const [showEditMeetingModal, setShowEditMeetingModal] = useState(false);
+    const [editMeetingForm, setEditMeetingForm] = useState(null);
+    const [editMeetingLoading, setEditMeetingLoading] = useState(false);
+    const [editGpsCapturing, setEditGpsCapturing] = useState(false);
+    const [editGpsCaptured, setEditGpsCaptured] = useState(false);
 
     // 1. Live G5 Dashboard Stats
     const {
@@ -919,6 +927,166 @@ const G5TrainingPortal = () => {
         }
     };
 
+    // Meeting Edit Handlers (G5 Role Exclusive)
+    const handleOpenEditMeeting = (meeting) => {
+        if (!meeting) return;
+        const initialDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        setEditMeetingForm({
+            _id: meeting._id,
+            name: meeting.name || 'Weekly Doulos',
+            campus: meeting.campus || 'Athi River',
+            date: initialDate,
+            startTime: meeting.startTime || '18:00',
+            endTime: meeting.endTime || '20:00',
+            questionType: meeting.questionType || 'text',
+            questionOfDay: meeting.questionOfDay || '',
+            questionOptions: (meeting.questionOptions && meeting.questionOptions.length > 0)
+                ? meeting.questionOptions
+                : (meeting.questionType === 'multiple_choice' || meeting.questionType === 'checkboxes') ? ['', ''] : [],
+            location: {
+                name: meeting.location?.name || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store'),
+                radius: Number(meeting.location?.radius) || 200,
+                latitude: meeting.location?.latitude ?? '',
+                longitude: meeting.location?.longitude ?? ''
+            },
+            allowMultiple: false,
+            isTestMeeting: Boolean(meeting.isTestMeeting)
+        });
+        setEditGpsCaptured(Boolean(meeting.location?.latitude && meeting.location?.longitude));
+        setShowEditMeetingModal(true);
+    };
+
+    const handleCaptureEditGps = () => {
+        if (!navigator.geolocation) {
+            showToast('Geolocation is not supported by your browser.', 'error');
+            return;
+        }
+        setEditGpsCapturing(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setEditGpsCapturing(false);
+                setEditGpsCaptured(true);
+                setEditMeetingForm(prev => ({
+                    ...prev,
+                    location: {
+                        ...prev.location,
+                        latitude: parseFloat(pos.coords.latitude.toFixed(6)),
+                        longitude: parseFloat(pos.coords.longitude.toFixed(6))
+                    }
+                }));
+                showToast(`Device GPS updated: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+            },
+            (err) => {
+                setEditGpsCapturing(false);
+                console.error('GPS error:', err);
+                showToast('GPS access denied or unavailable. Please enable device location.', 'error');
+            },
+            { enableHighAccuracy: true, timeout: 12000 }
+        );
+    };
+
+    const applyEditVenuePreset = (preset) => {
+        if (!preset) return;
+        setEditMeetingForm(prev => ({
+            ...prev,
+            campus: preset.campus === 'Both' ? prev.campus : preset.campus,
+            location: {
+                ...prev.location,
+                name: preset.name || preset.title,
+                latitude: preset.lat || preset.latitude || prev.location.latitude,
+                longitude: preset.lng || preset.longitude || prev.location.longitude,
+                radius: preset.radius || prev.location.radius || 200
+            }
+        }));
+        if (preset.latitude || preset.lat) {
+            setEditGpsCaptured(true);
+        }
+        showToast(`Venue preset applied: ${preset.title || preset.name}`);
+    };
+
+    const editConflictMeeting = useMemo(() => {
+        if (!editMeetingForm || !editMeetingForm.date || !editMeetingForm.campus) return null;
+        const range = getWeekRangeClient(editMeetingForm.date);
+        if (!range) return null;
+        return meetings.find(m => {
+            if (m._id === editMeetingForm._id) return false;
+            if (m.isArchived) return false;
+            if (m.campus !== editMeetingForm.campus) return false;
+            const mDate = new Date(m.date);
+            return mDate >= range.start && mDate <= range.end;
+        });
+    }, [editMeetingForm?.date, editMeetingForm?.campus, editMeetingForm?._id, meetings]);
+
+    const handleSaveMeetingEdit = async (e) => {
+        e.preventDefault();
+        if (!editMeetingForm || !editMeetingForm._id) return;
+
+        const trimmedQuestion = (editMeetingForm.questionOfDay || '').trim();
+        if (!trimmedQuestion) {
+            showToast('Mandatory requirement: Please enter an interactive roll-call question for this meeting.', 'error');
+            return;
+        }
+
+        if (['multiple_choice', 'checkboxes'].includes(editMeetingForm.questionType)) {
+            const validOptions = (editMeetingForm.questionOptions || []).filter(o => o && o.trim());
+            if (validOptions.length < 2) {
+                showToast('Please provide at least 2 choices for your multiple choice / checkbox question.', 'error');
+                return;
+            }
+        }
+
+        const lat = Number(editMeetingForm.location.latitude);
+        const lng = Number(editMeetingForm.location.longitude);
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+            showToast('Mandatory requirement: Valid device GPS coordinates are required for the venue.', 'error');
+            return;
+        }
+
+        if (editConflictMeeting && !editMeetingForm.allowMultiple) {
+            showToast(`A meeting is already scheduled for ${editMeetingForm.campus} this week. Check the override toggle to save changes.`, 'warning');
+            return;
+        }
+
+        setEditMeetingLoading(true);
+        try {
+            const payload = {
+                name: editMeetingForm.name,
+                date: editMeetingForm.date,
+                campus: editMeetingForm.campus,
+                startTime: editMeetingForm.startTime,
+                endTime: editMeetingForm.endTime,
+                allowMultiple: editMeetingForm.allowMultiple,
+                questionType: editMeetingForm.questionType || 'text',
+                questionOfDay: trimmedQuestion,
+                questionOptions: (editMeetingForm.questionType === 'multiple_choice' || editMeetingForm.questionType === 'checkboxes')
+                    ? editMeetingForm.questionOptions.filter(o => o && o.trim())
+                    : [],
+                location: {
+                    name: editMeetingForm.location.name,
+                    radius: Number(editMeetingForm.location.radius) || 200,
+                    latitude: lat,
+                    longitude: lng
+                },
+                isTestMeeting: editMeetingForm.isTestMeeting
+            };
+
+            const res = await api.put(`/meetings/${editMeetingForm._id}`, payload);
+            showToast('Meeting updated successfully! 💾');
+            setShowEditMeetingModal(false);
+
+            const updated = res.data?.meeting || res.data || { ...editMeetingForm, ...payload };
+            setMeetings(prev => prev.map(m => m._id === editMeetingForm._id ? { ...m, ...updated } : m));
+            if (insightMeeting && insightMeeting._id === editMeetingForm._id) {
+                setInsightMeeting(prev => ({ ...prev, ...updated }));
+            }
+        } catch (err) {
+            console.error('Update meeting failed:', err);
+            showToast(err.response?.data?.message || 'Could not update meeting', 'error');
+        } finally {
+            setEditMeetingLoading(false);
+        }
+    };
+
     // Tab 3: Meeting Archive & Restore Handlers
     const handleArchiveMeeting = async (meeting) => {
         if (!window.confirm(`Archive meeting "${meeting.name}"?\n\nNote: All attendance records and member points will remain safely preserved in the database.`)) return;
@@ -1575,14 +1743,14 @@ const G5TrainingPortal = () => {
                                                     Live Check-In Active: {activeM.name}
                                                 </div>
                                                 <div style={{ color: '#475569', fontSize: '0.8rem', marginTop: '0.15rem' }}>
-                                                    {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: '#1D4ED8' }}>{activeM.code}</strong>
+                                                    {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="g5-dashboard-banner-actions">
                                             <button
                                                 className="g5-btn-blue-solid"
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
+                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
                                             >
                                                 <Radio size={15} /> Open Live Feed
                                             </button>
@@ -2230,14 +2398,14 @@ const G5TrainingPortal = () => {
                                                             </span>
                                                         </div>
                                                         <div style={{ fontSize: '0.86rem', color: '#DBEAFE', marginTop: '0.25rem' }}>
-                                                            📍 {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')} • Join Code: <strong style={{ color: '#93C5FD', letterSpacing: '1px', fontFamily: 'monospace' }}>{activeM.code}</strong>
+                                                            📍 {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="g5-live-banner-actions">
                                                     <button
                                                         type="button"
-                                                        onClick={() => setQrMeeting(activeM)}
+                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'qrcode' })}
                                                         style={{
                                                             background: 'linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%)',
                                                             color: '#FFFFFF',
@@ -2247,19 +2415,17 @@ const G5TrainingPortal = () => {
                                                             fontSize: '0.86rem',
                                                             fontWeight: 800,
                                                             cursor: 'pointer',
-                                                            display: 'inline-flex',
+                                                            display: 'flex',
                                                             alignItems: 'center',
-                                                            gap: '0.5rem',
-                                                            boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35)',
-                                                            transition: 'all 0.18s ease'
+                                                            gap: '0.45rem',
+                                                            boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)'
                                                         }}
                                                     >
-                                                        <QrCode size={16} />
-                                                        <span>Display QR Code 📱</span>
+                                                        <QrCode size={16} /> QR Screen
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'live' })}
+                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
                                                         style={{
                                                             background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
                                                             color: '#FFFFFF',
@@ -2426,50 +2592,6 @@ const G5TrainingPortal = () => {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
                                                             <MapPin size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
                                                         </div>
-
-                                                        {/* JOIN CODE BOX (WITH 1-TAP COPY) */}
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '0.5rem 0.85rem',
-                                                            borderRadius: '10px',
-                                                            background: '#EFF6FF',
-                                                            border: '1.5px dashed #3B82F6',
-                                                            marginBottom: '0.85rem',
-                                                            gap: '0.5rem'
-                                                        }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Join Code:</span>
-                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' }}>
-                                                                    {meeting.code || 'DOULOS'}
-                                                                </span>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    navigator.clipboard.writeText(meeting.code || 'DOULOS');
-                                                                    showToast('Meeting code copied to clipboard! 📋');
-                                                                }}
-                                                                style={{
-                                                                    background: '#FFFFFF',
-                                                                    color: '#1D4ED8',
-                                                                    border: '1px solid #BFDBFE',
-                                                                    borderRadius: '6px',
-                                                                    padding: '0.25rem 0.6rem',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: 700,
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '0.3rem',
-                                                                    cursor: 'pointer',
-                                                                    flexShrink: 0
-                                                                }}
-                                                            >
-                                                                <Copy size={12} /> Copy
-                                                            </button>
-                                                        </div>
                                                     </div>
 
                                                     {/* CARD ACTION BUTTONS (MOBILE & DESKTOP OPTIMIZED TWO-TIER SYSTEM) */}
@@ -2483,7 +2605,7 @@ const G5TrainingPortal = () => {
                                                                     style={{ width: '100%', padding: '0.72rem 0.75rem' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setInsightMeeting({ ...meeting, initialTab: 'live' });
+                                                                        setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                     }}
                                                                 >
                                                                     <Radio size={16} style={{ flexShrink: 0 }} /> <span>Live Attendance Feed & Check-In</span>
@@ -2496,11 +2618,22 @@ const G5TrainingPortal = () => {
                                                                         className="g5-btn-qr-cyan"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setQrMeeting(meeting);
+                                                                            setInsightMeeting({ ...meeting, initialTab: 'qrcode' });
                                                                         }}
                                                                         title="Display QR code on screen"
                                                                     >
                                                                         <QrCode size={14} style={{ flexShrink: 0 }} /> <span>Display QR</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-edit-indigo"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleOpenEditMeeting(meeting);
+                                                                        }}
+                                                                        title="Edit meeting details, timings, question or location"
+                                                                    >
+                                                                        <Edit size={14} style={{ flexShrink: 0 }} /> <span>Edit</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -2548,11 +2681,22 @@ const G5TrainingPortal = () => {
                                                                         className="g5-btn-qr-cyan"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setQrMeeting(meeting);
+                                                                            setInsightMeeting({ ...meeting, initialTab: 'qrcode' });
                                                                         }}
                                                                         title="Display QR code"
                                                                     >
                                                                         <QrCode size={14} style={{ flexShrink: 0 }} /> <span>Display QR</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-edit-indigo"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleOpenEditMeeting(meeting);
+                                                                        }}
+                                                                        title="Edit meeting details, timings, question or location"
+                                                                    >
+                                                                        <Edit size={14} style={{ flexShrink: 0 }} /> <span>Edit</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -2720,50 +2864,6 @@ const G5TrainingPortal = () => {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
                                                             <MapPin size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
                                                         </div>
-
-                                                        {/* JOIN CODE BOX */}
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '0.5rem 0.85rem',
-                                                            borderRadius: '10px',
-                                                            background: '#EFF6FF',
-                                                            border: '1.5px dashed #3B82F6',
-                                                            marginBottom: '0.85rem',
-                                                            gap: '0.5rem'
-                                                        }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Join Code:</span>
-                                                                <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1D4ED8', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' }}>
-                                                                    {meeting.code || 'DOULOS'}
-                                                                </span>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    navigator.clipboard.writeText(meeting.code || 'DOULOS');
-                                                                    showToast('Meeting code copied to clipboard! 📋');
-                                                                }}
-                                                                style={{
-                                                                    background: '#FFFFFF',
-                                                                    color: '#1D4ED8',
-                                                                    border: '1px solid #BFDBFE',
-                                                                    borderRadius: '6px',
-                                                                    padding: '0.25rem 0.6rem',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: 700,
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '0.3rem',
-                                                                    cursor: 'pointer',
-                                                                    flexShrink: 0
-                                                                }}
-                                                            >
-                                                                <Copy size={12} /> Copy
-                                                            </button>
-                                                        </div>
                                                     </div>
 
                                                     {/* TWO-TIER ACTION BUTTONS */}
@@ -2788,11 +2888,22 @@ const G5TrainingPortal = () => {
                                                                 className="g5-btn-qr-cyan"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    setQrMeeting(meeting);
+                                                                    setInsightMeeting({ ...meeting, initialTab: 'qrcode' });
                                                                 }}
                                                                 title="Display QR code"
                                                             >
                                                                 <QrCode size={14} style={{ flexShrink: 0 }} /> <span>Display QR</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="g5-btn-edit-indigo"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenEditMeeting(meeting);
+                                                                }}
+                                                                title="Edit meeting details"
+                                                            >
+                                                                <Edit size={14} style={{ flexShrink: 0 }} /> <span>Edit</span>
                                                             </button>
                                                             <button
                                                                 type="button"
@@ -5709,10 +5820,10 @@ const G5TrainingPortal = () => {
                                                         required
                                                         min="20"
                                                         max="2500"
-                                                        value={newMeetingForm.location.radius}
+                                                        value={newMeetingForm.location?.radius ?? 200}
                                                         onChange={(e) => setNewMeetingForm({
                                                             ...newMeetingForm,
-                                                            location: { ...newMeetingForm.location, radius: parseInt(e.target.value) || 200 }
+                                                            location: { ...newMeetingForm.location, radius: parseInt(e.target.value, 10) || 200 }
                                                         })}
                                                     />
                                                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>m</span>
@@ -5732,10 +5843,10 @@ const G5TrainingPortal = () => {
                                                             step="any"
                                                             className="g5-form-input"
                                                             style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
-                                                            value={newMeetingForm.location.latitude}
+                                                            value={newMeetingForm.location?.latitude ?? ''}
                                                             onChange={(e) => setNewMeetingForm({
                                                                 ...newMeetingForm,
-                                                                location: { ...newMeetingForm.location, latitude: parseFloat(e.target.value) }
+                                                                location: { ...newMeetingForm.location, latitude: e.target.value === '' ? '' : parseFloat(e.target.value) }
                                                             })}
                                                         />
                                                     </div>
@@ -5746,10 +5857,10 @@ const G5TrainingPortal = () => {
                                                             step="any"
                                                             className="g5-form-input"
                                                             style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
-                                                            value={newMeetingForm.location.longitude}
+                                                            value={newMeetingForm.location?.longitude ?? ''}
                                                             onChange={(e) => setNewMeetingForm({
                                                                 ...newMeetingForm,
-                                                                location: { ...newMeetingForm.location, longitude: parseFloat(e.target.value) }
+                                                                location: { ...newMeetingForm.location, longitude: e.target.value === '' ? '' : parseFloat(e.target.value) }
                                                             })}
                                                         />
                                                     </div>
@@ -5909,7 +6020,519 @@ const G5TrainingPortal = () => {
                     onClose={() => setInsightMeeting(null)}
                     api={api}
                     onRefresh={fetchPortalData}
+                    onEditMeeting={(m) => {
+                        setInsightMeeting(null);
+                        handleOpenEditMeeting(m);
+                    }}
                 />
+            )}
+
+            {/* ========================================================= */}
+            {/* MODAL: EDIT MEETING (G5 ROLE ONLY) */}
+            {/* ========================================================= */}
+            {showEditMeetingModal && editMeetingForm && (
+                <div className="g5-modal-backdrop" onClick={() => setShowEditMeetingModal(false)}>
+                    <div className="g5-modal g5-modal-xl g5-modal-scrollable" onClick={(e) => e.stopPropagation()}>
+                        {/* MODAL HEADER */}
+                        <div className="g5-modal-header" style={{
+                            padding: '1.25rem 1.75rem',
+                            background: 'linear-gradient(135deg, #312E81 0%, #4338CA 50%, #4F46E5 100%)',
+                            color: '#FFFFFF'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                <div style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '12px',
+                                    background: '#FFFFFF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#4F46E5',
+                                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)'
+                                }}>
+                                    <Edit size={22} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
+                                        Edit Meeting Session
+                                    </h3>
+                                    <p style={{ fontSize: '0.82rem', color: '#E0E7FF', marginTop: '0.2rem' }}>
+                                        Update session details, roll-call question, timing & GPS geofence
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowEditMeetingModal(false)}
+                                style={{
+                                    border: 'none',
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    borderRadius: '50%',
+                                    width: '36px',
+                                    height: '36px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: '#FFFFFF',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveMeetingEdit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                            <div className="g5-modal-body" style={{ padding: '1.25rem 1.75rem', overflowY: 'auto', flex: 1 }}>
+                                {/* ACTIVE SESSION CONFLICT NOTICE WITH 1-CLICK OVERRIDE */}
+                                {editConflictMeeting && (
+                                    <div style={{
+                                        background: '#FFFBEB',
+                                        border: '1.5px solid #F59E0B',
+                                        borderRadius: '14px',
+                                        padding: '1rem 1.25rem',
+                                        marginBottom: '1.35rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.65rem',
+                                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.08)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                                            <AlertTriangle size={22} style={{ color: '#D97706', flexShrink: 0, marginTop: '2px' }} />
+                                            <div>
+                                                <div style={{ fontWeight: 800, color: '#92400E', fontSize: '0.92rem' }}>
+                                                    Notice: Another active session is already scheduled for {editMeetingForm.campus} this week
+                                                </div>
+                                                <div style={{ fontSize: '0.83rem', color: '#B45309', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                                                    "<strong>{editConflictMeeting.name}</strong>" is scheduled on {new Date(editConflictMeeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ({editConflictMeeting.startTime} - {editConflictMeeting.endTime}).
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.65rem',
+                                            paddingTop: '0.65rem',
+                                            borderTop: '1px dashed #FDE68A',
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 800,
+                                            color: '#78350F'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={editMeetingForm.allowMultiple}
+                                                onChange={(e) => setEditMeetingForm({ ...editMeetingForm, allowMultiple: e.target.checked })}
+                                                style={{ width: '18px', height: '18px', accentColor: '#4F46E5', cursor: 'pointer' }}
+                                            />
+                                            <span>Allow additional training session / field drill for this week (Admin Override & Test Mode)</span>
+                                        </label>
+                                    </div>
+                                )}
+
+                                <div className="g5-form-layout-2col">
+
+                                    {/* COLUMN 1: SESSION DETAILS */}
+                                    <div className="g5-form-card-panel">
+                                        <div className="g5-form-section-title">
+                                            <Settings size={15} /> 1. Session Details
+                                        </div>
+
+                                        <div className="g5-form-group" style={{ marginBottom: '0.85rem' }}>
+                                            <label className="g5-form-label">Meeting Name *</label>
+                                            <input
+                                                type="text"
+                                                className="g5-form-input"
+                                                placeholder="e.g. Weekly Doulos / Weekend Field Drill"
+                                                required
+                                                value={editMeetingForm.name}
+                                                onChange={(e) => setEditMeetingForm({ ...editMeetingForm, name: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="g5-form-group" style={{ marginBottom: '0.85rem' }}>
+                                            <label className="g5-form-label">Campus Location *</label>
+                                            <div className="g5-campus-toggle">
+                                                <button
+                                                    type="button"
+                                                    className={`g5-campus-btn ${editMeetingForm.campus === 'Athi River' ? 'active' : ''}`}
+                                                    onClick={() => applyEditVenuePreset(VENUE_PRESETS[0])}
+                                                >
+                                                    <Tent size={16} /> Athi River Base
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`g5-campus-btn ${editMeetingForm.campus === 'Valley Road' ? 'active' : ''}`}
+                                                    onClick={() => applyEditVenuePreset(VENUE_PRESETS[1])}
+                                                >
+                                                    <Users size={16} /> Nairobi Campus (DAC)
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="g5-form-grid-3" style={{ gap: '0.65rem', marginBottom: '0.85rem' }}>
+                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
+                                                <label className="g5-form-label">Date *</label>
+                                                <input
+                                                    type="date"
+                                                    className="g5-form-input"
+                                                    style={{ padding: '0.65rem 0.75rem', fontSize: '0.88rem' }}
+                                                    required
+                                                    value={editMeetingForm.date}
+                                                    onChange={(e) => setEditMeetingForm({ ...editMeetingForm, date: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
+                                                <label className="g5-form-label">Start Time *</label>
+                                                <input
+                                                    type="time"
+                                                    className="g5-form-input"
+                                                    style={{ padding: '0.65rem 0.75rem', fontSize: '0.88rem' }}
+                                                    required
+                                                    value={editMeetingForm.startTime}
+                                                    onChange={(e) => setEditMeetingForm({ ...editMeetingForm, startTime: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
+                                                <label className="g5-form-label">End Time *</label>
+                                                <input
+                                                    type="time"
+                                                    className="g5-form-input"
+                                                    style={{ padding: '0.65rem 0.75rem', fontSize: '0.88rem' }}
+                                                    required
+                                                    value={editMeetingForm.endTime}
+                                                    onChange={(e) => setEditMeetingForm({ ...editMeetingForm, endTime: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* MANDATORY ROLL-CALL QUESTION STUDIO */}
+                                        <div style={{
+                                            background: '#F8FAFC',
+                                            border: '1.5px solid #C7D2FE',
+                                            borderRadius: '14px',
+                                            padding: '0.95rem 1rem',
+                                            marginTop: '0.45rem',
+                                            boxShadow: '0 2px 6px rgba(79, 70, 229, 0.04)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                                                    <Lightbulb size={18} style={{ color: '#4F46E5' }} />
+                                                    <div>
+                                                        <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                            Interactive Roll-Call Question
+                                                            <span style={{ color: '#DC2626', fontSize: '0.95rem', fontWeight: 900 }}>*</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.72rem', color: '#4F46E5', fontWeight: 700 }}>
+                                                            Mandatory — Students must answer during scan check-in
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span style={{
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 800,
+                                                    background: '#EEF2FF',
+                                                    color: '#4338CA',
+                                                    border: '1px solid #C7D2FE',
+                                                    borderRadius: '6px',
+                                                    padding: '0.15rem 0.45rem',
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    Required
+                                                </span>
+                                            </div>
+
+                                            <div className="g5-type-chip-grid" style={{ marginBottom: '0.75rem' }}>
+                                                {[
+                                                    { id: 'text', label: 'Open Text', icon: FileText },
+                                                    { id: 'yes_no', label: 'Yes / No', icon: CheckCircle2 },
+                                                    { id: 'multiple_choice', label: 'Single Choice', icon: Check },
+                                                    { id: 'checkboxes', label: 'Checkboxes', icon: Layers },
+                                                    { id: 'rating', label: '1-5 Stars', icon: Star }
+                                                ].map((t) => (
+                                                    <button
+                                                        key={t.id}
+                                                        type="button"
+                                                        className={`g5-type-chip ${editMeetingForm.questionType === t.id ? 'active' : ''}`}
+                                                        onClick={() => setEditMeetingForm(prev => ({
+                                                            ...prev,
+                                                            questionType: t.id,
+                                                            questionOptions: (t.id === 'multiple_choice' || t.id === 'checkboxes')
+                                                                ? (prev.questionOptions.length >= 2 ? prev.questionOptions : ['', ''])
+                                                                : []
+                                                        }))}
+                                                    >
+                                                        <t.icon size={13} />
+                                                        <span>{t.label}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <div className="g5-form-group" style={{ marginBottom: 0 }}>
+                                                <label className="g5-form-label" style={{ fontSize: '0.8rem' }}>
+                                                    Question Prompt <span style={{ color: '#DC2626' }}>*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="g5-form-input"
+                                                    style={{
+                                                        padding: '0.6rem 0.8rem',
+                                                        fontSize: '0.86rem',
+                                                        borderColor: !editMeetingForm.questionOfDay ? '#FCA5A5' : '#CBD5E1',
+                                                        background: '#FFFFFF'
+                                                    }}
+                                                    placeholder="e.g. Rate your readiness or Belay station reflection..."
+                                                    required
+                                                    value={editMeetingForm.questionOfDay}
+                                                    onChange={(e) => setEditMeetingForm({ ...editMeetingForm, questionOfDay: e.target.value })}
+                                                />
+                                            </div>
+
+                                            {(editMeetingForm.questionType === 'multiple_choice' || editMeetingForm.questionType === 'checkboxes') && (
+                                                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed #CBD5E1' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                                                        <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#4338CA' }}>
+                                                            Poll Choices (Minimum 2 required) <span style={{ color: '#DC2626' }}>*</span>
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            className="g5-btn-blue-soft"
+                                                            style={{ padding: '0.25rem 0.65rem', fontSize: '0.74rem' }}
+                                                            onClick={() => setEditMeetingForm(prev => ({
+                                                                ...prev,
+                                                                questionOptions: [...prev.questionOptions, '']
+                                                            }))}
+                                                        >
+                                                            + Add Choice
+                                                        </button>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                        {editMeetingForm.questionOptions.map((opt, idx) => (
+                                                            <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#475569', minWidth: '16px' }}>{idx + 1}.</span>
+                                                                <input
+                                                                    type="text"
+                                                                    className="g5-form-input"
+                                                                    style={{ padding: '0.45rem 0.7rem', fontSize: '0.84rem', background: '#FFFFFF' }}
+                                                                    placeholder={`Choice ${idx + 1}`}
+                                                                    required
+                                                                    value={opt}
+                                                                    onChange={(e) => {
+                                                                        const updated = [...editMeetingForm.questionOptions];
+                                                                        updated[idx] = e.target.value;
+                                                                        setEditMeetingForm({ ...editMeetingForm, questionOptions: updated });
+                                                                    }}
+                                                                />
+                                                                {editMeetingForm.questionOptions.length > 2 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="g5-btn-delete-chip"
+                                                                        onClick={() => {
+                                                                            const updated = editMeetingForm.questionOptions.filter((_, i) => i !== idx);
+                                                                            setEditMeetingForm({ ...editMeetingForm, questionOptions: updated });
+                                                                        }}
+                                                                    >
+                                                                        <X size={13} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                    </div>
+
+                                    {/* COLUMN 2: LOCATION & GEOFENCING */}
+                                    <div className="g5-form-card-panel">
+                                        <div className="g5-form-section-title">
+                                            <MapPin size={15} /> 2. Location & Geofencing
+                                        </div>
+
+                                        {/* OFFICIAL VENUE SELECTION */}
+                                        <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                                                <span className="g5-form-label" style={{ marginBottom: 0 }}>
+                                                    Official Campus Venue Preset
+                                                </span>
+                                                <span style={{ fontSize: '0.74rem', color: '#4F46E5', fontWeight: 800 }}>
+                                                    {editMeetingForm.campus === 'Athi River' ? 'Athi River Base' : 'Nairobi Campus'}
+                                                </span>
+                                            </div>
+                                            <div className="g5-venue-preset-grid">
+                                                {VENUE_PRESETS.map((p) => {
+                                                    const isSelected = editMeetingForm.location.name === p.name || editMeetingForm.location.name === p.title;
+                                                    return (
+                                                        <div
+                                                            key={p.title}
+                                                            className={`g5-venue-preset-card ${isSelected ? 'active' : ''}`}
+                                                            onClick={() => applyEditVenuePreset(p)}
+                                                        >
+                                                            <div className="g5-venue-title">
+                                                                <span>{p.title}</span>
+                                                                {isSelected && <Check size={16} style={{ color: '#4F46E5', strokeWidth: 3 }} />}
+                                                            </div>
+                                                            <div className="g5-venue-sub">{p.sub}</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* LOCATION NAME INPUT */}
+                                        <div className="g5-form-group" style={{ marginBottom: 0 }}>
+                                            <label className="g5-form-label">Venue / Location Name *</label>
+                                            <input
+                                                type="text"
+                                                className="g5-form-input"
+                                                placeholder="Doulos Store, DAC 506, or Wall"
+                                                required
+                                                value={editMeetingForm.location.name}
+                                                onChange={(e) => setEditMeetingForm({
+                                                    ...editMeetingForm,
+                                                    location: { ...editMeetingForm.location, name: e.target.value }
+                                                })}
+                                            />
+                                        </div>
+
+                                        {/* GPS SATELLITE RADAR BOX */}
+                                        <div className="g5-gps-radar-box">
+                                            <div className="g5-gps-radar-header">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Radio size={16} style={{ color: '#4F46E5' }} />
+                                                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
+                                                        Satellite GPS Lock
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    {editGpsCaptured ? (
+                                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#047857', background: '#ECFDF5', padding: '0.15rem 0.45rem', borderRadius: '6px', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            <CheckCircle2 size={12} /> Saved Location
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#B91C1C', background: '#FEF2F2', padding: '0.15rem 0.45rem', borderRadius: '6px', border: '1px solid #FECACA' }}>
+                                                            Required *
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                className={editGpsCaptured ? "g5-btn-emerald-solid" : "g5-btn-blue-solid"}
+                                                style={{
+                                                    width: '100%',
+                                                    justifyContent: 'center',
+                                                    padding: '0.75rem',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 800,
+                                                    background: editGpsCaptured ? '#059669' : '#4F46E5',
+                                                    boxShadow: editGpsCaptured ? '0 3px 10px rgba(5, 150, 105, 0.25)' : '0 3px 10px rgba(79, 70, 229, 0.25)'
+                                                }}
+                                                onClick={handleCaptureEditGps}
+                                                disabled={editGpsCapturing}
+                                            >
+                                                <Navigation size={16} />
+                                                {editGpsCapturing ? 'Locating Device Satellites...' : editGpsCaptured ? '✓ Device GPS Configured (Tap to Re-lock)' : '📡 Capture Device GPS (Mandatory)'}
+                                            </button>
+
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '0.45rem 0.75rem',
+                                                background: '#FFFFFF',
+                                                borderRadius: '8px',
+                                                border: '1px solid #E2E8F0',
+                                                fontSize: '0.76rem',
+                                                fontWeight: 700,
+                                                color: '#64748B'
+                                            }}>
+                                                <span>LAT: {editMeetingForm.location.latitude ? Number(editMeetingForm.location.latitude).toFixed(4) : '—'}</span>
+                                                <span>LNG: {editMeetingForm.location.longitude ? Number(editMeetingForm.location.longitude).toFixed(4) : '—'}</span>
+                                            </div>
+
+                                            {/* GEOFENCE RADIUS SLIDER */}
+                                            <div style={{ marginTop: '0.5rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                        <Crosshair size={13} style={{ color: '#4F46E5' }} /> Geofence Radius
+                                                    </span>
+                                                    <span style={{ fontSize: '0.84rem', fontWeight: 900, color: '#4F46E5', background: '#EEF2FF', padding: '0.15rem 0.55rem', borderRadius: '6px', border: '1px solid #C7D2FE' }}>
+                                                        {editMeetingForm.location.radius} meters
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="50"
+                                                    max="800"
+                                                    step="25"
+                                                    value={editMeetingForm.location.radius}
+                                                    onChange={(e) => setEditMeetingForm({
+                                                        ...editMeetingForm,
+                                                        location: { ...editMeetingForm.location, radius: parseInt(e.target.value, 10) }
+                                                    })}
+                                                    style={{ width: '100%', accentColor: '#4F46E5', cursor: 'pointer' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            {/* MODAL FOOTER */}
+                            <div className="g5-modal-footer" style={{
+                                padding: '0.85rem 1.75rem',
+                                background: '#F8FAFC',
+                                borderTop: '1px solid #E2E8F0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexShrink: 0
+                            }}>
+                                <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Shield size={14} style={{ color: '#4F46E5' }} />
+                                    <span>
+                                        {editMeetingForm.campus} ({editMeetingForm.location.radius}m)
+                                    </span>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        className="g5-btn-blue-soft"
+                                        style={{ background: '#F1F5F9', color: '#334155', borderColor: '#CBD5E1', padding: '0.48rem 0.8rem', fontSize: '0.82rem', fontWeight: 700 }}
+                                        onClick={() => setShowEditMeetingModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="g5-btn-blue-solid"
+                                        disabled={editMeetingLoading || (!!editConflictMeeting && !editMeetingForm.allowMultiple)}
+                                        style={{
+                                            padding: '0.48rem 0.95rem',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 700,
+                                            gap: '0.35rem',
+                                            background: 'linear-gradient(135deg, #4338CA 0%, #4F46E5 100%)',
+                                            opacity: (editConflictMeeting && !editMeetingForm.allowMultiple) ? 0.6 : 1,
+                                            cursor: (editConflictMeeting && !editMeetingForm.allowMultiple) ? 'not-allowed' : 'pointer'
+                                        }}
+                                        title={editConflictMeeting && !editMeetingForm.allowMultiple ? 'Check the override box above to allow changes' : ''}
+                                    >
+                                        <Sparkles size={14} />
+                                        {editMeetingLoading ? 'Saving...' : (editConflictMeeting && !editMeetingForm.allowMultiple) ? 'Override Required' : 'Save Meeting Changes 💾'}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
 
             {/* ========================================================= */}
@@ -5917,27 +6540,19 @@ const G5TrainingPortal = () => {
             {/* ========================================================= */}
             {qrMeeting && (
                 <div
+                    className="g5-modal-backdrop"
                     style={{
-                        position: 'fixed',
-                        inset: 0,
+                        zIndex: 10000,
                         backgroundColor: 'rgba(15, 23, 42, 0.75)',
                         backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 10000,
-                        padding: '0.75rem'
+                        WebkitBackdropFilter: 'blur(8px)'
                     }}
                     onClick={() => setQrMeeting(null)}
                 >
                     <div
-                        className="g5-card"
+                        className="g5-modal g5-modal-container"
                         style={{
-                            maxWidth: '440px',
-                            width: '94vw',
-                            maxHeight: '92vh',
-                            overflowY: 'auto',
+                            maxWidth: '460px',
                             background: '#FFFFFF',
                             borderRadius: '20px',
                             padding: '1.75rem 1.25rem',
@@ -5998,21 +6613,8 @@ const G5TrainingPortal = () => {
                             />
                         </div>
 
-                        {/* JOIN CODE */}
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                Meeting Code
-                            </div>
-                            <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '3px', fontFamily: 'monospace', lineHeight: 1.1, margin: '0.2rem 0' }}>
-                                {(qrMeeting.code || 'DOULOS').toUpperCase()}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.35rem' }}>
-                                Point camera to scan, or enter code at <strong>{window.location.host}/check-in</strong>
-                            </div>
-                        </div>
-
                         {/* BUTTONS */}
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1.25rem' }}>
                             <button
                                 type="button"
                                 className="g5-btn-secondary"
@@ -6056,8 +6658,7 @@ const G5TrainingPortal = () => {
                                                     .title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
                                                     .sub { font-size: 14px; color: #64748b; margin-bottom: 24px; }
                                                     .qr-box { padding: 20px; background: #fff; border-radius: 16px; display: inline-block; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-                                                    .code { font-size: 38px; font-weight: 900; letter-spacing: 4px; color: #25AAE1; margin-bottom: 8px; font-family: monospace; }
-                                                    .link { font-size: 13px; color: #64748b; word-break: break-all; }
+                                                    .link { font-size: 13px; color: #64748b; word-break: break-all; margin-top: 12px; }
                                                 </style>
                                             </head>
                                             <body>
@@ -6068,9 +6669,7 @@ const G5TrainingPortal = () => {
                                                     <div class="qr-box">
                                                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(checkInUrl)}" width="250" height="250" alt="Meeting QR" />
                                                     </div>
-                                                    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">MEETING JOIN CODE</div>
-                                                    <div class="code">${(qrMeeting.code || 'DOULOS').toUpperCase()}</div>
-                                                    <div class="link">${checkInUrl}</div>
+                                                    <div class="link">Scan with camera to check in: ${checkInUrl}</div>
                                                 </div>
                                                 <script>
                                                     window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 400); };

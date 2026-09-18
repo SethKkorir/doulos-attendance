@@ -144,26 +144,38 @@ export const updateMember = async (req, res) => {
         const { id } = req.params;
         const updates = { ...req.body };
 
-        if (updates.studentRegNo) {
-            const cleanReg = updates.studentRegNo.trim().toUpperCase();
-            const existing = await Member.findOne({ studentRegNo: cleanReg, _id: { $ne: id } });
-            if (existing) {
-                return res.status(400).json({ message: `Admission number ${cleanReg} is already assigned to ${existing.name}.` });
+        const member = await Member.findById(id);
+        if (!member) return res.status(404).json({ message: 'Member not found' });
+
+        if (updates.studentRegNo !== undefined || updates.admissionNumber !== undefined || updates.regNo !== undefined) {
+            const targetReg = updates.studentRegNo !== undefined ? updates.studentRegNo : (updates.admissionNumber !== undefined ? updates.admissionNumber : updates.regNo);
+            const cleanReg = targetReg ? String(targetReg).trim().toUpperCase() : '';
+            const oldReg = member.studentRegNo ? String(member.studentRegNo).trim().toUpperCase() : '';
+
+            // Only check for duplicates if changing to a non-empty registration number different from current
+            if (cleanReg && cleanReg !== oldReg) {
+                const escapedReg = cleanReg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const existing = await Member.findOne({
+                    studentRegNo: { $regex: new RegExp(`^${escapedReg}$`, 'i') },
+                    _id: { $ne: member._id }
+                });
+                if (existing && existing._id.toString() !== member._id.toString()) {
+                    return res.status(400).json({ message: `Admission number ${cleanReg} is already assigned to ${existing.name}.` });
+                }
             }
+
             // Cascade regNo change to attendance
-            const oldMember = await Member.findById(id);
-            if (oldMember && oldMember.studentRegNo && oldMember.studentRegNo !== cleanReg) {
+            if (oldReg && oldReg !== cleanReg) {
                 await Attendance.updateMany(
-                    { studentRegNo: oldMember.studentRegNo },
+                    { studentRegNo: oldReg },
                     { $set: { studentRegNo: cleanReg } }
                 );
             }
             updates.studentRegNo = cleanReg;
         }
 
-        const member = await Member.findByIdAndUpdate(id, updates, { new: true });
-        if (!member) return res.status(404).json({ message: 'Member not found' });
-        res.json(member);
+        const updated = await Member.findByIdAndUpdate(id, updates, { new: true });
+        res.json(updated);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

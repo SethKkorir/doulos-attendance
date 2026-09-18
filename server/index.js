@@ -127,56 +127,22 @@ const connectDB = async () => {
                 console.log('✅ Premium Super Admin account initialized: supersuperadmin');
             }
 
-            // G5 Training Directorate Accounts
-            const trainersToSeed = [
-                { username: 'trainer_athi', campus: 'Athi River', role: 'trainer' },
-                { username: 'trainer_vr', campus: 'Valley Road', role: 'trainer' },
-                { username: 'g5_director', campus: 'Both', role: 'trainer' }
+            // G5 Training Directorate & G2 Operations Accounts
+            const activeRolesToSeed = [
+                { username: 'G5', password: '123', role: 'trainer', campus: 'Both' },
+                { username: 'G2', password: '123', role: 'g2_vice', campus: 'Both' }
             ];
 
-            for (const t of trainersToSeed) {
-                const existing = await User.findOne({ username: t.username });
+            for (const a of activeRolesToSeed) {
+                const existing = await User.findOne({ username: { $regex: new RegExp(`^${a.username}$`, 'i') } });
                 if (!existing) {
                     await new User({
-                        username: t.username,
-                        password: 'trainer123',
-                        role: t.role,
-                        campus: t.campus
+                        username: a.username,
+                        password: a.password,
+                        role: a.role,
+                        campus: a.campus
                     }).save();
-                    console.log(`✅ G5 Directorate Account seeded: ${t.username} (${t.campus})`);
-                } else if (existing.role !== 'trainer') {
-                    existing.role = 'trainer';
-                    existing.campus = t.campus;
-                    await existing.save();
-                }
-            }
-
-            // G-Council Governance (G1 - G9) Role Accounts
-            const councilToSeed = [
-                { username: 'g1_coordinator', campus: 'Athi River', role: 'g1_coordinator' },
-                { username: 'g2_vice', campus: 'Valley Road', role: 'g2_vice' },
-                { username: 'g3_secretary', campus: 'Both', role: 'g3_secretary' },
-                { username: 'g4_logistics', campus: 'Both', role: 'g4_logistics' },
-                { username: 'g6_welfare', campus: 'Both', role: 'g6_welfare' },
-                { username: 'g7_treasurer', campus: 'Both', role: 'g7_treasurer' },
-                { username: 'g8_assets', campus: 'Freedom Base', role: 'g8_assets' },
-                { username: 'g9_media', campus: 'Both', role: 'g9_media' }
-            ];
-
-            for (const c of councilToSeed) {
-                const existing = await User.findOne({ username: c.username });
-                if (!existing) {
-                    await new User({
-                        username: c.username,
-                        password: 'doulos2026',
-                        role: c.role,
-                        campus: c.campus
-                    }).save();
-                    console.log(`✅ G-Council Account seeded: ${c.username} (${c.role})`);
-                } else if (existing.role !== c.role) {
-                    existing.role = c.role;
-                    existing.campus = c.campus;
-                    await existing.save();
+                    console.log(`✅ Account seeded: ${a.username} (${a.role})`);
                 }
             }
 

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import {
     Calendar, CheckCircle, CheckCircle2, XCircle, BookOpen, Music, Bell, Star, Trophy, Search,
     LogOut, GraduationCap, Sparkles, MessageCircle, Send, CreditCard, Wallet,
     History, FileText, LayoutDashboard, Activity, Clock, ChevronRight, Users,
     AlertCircle, ArrowRight, User, Award, Flame, Compass, HeartHandshake, ShieldCheck,
-    Shield, Layers, Info, Check, ArrowUpRight, RotateCcw, Trash2, Bot, QrCode, ScanLine, Camera
+    Shield, Layers, Info, Check, ArrowUpRight, RotateCcw, Trash2, Bot, QrCode, ScanLine, Camera,
+    Loader2
 } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -481,6 +482,7 @@ const StudentPortal = () => {
     const [newMemberName, setNewMemberName] = useState('');
     const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
     const [newMemberType, setNewMemberType] = useState('Douloid');
+    const [isFocusedReg, setIsFocusedReg] = useState(false);
     const [showRolloverWelcome, setShowRolloverWelcome] = useState(false);
     const [toast, setToast] = useState(null);
     const [showScanner, setShowScanner] = useState(false);
@@ -613,104 +615,387 @@ const StudentPortal = () => {
     }, [isLoggedIn, isGuest]);
 
     /* ═══════════════════════════════════════════════════════════
-       1. LOGIN VIEW
+       1. LOGIN VIEW (Matched to Admin/G9 Aesthetic)
     ═══════════════════════════════════════════════════════════ */
     if (!isLoggedIn) {
         return (
-            <div className="sp-viewport" style={{ alignItems: 'center', justifyContent: 'center', padding: '1.25rem' }}>
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1.5rem',
+                position: 'relative',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                overflow: 'hidden'
+            }}>
                 <style>{CSS}</style>
-                <BackgroundGallery />
-                <ValentineRain />
 
+                <style>{`
+                    input::placeholder { color: rgba(200, 220, 255, 0.7) !important; }
+                    input { caret-color: #fff; }
+                `}</style>
+
+                {/* Photo Background */}
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundImage: 'url(/login-bg.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center 20%',
+                    backgroundRepeat: 'no-repeat',
+                    imageRendering: 'high-quality',
+                    WebkitTransform: 'translateZ(0)',
+                    transform: 'translateZ(0)',
+                    willChange: 'transform',
+                    zIndex: 0
+                }} />
+                {/* Clean solid overlay — no gradient noise */}
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(10, 8, 28, 0.22)',
+                    zIndex: 1
+                }} />
+
+                {/* Error Toast Notification */}
                 {error && (
-                    <div className="sp-toast error">
-                        <AlertCircle size={18} />
-                        <span>{error}</span>
+                    <div style={{
+                        position: 'fixed',
+                        top: '2rem',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 2000,
+                        minWidth: '320px',
+                        maxWidth: '90%',
+                        padding: '0.9rem 1.25rem',
+                        borderRadius: '12px',
+                        background: '#FFFFFF',
+                        border: '1px solid #FCA5A5',
+                        boxShadow: '0 12px 30px rgba(220, 38, 38, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#B91C1C',
+                        animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <AlertCircle size={20} style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{error}</span>
                     </div>
                 )}
 
+                {/* Main Login Card — Glassmorphism */}
                 <div style={{
-                    width: '100%', maxWidth: '440px',
-                    background: '#FFFFFF',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '24px',
-                    padding: '2.5rem 2rem',
-                    boxShadow: '0 20px 50px rgba(15, 23, 42, 0.08)',
-                    position: 'relative', zIndex: 10,
-                    animation: 'popScale 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                    width: '100%',
+                    maxWidth: '420px',
+                    background: 'rgba(255, 255, 255, 0.13)',
+                    backdropFilter: 'blur(28px)',
+                    WebkitBackdropFilter: 'blur(28px)',
+                    borderRadius: '28px',
+                    padding: '2.5rem 2.25rem',
+                    boxShadow: '0 24px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25)',
+                    border: '1px solid rgba(255, 255, 255, 0.22)',
+                    position: 'relative',
+                    zIndex: 10
                 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
+                    {/* Header / Brand */}
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        marginBottom: '2rem',
+                        textAlign: 'center'
+                    }}>
                         <div style={{
-                            width: '64px', height: '64px', borderRadius: '18px',
-                            background: 'linear-gradient(135deg, #1D4ED8 0%, #1E3A8A 100%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 8px 20px rgba(29, 78, 216, 0.25)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             marginBottom: '1.25rem'
                         }}>
-                            <Logo size={36} showText={false} />
+                            <Logo size={88} showText={false} />
                         </div>
-                        <h1 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', margin: 0 }}>
-                            {registrationRequired ? 'Member Enrollment' : 'Member Portal'}
+
+                        <h1 style={{
+                            fontSize: '1.45rem',
+                            fontWeight: 800,
+                            color: '#FFFFFF',
+                            margin: '0 0 0.4rem 0',
+                            letterSpacing: '-0.5px',
+                            textShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                        }}>
+                            {registrationRequired ? 'Douloid / Recruit Enrollment' : 'Douloid or Recruit Portal'}
                         </h1>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#1D4ED8', marginTop: '0.35rem' }}>
-                            Doulos Student Access
-                        </span>
+                        <p style={{
+                            fontSize: '0.85rem',
+                            color: 'rgba(255,255,255,0.72)',
+                            margin: 0,
+                            fontWeight: 500
+                        }}>
+                            {registrationRequired ? 'Complete your enrollment to activate your portal' : 'Enter your admission number to access your portal'}
+                        </p>
                     </div>
 
                     {registrationRequired ? (
-                        <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Full Name</label>
-                                <input type="text" placeholder="e.g. John Doe" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} required style={{ width: '100%', height: '48px', padding: '0 1rem', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 600, color: '#0F172A', outline: 'none' }} />
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    color: 'rgba(255,255,255,0.85)',
+                                    marginBottom: '0.45rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Full Name
+                                </label>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.10)',
+                                    border: '1.5px solid rgba(255,255,255,0.25)',
+                                    borderRadius: '12px',
+                                    padding: '0 1rem',
+                                    height: '48px'
+                                }}>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. John Doe"
+                                        value={newMemberName}
+                                        onChange={e => setNewMemberName(e.target.value)}
+                                        required
+                                        style={{
+                                            width: '100%',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            outline: 'none',
+                                            fontSize: '0.9rem',
+                                            color: '#FFFFFF',
+                                            fontWeight: 500
+                                        }}
+                                    />
+                                </div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Campus</label>
-                                    <select value={newMemberCampus} onChange={e => setNewMemberCampus(e.target.value)} style={{ width: '100%', height: '48px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '12px', color: '#0F172A', padding: '0 0.75rem', fontSize: '0.88rem', fontWeight: 700, outline: 'none' }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        color: 'rgba(255,255,255,0.85)',
+                                        marginBottom: '0.45rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Campus
+                                    </label>
+                                    <select
+                                        value={newMemberCampus}
+                                        onChange={e => setNewMemberCampus(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            height: '48px',
+                                            background: 'rgba(255,255,255,0.10)',
+                                            border: '1.5px solid rgba(255,255,255,0.25)',
+                                            borderRadius: '12px',
+                                            color: '#FFFFFF',
+                                            padding: '0 0.75rem',
+                                            fontSize: '0.88rem',
+                                            fontWeight: 600,
+                                            outline: 'none'
+                                        }}
+                                    >
                                         {['Athi River', 'Valley Road'].map(o => <option key={o} value={o}>{o}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Category</label>
-                                    <select value={newMemberType} onChange={e => setNewMemberType(e.target.value)} style={{ width: '100%', height: '48px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '12px', color: '#0F172A', padding: '0 0.75rem', fontSize: '0.88rem', fontWeight: 700, outline: 'none' }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        color: 'rgba(255,255,255,0.85)',
+                                        marginBottom: '0.45rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Category
+                                    </label>
+                                    <select
+                                        value={newMemberType}
+                                        onChange={e => setNewMemberType(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            height: '48px',
+                                            background: 'rgba(255,255,255,0.10)',
+                                            border: '1.5px solid rgba(255,255,255,0.25)',
+                                            borderRadius: '12px',
+                                            color: '#FFFFFF',
+                                            padding: '0 0.75rem',
+                                            fontSize: '0.88rem',
+                                            fontWeight: 600,
+                                            outline: 'none'
+                                        }}
+                                    >
                                         {['Douloid', 'Recruit', 'Visitor'].map(o => <option key={o} value={o}>{o}</option>)}
                                     </select>
                                 </div>
                             </div>
 
-                            <button type="submit" disabled={loading} style={{ width: '100%', height: '50px', borderRadius: '14px', background: 'var(--color-primary)', border: 'none', color: '#FFFFFF', fontWeight: 800, fontSize: '0.92rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 4px 14px rgba(29, 78, 216, 0.3)' }}>
-                                {loading ? 'Enrolling...' : 'Complete Registration'}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                style={{
+                                    height: '48px',
+                                    background: 'rgba(255,255,255,0.95)',
+                                    color: '#2D2060',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    fontSize: '0.92rem',
+                                    fontWeight: 800,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                    transition: 'all 0.2s ease',
+                                    marginTop: '0.5rem'
+                                }}
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 size={18} className="spinner-animate" />
+                                        <span>Enrolling...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Complete Registration</span>
+                                        <ArrowRight size={18} />
+                                    </>
+                                )}
                             </button>
-                            <button type="button" onClick={() => setRegistrationRequired(false)} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textAlign: 'center' }}>
+                            <button
+                                type="button"
+                                onClick={() => setRegistrationRequired(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.65)',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    marginTop: '0.25rem'
+                                }}
+                            >
                                 ← Back to Sign In
                             </button>
                         </form>
                     ) : (
-                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
+                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                            {/* Admission Number Input */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: '0.45rem', letterSpacing: '0.5px' }}>Admission Number</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. 21-1234"
-                                    value={regNo}
-                                    onChange={e => { let v = e.target.value.replace(/\D/g, ''); if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2, 6); setRegNo(v); }}
-                                    required
-                                    style={{ width: '100%', height: '52px', padding: '0 1.15rem', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '14px', fontSize: '1.05rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#0F172A', outline: 'none' }}
-                                />
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    color: 'rgba(255,255,255,0.85)',
+                                    marginBottom: '0.45rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Admission Number
+                                </label>
+                                <div style={{
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    background: isFocusedReg ? 'rgba(59,130,246,0.28)' : 'rgba(59,130,246,0.15)',
+                                    border: `1.5px solid ${isFocusedReg ? 'rgba(147,197,253,0.8)' : 'rgba(147,197,253,0.35)'}`,
+                                    borderRadius: '12px',
+                                    padding: '0 1rem',
+                                    height: '48px',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: isFocusedReg ? '0 0 0 4px rgba(59,130,246,0.2)' : 'none'
+                                }}>
+                                    <User size={18} style={{ color: isFocusedReg ? '#fff' : 'rgba(255,255,255,0.55)', marginRight: '0.75rem', flexShrink: 0 }} />
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. 24-1033"
+                                        value={regNo}
+                                        onChange={e => {
+                                            let v = e.target.value.replace(/\D/g, '');
+                                            if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2, 6);
+                                            setRegNo(v);
+                                        }}
+                                        onFocus={() => setIsFocusedReg(true)}
+                                        onBlur={() => setIsFocusedReg(false)}
+                                        required
+                                        style={{
+                                            width: '100%',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            outline: 'none',
+                                            fontSize: '0.95rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '1px',
+                                            color: '#FFFFFF'
+                                        }}
+                                    />
+                                </div>
                             </div>
 
-                            <button type="submit" disabled={loading} style={{ width: '100%', height: '52px', borderRadius: '14px', background: 'var(--color-primary)', border: 'none', color: '#FFFFFF', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 4px 14px rgba(29, 78, 216, 0.3)', transition: 'all 0.2s' }}>
-                                {loading ? <><div className="loading-spinner" style={{ borderTopColor: '#FFFFFF' }} /> Verifying...</> : <>Access My Portal <ArrowRight size={18} /></>}
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                style={{
+                                    height: '48px',
+                                    background: 'rgba(255,255,255,0.95)',
+                                    color: '#2D2060',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    fontSize: '0.92rem',
+                                    fontWeight: 800,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                    transition: 'all 0.2s ease',
+                                    marginTop: '0.5rem'
+                                }}
+                                onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                                onMouseLeave={e => { if (!loading) { e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 size={18} className="spinner-animate" />
+                                        <span>Accessing Portal...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Access My Portal</span>
+                                        <ArrowRight size={18} />
+                                    </>
+                                )}
                             </button>
                         </form>
                     )}
 
-                    <div style={{ marginTop: '1.75rem', display: 'flex', justifyContent: 'center' }}>
-                        <button onClick={() => navigate('/guest')} style={{ background: 'none', border: '1px solid #E2E8F0', color: '#1D4ED8', padding: '0.5rem 1.25rem', borderRadius: '999px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <span>Explore as Guest</span>
-                            <ArrowRight size={14} />
-                        </button>
+
+
+                    {/* Subfooter */}
+                    <div style={{
+                        marginTop: '1.5rem',
+                        textAlign: 'center',
+                        fontSize: '0.72rem',
+                        color: '#9E9EA7',
+                        fontWeight: 500
+                    }}>
+                        Doulos Timeregistrering System
                     </div>
                 </div>
             </div>

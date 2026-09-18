@@ -257,6 +257,140 @@ export const deleteMeeting = async (req, res) => {
     }
 };
 
+export const updateMeeting = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            name, date, campus, startTime, endTime, semester, category,
+            location, venueId, isTestMeeting, allowMultiple,
+            questionOfDay, questionType, questionOptions,
+            devotion, announcements
+        } = req.body;
+
+        // Role check: G5 Training Directorate or SuperAdmin/Developer
+        const userRole = (req.user?.role || '').toLowerCase();
+        const username = (req.user?.username || '').toLowerCase();
+        const isG5 = ['trainer', 'g5', 'g5_training', 'g5_director'].includes(userRole) ||
+                     username.startsWith('trainer') ||
+                     username === 'g5_director' ||
+                     username === 'g5_training' ||
+                     ['superadmin', 'developer', 'admin'].includes(userRole);
+
+        if (!isG5) {
+            return res.status(403).json({
+                message: 'Access Denied: Only G5 Training Directorate is authorized to edit meeting details.'
+            });
+        }
+
+        const meeting = await Meeting.findById(id);
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+
+        let selectedCampus = campus || meeting.campus;
+        let venueLocation = location || meeting.location;
+
+        if (venueId) {
+            const venue = await Venue.findById(venueId);
+            if (venue) {
+                selectedCampus = venue.campus === 'Both' ? selectedCampus : venue.campus;
+                venueLocation = {
+                    name: venue.name,
+                    latitude: venue.latitude,
+                    longitude: venue.longitude,
+                    radius: venue.radius || 200
+                };
+            }
+        }
+
+        // Validate Question of the Day if provided
+        if (questionOfDay !== undefined) {
+            const trimmedQuestion = (questionOfDay || '').trim();
+            if (!trimmedQuestion) {
+                return res.status(400).json({
+                    message: 'Mandatory Requirement: An interactive roll-call question is required.'
+                });
+            }
+            meeting.questionOfDay = trimmedQuestion;
+        }
+
+        if (questionType) {
+            meeting.questionType = questionType;
+            if (['multiple_choice', 'checkboxes'].includes(questionType)) {
+                const validOptions = (questionOptions || meeting.questionOptions || []).filter(o => o && o.trim());
+                if (validOptions.length < 2) {
+                    return res.status(400).json({
+                        message: 'At least 2 choices are required for multiple choice / checkbox questions.'
+                    });
+                }
+                meeting.questionOptions = validOptions;
+            } else {
+                meeting.questionOptions = [];
+            }
+        } else if (questionOptions) {
+            meeting.questionOptions = (questionOptions || []).filter(o => o && o.trim());
+        }
+
+        // Location GPS validation
+        if (location) {
+            const lat = venueLocation?.latitude ?? meeting.location?.latitude;
+            const lng = venueLocation?.longitude ?? meeting.location?.longitude;
+            if (lat !== undefined && lng !== undefined && !isNaN(Number(lat)) && !isNaN(Number(lng)) && Number(lat) !== 0 && Number(lng) !== 0) {
+                meeting.location = {
+                    name: venueLocation?.name || meeting.location?.name || 'Venue',
+                    latitude: Number(lat),
+                    longitude: Number(lng),
+                    radius: Number(venueLocation?.radius) || Number(meeting.location?.radius) || 200
+                };
+            } else {
+                return res.status(400).json({
+                    message: 'Valid GPS coordinates (latitude & longitude) are required for meeting location.'
+                });
+            }
+        }
+
+        // Conflict check if date or campus is changing
+        const targetDate = date || meeting.date;
+        const targetCampus = selectedCampus;
+        const dateChanged = date && new Date(date).toISOString().split('T')[0] !== new Date(meeting.date).toISOString().split('T')[0];
+        const campusChanged = campus && campus !== meeting.campus;
+
+        if ((dateChanged || campusChanged) && !isTestMeeting && !meeting.isTestMeeting && !allowMultiple) {
+            const { startOfWeek, endOfWeek } = getWeekRange(targetDate);
+            const conflict = await Meeting.findOne({
+                _id: { $ne: meeting._id },
+                campus: targetCampus,
+                isArchived: { $ne: true },
+                date: { $gte: startOfWeek, $lte: endOfWeek }
+            });
+
+            if (conflict) {
+                const conflictDateStr = new Date(conflict.date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' });
+                return res.status(400).json({
+                    message: `Policy Violation: Only one active meeting per week is allowed for ${targetCampus}. "${conflict.name}" is already scheduled for ${conflictDateStr} (${conflict.startTime} - ${conflict.endTime}).`
+                });
+            }
+        }
+
+        if (name) meeting.name = name.trim();
+        if (date) meeting.date = new Date(date);
+        if (campus) meeting.campus = selectedCampus;
+        if (startTime) meeting.startTime = startTime;
+        if (endTime) meeting.endTime = endTime;
+        if (semester) meeting.semester = semester;
+        if (category) meeting.category = category;
+        if (isTestMeeting !== undefined) meeting.isTestMeeting = Boolean(isTestMeeting);
+        if (devotion !== undefined) meeting.devotion = devotion;
+        if (announcements !== undefined) meeting.announcements = announcements;
+
+        await meeting.save();
+        res.json({ message: `Meeting "${meeting.name}" updated successfully!`, meeting });
+    } catch (error) {
+        console.error('Error in updateMeeting:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const updateMeetingStatus = async (req, res) => {
     try {
         const { id } = req.params;

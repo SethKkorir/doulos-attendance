@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, Trophy, Star, Clock, Lock } from 'lucide-react';
+import { 
+    CheckCircle, XCircle, Loader2, BookOpen, ChevronDown, ChevronUp, 
+    Trophy, Star, Clock, Lock, Sparkles, MapPin, ArrowRight, ShieldCheck, Check 
+} from 'lucide-react';
 import Logo from '../components/Logo';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -142,13 +145,6 @@ const CheckIn = () => {
     const [msg, setMsg] = useState('');
     const [isLocating, setIsLocating] = useState(false);
     const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
-    const [isNewMember, setIsNewMember] = useState(false);
-    const [regStep, setRegStep] = useState(1);
-    const [registrationData, setRegistrationData] = useState({
-        name: '',
-        campus: 'Athi River',
-        memberType: 'Douloid'
-    });
     const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [currentSemester, setCurrentSemester] = useState('');
@@ -169,24 +165,6 @@ const CheckIn = () => {
         }
         return () => clearTimeout(timer);
     }, [msg]);
-
-    const [redirectCountdown, setRedirectCountdown] = useState(3);
-
-    useEffect(() => {
-        if (status === 'success') {
-            const interval = setInterval(() => {
-                setRedirectCountdown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(interval);
-                        navigate('/portal');
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            return () => clearInterval(interval);
-        }
-    }, [status, navigate]);
 
     const getPersistentDeviceId = async () => {
         let localId = null;
@@ -340,13 +318,14 @@ const CheckIn = () => {
 
 
     const lookupMember = async (regNo) => {
-        if (!regNo || regNo.length < 5) {
+        const cleanDigits = (regNo || '').replace(/\D/g, '');
+        if (!regNo || cleanDigits.length < 6) {
             setMemberInfo(null);
             return;
         }
         setIsLookingUp(true);
         try {
-            const res = await api.get(`/attendance/student/${regNo}`);
+            const res = await api.get(`/attendance/student/${encodeURIComponent(regNo)}`);
             if (res.data && res.data.stats && res.data.stats.percentage !== undefined) {
                 const name = res.data.memberName || 'Member';
                 setMemberInfo({ name, type: res.data.memberType });
@@ -368,19 +347,11 @@ const CheckIn = () => {
                     });
                     return updated;
                 });
-            } else if (res.data && res.data.registrationRequired) {
-                setIsNewMember(true);
-                setRegStep(1);
             } else {
                 setMemberInfo(null);
             }
         } catch (err) {
-            if (err.response?.status === 404) {
-                setIsNewMember(true);
-                setRegStep(1);
-            } else {
-                setMemberInfo(null);
-            }
+            setMemberInfo(null);
         } finally {
             setIsLookingUp(false);
         }
@@ -393,30 +364,43 @@ const CheckIn = () => {
         switch (type) {
             case 'yes_no':
                 return (
-                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.65rem' }}>
                         {['Yes', 'No'].map(opt => {
                             const isSelected = responses.dailyQuestionAnswer === opt;
+                            const isYes = opt === 'Yes';
                             return (
                                 <button
                                     key={opt}
                                     type="button"
-                                    className="btn"
                                     disabled={status === 'submitting'}
                                     onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: opt }))}
                                     style={{
-                                        flex: 1,
-                                        height: '46px',
-                                        borderRadius: '0.75rem',
-                                        fontSize: '0.9rem',
+                                        padding: '0.95rem 1rem',
+                                        borderRadius: '16px',
+                                        fontSize: '0.98rem',
                                         fontWeight: 800,
-                                        background: isSelected ? 'rgba(37, 170, 225, 0.2)' : 'rgba(0,0,0,0.25)',
-                                        color: isSelected ? '#25AAE1' : 'var(--color-text-dim)',
-                                        border: isSelected ? '2px solid #25AAE1' : '1px solid rgba(255,255,255,0.06)',
-                                        transition: 'all 0.2s ease',
-                                        cursor: 'pointer'
+                                        background: isSelected 
+                                            ? (isYes 
+                                                ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%)' 
+                                                : 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.35) 100%)')
+                                            : 'rgba(30, 41, 59, 0.7)',
+                                        color: isSelected ? (isYes ? '#34D399' : '#F87171') : '#CBD5E1',
+                                        border: isSelected 
+                                            ? (isYes ? '2px solid #10B981' : '2px solid #EF4444') 
+                                            : '1.5px solid rgba(255, 255, 255, 0.12)',
+                                        boxShadow: isSelected 
+                                            ? (isYes ? '0 0 16px rgba(16, 185, 129, 0.3)' : '0 0 16px rgba(239, 68, 68, 0.3)') 
+                                            : 'none',
+                                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem'
                                     }}
                                 >
-                                    {opt}
+                                    <span>{isYes ? '👍' : '👎'}</span>
+                                    <span>{opt}</span>
                                 </button>
                             );
                         })}
@@ -424,50 +408,53 @@ const CheckIn = () => {
                 );
             case 'multiple_choice':
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.65rem' }}>
                         {options.map(opt => {
                             const isSelected = responses.dailyQuestionAnswer === opt;
                             return (
                                 <button
                                     key={opt}
                                     type="button"
-                                    className="btn"
                                     disabled={status === 'submitting'}
                                     onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: opt }))}
                                     style={{
                                         width: '100%',
-                                        padding: '0.85rem 1rem',
-                                        borderRadius: '0.75rem',
+                                        padding: '0.9rem 1.1rem',
+                                        borderRadius: '14px',
                                         textAlign: 'left',
-                                        fontSize: '0.88rem',
+                                        fontSize: '0.9rem',
                                         fontWeight: 700,
-                                        background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'rgba(0,0,0,0.25)',
-                                        color: isSelected ? 'white' : 'var(--color-text-dim)',
-                                        border: isSelected ? '2px solid #25AAE1' : '1px solid rgba(255,255,255,0.05)',
+                                        background: isSelected 
+                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.35) 0%, rgba(37, 99, 235, 0.25) 100%)' 
+                                            : 'rgba(30, 41, 59, 0.6)',
+                                        color: '#FFFFFF',
+                                        border: isSelected ? '2px solid #38BDF8' : '1.5px solid rgba(255, 255, 255, 0.1)',
+                                        boxShadow: isSelected ? '0 4px 16px rgba(56, 189, 248, 0.2)' : 'none',
                                         transition: 'all 0.2s ease',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.75rem'
+                                        gap: '0.8rem'
                                     }}
                                 >
                                     <div style={{
-                                        width: '16px',
-                                        height: '16px',
+                                        width: '18px',
+                                        height: '18px',
                                         borderRadius: '50%',
                                         border: '2px solid',
-                                        borderColor: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.3)',
+                                        borderColor: isSelected ? '#38BDF8' : 'rgba(255, 255, 255, 0.4)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: isSelected ? '#25AAE1' : 'transparent',
+                                        background: isSelected ? '#38BDF8' : 'transparent',
+                                        flexShrink: 0,
                                         transition: 'all 0.2s'
                                     }}>
                                         {isSelected && (
-                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'black' }} />
+                                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#0B1120' }} />
                                         )}
                                     </div>
-                                    {opt}
+                                    <span style={{ flex: 1, lineHeight: 1.4 }}>{opt}</span>
                                 </button>
                             );
                         })}
@@ -475,15 +462,14 @@ const CheckIn = () => {
                 );
             case 'checkboxes':
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.65rem' }}>
                         {options.map(opt => {
-                            const currentSelections = responses.dailyQuestionAnswer ? responses.dailyQuestionAnswer.split(', ') : [];
+                            const currentSelections = responses.dailyQuestionAnswer ? responses.dailyQuestionAnswer.split(', ').filter(Boolean) : [];
                             const isSelected = currentSelections.includes(opt);
                             return (
                                 <button
                                     key={opt}
                                     type="button"
-                                    className="btn"
                                     disabled={status === 'submitting'}
                                     onClick={() => {
                                         let nextSelections;
@@ -496,38 +482,40 @@ const CheckIn = () => {
                                     }}
                                     style={{
                                         width: '100%',
-                                        padding: '0.85rem 1rem',
-                                        borderRadius: '0.75rem',
+                                        padding: '0.9rem 1.1rem',
+                                        borderRadius: '14px',
                                         textAlign: 'left',
-                                        fontSize: '0.88rem',
+                                        fontSize: '0.9rem',
                                         fontWeight: 700,
-                                        background: isSelected ? 'rgba(37, 170, 225, 0.15)' : 'rgba(0,0,0,0.25)',
-                                        color: isSelected ? 'white' : 'var(--color-text-dim)',
-                                        border: isSelected ? '2px solid #25AAE1' : '1px solid rgba(255,255,255,0.05)',
+                                        background: isSelected 
+                                            ? 'linear-gradient(135deg, rgba(29, 78, 216, 0.35) 0%, rgba(37, 99, 235, 0.25) 100%)' 
+                                            : 'rgba(30, 41, 59, 0.6)',
+                                        color: '#FFFFFF',
+                                        border: isSelected ? '2px solid #38BDF8' : '1.5px solid rgba(255, 255, 255, 0.1)',
+                                        boxShadow: isSelected ? '0 4px 16px rgba(56, 189, 248, 0.2)' : 'none',
                                         transition: 'all 0.2s ease',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.75rem'
+                                        gap: '0.8rem'
                                     }}
                                 >
                                     <div style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        borderRadius: '4px',
+                                        width: '18px',
+                                        height: '18px',
+                                        borderRadius: '5px',
                                         border: '2px solid',
-                                        borderColor: isSelected ? '#25AAE1' : 'rgba(255,255,255,0.3)',
+                                        borderColor: isSelected ? '#38BDF8' : 'rgba(255, 255, 255, 0.4)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: isSelected ? '#25AAE1' : 'transparent',
+                                        background: isSelected ? '#38BDF8' : 'transparent',
+                                        flexShrink: 0,
                                         transition: 'all 0.2s'
                                     }}>
-                                        {isSelected && (
-                                            <span style={{ color: 'black', fontSize: '10px', fontWeight: 900 }}>✓</span>
-                                        )}
+                                        {isSelected && <Check size={12} color="#0B1120" strokeWidth={3} />}
                                     </div>
-                                    {opt}
+                                    <span style={{ flex: 1, lineHeight: 1.4 }}>{opt}</span>
                                 </button>
                             );
                         })}
@@ -535,31 +523,38 @@ const CheckIn = () => {
                 );
             case 'rating':
                 return (
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', margin: '0.75rem 0' }}>
-                        {[1, 2, 3, 4, 5].map(star => {
-                            const ratingVal = parseInt(responses.dailyQuestionAnswer) || 0;
-                            const isActive = star <= ratingVal;
-                            return (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    disabled={status === 'submitting'}
-                                    onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: String(star) }))}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        outline: 'none',
-                                        fontSize: '2rem',
-                                        transition: 'all 0.2s ease',
-                                        transform: isActive ? 'scale(1.15)' : 'scale(1.0)',
-                                        color: isActive ? '#facc15' : 'rgba(255,255,255,0.15)'
-                                    }}
-                                >
-                                    ★
-                                </button>
-                            );
-                        })}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', margin: '0.85rem 0 0.4rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.8rem' }}>
+                            {[1, 2, 3, 4, 5].map(star => {
+                                const ratingVal = parseInt(responses.dailyQuestionAnswer, 10) || 0;
+                                const isActive = star <= ratingVal;
+                                return (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        disabled={status === 'submitting'}
+                                        onClick={() => setResponses(prev => ({ ...prev, dailyQuestionAnswer: String(star) }))}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            fontSize: '2.2rem',
+                                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                            transform: isActive ? 'scale(1.18)' : 'scale(1.0)',
+                                            color: isActive ? '#FBBF24' : 'rgba(255,255,255,0.2)',
+                                            textShadow: isActive ? '0 0 16px rgba(251, 191, 36, 0.8)' : 'none',
+                                            padding: '0.15rem'
+                                        }}
+                                    >
+                                        ★
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <span style={{ fontSize: '0.82rem', color: '#94A3B8', fontWeight: 700 }}>
+                            {responses.dailyQuestionAnswer ? `${responses.dailyQuestionAnswer} out of 5 Stars` : 'Tap a star to rate'}
+                        </span>
                     </div>
                 );
             case 'text':
@@ -567,16 +562,22 @@ const CheckIn = () => {
                 return (
                     <textarea
                         className="input-field"
-                        placeholder="Type your answer here..."
+                        placeholder="Type your response here..."
+                        rows={3}
                         style={{
                             width: '100%',
-                            minHeight: '70px',
-                            fontSize: '0.88rem',
-                            fontWeight: 700,
-                            padding: '0.75rem',
-                            background: 'rgba(0,0,0,0.2)',
-                            borderRadius: '0.75rem',
-                            transition: 'all 0.3s ease'
+                            padding: '0.9rem 1rem',
+                            background: '#020617',
+                            border: '1.5px solid #38BDF8',
+                            borderRadius: '14px',
+                            color: '#FFFFFF',
+                            fontSize: '0.92rem',
+                            fontWeight: 600,
+                            outline: 'none',
+                            resize: 'none',
+                            fontFamily: 'inherit',
+                            lineHeight: 1.5,
+                            boxSizing: 'border-box'
                         }}
                         value={responses.dailyQuestionAnswer || ''}
                         onChange={e => setResponses(prev => ({ ...prev, dailyQuestionAnswer: e.target.value }))}
@@ -590,8 +591,15 @@ const CheckIn = () => {
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
 
+        const currentRegNo = responses.studentRegNo?.trim();
+        if (!currentRegNo || currentRegNo.length < 5) {
+            setStatus('error');
+            setMsg("Please enter your valid Admission Number.");
+            return;
+        }
+
         // Validate Question of the Day response if present
-        if (meeting?.questionOfDay && !responses.dailyQuestionAnswer) {
+        if (meeting?.questionOfDay && !responses.dailyQuestionAnswer?.trim()) {
             setStatus('error');
             setMsg("Please answer the Question of the Day before submitting.");
             return;
@@ -674,17 +682,17 @@ const CheckIn = () => {
 
                 let position;
                 try {
-                    // Try High Accuracy first (15s timeout)
+                    // Try High Accuracy first (12s timeout)
                     position = await getPosition({
                         enableHighAccuracy: true,
-                        timeout: 15000,
+                        timeout: 12000,
                         maximumAge: 0
                     });
                 } catch (err) {
                     console.warn("High accuracy GPS failed, trying standard accuracy...", err);
                     position = await getPosition({
                         enableHighAccuracy: false,
-                        timeout: 15000,
+                        timeout: 12000,
                         maximumAge: 60000
                     });
                 }
@@ -716,8 +724,9 @@ const CheckIn = () => {
                         setStatus('error');
                         setMsg("GPS signal weak. Move outdoors or click 'Continue without location' below.");
                     } else {
+                        setLocationErrorType('denied');
                         setStatus('error');
-                        setMsg(`Location error: ${error.message || 'Verification failed'}`);
+                        setMsg(`Location error: ${error.message || 'Verification failed'}. Click 'Continue without location' below.`);
                     }
                     return;
                 }
@@ -728,23 +737,33 @@ const CheckIn = () => {
 
         setStatus('submitting');
         try {
+            let activeToken = token;
+            if (!activeToken) {
+                try {
+                    const tokenRes = await api.post('/tokens/issue', { meetingCode });
+                    if (tokenRes.data?.token) {
+                        activeToken = tokenRes.data.token;
+                        setToken(activeToken);
+                    }
+                } catch (tErr) {
+                    console.warn("Auto-token acquisition note:", tErr);
+                }
+            }
+
             const deviceId = await getPersistentDeviceId();
             const res = await api.post('/attendance/submit', {
                 meetingCode: meetingCode.toLowerCase(),
                 deviceId,
-                token,
+                token: activeToken,
                 userLat: userLocation.lat,
                 userLong: userLocation.long,
                 accuracy: userLocation.accuracy,
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
-                },
-                isNewMember,
-                registrationData: isNewMember ? registrationData : null
+                }
             });
             setStatus('success');
-            setIsNewMember(false);
             setMsg(`Attendance recorded successfully for ${res.data.memberName || 'you'}!`);
             // Use per-day key for trainings to avoid blocking future days
             const isTrainingNow = meeting?.isTraining || meeting?.category === 'Training';
@@ -780,7 +799,6 @@ const CheckIn = () => {
                         reason: errorMsg,
                         timestamp: Date.now()
                     }));
-                    setTimeout(() => navigate('/portal'), 4000);
                 }
                 setStatus('locked');
                 setMsg(errorMsg);
@@ -801,176 +819,208 @@ const CheckIn = () => {
     }
 
     return (
-        <div className="flex-center" style={{ minHeight: '100vh', flexDirection: 'column', padding: '1.5rem', position: 'relative' }}>
+        <div 
+            className="doulos-direct-checkin-wrapper"
+            style={{ 
+                minHeight: '100vh', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                padding: '1.5rem 1rem', 
+                position: 'relative',
+                background: '#0B1120',
+                color: '#FFFFFF',
+                boxSizing: 'border-box'
+            }}
+        >
             <BackgroundGallery />
+            {/* Dark glass backdrop overlay ensuring high contrast over background photos */}
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'radial-gradient(circle at 50% 10%, rgba(29, 78, 216, 0.25) 0%, rgba(11, 17, 32, 0.88) 55%, rgba(2, 6, 23, 0.97) 100%)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                zIndex: 0,
+                pointerEvents: 'none'
+            }} />
             <ValentineRain />
 
             {/* Error Popover */}
             {(msg && (status === 'error' || status === 'locked')) || hasAlreadyCheckedIn ? (
                 <div style={{
                     position: 'fixed',
-                    top: '2rem',
+                    top: '1.5rem',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     zIndex: 2000,
                     width: '90%',
-                    maxWidth: '400px',
-                    padding: '1.25rem',
-                    borderRadius: '1rem',
-                    background: hasAlreadyCheckedIn ? '#d97706' : '#dc2626',
-                    color: 'white',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                    maxWidth: '420px',
+                    padding: '1.1rem 1.25rem',
+                    borderRadius: '16px',
+                    background: hasAlreadyCheckedIn ? 'rgba(217, 119, 6, 0.95)' : 'rgba(220, 38, 38, 0.95)',
+                    backdropFilter: 'blur(16px)',
+                    color: '#FFFFFF',
+                    boxShadow: '0 20px 35px rgba(0, 0, 0, 0.6)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '1rem',
+                    gap: '0.85rem',
                     fontWeight: 700,
-                    animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                    animation: 'slideDown 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    boxSizing: 'border-box'
                 }}>
-                    {hasAlreadyCheckedIn ? <Clock size={24} style={{ flexShrink: 0 }} /> : <XCircle size={24} style={{ flexShrink: 0 }} />}
-                    <div style={{ flex: 1, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                    {hasAlreadyCheckedIn ? <Clock size={22} style={{ flexShrink: 0 }} /> : <XCircle size={22} style={{ flexShrink: 0 }} />}
+                    <div style={{ flex: 1, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', fontSize: '0.88rem', lineHeight: '1.4' }}>
                         {hasAlreadyCheckedIn ? "Double check-in detected! You've already marked attendance." : msg}
                     </div>
                     <button
+                        type="button"
                         onClick={() => { setMsg(''); setHasAlreadyCheckedIn(false); }}
-                        style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '0.25rem' }}
+                        style={{ background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '0.25rem' }}
                     >
                         ✕
                     </button>
                 </div>
             ) : null}
 
-            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '2.5rem', animation: 'fadeIn 0.8s ease-out' }}>
-                <div style={{ animation: 'rotateLogo 30s linear infinite', display: 'inline-block', marginBottom: '1.5rem' }}>
-                    <Logo size={80} showText={false} />
+            {/* Top Brand Header */}
+            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '1.5rem', animation: 'fadeIn 0.6s ease-out' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.85rem' }}>
+                    <Logo size={68} showText={false} />
                 </div>
                 <h1 style={{
-                    fontSize: '1.8rem',
+                    fontSize: '1.85rem',
                     fontWeight: 900,
-                    letterSpacing: '-0.05em',
-                    margin: 0,
-                    textShadow: '0 0 30px rgba(255, 255, 255, 0.2)'
+                    letterSpacing: '-0.02em',
+                    margin: '0 0 0.45rem 0',
+                    color: '#FFFFFF'
                 }}>
-                    DOULOS <span style={{ color: 'hsl(var(--color-primary))' }}>CHECK-IN</span>
+                    DOULOS <span style={{ background: 'linear-gradient(135deg, #38BDF8 0%, #60A5FA 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CHECK-IN</span>
                 </h1>
                 {meeting && (
                     <div style={{
-                        marginTop: '0.5rem',
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                        color: 'var(--color-text-dim)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '2px',
-                        display: 'flex',
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.75rem'
+                        gap: '0.45rem',
+                        padding: '0.35rem 0.95rem',
+                        background: 'rgba(30, 41, 59, 0.75)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '999px',
+                        fontSize: '0.78rem',
+                        fontWeight: 800,
+                        color: '#94A3B8',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase'
                     }}>
-                        <div style={{ width: '15px', height: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
-                        {meeting.name} &bull; {meeting.campus}
-                        <div style={{ width: '15px', height: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
-                    </div>
-                )}
-                {meeting?.allowManualOverride && (
-                    <div style={{
-                        marginTop: '1rem',
-                        padding: '0.8rem',
-                        background: 'rgba(234, 179, 8, 0.1)',
-                        border: '1px solid rgba(234, 179, 8, 0.2)',
-                        borderRadius: '0.75rem',
-                        color: '#eab308',
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
-                    }}>
-                        <span>📡 REMOTE MODE: Admin check-in preferred today.</span>
+                        <MapPin size={13} color="#38BDF8" />
+                        <span style={{ color: '#FFFFFF' }}>{meeting.name}</span>
+                        <span>·</span>
+                        <span>{meeting.campus}</span>
                     </div>
                 )}
                 {meeting?.location?.latitude && (
                     <div style={{
-                        marginTop: '1rem',
-                        padding: '0.8rem',
-                        background: 'rgba(37, 170, 225, 0.1)',
-                        border: '1px solid rgba(37, 170, 225, 0.2)',
-                        borderRadius: '0.75rem',
-                        color: '#25AAE1',
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
+                        marginTop: '0.65rem',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
+                        justifyContent: 'center'
                     }}>
-                        <span>📍 GEOFENCED: Location permission is required to check in.</span>
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            padding: '0.3rem 0.85rem',
+                            background: 'rgba(56, 189, 248, 0.12)',
+                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                            borderRadius: '999px',
+                            fontSize: '0.74rem',
+                            fontWeight: 800,
+                            color: '#38BDF8'
+                        }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8' }} />
+                            <span>Geofenced Venue Verification Active</span>
+                        </div>
                     </div>
                 )}
             </div>
 
-            <div className="glass-panel" style={{
+            {/* Check-In Card Container */}
+            <div style={{
+                position: 'relative',
+                zIndex: 1,
                 width: '100%',
-                maxWidth: '400px',
-                padding: '2.5rem 2rem',
-                background: '#0f172a',
-                border: '1px solid var(--glass-border)',
-                borderRadius: '1.5rem',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                maxWidth: '430px',
+                padding: '2rem 1.65rem',
+                background: '#0B1120',
+                border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '24px',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(29, 78, 216, 0.2)',
+                boxSizing: 'border-box',
+                animation: 'popScale 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
                 {hasAlreadyCheckedIn ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                        <div style={{ background: 'rgba(255, 215, 0, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
-                            <span style={{ fontSize: '3rem' }}>😎</span>
+                        <div style={{ background: 'rgba(255, 215, 0, 0.12)', width: '90px', height: '90px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', border: '2px solid rgba(251, 191, 36, 0.3)' }}>
+                            <span style={{ fontSize: '2.8rem' }}>😎</span>
                         </div>
-                        <h2 style={{ color: '#fbbf24', fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', textTransform: 'uppercase' }}>
-                            Easy There, Douloid!
+                        <h2 style={{ color: '#FBBF24', fontSize: '1.45rem', fontWeight: 900, marginBottom: '0.75rem', textTransform: 'uppercase' }}>
+                            Already Checked In!
                         </h2>
-                        <div style={{ fontSize: '1.1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.9)', marginBottom: '2.5rem', fontStyle: 'italic' }}>
+                        <div style={{ fontSize: '1rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.9)', marginBottom: '2rem', fontStyle: 'italic' }}>
                             {meeting?.campus?.toLowerCase().includes('athi') ? (
                                 <>
                                     "A banter wauh i see what you are trying to do, go to sleep..." 🛌💤
-                                    <br /><span style={{ fontSize: '0.8rem', opacity: 0.6, display: 'block', marginTop: '1rem' }}>(Seriously, you're already checked in!)</span>
+                                    <br /><span style={{ fontSize: '0.8rem', opacity: 0.6, display: 'block', marginTop: '0.75rem' }}>(Seriously, your attendance is already marked!)</span>
                                 </>
                             ) : (
                                 <>
                                     "Nairobi traffic is enough stress, don't stress our database too!" 🚗💨
-                                    <br /><span style={{ fontSize: '0.8rem', opacity: 0.6, display: 'block', marginTop: '1rem' }}>(You're good! See you next week!)</span>
+                                    <br /><span style={{ fontSize: '0.8rem', opacity: 0.6, display: 'block', marginTop: '0.75rem' }}>(You're all set! See you next week!)</span>
                                 </>
                             )}
                         </div>
 
                         <button
-                            className="btn"
-                            onClick={() => navigate('/portal')}
+                            type="button"
+                            onClick={() => {
+                                setStatus('idle');
+                                setHasAlreadyCheckedIn(false);
+                                setMemberInfo(null);
+                                setResponses({ studentRegNo: '', dailyQuestionAnswer: '' });
+                                setMsg('');
+                            }}
                             style={{
                                 width: '100%',
-                                padding: '1rem',
-                                background: 'rgba(255,255,255,0.1)',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                fontWeight: 800,
-                                borderRadius: '0.75rem',
-                                color: 'white'
+                                padding: '1.05rem',
+                                background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)',
+                                border: 'none',
+                                fontWeight: 900,
+                                borderRadius: '16px',
+                                color: '#FFFFFF',
+                                cursor: 'pointer',
+                                fontSize: '0.95rem',
+                                boxShadow: '0 8px 25px rgba(37, 99, 235, 0.35)'
                             }}
                         >
-                            CHECK MY PORTAL
+                            Check In Another Person
                         </button>
                     </div>
 
                 ) : (status === 'idle' || status === 'submitting') ? (
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
                         {msg && (
                             <div style={{
-                                padding: '1rem',
-                                borderRadius: '1rem',
-                                background: status === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                color: status === 'error' ? '#f87171' : '#4ade80',
-                                border: `1px solid ${status === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                                fontSize: '0.9rem',
+                                padding: '0.95rem 1.1rem',
+                                borderRadius: '14px',
+                                background: status === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                color: status === 'error' ? '#FCA5A5' : '#86EFAC',
+                                border: `1px solid ${status === 'error' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
+                                fontSize: '0.88rem',
                                 fontWeight: 700,
                                 textAlign: 'center',
-                                animation: 'fadeIn 0.3s ease-out'
+                                animation: 'fadeIn 0.25s ease-out'
                             }}>
                                 {status === 'error' ? '⚠️' : '✅'} {msg}
                             </div>
@@ -979,18 +1029,18 @@ const CheckIn = () => {
                         {/* Location Access Denied / Weak Signal Fallback Banner */}
                         {locationErrorType && (
                             <div style={{
-                                padding: '1.25rem',
-                                background: 'rgba(245, 158, 11, 0.08)',
-                                border: '1px solid rgba(245, 158, 11, 0.3)',
-                                borderRadius: '1rem',
+                                padding: '1.15rem 1.25rem',
+                                background: 'rgba(245, 158, 11, 0.1)',
+                                border: '1.5px solid rgba(245, 158, 11, 0.35)',
+                                borderRadius: '16px',
                                 textAlign: 'center',
-                                animation: 'fadeIn 0.3s ease-out'
+                                animation: 'fadeIn 0.25s ease-out'
                             }}>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#FBBF24', marginBottom: '0.4rem' }}>
-                                    📍 GPS Location Unavailable
+                                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#FBBF24', marginBottom: '0.35rem' }}>
+                                    📍 GPS Verification Fallback
                                 </div>
-                                <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, margin: '0 0 1rem 0' }}>
-                                    Continue with device-bound check-in. Your single-use token will be locked to this exact phone for 2 minutes.
+                                <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, margin: '0 0 0.85rem 0' }}>
+                                    Continue with device-bound check-in. Your single-use session will be validated directly on this device.
                                 </p>
                                 <button
                                     type="button"
@@ -998,15 +1048,15 @@ const CheckIn = () => {
                                     disabled={isStampingFallback}
                                     style={{
                                         width: '100%',
-                                        padding: '0.8rem',
+                                        padding: '0.85rem',
                                         background: '#F59E0B',
                                         border: 'none',
-                                        borderRadius: '0.75rem',
+                                        borderRadius: '12px',
                                         color: '#0F172A',
-                                        fontWeight: 800,
+                                        fontWeight: 900,
                                         fontSize: '0.88rem',
                                         cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)'
+                                        boxShadow: '0 4px 14px rgba(245, 158, 11, 0.3)'
                                     }}
                                 >
                                     {isStampingFallback ? 'Securing Device Signature...' : 'Continue Without Location 🛡️'}
@@ -1018,76 +1068,90 @@ const CheckIn = () => {
                         {preciseLocationWarning && (
                             <div style={{
                                 padding: '0.85rem 1rem',
-                                background: 'rgba(59, 130, 246, 0.1)',
+                                background: 'rgba(59, 130, 246, 0.12)',
                                 border: '1px solid rgba(59, 130, 246, 0.3)',
-                                borderRadius: '0.75rem',
+                                borderRadius: '14px',
                                 fontSize: '0.78rem',
                                 color: '#93C5FD',
                                 lineHeight: 1.5
                             }}>
-                                ℹ️ <strong>Improve GPS Accuracy:</strong> On iPhone/iPad, go to <em>Settings → Privacy & Security → Location Services → Safari</em> and switch <strong>Precise Location: ON</strong>.
+                                ℹ️ <strong>Improve GPS Accuracy:</strong> On iPhone/iPad, go to <em>Settings → Privacy & Security → Location Services → Safari</em> and turn <strong>Precise Location: ON</strong>.
                             </div>
                         )}
 
+                        {/* Member Verified Badge Card */}
                         {memberInfo && (
                             <div style={{
-                                padding: '1.25rem',
-                                background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.1) 0%, transparent 100%)',
-                                borderRadius: '1rem',
-                                border: '1px solid rgba(37, 170, 225, 0.2)',
+                                padding: '0.85rem 1.1rem',
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                border: '1.5px solid rgba(16, 185, 129, 0.3)',
+                                borderRadius: '16px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '1rem',
-                                animation: 'slideRight 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+                                justifyContent: 'space-between',
+                                animation: 'fadeIn 0.3s ease'
                             }}>
-                                <div style={{
-                                    width: '40px', height: '40px',
-                                    borderRadius: '50%',
-                                    background: '#25AAE1',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white'
-                                }}>
-                                    <Trophy size={20} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0B1120' }}>
+                                        <Check size={18} strokeWidth={3} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.98rem', fontWeight: 900, color: '#FFFFFF' }}>{memberInfo.name}</div>
+                                        <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#34D399', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Verified Member</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'white' }}>{memberInfo.name}</div>
-                                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#25AAE1', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '0.15rem' }}>Verified Member</div>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMemberInfo(null);
+                                        setResponses(prev => ({ ...prev, studentRegNo: '' }));
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#94A3B8',
+                                        cursor: 'pointer',
+                                        fontWeight: 800,
+                                        fontSize: '0.74rem',
+                                        padding: '0.3rem'
+                                    }}
+                                >
+                                    Change
+                                </button>
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {/* Standard Admission Number Input */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {/* Admission Number Input */}
                             <div>
                                 <label style={{
                                     display: 'block',
-                                    marginBottom: '0.75rem',
-                                    fontSize: '0.75rem',
+                                    marginBottom: '0.5rem',
+                                    fontSize: '0.76rem',
                                     fontWeight: 900,
-                                    letterSpacing: '1px',
+                                    letterSpacing: '0.8px',
                                     textTransform: 'uppercase',
-                                    color: memberInfo ? '#25AAE1' : 'var(--color-text-dim)'
+                                    color: '#94A3B8'
                                 }}>
-                                    Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                                    Admission Number <span style={{ color: '#EF4444' }}>*</span>
                                 </label>
                                 <div style={{ position: 'relative' }}>
                                     <input
                                         className="input-field"
-                                        placeholder="ADMISSION NO (22-0000)"
+                                        placeholder="22-0990"
                                         style={{
-                                            height: '45px',
-                                            fontSize: '0.9rem',
-                                            fontWeight: 700,
-                                            paddingLeft: '1.25rem',
-                                            background: memberInfo ? 'rgba(37, 170, 225, 0.05)' : 'rgba(0,0,0,0.2)',
-                                            borderColor: memberInfo ? 'rgba(37, 170, 225, 0.3)' : 'var(--glass-border)',
-                                            color: memberInfo ? '#25AAE1' : 'white',
-                                            cursor: memberInfo ? 'not-allowed' : 'text',
-                                            borderRadius: '0.75rem',
-                                            transition: 'all 0.3s ease',
-                                            width: '100%'
+                                            height: '48px',
+                                            fontSize: '1.05rem',
+                                            fontWeight: 800,
+                                            padding: '0 1.15rem',
+                                            background: '#020617',
+                                            border: memberInfo ? '1.5px solid #10B981' : '1.5px solid rgba(56, 189, 248, 0.35)',
+                                            color: '#FFFFFF',
+                                            borderRadius: '14px',
+                                            transition: 'all 0.2s ease',
+                                            width: '100%',
+                                            boxSizing: 'border-box',
+                                            outline: 'none'
                                         }}
                                         value={responses.studentRegNo || ''}
                                         readOnly={!!memberInfo}
@@ -1101,13 +1165,13 @@ const CheckIn = () => {
                                             }
                                             val = formatted;
 
-                                            if (digits.length === 6) {
+                                            if (digits.length >= 6) {
                                                 lookupMember(formatted);
                                             } else {
                                                 setMemberInfo(null);
                                             }
 
-                                            setResponses({ ...responses, studentRegNo: val });
+                                            setResponses(prev => ({ ...prev, studentRegNo: val }));
                                             if (msg) setMsg('');
                                         }}
                                         maxLength={7}
@@ -1116,76 +1180,93 @@ const CheckIn = () => {
                                     />
                                     {isLookingUp && (
                                         <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
-                                            <div className="loading-spinner-small" style={{ width: '18px', height: '18px', borderTopColor: '#25AAE1' }}></div>
+                                            <Loader2 className="animate-spin" size={18} color="#38BDF8" />
                                         </div>
                                     )}
-                                    {memberInfo && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setMemberInfo(null);
-                                                setResponses(prev => ({ ...prev, studentRegNo: '' }));
-                                            }}
-                                            style={{
-                                                position: 'absolute',
-                                                right: '1rem',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                background: 'transparent',
-                                                border: 'none',
-                                                color: 'var(--color-text-dim)',
-                                                cursor: 'pointer',
-                                                fontWeight: 800,
-                                                fontSize: '0.8rem'
-                                            }}
-                                        >
-                                            CHANGE
-                                        </button>
-                                    )}
                                 </div>
-                                {meeting?.questionOfDay && memberInfo && (
-                                 <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-                                     <label style={{
-                                         display: 'block',
-                                         marginTop: '1.5rem',
-                                         marginBottom: '0.75rem',
-                                         fontSize: '0.75rem',
-                                         fontWeight: 900,
-                                         letterSpacing: '1px',
-                                         textTransform: 'uppercase',
-                                         color: 'hsl(var(--color-primary))'
-                                     }}>
-                                         Question of the Day <span style={{ color: '#ef4444' }}>*</span>
-                                     </label>
-                                     <p style={{ fontSize: '0.85rem', color: 'var(--color-text-dim)', marginBottom: '0.75rem', fontWeight: 600 }}>
-                                         "{meeting.questionOfDay}"
-                                     </p>
-                                     {renderQuestionInput()}
-                                 </div>
-                             )}
                             </div>
 
+                            {/* ══ INTERACTIVE QUESTION OF THE DAY CARD (ALWAYS VISIBLE WHEN CONFIGURED) ══ */}
+                            {meeting?.questionOfDay && (
+                                <div style={{
+                                    width: '100%',
+                                    padding: '1.15rem 1.25rem',
+                                    background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                                    border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                                    borderRadius: '18px',
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.6rem' }}>
+                                        <div style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(251, 191, 36, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FBBF24' }}>
+                                            <Sparkles size={13} />
+                                        </div>
+                                        <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                            Question of the Day
+                                        </span>
+                                    </div>
+
+                                    <div style={{
+                                        borderLeft: '3.5px solid #38BDF8',
+                                        paddingLeft: '0.85rem',
+                                        marginBottom: '0.9rem'
+                                    }}>
+                                        <p style={{
+                                            fontSize: '1.02rem',
+                                            fontWeight: 800,
+                                            color: '#FFFFFF',
+                                            margin: 0,
+                                            lineHeight: 1.45
+                                        }}>
+                                            {meeting.questionOfDay}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.4rem' }}>
+                                            Your Answer <span style={{ color: '#EF4444' }}>*</span>
+                                        </div>
+                                        {renderQuestionInput()}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Submit Button */}
                             <button
                                 type="submit"
-                                className="btn btn-primary"
-                                disabled={status === 'submitting' || isLocating || (!memberInfo && !meeting?.allowManualOverride)}
+                                disabled={status === 'submitting' || isLocating || !responses.studentRegNo?.trim()}
                                 style={{
-                                    height: '50px',
+                                    width: '100%',
+                                    height: '52px',
                                     marginTop: '0.5rem',
-                                    fontSize: '0.9rem',
+                                    background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #0284C7 100%)',
+                                    border: 'none',
+                                    borderRadius: '16px',
+                                    color: '#FFFFFF',
+                                    fontSize: '0.96rem',
                                     fontWeight: 900,
-                                    borderRadius: '0.75rem',
-                                    letterSpacing: '1px',
-                                    textTransform: 'uppercase',
-                                    boxShadow: '0 15px 30px -10px hsl(var(--color-primary) / 0.4)'
+                                    letterSpacing: '0.5px',
+                                    cursor: (!responses.studentRegNo?.trim() || status === 'submitting' || isLocating) ? 'not-allowed' : 'pointer',
+                                    opacity: (!responses.studentRegNo?.trim() || status === 'submitting' || isLocating) ? 0.6 : 1,
+                                    boxShadow: '0 8px 25px rgba(37, 99, 235, 0.45)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.6rem',
+                                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                                 }}
                             >
                                 {status === 'submitting' || isLocating ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
-                                        <div className="loading-spinner-small"></div>
-                                        {isLocating ? 'VERIFYING LOCATION...' : 'SUBMITTING...'}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                        <Loader2 className="animate-spin" size={20} />
+                                        <span>{isLocating ? 'Verifying Location...' : 'Submitting Attendance...'}</span>
                                     </div>
-                                ) : 'COMPLETE CHECK-IN'}
+                                ) : (
+                                    <>
+                                        <span>Complete Check-In</span>
+                                        <ArrowRight size={18} />
+                                    </>
+                                )}
                             </button>
                         </div>
 
@@ -1242,28 +1323,31 @@ const CheckIn = () => {
                                                 <div style={{ color: 'rgba(255,255,255,0.8)' }}>{meeting.previousRecap.announcements}</div>
                                             </div>
                                         )}
-
-                                        <button
-                                            onClick={() => navigate('/portal')}
-                                            style={{
-                                                marginTop: '1.5rem',
-                                                background: 'transparent',
-                                                border: '1px solid rgba(37, 170, 225, 0.3)',
-                                                color: '#25AAE1',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 800,
-                                                padding: '0.5rem 1rem',
-                                                borderRadius: '0.5rem',
-                                                cursor: 'pointer',
-                                                width: '100%'
-                                            }}
-                                        >
-                                            VIEW ATTENDANCE HISTORY
-                                        </button>
                                     </div>
                                 )}
                             </div>
                         )}
+
+                        <div style={{ textAlign: 'center', marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/portal')}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#38BDF8',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem'
+                                }}
+                            >
+                                <span>View My Member Portal & History</span>
+                                <ArrowRight size={14} />
+                            </button>
+                        </div>
                     </form>
                 ) : status === 'success' ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0', animation: 'fadeIn 1s ease-out' }}>
@@ -1349,47 +1433,64 @@ const CheckIn = () => {
                             Your attendance for <strong>{meeting?.name}</strong> has been successfully recorded.
                         </p>
 
-                        <div style={{
-                            margin: '0 auto 2.5rem',
-                            maxWidth: '280px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '0.75rem'
-                        }}>
-                            <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>
-                                Redirecting to your Portal in {redirectCountdown}s...
-                            </span>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${(redirectCountdown / 3) * 100}%`,
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, #4ade80 0%, #22c55e 100%)',
-                                    borderRadius: '2px',
-                                    transition: 'width 1s linear'
-                                }}></div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                             <button
-                                className="btn btn-primary"
-                                style={{ width: '100%', height: '60px', borderRadius: '1rem', fontSize: '1rem', fontWeight: 900 }}
-                                onClick={() => navigate('/portal')}
+                                type="button"
+                                style={{
+                                    width: '100%',
+                                    height: '52px',
+                                    borderRadius: '1rem',
+                                    fontSize: '0.95rem',
+                                    fontWeight: 900,
+                                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                    border: 'none',
+                                    color: '#FFFFFF',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 8px 25px rgba(16, 185, 129, 0.35)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem'
+                                }}
+                                onClick={() => navigate(`/portal?reg=${encodeURIComponent(responses.studentRegNo || '')}`)}
                             >
-                                GO TO DOULOS PORTAL
+                                <span>Go to My Douloid / Recruit Portal</span>
+                                <ArrowRight size={18} />
+                            </button>
+                            <button
+                                type="button"
+                                style={{
+                                    width: '100%',
+                                    height: '48px',
+                                    borderRadius: '1rem',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 800,
+                                    background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)',
+                                    border: 'none',
+                                    color: '#FFFFFF',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                    setStatus('idle');
+                                    setMemberInfo(null);
+                                    setResponses({ studentRegNo: '', dailyQuestionAnswer: '' });
+                                    setMsg('');
+                                }}
+                            >
+                                Check In Another Person
                             </button>
                             <button
                                 className="btn"
                                 style={{
                                     width: '100%',
-                                    height: '50px',
+                                    height: '44px',
                                     background: 'rgba(255,255,255,0.05)',
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     borderRadius: '0.75rem',
-                                    fontSize: '0.85rem',
+                                    fontSize: '0.82rem',
                                     fontWeight: 800,
-                                    color: 'var(--color-text-dim)'
+                                    color: 'var(--color-text-dim)',
+                                    cursor: 'pointer'
                                 }}
                                 onClick={() => window.close()}
                             >
@@ -1407,18 +1508,20 @@ const CheckIn = () => {
                             {msg}
                         </p>
                         <button
+                            type="button"
                             className="btn btn-primary"
-                            onClick={() => window.location.href = 'https://doulos.co.ke'}
+                            onClick={() => {
+                                setStatus('idle');
+                                setMsg('');
+                            }}
                             style={{
                                 width: '100%',
                                 padding: '1rem',
                                 fontWeight: 800,
-                                borderRadius: '0.75rem',
-                                background: '#facc15',
-                                color: 'black'
+                                borderRadius: '0.75rem'
                             }}
                         >
-                            VISIT WEBSITE
+                            TRY AGAIN
                         </button>
                     </div>
                 ) : status === 'locked' ? (
@@ -1432,8 +1535,12 @@ const CheckIn = () => {
                         </p>
 
                         <button
+                            type="button"
                             className="btn btn-primary"
-                            onClick={() => navigate('/portal')}
+                            onClick={() => {
+                                setStatus('idle');
+                                setMsg('');
+                            }}
                             style={{
                                 width: '100%',
                                 padding: '1rem',
@@ -1441,7 +1548,7 @@ const CheckIn = () => {
                                 borderRadius: '0.75rem'
                             }}
                         >
-                            GO TO PORTAL
+                            TRY AGAIN
                         </button>
                     </div>
                 ) : (
@@ -1470,568 +1577,88 @@ const CheckIn = () => {
                 )}
             </div>
 
-            {
-                showCongrats && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                        background: '#000000', display: 'flex', flexDirection: 'column',
-                        justifyContent: 'center', alignItems: 'center', zIndex: 1000,
-                        padding: '2rem', textAlign: 'center',
-                        overflow: 'hidden'
-                    }}>
-                        <div className="fireworks-container" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', top: 0, left: 0 }}>
-                            {[...Array(6)].map((_, i) => (
-                                <div key={i} className={`firework fw-${i}`} style={{
-                                    position: 'absolute',
-                                    left: `${10 + Math.random() * 80}%`,
-                                    top: `${10 + Math.random() * 80}%`,
-                                }} />
-                            ))}
-                        </div>
-
-                        <div style={{
-                            position: 'relative', zIndex: 2,
-                            animation: 'congratsPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
-                        }}>
-                            <div style={{
-                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                                width: '120px', height: '120px', borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                boxShadow: '0 0 50px rgba(255, 215, 0, 0.4)', margin: '0 auto 2rem'
-                            }}>
-                                <Trophy size={60} color="white" />
-                            </div>
-                            <h1 style={{ fontSize: '3rem', color: '#FFD700', marginBottom: '1rem', textShadow: '0 0 30px rgba(255, 215, 0, 0.5)', fontWeight: 900 }}>
-                                CONGRATULATIONS!
-                            </h1>
-                            <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem', color: 'white' }}>
-                                You have officially graduated to a DOULOID!
-                            </h2>
-                            <p style={{ maxWidth: '450px', lineHeight: 1.8, color: 'rgba(255,255,255,0.85)', marginBottom: '3rem' }}>
-                                A new chapter begins. Welcome to the elite family of Doulos!
-                            </p>
-                            <button
-                                className="btn"
-                                style={{ padding: '1.25rem 4rem', background: '#FFD700', color: '#000', fontWeight: 'bold', borderRadius: '3rem', fontSize: '1.2rem', cursor: 'pointer', border: 'none' }}
-                                onClick={() => setShowCongrats(false)}
-                            >
-                                THANK YOU! 🚀
-                            </button>
-                        </div>
-
-                        <style>{`
-                        @keyframes congratsPop {
-                            0% { transform: scale(0); opacity: 0; }
-                            100% { transform: scale(1); opacity: 1; }
-                        }
-                        .firework {
-                            width: 5px; height: 5px; border-radius: 50%;
-                            box-shadow: 0 0 #fff;
-                            animation: explode 2s infinite;
-                        }
-                        .fw-0 { animation-delay: 0s; color: gold; }
-                        .fw-1 { animation-delay: 0.5s; color: #fff; }
-                        .fw-2 { animation-delay: 1s; color: #FFD700; }
-                        .fw-3 { animation-delay: 1.5s; color: #FFA500; }
-                        @keyframes explode {
-                            0% { transform: scale(1); opacity: 1; }
-                            100% { 
-                                transform: scale(35); opacity: 0;
-                                box-shadow: -50px -50px 0 1px, 50px -50px 0 1px, 50px 50px 0 1px, -50px 50px 0 1px, 0 -70px 0 1px, -70px 0 0 1px, 70px 0 0 1px, 0 70px 0 1px;
-                            }
-                        }
-                        @keyframes pulse-border {
-                            0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
-                            50% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
-                            100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
-                        }
-                    `}</style>
-                    </div>
-                )
-            }
-
-            {/* Semester Rollover Welcome Modal */}
-            {showWelcomeModal && (
+            {showCongrats && (
                 <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 3000,
-                    background: 'rgba(2, 21, 37, 0.85)',
-                    backdropFilter: 'blur(12px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '1.5rem',
-                    animation: 'fadeIn 0.3s ease-out'
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: '#000000', display: 'flex', flexDirection: 'column',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    padding: '2rem', textAlign: 'center',
+                    overflow: 'hidden'
                 }}>
-                    <div className="glass-panel" style={{
-                        maxWidth: '450px',
-                        width: '100%',
-                        background: 'linear-gradient(135deg, rgba(9, 29, 46, 0.95) 0%, rgba(2, 21, 37, 0.98) 100%)',
-                        border: '2px solid rgba(37, 170, 225, 0.35)',
-                        borderRadius: '1.5rem',
-                        padding: '2.5rem 2rem',
-                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-                        textAlign: 'center',
-                        animation: 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
-                    }}>
-                        <div style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.2) 0%, rgba(37, 170, 225, 0.05) 100%)',
-                            border: '1px solid rgba(37, 170, 225, 0.3)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem',
-                            color: '#25AAE1',
-                            boxShadow: '0 0 30px rgba(37, 170, 225, 0.15)',
-                            animation: 'bounce 2.5s infinite'
-                        }}>
-                            <Logo size={50} showText={false} />
-                        </div>
-
-                        <h2 style={{
-                            fontSize: '1.8rem',
-                            fontWeight: 900,
-                            color: 'white',
-                            letterSpacing: '-0.02em',
-                            margin: '0 0 0.5rem'
-                        }}>
-                            Welcome to the New Semester!
-                        </h2>
-                        <div style={{
-                            fontSize: '0.75rem',
-                            fontWeight: 900,
-                            color: '#25AAE1',
-                            letterSpacing: '2px',
-                            textTransform: 'uppercase',
-                            marginBottom: '1.5rem'
-                        }}>
-                            {currentSemester}
-                        </div>
-
-                        {semesterTheme && (
-                            <div style={{
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                border: '1px solid rgba(255, 255, 255, 0.06)',
-                                borderRadius: '1rem',
-                                padding: '1.25rem',
-                                marginBottom: '1.75rem'
-                            }}>
-                                <div style={{
-                                    fontSize: '0.62rem',
-                                    fontWeight: 900,
-                                    color: 'rgba(255, 255, 255, 0.4)',
-                                    letterSpacing: '1.5px',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Our Theme For This Term
-                                </div>
-                                <h3 style={{
-                                    fontSize: '1.3rem',
-                                    fontWeight: 900,
-                                    color: '#4ade80',
-                                    margin: '0 0 0.4rem',
-                                    letterSpacing: '-0.01em'
-                                }}>
-                                    "{semesterTheme}"
-                                </h3>
-                                {semesterVerse && (
-                                    <p style={{
-                                        fontSize: '0.82rem',
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        fontStyle: 'italic',
-                                        lineHeight: 1.4,
-                                        margin: 0
-                                    }}>
-                                        — {semesterVerse}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        <p style={{
-                            fontSize: '0.9rem',
-                            lineHeight: 1.6,
-                            color: 'rgba(255, 255, 255, 0.75)',
-                            marginBottom: '2rem'
-                        }}>
-                            Are you active in Doulos this semester?
-                            <br />
-                            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.4)' }}>
-                                (If yes, we will track your points and semester requirements. Everyone is welcome to attend!)
-                            </span>
-                        </p>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <button
-                                type="button"
-                                onClick={() => handleWelcomeChoice(true)}
-                                className="btn btn-primary"
-                                style={{
-                                    width: '100%',
-                                    height: '48px',
-                                    borderRadius: '0.75rem',
-                                    fontSize: '0.88rem',
-                                    fontWeight: 900,
-                                    letterSpacing: '1px',
-                                    textTransform: 'uppercase',
-                                    background: 'linear-gradient(135deg, #25AAE1 0%, #0a4d68 100%)',
-                                    boxShadow: '0 8px 20px rgba(37, 170, 225, 0.25)',
-                                    border: 'none',
-                                    color: 'white',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Yes, I am active! 👍
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleWelcomeChoice(false)}
-                                style={{
-                                    width: '100%',
-                                    height: '48px',
-                                    borderRadius: '0.75rem',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 800,
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    color: 'rgba(255, 255, 255, 0.75)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
-                            >
-                                No, just attending today 😊
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Step-by-Step Onboarding Registration Modal Popup */}
-            {isNewMember && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(2, 6, 12, 0.85)',
-                    backdropFilter: 'blur(10px)',
-                    zIndex: 2500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '1.5rem',
-                    animation: 'fadeIn 0.3s ease-out'
-                }}>
-                    <div className="glass-card-premium" style={{
-                        width: '100%',
-                        maxWidth: '440px',
-                        background: '#0d111b',
-                        border: '1px solid rgba(37, 170, 225, 0.25)',
-                        borderRadius: '1.75rem',
-                        padding: '2.25rem 2rem',
-                        boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.8)',
-                        animation: 'popScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-                        position: 'relative',
-                        textAlign: 'left'
-                    }}>
-                        {/* Close button */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsNewMember(false);
-                                setRegistrationData({ name: '', campus: 'Athi River', memberType: 'Douloid' });
-                                setResponses(prev => ({ ...prev, studentRegNo: '' }));
-                                setMsg('');
-                                setStatus('idle');
-                            }}
-                            style={{
+                    <div className="fireworks-container" style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', top: 0, left: 0 }}>
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className={`firework fw-${i}`} style={{
                                 position: 'absolute',
-                                right: '1.25rem',
-                                top: '1.25rem',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--color-text-dim)',
-                                cursor: 'pointer',
-                                fontSize: '1.25rem',
-                                padding: '0.25rem',
-                                transition: 'color 0.2s'
-                            }}
-                            title="Cancel Registration"
-                        >
-                            ✕
-                        </button>
-
-                        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                            <div style={{
-                                width: '80px',
-                                height: '80px',
-                                borderRadius: '50%',
-                                background: 'linear-gradient(135deg, rgba(37, 170, 225, 0.2) 0%, rgba(37, 170, 225, 0.05) 100%)',
-                                border: '1px solid rgba(37, 170, 225, 0.3)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto 1.5rem',
-                                color: '#25AAE1',
-                                boxShadow: '0 0 30px rgba(37, 170, 225, 0.15)',
-                                animation: 'bounce 2.5s infinite'
-                            }}>
-                                <Logo size={50} showText={false} />
-                            </div>
-                            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 950, letterSpacing: '-0.5px', color: 'white' }}>Welcome Back Douloid!</h2>
-                            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--color-text-dim)', fontWeight: 600, lineHeight: 1.4 }}>
-                                We couldn't find your Admission Number in our registry. Let's get you set up for this semester!
-                            </p>
-                        </div>
-
-                        {/* Step Indicator */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.75rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-text-dim)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                <span>REGISTRATION WIZARD</span>
-                                <span style={{ color: '#25AAE1' }}>STEP {regStep} OF 2</span>
-                            </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{
-                                    width: regStep === 1 ? '50%' : '100%',
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, #25AAE1 0%, #38bdf8 100%)',
-                                    borderRadius: '2px',
-                                    transition: 'width 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-                                }}></div>
-                            </div>
-                        </div>
-
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            {regStep === 1 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
-                                            ADMISSION NUMBER
-                                        </label>
-                                        <input
-                                            className="input-field"
-                                            style={{
-                                                height: '44px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                paddingLeft: '1rem',
-                                                background: 'rgba(37, 170, 225, 0.05)',
-                                                borderColor: 'rgba(37, 170, 225, 0.25)',
-                                                color: '#25AAE1',
-                                                borderRadius: '0.75rem',
-                                                cursor: 'not-allowed',
-                                                width: '100%',
-                                                textAlign: 'center'
-                                            }}
-                                            value={responses.studentRegNo || ''}
-                                            readOnly
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                            FULL NAME <span style={{ color: '#ef4444' }}>*</span>
-                                        </label>
-                                        <input
-                                            className="input-field"
-                                            placeholder="Enter your official name"
-                                            style={{
-                                                height: '44px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                paddingLeft: '1rem',
-                                                background: 'rgba(0,0,0,0.25)',
-                                                borderColor: 'var(--glass-border)',
-                                                color: 'white',
-                                                borderRadius: '0.75rem',
-                                                width: '100%',
-                                                outline: 'none',
-                                                transition: 'all 0.3s'
-                                            }}
-                                            value={registrationData.name || ''}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                setRegistrationData(prev => ({ ...prev, name: val }));
-                                                setResponses(prev => ({ ...prev, studentName: val }));
-                                                if (msg) setMsg('');
-                                            }}
-                                            required
-                                            autoFocus
-                                        />
-                                        <span style={{ fontSize: '0.68rem', color: 'var(--color-text-dim)', marginTop: '0.35rem', display: 'block', lineHeight: 1.3 }}>
-                                            Use your primary names as they appear on the official school roster.
-                                        </span>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
-                                        onClick={() => {
-                                            if (registrationData.name.trim().length >= 3) {
-                                                setRegStep(2);
-                                                if (msg) setMsg('');
-                                            } else {
-                                                alert("Please enter your official name (minimum 3 characters).");
-                                            }
-                                        }}
-                                        style={{
-                                            height: '46px',
-                                            fontSize: '0.85rem',
-                                            fontWeight: 900,
-                                            borderRadius: '0.75rem',
-                                            letterSpacing: '1px',
-                                            textTransform: 'uppercase',
-                                            marginTop: '0.5rem',
-                                            boxShadow: '0 8px 20px -8px rgba(37, 170, 225, 0.4)',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: 'white'
-                                        }}
-                                    >
-                                        CONTINUE
-                                    </button>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                            CAMPUS <span style={{ color: '#ef4444' }}>*</span>
-                                        </label>
-                                        <select
-                                            className="input-field"
-                                            style={{
-                                                height: '44px',
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                paddingLeft: '1rem',
-                                                background: 'rgba(0,0,0,0.25)',
-                                                borderColor: 'var(--glass-border)',
-                                                borderRadius: '0.75rem',
-                                                color: 'white',
-                                                width: '100%',
-                                                cursor: 'pointer'
-                                            }}
-                                            value={registrationData.campus || 'Athi River'}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                setRegistrationData(prev => ({ ...prev, campus: val }));
-                                            }}
-                                            required
-                                        >
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Valley Road">Valley Road</option>
-                                        </select>
-                                    </div>
-
-                                    {!(meeting?.category === 'Training' || meeting?.isTraining) && (
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
-                                                CATEGORY <span style={{ color: '#ef4444' }}>*</span>
-                                            </label>
-                                            <select
-                                                className="input-field"
-                                                style={{
-                                                    height: '44px',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: 700,
-                                                    paddingLeft: '1rem',
-                                                    background: 'rgba(0,0,0,0.25)',
-                                                    borderColor: 'var(--glass-border)',
-                                                    borderRadius: '0.75rem',
-                                                    color: 'white',
-                                                    width: '100%',
-                                                    cursor: 'pointer'
-                                                }}
-                                                value={registrationData.memberType || 'Douloid'}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setRegistrationData(prev => ({ ...prev, memberType: val }));
-                                                }}
-                                                required
-                                            >
-                                                <option value="Douloid">Douloid</option>
-                                                <option value="Recruit">Recruit</option>
-                                                <option value="Visitor">Visitor</option>
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    {meeting?.questionOfDay && (
-                                         <div style={{ animation: 'fadeIn 0.3s ease-out', marginTop: '1.25rem' }}>
-                                             <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#25AAE1' }}>
-                                                 Question of the Day <span style={{ color: '#ef4444' }}>*</span>
-                                             </label>
-                                             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-dim)', marginBottom: '0.5rem', fontWeight: 600, lineHeight: 1.3 }}>
-                                                 "{meeting.questionOfDay}"
-                                             </p>
-                                             {renderQuestionInput()}
-                                         </div>
-                                     )}
-
-                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                                        <button
-                                            type="button"
-                                            className="btn"
-                                            onClick={() => setRegStep(1)}
-                                            style={{
-                                                flex: 1,
-                                                height: '44px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 900,
-                                                borderRadius: '0.75rem',
-                                                letterSpacing: '1px',
-                                                textTransform: 'uppercase',
-                                                background: 'rgba(255,255,255,0.06)',
-                                                border: '1px solid rgba(255,255,255,0.12)',
-                                                color: 'white',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            BACK
-                                        </button>
-
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary"
-                                            disabled={status === 'submitting' || isLocating}
-                                            style={{
-                                                flex: 1.5,
-                                                height: '44px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 900,
-                                                borderRadius: '0.75rem',
-                                                letterSpacing: '1px',
-                                                textTransform: 'uppercase',
-                                                boxShadow: '0 8px 20px -8px rgba(37, 170, 225, 0.4)',
-                                                border: 'none',
-                                                color: 'white',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {status === 'submitting' || isLocating ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
-                                                    <div className="loading-spinner-small" style={{ width: '12px', height: '12px' }}></div>
-                                                    <span>{isLocating ? 'GPS...' : 'SAVING...'}</span>
-                                                </div>
-                                            ) : 'REGISTER & IN'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </form>
+                                left: `${10 + Math.random() * 80}%`,
+                                top: `${10 + Math.random() * 80}%`,
+                            }} />
+                        ))}
                     </div>
+
+                    <div style={{
+                        position: 'relative', zIndex: 2,
+                        animation: 'congratsPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                    }}>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                            width: '120px', height: '120px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 0 50px rgba(255, 215, 0, 0.4)', margin: '0 auto 2rem'
+                        }}>
+                            <Trophy size={60} color="white" />
+                        </div>
+                        <h1 style={{ fontSize: '3rem', color: '#FFD700', marginBottom: '1rem', textShadow: '0 0 30px rgba(255, 215, 0, 0.5)', fontWeight: 900 }}>
+                            CONGRATULATIONS!
+                        </h1>
+                        <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem', color: 'white' }}>
+                            You have officially graduated to a DOULOID!
+                        </h2>
+                        <p style={{ maxWidth: '450px', lineHeight: 1.8, color: 'rgba(255,255,255,0.85)', marginBottom: '3rem' }}>
+                            A new chapter begins. Welcome to the elite family of Doulos!
+                        </p>
+                        <button
+                            className="btn"
+                            style={{ padding: '1.25rem 4rem', background: '#FFD700', color: '#000', fontWeight: 'bold', borderRadius: '3rem', fontSize: '1.2rem', cursor: 'pointer', border: 'none' }}
+                            onClick={() => setShowCongrats(false)}
+                        >
+                            THANK YOU! 🚀
+                        </button>
+                    </div>
+
+                    <style>{`
+                    @keyframes congratsPop {
+                        0% { transform: scale(0); opacity: 0; }
+                        100% { transform: scale(1); opacity: 1; }
+                    }
+                    .firework {
+                        width: 5px; height: 5px; border-radius: 50%;
+                        box-shadow: 0 0 #fff;
+                        animation: explode 2s infinite;
+                    }
+                    .fw-0 { animation-delay: 0s; color: gold; }
+                    .fw-1 { animation-delay: 0.5s; color: #fff; }
+                    .fw-2 { animation-delay: 1s; color: #FFD700; }
+                    .fw-3 { animation-delay: 1.5s; color: #FFA500; }
+                    @keyframes explode {
+                        0% { transform: scale(1); opacity: 1; }
+                        100% { 
+                            transform: scale(35); opacity: 0;
+                            box-shadow: -50px -50px 0 1px, 50px -50px 0 1px, 50px 50px 0 1px, -50px 50px 0 1px, 0 -70px 0 1px, -70px 0 0 1px, 70px 0 0 1px, 0 70px 0 1px;
+                        }
+                    }
+                    @keyframes pulse-border {
+                        0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+                        50% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+                        100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+                    }
+                `}</style>
                 </div>
             )}
 
             <p style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
                 Doulos Attendance System &bull; &copy; {new Date().getFullYear()}
             </p>
-        </div >
+        </div>
     );
 };
 

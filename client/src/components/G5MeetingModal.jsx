@@ -25,23 +25,16 @@ import {
     RefreshCw,
     QrCode,
     Printer,
-    ExternalLink
+    ExternalLink,
+    Edit
 } from 'lucide-react';
 
-const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
-    // Automatically resolve initial tab: on mobile during active sessions with 0 attendees, default to 'absent' (Check In Station)
+const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => {
+    // Automatically resolve initial tab: 'live' or anything else maps to 'attended' so it loads immediately
     const resolveInitialTab = (tab) => {
-        if (tab === 'live') return 'live';
         if (tab === 'qrcode') return 'qrcode';
         if (tab === 'answers') return 'answers';
         if (tab === 'absent' || tab === 'checklist') return 'absent';
-        if (typeof window !== 'undefined' && window.innerWidth <= 768 && meeting?.isActive) {
-            // If attendance is 0, open directly into Check In Station
-            const count = meeting?.attendanceCount || meeting?.attendees?.length || 0;
-            if (count === 0 && (!tab || tab === 'attended')) {
-                return 'absent';
-            }
-        }
         return 'attended';
     };
 
@@ -239,7 +232,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
             const hasEnded = now > endDateTime;
             const hasStarted = !isBefore && !hasEnded;
 
-            let statusText = 'Live Check-In Active';
+            let statusText = 'Live Session Active';
             if (isBefore) {
                 // Check if it is today or future date
                 const isToday = now.toDateString() === mDate.toDateString();
@@ -255,15 +248,6 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
             return { hasStarted: true, hasEnded: false, statusText: 'Active', isBefore: false };
         }
     }, [meeting?.date, meeting?.startTime, meeting?.endTime]);
-
-    // Copy join code
-    const handleCopyCode = () => {
-        if (!meeting?.code) return;
-        navigator.clipboard.writeText(meeting.code);
-        setCopiedCode(true);
-        showToast('Meeting code copied to clipboard!');
-        setTimeout(() => setCopiedCode(false), 2000);
-    };
 
     // Copy check-in link
     const [copiedLink, setCopiedLink] = useState(false);
@@ -291,8 +275,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         .title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
                         .sub { font-size: 14px; color: #64748b; margin-bottom: 24px; }
                         .qr-box { padding: 20px; background: #fff; border-radius: 16px; display: inline-block; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-                        .code { font-size: 38px; font-weight: 900; letter-spacing: 4px; color: #25AAE1; margin-bottom: 8px; font-family: monospace; }
-                        .link { font-size: 13px; color: #64748b; word-break: break-all; }
+                        .link { font-size: 13px; color: #64748b; word-break: break-all; margin-top: 12px; }
                     </style>
                 </head>
                 <body>
@@ -303,9 +286,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         <div class="qr-box">
                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(checkInUrl)}" width="260" height="260" alt="Meeting QR" />
                         </div>
-                        <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">MEETING JOIN CODE</div>
-                        <div class="code">${(meeting.code || 'DOULOS').toUpperCase()}</div>
-                        <div class="link">${checkInUrl}</div>
+                        <div class="link">Scan with camera to check in: ${checkInUrl}</div>
                     </div>
                     <script>
                         window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 400); };
@@ -493,449 +474,255 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                     </div>
                 )}
 
-                {/* MODAL HEADER */}
+                {/* MODAL HEADER - DEDICATED MOBILE & DESKTOP DESIGNS */}
                 <div
                     className="g5-meeting-modal-header"
                     style={{
-                        padding: isMobile ? '0.7rem 0.85rem 0.5rem' : '1.5rem 2rem 1.25rem',
+                        padding: isMobile ? '0.65rem 0.85rem 0.55rem' : '1.15rem 1.75rem 0.95rem',
                         borderBottom: '1px solid #E2E8F0',
                         background: 'linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)',
                         flexShrink: 0
                     }}
                 >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            {/* TOP META ROW */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.35rem' : '0.65rem', flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none', marginBottom: '0.25rem' }}>
-                                <span className={`g5-pill ${!meeting.isActive ? 'g5-pill-inactive' : timingStatus.isBefore ? 'g5-pill-purple' : 'g5-pill-active'}`} style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                    {!meeting.isActive ? (
-                                        'Session Completed'
-                                    ) : timingStatus.isBefore ? (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                            <Clock size={11} />
-                                            {timingStatus.statusText}
-                                        </span>
-                                    ) : (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                            <div className="g5-pulse-dot" style={{ width: '6px', height: '6px' }} />
-                                            Live Check-In Active
-                                        </span>
-                                    )}
-                                </span>
-                                <div
-                                    onClick={handleCopyCode}
-                                    title="Click to copy check-in code"
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.3rem',
-                                        padding: '0.18rem 0.55rem',
-                                        background: '#EFF6FF',
-                                        border: '1.5px solid #BFDBFE',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.74rem',
-                                        fontWeight: 800,
-                                        color: '#1D4ED8',
-                                        fontFamily: 'monospace',
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    <span>CODE: {meeting.code || 'DOULOS'}</span>
-                                    {copiedCode ? <Check size={11} color="#10B981" /> : <Copy size={11} />}
-                                </div>
-                                <span className="g5-pill g5-pill-warm" style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                    <MapPin size={11} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
-                                </span>
-                                {!isMobile && (
-                                    <>
-                                        <span className="g5-pill g5-pill-purple" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>
-                                            <Calendar size={12} /> {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </span>
-                                        <span className="g5-pill g5-pill-purple" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>
-                                            <Clock size={12} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* TITLE & TIMING */}
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                                <h2 style={{ fontSize: isMobile ? '1.15rem' : '1.5rem', fontWeight: 900, color: '#0F172A', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {meeting.name || 'Weekly Training Session'}
-                                </h2>
-                                {isMobile && (
-                                    <span style={{ fontSize: '0.72rem', color: '#64748B', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                        {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* TOP ACTIONS */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('qrcode')}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem',
-                                    padding: isMobile ? '0.35rem 0.6rem' : '0.28rem 0.65rem',
-                                    background: activeTab === 'qrcode' ? '#0284C7' : '#E0F2FE',
-                                    color: activeTab === 'qrcode' ? '#FFFFFF' : '#0284C7',
-                                    border: '1.5px solid #BAE6FD',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 800,
-                                    transition: 'all 0.15s ease'
-                                }}
-                                title="Display QR code screen"
-                            >
-                                <QrCode size={14} />
-                                {!isMobile && <span>Display QR</span>}
-                            </button>
-
-                            <button
-                                onClick={onClose}
-                                style={{
-                                    width: isMobile ? '32px' : '38px',
-                                    height: isMobile ? '32px' : '38px',
-                                    borderRadius: '50%',
-                                    background: '#F1F5F9',
-                                    border: '1px solid #CBD5E1',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    color: '#475569',
-                                    transition: 'all 0.2s',
-                                    flexShrink: 0
-                                }}
-                            >
-                                <X size={isMobile ? 16 : 18} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* OPTIONAL CONTEXTUAL QUESTION CHIP */}
-                    {questionText && (
-                        <div
-                            style={{
-                                marginTop: isMobile ? '0.4rem' : '0.85rem',
-                                padding: isMobile ? '0.35rem 0.65rem' : '0.6rem 1rem',
-                                background: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.45rem',
-                                fontSize: isMobile ? '0.75rem' : '0.85rem',
-                                flexWrap: 'wrap'
-                            }}
-                        >
-                            <MessageCircle size={14} style={{ color: '#2563EB', flexShrink: 0 }} />
-                            <span style={{ color: '#64748B', fontWeight: 600 }}>Prompt:</span>
-                            <span style={{ color: '#0F172A', fontWeight: 800, fontStyle: 'italic', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                "{questionText}"
-                            </span>
-                            {answeredList.length > 0 && (
-                                <span
-                                    onClick={() => setActiveTab('answers')}
-                                    style={{
-                                        fontSize: '0.74rem',
-                                        fontWeight: 800,
-                                        color: '#2563EB',
-                                        cursor: 'pointer',
-                                        textDecoration: 'underline',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    {answeredList.length} Responses →
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* STAT COUNTERS: COMPACT CHIPS ON MOBILE, CARDS ON DESKTOP */}
                     {isMobile ? (
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.35rem',
-                                overflowX: 'auto',
-                                scrollbarWidth: 'none',
-                                padding: '0.35rem 0 0.1rem',
-                                marginTop: '0.35rem'
-                            }}
-                        >
-                            <span
-                                onClick={() => setActiveTab('attended')}
-                                style={{
-                                    background: '#DCFCE7',
-                                    color: '#15803D',
-                                    padding: '0.22rem 0.55rem',
-                                    borderRadius: '8px',
-                                    fontSize: '0.73rem',
-                                    fontWeight: 800,
-                                    whiteSpace: 'nowrap',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.3rem',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#15803D' }} />
-                                {attendedList.length} Attended
-                            </span>
-                            <span
-                                onClick={() => setActiveTab('absent')}
-                                style={{
-                                    background: '#FEE2E2',
-                                    color: '#B91C1C',
-                                    padding: '0.22rem 0.55rem',
-                                    borderRadius: '8px',
-                                    fontSize: '0.73rem',
-                                    fontWeight: 800,
-                                    whiteSpace: 'nowrap',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.3rem',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#B91C1C' }} />
-                                {absentList.length} Unchecked
-                            </span>
-                            <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '0.22rem 0.55rem', borderRadius: '8px', fontSize: '0.73rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-                                Douloids: {attendedList.filter(a => a.memberType === 'Douloid').length}
-                            </span>
-                            <span style={{ background: '#FEF3C7', color: '#D97706', padding: '0.22rem 0.55rem', borderRadius: '8px', fontSize: '0.73rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-                                Recruits: {attendedList.filter(a => a.memberType === 'Recruit').length}
-                            </span>
-                        </div>
-                    ) : (
-                        <div
-                            className="g5-meeting-stat-strip"
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                                gap: '0.75rem',
-                                marginTop: '1rem'
-                            }}
-                        >
-                            <div
-                                style={{
-                                    background: '#FFFFFF',
-                                    border: '1.5px solid #E2E8F0',
-                                    borderRadius: '12px',
-                                    padding: '0.65rem 1rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Total Attended
-                                    </div>
-                                    <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0F172A', marginTop: '0.1rem' }}>
-                                        {attendedList.length}
-                                    </div>
+                        /* MOBILE CLEAN, COMPACT HEADER */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            {/* ROW 1: Title + Status + Action Buttons */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: 1 }}>
+                                    <h3 style={{
+                                        fontSize: '1.15rem',
+                                        fontWeight: 900,
+                                        color: '#0F172A',
+                                        margin: 0,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}>
+                                        {meeting.name || 'Training Session'}
+                                    </h3>
+                                    <span className={`g5-pill ${!meeting.isActive ? 'g5-pill-inactive' : timingStatus.isBefore ? 'g5-pill-purple' : 'g5-pill-active'}`} style={{ fontSize: '0.65rem', padding: '0.12rem 0.45rem', flexShrink: 0, fontWeight: 800 }}>
+                                        {!meeting.isActive ? 'Ended' : timingStatus.isBefore ? (meeting.startTime || 'Soon') : 'Live'}
+                                    </span>
                                 </div>
-                                <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#DCFCE7', color: '#15803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Users size={17} />
-                                </div>
-                            </div>
 
-                            <div
-                                style={{
-                                    background: '#FFFFFF',
-                                    border: '1.5px solid #E2E8F0',
-                                    borderRadius: '12px',
-                                    padding: '0.65rem 1rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Douloid Members
-                                    </div>
-                                    <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#1D4ED8', marginTop: '0.1rem' }}>
-                                        {attendedList.filter(a => a.memberType === 'Douloid').length}
-                                    </div>
-                                </div>
-                                <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Shield size={17} />
-                                </div>
-                            </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
+                                    {onEditMeeting && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onEditMeeting(meeting)}
+                                            style={{
+                                                padding: '0.35rem 0.55rem',
+                                                background: '#EEF2FF',
+                                                color: '#4F46E5',
+                                                border: '1.5px solid #C7D2FE',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800
+                                            }}
+                                            title="Edit meeting"
+                                        >
+                                            <Edit size={13} />
+                                            <span>Edit</span>
+                                        </button>
+                                    )}
 
-                            <div
-                                style={{
-                                    background: '#FFFFFF',
-                                    border: '1.5px solid #E2E8F0',
-                                    borderRadius: '12px',
-                                    padding: '0.65rem 1rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Recruits Present
-                                    </div>
-                                    <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#D97706', marginTop: '0.1rem' }}>
-                                        {attendedList.filter(a => a.memberType === 'Recruit').length}
-                                    </div>
-                                </div>
-                                <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Sparkles size={17} />
-                                </div>
-                            </div>
-
-                            <div
-                                style={{
-                                    background: '#FFFFFF',
-                                    border: '1.5px solid #E2E8F0',
-                                    borderRadius: '12px',
-                                    padding: '0.65rem 1rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Unchecked / Absent
-                                    </div>
-                                    <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#475569', marginTop: '0.1rem' }}>
-                                        {absentList.length}
-                                    </div>
-                                </div>
-                                <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <UserX size={17} />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* TAB SWITCHER & ACTION CONTROLS */}
-                    <div
-                        className="g5-modal-tabs-wrapper"
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: isMobile ? 'stretch' : 'center',
-                            marginTop: isMobile ? '0.65rem' : '1.25rem',
-                            flexDirection: isMobile ? 'column' : 'row',
-                            gap: '0.55rem'
-                        }}
-                    >
-                        {/* TAB PILLS */}
-                        <div
-                            className="g5-modal-tabs-pills"
-                            style={{
-                                display: 'flex',
-                                gap: '0.35rem',
-                                background: '#F1F5F9',
-                                padding: '0.3rem',
-                                borderRadius: '12px',
-                                border: '1px solid #CBD5E1',
-                                overflowX: 'auto',
-                                WebkitOverflowScrolling: 'touch',
-                                maxWidth: '100%',
-                                scrollbarWidth: 'none',
-                                flex: isMobile ? 1 : 'initial'
-                            }}
-                        >
-                            {isMobile ? (
-                                /* MOBILE-FIRST TABS */
-                                <>
                                     <button
                                         type="button"
-                                        onClick={() => setActiveTab('absent')}
+                                        onClick={() => setActiveTab('qrcode')}
                                         style={{
+                                            padding: '0.35rem 0.55rem',
+                                            background: activeTab === 'qrcode' ? '#0284C7' : '#E0F2FE',
+                                            color: activeTab === 'qrcode' ? '#FFFFFF' : '#0284C7',
+                                            border: '1.5px solid #BAE6FD',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '0.35rem',
-                                            padding: '0.45rem 0.75rem',
-                                            borderRadius: '10px',
-                                            border: activeTab === 'absent' ? 'none' : '1px solid #E2E8F0',
-                                            background: activeTab === 'absent' ? '#1D4ED8' : '#FFFFFF',
-                                            color: activeTab === 'absent' ? '#FFFFFF' : '#1E293B',
-                                            fontWeight: 800,
-                                            fontSize: '0.8rem',
+                                            gap: '0.25rem',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 800
+                                        }}
+                                        title="QR Code"
+                                    >
+                                        <QrCode size={13} />
+                                        <span>QR</span>
+                                    </button>
+
+                                    <button
+                                        onClick={onClose}
+                                        style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            borderRadius: '50%',
+                                            background: '#F1F5F9',
+                                            border: '1px solid #CBD5E1',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
                                             cursor: 'pointer',
-                                            boxShadow: activeTab === 'absent' ? '0 2px 8px rgba(29, 78, 216, 0.3)' : 'none',
-                                            transition: 'all 0.18s',
-                                            flexShrink: 0,
+                                            color: '#475569'
+                                        }}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ROW 2: Single-line Compact Metadata Strip */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                fontSize: '0.72rem',
+                                color: '#64748B',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>
+                                <span style={{ color: '#0F172A', fontWeight: 700 }}>
+                                    {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                </span>
+                                <span>•</span>
+                                <span>{meeting.campus || 'Athi River'}</span>
+                                <span>•</span>
+                                <span>{new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                                <span>•</span>
+                                <span>{meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}</span>
+                            </div>
+
+                            {/* ROW 3: Optional Compact Question Bar */}
+                            {questionText && (
+                                <div
+                                    style={{
+                                        padding: '0.25rem 0.55rem',
+                                        background: '#FEF3C7',
+                                        border: '1px solid #FDE68A',
+                                        borderRadius: '7px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        fontSize: '0.72rem',
+                                        color: '#92400E',
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    <MessageCircle size={12} style={{ color: '#D97706', flexShrink: 0 }} />
+                                    <span style={{ color: '#78350F', fontWeight: 800 }}>Q:</span>
+                                    <span style={{ fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                                        "{questionText}"
+                                    </span>
+                                    {answeredList.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTab('answers')}
+                                            style={{
+                                                fontSize: '0.68rem',
+                                                fontWeight: 800,
+                                                color: '#2563EB',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                flexShrink: 0,
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            {answeredList.length} Ans →
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ROW 4: Segmented Tabs + Action Icons */}
+                            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        gap: '0.25rem',
+                                        background: '#F1F5F9',
+                                        padding: '3px',
+                                        borderRadius: '10px',
+                                        border: '1.5px solid #CBD5E1',
+                                        flex: 1,
+                                        overflowX: 'auto',
+                                        scrollbarWidth: 'none'
+                                    }}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('attended')}
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.25rem',
+                                            padding: '0.38rem 0.45rem',
+                                            borderRadius: '7px',
+                                            border: 'none',
+                                            background: activeTab === 'attended' ? '#10B981' : 'transparent',
+                                            color: activeTab === 'attended' ? '#FFFFFF' : '#334155',
+                                            fontWeight: 800,
+                                            fontSize: '0.76rem',
+                                            cursor: 'pointer',
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
-                                        <UserPlus size={14} />
-                                        <span>Check In</span>
+                                        <CheckCircle2 size={13} />
+                                        <span>Attended</span>
                                         <span
                                             style={{
-                                                padding: '0.1rem 0.4rem',
+                                                padding: '0.05rem 0.35rem',
                                                 borderRadius: '999px',
-                                                fontSize: '0.7rem',
+                                                fontSize: '0.66rem',
                                                 fontWeight: 800,
-                                                background: activeTab === 'absent' ? 'rgba(255, 255, 255, 0.25)' : '#FEE2E2',
-                                                color: activeTab === 'absent' ? '#FFFFFF' : '#DC2626'
+                                                background: activeTab === 'attended' ? 'rgba(255, 255, 255, 0.25)' : '#DCFCE7',
+                                                color: activeTab === 'attended' ? '#FFFFFF' : '#15803D'
                                             }}
                                         >
-                                            {absentList.length}
+                                            {attendedList.length}
                                         </span>
                                     </button>
 
                                     <button
                                         type="button"
-                                        onClick={() => setActiveTab('attended')}
+                                        onClick={() => setActiveTab('absent')}
                                         style={{
+                                            flex: 1,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '0.35rem',
-                                            padding: '0.45rem 0.75rem',
-                                            borderRadius: '10px',
-                                            border: (activeTab === 'attended' || activeTab === 'live') ? 'none' : '1px solid #E2E8F0',
-                                            background: (activeTab === 'attended' || activeTab === 'live') ? '#10B981' : '#FFFFFF',
-                                            color: (activeTab === 'attended' || activeTab === 'live') ? '#FFFFFF' : '#1E293B',
+                                            justifyContent: 'center',
+                                            gap: '0.25rem',
+                                            padding: '0.38rem 0.45rem',
+                                            borderRadius: '7px',
+                                            border: 'none',
+                                            background: activeTab === 'absent' ? '#1D4ED8' : 'transparent',
+                                            color: activeTab === 'absent' ? '#FFFFFF' : '#334155',
                                             fontWeight: 800,
-                                            fontSize: '0.8rem',
+                                            fontSize: '0.76rem',
                                             cursor: 'pointer',
-                                            boxShadow: (activeTab === 'attended' || activeTab === 'live') ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none',
-                                            transition: 'all 0.18s',
-                                            flexShrink: 0,
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
-                                        <div
-                                            style={{
-                                                width: '7px',
-                                                height: '7px',
-                                                borderRadius: '50%',
-                                                backgroundColor: (activeTab === 'attended' || activeTab === 'live') ? '#FFFFFF' : '#10B981',
-                                                animation: 'g5Pulse 1.6s infinite'
-                                            }}
-                                        />
-                                        <span>Live Arrivals</span>
+                                        <UserPlus size={13} />
+                                        <span>Check In</span>
                                         <span
                                             style={{
-                                                padding: '0.1rem 0.4rem',
+                                                padding: '0.05rem 0.35rem',
                                                 borderRadius: '999px',
-                                                fontSize: '0.7rem',
+                                                fontSize: '0.66rem',
                                                 fontWeight: 800,
-                                                background: (activeTab === 'attended' || activeTab === 'live') ? 'rgba(255, 255, 255, 0.25)' : '#DCFCE7',
-                                                color: (activeTab === 'attended' || activeTab === 'live') ? '#FFFFFF' : '#15803D'
+                                                background: activeTab === 'absent' ? 'rgba(255, 255, 255, 0.25)' : '#EFF6FF',
+                                                color: activeTab === 'absent' ? '#FFFFFF' : '#1D4ED8'
                                             }}
                                         >
-                                            {attendedList.length}
+                                            {absentList.length}
                                         </span>
                                     </button>
 
@@ -945,18 +732,16 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '0.35rem',
-                                            padding: '0.45rem 0.75rem',
-                                            borderRadius: '10px',
-                                            border: activeTab === 'qrcode' ? 'none' : '1px solid #BAE6FD',
-                                            background: activeTab === 'qrcode' ? '#0284C7' : '#FFFFFF',
-                                            color: activeTab === 'qrcode' ? '#FFFFFF' : '#0369A1',
+                                            justifyContent: 'center',
+                                            gap: '0.25rem',
+                                            padding: '0.38rem 0.5rem',
+                                            borderRadius: '7px',
+                                            border: 'none',
+                                            background: activeTab === 'qrcode' ? '#0284C7' : 'transparent',
+                                            color: activeTab === 'qrcode' ? '#FFFFFF' : '#334155',
                                             fontWeight: 800,
-                                            fontSize: '0.8rem',
+                                            fontSize: '0.76rem',
                                             cursor: 'pointer',
-                                            boxShadow: activeTab === 'qrcode' ? '0 2px 8px rgba(2, 132, 199, 0.3)' : 'none',
-                                            transition: 'all 0.18s',
-                                            flexShrink: 0,
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
@@ -971,18 +756,16 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '0.35rem',
-                                                padding: '0.45rem 0.75rem',
-                                                borderRadius: '10px',
-                                                border: activeTab === 'answers' ? 'none' : '1px solid #FDE68A',
-                                                background: activeTab === 'answers' ? '#D97706' : '#FFFFFF',
-                                                color: activeTab === 'answers' ? '#FFFFFF' : '#92400E',
+                                                justifyContent: 'center',
+                                                gap: '0.25rem',
+                                                padding: '0.38rem 0.5rem',
+                                                borderRadius: '7px',
+                                                border: 'none',
+                                                background: activeTab === 'answers' ? '#D97706' : 'transparent',
+                                                color: activeTab === 'answers' ? '#FFFFFF' : '#334155',
                                                 fontWeight: 800,
-                                                fontSize: '0.8rem',
+                                                fontSize: '0.76rem',
                                                 cursor: 'pointer',
-                                                boxShadow: activeTab === 'answers' ? '0 2px 8px rgba(217, 119, 6, 0.3)' : 'none',
-                                                transition: 'all 0.18s',
-                                                flexShrink: 0,
                                                 whiteSpace: 'nowrap'
                                             }}
                                         >
@@ -990,9 +773,9 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                             <span>Q&A</span>
                                             <span
                                                 style={{
-                                                    padding: '0.1rem 0.4rem',
+                                                    padding: '0.05rem 0.35rem',
                                                     borderRadius: '999px',
-                                                    fontSize: '0.7rem',
+                                                    fontSize: '0.66rem',
                                                     fontWeight: 800,
                                                     background: activeTab === 'answers' ? 'rgba(255, 255, 255, 0.25)' : '#FEF3C7',
                                                     color: activeTab === 'answers' ? '#FFFFFF' : '#92400E'
@@ -1002,148 +785,230 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                             </span>
                                         </button>
                                     )}
-                                </>
-                            ) : (
-                                /* DESKTOP TABS */
-                                <>
+                                </div>
+
+                                <button
+                                    className="g5-btn-outline"
+                                    style={{ padding: '0.35rem 0.55rem', height: '32px', flexShrink: 0 }}
+                                    onClick={() => fetchData(false)}
+                                    title="Refresh"
+                                >
+                                    <RefreshCw size={13} className={loading ? 'g5-spin' : ''} />
+                                </button>
+                                <button
+                                    className="g5-btn-outline"
+                                    style={{ padding: '0.35rem 0.55rem', height: '32px', flexShrink: 0 }}
+                                    onClick={handleExportCSV}
+                                    title="CSV Export"
+                                >
+                                    <Download size={13} />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* DESKTOP FULL HEADER */
+                        <div>
+                            {/* ROW 1: STATUS, VENUE, TIME & ACTION CONTROLS */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.45rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0 }}>
+                                    <span className={`g5-pill ${!meeting.isActive ? 'g5-pill-inactive' : timingStatus.isBefore ? 'g5-pill-purple' : 'g5-pill-active'}`} style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem', fontWeight: 800 }}>
+                                        {!meeting.isActive ? 'Session Ended' : timingStatus.isBefore ? (meeting.startTime ? `Starts at ${meeting.startTime}` : 'Scheduled') : (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669', display: 'inline-block' }} />
+                                                Live Session Active
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span className="g5-pill g5-pill-warm" style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem' }}>
+                                        <MapPin size={11} /> {meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                    </span>
+                                    <span className="g5-pill g5-pill-purple" style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem' }}>
+                                        <Calendar size={11} /> {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    </span>
+                                    <span className="g5-pill g5-pill-purple" style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem' }}>
+                                        <Clock size={11} /> {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
+                                    </span>
+                                </div>
+
+                                {/* Top Action Buttons */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                                    {onEditMeeting && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onEditMeeting(meeting)}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '0.3rem',
+                                                padding: '0.35rem 0.65rem',
+                                                background: '#EEF2FF',
+                                                color: '#4F46E5',
+                                                border: '1.5px solid #C7D2FE',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.76rem',
+                                                fontWeight: 800
+                                            }}
+                                            title="Edit meeting"
+                                        >
+                                            <Edit size={13} />
+                                            <span>Edit</span>
+                                        </button>
+                                    )}
+
                                     <button
+                                        type="button"
+                                        onClick={() => setActiveTab('qrcode')}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.3rem',
+                                            padding: '0.35rem 0.65rem',
+                                            background: activeTab === 'qrcode' ? '#0284C7' : '#E0F2FE',
+                                            color: activeTab === 'qrcode' ? '#FFFFFF' : '#0284C7',
+                                            border: '1.5px solid #BAE6FD',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.76rem',
+                                            fontWeight: 800
+                                        }}
+                                        title="Show QR Screen"
+                                    >
+                                        <QrCode size={13} />
+                                        <span>QR Screen</span>
+                                    </button>
+
+                                    <button
+                                        onClick={onClose}
+                                        style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            borderRadius: '50%',
+                                            background: '#F1F5F9',
+                                            border: '1px solid #CBD5E1',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            color: '#475569'
+                                        }}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ROW 2: TITLE & OPTIONAL QUESTION SNIPPET */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
+                                <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
+                                    {meeting.name || 'Training Session'}
+                                </h2>
+
+                                {questionText && (
+                                    <div
+                                        style={{
+                                            padding: '0.3rem 0.65rem',
+                                            background: '#FEF3C7',
+                                            border: '1px solid #FDE68A',
+                                            borderRadius: '8px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.4rem',
+                                            fontSize: '0.76rem',
+                                            color: '#92400E',
+                                            fontWeight: 700,
+                                            maxWidth: '100%'
+                                        }}
+                                    >
+                                        <MessageCircle size={13} style={{ color: '#D97706', flexShrink: 0 }} />
+                                        <span style={{ color: '#78350F' }}>Question:</span>
+                                        <span style={{ fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
+                                            "{questionText}"
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ROW 3: UNIFIED SEGMENTED TABS & CONTROLS */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        gap: '0.25rem',
+                                        background: '#F1F5F9',
+                                        padding: '3px',
+                                        borderRadius: '11px',
+                                        border: '1.5px solid #CBD5E1'
+                                    }}
+                                >
+                                    <button
+                                        type="button"
                                         onClick={() => setActiveTab('attended')}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '0.45rem',
-                                            padding: '0.45rem 0.85rem',
-                                            borderRadius: '10px',
-                                            border: activeTab === 'attended' ? 'none' : '1px solid #E2E8F0',
-                                            background: activeTab === 'attended' ? '#1D4ED8' : '#FFFFFF',
+                                            justifyContent: 'center',
+                                            gap: '0.35rem',
+                                            padding: '0.45rem 0.95rem',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: activeTab === 'attended' ? '#10B981' : 'transparent',
                                             color: activeTab === 'attended' ? '#FFFFFF' : '#334155',
                                             fontWeight: 800,
                                             fontSize: '0.82rem',
                                             cursor: 'pointer',
-                                            boxShadow: activeTab === 'attended' ? '0 2px 8px rgba(29, 78, 216, 0.3)' : 'none',
-                                            transition: 'all 0.18s',
-                                            flexShrink: 0,
+                                            boxShadow: activeTab === 'attended' ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none',
+                                            transition: 'all 0.15s ease',
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
-                                        <Users size={14} />
-                                        <span>Who Attended</span>
+                                        <CheckCircle2 size={14} />
+                                        <span>Attended</span>
                                         <span
                                             style={{
-                                                padding: '0.1rem 0.45rem',
+                                                padding: '0.08rem 0.4rem',
                                                 borderRadius: '999px',
-                                                fontSize: '0.72rem',
+                                                fontSize: '0.68rem',
                                                 fontWeight: 800,
-                                                background: activeTab === 'attended' ? 'rgba(255, 255, 255, 0.25)' : '#E2E8F0',
-                                                color: activeTab === 'attended' ? '#FFFFFF' : '#475569'
+                                                background: activeTab === 'attended' ? 'rgba(255, 255, 255, 0.28)' : '#DCFCE7',
+                                                color: activeTab === 'attended' ? '#FFFFFF' : '#15803D'
                                             }}
                                         >
                                             {attendedList.length}
                                         </span>
                                     </button>
 
-                                    {meeting.isActive && (
-                                        <button
-                                            onClick={() => setActiveTab('live')}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.45rem',
-                                                padding: '0.45rem 0.85rem',
-                                                borderRadius: '10px',
-                                                border: activeTab === 'live' ? 'none' : '1px solid #A7F3D0',
-                                                background: activeTab === 'live' ? '#10B981' : '#FFFFFF',
-                                                color: activeTab === 'live' ? '#FFFFFF' : '#059669',
-                                                fontWeight: 800,
-                                                fontSize: '0.82rem',
-                                                cursor: 'pointer',
-                                                boxShadow: activeTab === 'live' ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none',
-                                                transition: 'all 0.18s',
-                                                flexShrink: 0,
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    width: '7px',
-                                                    height: '7px',
-                                                    borderRadius: '50%',
-                                                    backgroundColor: activeTab === 'live' ? '#FFFFFF' : '#10B981',
-                                                    animation: 'g5Pulse 1.6s infinite'
-                                                }}
-                                            />
-                                            <span>Live Feed & Ticker</span>
-                                        </button>
-                                    )}
-
-                                    {questionText && (
-                                        <button
-                                            onClick={() => setActiveTab('answers')}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.45rem',
-                                                padding: '0.45rem 0.85rem',
-                                                borderRadius: '10px',
-                                                border: activeTab === 'answers' ? 'none' : '1px solid #FDE68A',
-                                                background: activeTab === 'answers' ? '#D97706' : '#FFFFFF',
-                                                color: activeTab === 'answers' ? '#FFFFFF' : '#92400E',
-                                                fontWeight: 800,
-                                                fontSize: '0.82rem',
-                                                cursor: 'pointer',
-                                                boxShadow: activeTab === 'answers' ? '0 2px 8px rgba(217, 119, 6, 0.3)' : 'none',
-                                                transition: 'all 0.18s',
-                                                flexShrink: 0,
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            <MessageCircle size={14} />
-                                            <span>Question Answers</span>
-                                            <span
-                                                style={{
-                                                    padding: '0.1rem 0.45rem',
-                                                    borderRadius: '999px',
-                                                    fontSize: '0.72rem',
-                                                    fontWeight: 800,
-                                                    background: activeTab === 'answers' ? 'rgba(255, 255, 255, 0.25)' : '#FEF3C7',
-                                                    color: activeTab === 'answers' ? '#FFFFFF' : '#92400E'
-                                                }}
-                                            >
-                                                {answeredList.length}
-                                            </span>
-                                        </button>
-                                    )}
-
                                     <button
+                                        type="button"
                                         onClick={() => setActiveTab('absent')}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '0.45rem',
-                                            padding: '0.45rem 0.85rem',
-                                            borderRadius: '10px',
-                                            border: activeTab === 'absent' ? 'none' : '1px solid #FECACA',
-                                            background: activeTab === 'absent' ? '#DC2626' : '#FFFFFF',
-                                            color: activeTab === 'absent' ? '#FFFFFF' : '#991B1B',
+                                            justifyContent: 'center',
+                                            gap: '0.35rem',
+                                            padding: '0.45rem 0.95rem',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: activeTab === 'absent' ? '#1D4ED8' : 'transparent',
+                                            color: activeTab === 'absent' ? '#FFFFFF' : '#334155',
                                             fontWeight: 800,
                                             fontSize: '0.82rem',
                                             cursor: 'pointer',
-                                            boxShadow: activeTab === 'absent' ? '0 2px 8px rgba(220, 38, 38, 0.3)' : 'none',
-                                            transition: 'all 0.18s',
-                                            flexShrink: 0,
+                                            boxShadow: activeTab === 'absent' ? '0 2px 8px rgba(29, 78, 216, 0.3)' : 'none',
+                                            transition: 'all 0.15s ease',
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
-                                        <UserX size={14} />
-                                        <span>Absent / Checklist</span>
+                                        <UserPlus size={14} />
+                                        <span>Check In Roster</span>
                                         <span
                                             style={{
-                                                padding: '0.1rem 0.45rem',
+                                                padding: '0.08rem 0.4rem',
                                                 borderRadius: '999px',
-                                                fontSize: '0.72rem',
+                                                fontSize: '0.68rem',
                                                 fontWeight: 800,
-                                                background: activeTab === 'absent' ? 'rgba(255, 255, 255, 0.25)' : '#FEE2E2',
-                                                color: activeTab === 'absent' ? '#FFFFFF' : '#DC2626'
+                                                background: activeTab === 'absent' ? 'rgba(255, 255, 255, 0.28)' : '#EFF6FF',
+                                                color: activeTab === 'absent' ? '#FFFFFF' : '#1D4ED8'
                                             }}
                                         >
                                             {absentList.length}
@@ -1151,187 +1016,270 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     </button>
 
                                     <button
+                                        type="button"
                                         onClick={() => setActiveTab('qrcode')}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '0.45rem',
+                                            justifyContent: 'center',
+                                            gap: '0.35rem',
                                             padding: '0.45rem 0.85rem',
-                                            borderRadius: '10px',
-                                            border: activeTab === 'qrcode' ? 'none' : '1px solid #BAE6FD',
-                                            background: activeTab === 'qrcode' ? '#0284C7' : '#FFFFFF',
-                                            color: activeTab === 'qrcode' ? '#FFFFFF' : '#0369A1',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: activeTab === 'qrcode' ? '#0284C7' : 'transparent',
+                                            color: activeTab === 'qrcode' ? '#FFFFFF' : '#334155',
                                             fontWeight: 800,
                                             fontSize: '0.82rem',
                                             cursor: 'pointer',
                                             boxShadow: activeTab === 'qrcode' ? '0 2px 8px rgba(2, 132, 199, 0.3)' : 'none',
-                                            transition: 'all 0.18s',
-                                            flexShrink: 0,
+                                            transition: 'all 0.15s ease',
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
                                         <QrCode size={14} />
-                                        <span>QR Display Screen</span>
+                                        <span>QR Screen</span>
                                     </button>
-                                </>
+
+                                    {questionText && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTab('answers')}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.35rem',
+                                                padding: '0.45rem 0.85rem',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                background: activeTab === 'answers' ? '#D97706' : 'transparent',
+                                                color: activeTab === 'answers' ? '#FFFFFF' : '#334155',
+                                                fontWeight: 800,
+                                                fontSize: '0.82rem',
+                                                cursor: 'pointer',
+                                                boxShadow: activeTab === 'answers' ? '0 2px 8px rgba(217, 119, 6, 0.3)' : 'none',
+                                                transition: 'all 0.15s ease',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            <MessageCircle size={14} />
+                                            <span>Q&A</span>
+                                            <span
+                                                style={{
+                                                    padding: '0.08rem 0.4rem',
+                                                    borderRadius: '999px',
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 800,
+                                                    background: activeTab === 'answers' ? 'rgba(255, 255, 255, 0.28)' : '#FEF3C7',
+                                                    color: activeTab === 'answers' ? '#FFFFFF' : '#92400E'
+                                                }}
+                                            >
+                                                {answeredList.length}
+                                            </span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* REFRESH & CSV BUTTONS */}
+                                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                    <button
+                                        className="g5-btn-outline"
+                                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', height: '34px' }}
+                                        onClick={() => fetchData(false)}
+                                        title="Refresh roster"
+                                    >
+                                        <RefreshCw size={13} className={loading ? 'g5-spin' : ''} />
+                                        <span>Refresh</span>
+                                    </button>
+                                    <button
+                                        className="g5-btn-outline"
+                                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', height: '34px' }}
+                                        onClick={handleExportCSV}
+                                        title="Export attendance to CSV"
+                                    >
+                                        <Download size={13} />
+                                        <span>CSV</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* SEARCH & ROLE FILTER BAR (Active on Attended & Check In tabs) */}
+                {(activeTab === 'attended' || activeTab === 'absent') && (
+                    <div
+                        className="g5-modal-filter-bar"
+                        style={{
+                            padding: isMobile ? '0.45rem 0.75rem' : '0.75rem 2rem',
+                            background: '#FFFFFF',
+                            borderBottom: '1px solid #E2E8F0',
+                            display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'stretch' : 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.45rem',
+                            flexShrink: 0
+                        }}
+                    >
+                        <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? '100%' : '240px', maxWidth: isMobile ? '100%' : '440px' }}>
+                            <Search
+                                size={15}
+                                style={{
+                                    position: 'absolute',
+                                    left: '11px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: searchQuery ? '#2563EB' : '#64748B',
+                                    pointerEvents: 'none'
+                                }}
+                            />
+                            <input
+                                type="text"
+                                placeholder={activeTab === 'absent' ? "Type name or admission number to check in..." : "Search attended members..."}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: isMobile ? '0.45rem 2rem 0.45rem 2.1rem' : '0.55rem 2.2rem 0.55rem 2.3rem',
+                                    borderRadius: '9px',
+                                    border: '1.5px solid #CBD5E1',
+                                    fontSize: '0.84rem',
+                                    backgroundColor: '#FFFFFF',
+                                    color: '#0F172A',
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '9px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: '#E2E8F0',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '18px',
+                                        height: '18px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#475569',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 800,
+                                        padding: 0
+                                    }}
+                                >
+                                    ✕
+                                </button>
                             )}
                         </div>
 
-                        {/* EXPORT & REFRESH BUTTONS */}
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
-                            <button
-                                className="g5-btn-outline"
-                                style={{ padding: isMobile ? '0.4rem 0.65rem' : '0.45rem 0.85rem', fontSize: '0.78rem', height: '34px', flex: isMobile ? 1 : 'initial', justifyContent: 'center' }}
-                                onClick={() => fetchData(false)}
-                                title="Refresh roster"
-                            >
-                                <RefreshCw size={13} className={loading ? 'g5-spin' : ''} />
-                                <span>Refresh</span>
-                            </button>
-                            <button
-                                className="g5-btn-outline"
-                                style={{ padding: isMobile ? '0.4rem 0.65rem' : '0.45rem 0.85rem', fontSize: '0.78rem', height: '34px', flex: isMobile ? 1 : 'initial', justifyContent: 'center' }}
-                                onClick={handleExportCSV}
-                                title="Export attendance to CSV"
-                            >
-                                <Download size={13} />
-                                <span>CSV</span>
-                            </button>
+                        {/* SUB-FILTER BUTTONS */}
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                            background: '#F1F5F9',
+                            padding: '2.5px',
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0',
+                            width: isMobile ? '100%' : 'auto'
+                        }}>
+                            {['All', 'Douloid', 'Recruit'].map((type) => (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => setFilterType(type)}
+                                    style={{
+                                        flex: isMobile ? 1 : 'initial',
+                                        padding: isMobile ? '0.28rem 0.5rem' : '0.35rem 0.85rem',
+                                        borderRadius: '6px',
+                                        fontSize: '0.76rem',
+                                        fontWeight: filterType === type ? 800 : 600,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: filterType === type ? '#1D4ED8' : 'transparent',
+                                        color: filterType === type ? '#FFFFFF' : '#64748B',
+                                        boxShadow: filterType === type ? '0 1px 4px rgba(29, 78, 216, 0.25)' : 'none',
+                                        textAlign: 'center',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    {type}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </div>
+                )}
 
-                {/* SEARCH & SUB-FILTERS BAR */}
-                <div
-                    className="g5-modal-filter-bar"
-                    style={{
-                        padding: isMobile ? '0.45rem 0.65rem' : '0.85rem 2rem',
-                        background: '#FFFFFF',
-                        borderBottom: '1px solid #E2E8F0',
-                        display: 'flex',
-                        flexDirection: isMobile ? 'column' : 'row',
-                        alignItems: isMobile ? 'stretch' : 'center',
-                        justifyContent: 'space-between',
-                        gap: isMobile ? '0.35rem' : '0.65rem',
-                        flexShrink: 0
-                    }}
-                >
-                    <div style={{ position: 'relative', flex: 1, minWidth: isMobile ? '100%' : '220px', maxWidth: isMobile ? '100%' : '420px' }}>
-                        <Search
-                            size={isMobile ? 18 : 16}
-                            style={{
-                                position: 'absolute',
-                                left: '12px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                color: searchQuery ? '#2563EB' : '#475569',
-                                transition: 'color 0.2s ease',
-                                pointerEvents: 'none'
-                            }}
-                        />
-                        <input
-                            type="text"
-                            placeholder="🔍 Type name or reg number to check in..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: isMobile ? '0.62rem 2.2rem 0.62rem 2.5rem' : '0.55rem 1rem 0.55rem 2.25rem',
-                                borderRadius: isMobile ? '12px' : '12px',
-                                border: isMobile ? '2px solid #3B82F6' : '1.5px solid #CBD5E1',
-                                fontSize: isMobile ? '0.92rem' : '0.85rem',
-                                fontWeight: isMobile ? 600 : 400,
-                                backgroundColor: '#FFFFFF',
-                                color: '#0F172A',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                                boxShadow: isMobile ? '0 2px 8px rgba(59, 130, 246, 0.15)' : 'none',
-                                transition: 'all 0.2s ease'
-                            }}
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                style={{
-                                    position: 'absolute',
-                                    right: '10px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: '#E2E8F0',
-                                    border: 'none',
-                                    borderRadius: '50%',
-                                    width: '22px',
-                                    height: '22px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#475569',
-                                    cursor: 'pointer',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 800,
-                                    padding: 0
-                                }}
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
-
-                    {/* SUB-FILTER BUTTONS (Ultra-Compact on Mobile) */}
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.2rem',
-                        width: isMobile ? '100%' : 'auto',
-                        background: '#F1F5F9',
-                        padding: '2px',
-                        borderRadius: '8px',
-                        border: '1px solid #E2E8F0'
-                    }}>
-                        {['All', 'Douloid', 'Recruit'].map((type) => (
-                            <button
-                                key={type}
-                                type="button"
-                                onClick={() => setFilterType(type)}
-                                style={{
-                                    flex: isMobile ? 1 : 'initial',
-                                    padding: isMobile ? '0.24rem 0.5rem' : '0.35rem 0.8rem',
-                                    borderRadius: '6px',
-                                    fontSize: isMobile ? '0.72rem' : '0.78rem',
-                                    fontWeight: filterType === type ? 800 : 600,
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: filterType === type ? '#1D4ED8' : 'transparent',
-                                    color: filterType === type ? '#FFFFFF' : '#64748B',
-                                    boxShadow: filterType === type ? '0 1px 3px rgba(29, 78, 216, 0.25)' : 'none',
-                                    textAlign: 'center',
-                                    transition: 'all 0.15s ease',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                {type}
-                            </button>
-                        ))}
-                    </div>
-                </div>
                 {/* SCROLLABLE MODAL CONTENT BODY */}
                 <div
                     className="g5-modal-scroll-body"
                     style={{
-                        flex: 1,
+                        flex: '1 1 auto',
+                        minHeight: 0,
                         overflowY: 'auto',
-                        padding: isMobile ? '0.75rem 0.65rem' : '1.5rem 2rem',
+                        WebkitOverflowScrolling: 'touch',
+                        overscrollBehavior: 'contain',
+                        padding: isMobile ? '0.65rem 0.75rem calc(3rem + env(safe-area-inset-bottom, 20px))' : '1.5rem 2rem',
                         backgroundColor: '#F8FAFC'
                     }}
                 >
-                    {/* TAB 1: WHO ATTENDED */}
+                    {/* MOBILE TOP BANNER: Question of the Day (inside scroll body so it scrolls away naturally) */}
+                    {isMobile && questionText && (
+                        <div
+                            style={{
+                                marginBottom: '0.65rem',
+                                padding: '0.45rem 0.75rem',
+                                background: '#FFFFFF',
+                                border: '1px solid #E2E8F0',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.45rem',
+                                fontSize: '0.74rem'
+                            }}
+                        >
+                            <MessageCircle size={13} style={{ color: '#2563EB', flexShrink: 0 }} />
+                            <span style={{ color: '#64748B', fontWeight: 700 }}>Q:</span>
+                            <span style={{ color: '#0F172A', fontWeight: 800, fontStyle: 'italic', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                "{questionText}"
+                            </span>
+                            {answeredList.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('answers')}
+                                    style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        color: '#2563EB',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        textDecoration: 'underline',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    {answeredList.length} Ans →
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* TAB 1: ATTENDED MEMBERS */}
                     {activeTab === 'attended' && (
                         <div>
                             {filteredAttended.length === 0 ? (
                                 <div
                                     style={{
                                         textAlign: 'center',
-                                        padding: isMobile ? '2rem 1rem' : '4rem 2rem',
+                                        padding: isMobile ? '2.5rem 1rem' : '4rem 2rem',
                                         background: '#FFFFFF',
                                         borderRadius: '16px',
                                         border: '1.5px dashed #CBD5E1'
@@ -1339,8 +1287,8 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                 >
                                     <div
                                         style={{
-                                            width: isMobile ? '44px' : '54px',
-                                            height: isMobile ? '44px' : '54px',
+                                            width: '52px',
+                                            height: '52px',
                                             borderRadius: '50%',
                                             background: '#EFF6FF',
                                             color: '#1D4ED8',
@@ -1350,15 +1298,15 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                             margin: '0 auto 0.75rem'
                                         }}
                                     >
-                                        <Users size={isMobile ? 20 : 24} />
+                                        <Users size={24} />
                                     </div>
-                                    <h4 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.1rem', fontWeight: 800, color: '#0F172A' }}>
+                                    <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
                                         {searchQuery ? 'No attendees match your search' : 'No Attendees Checked In Yet'}
                                     </h4>
-                                    <p style={{ margin: '0.35rem 0 1.15rem', fontSize: '0.82rem', color: '#64748B' }}>
+                                    <p style={{ margin: '0.35rem 0 1.25rem', fontSize: '0.84rem', color: '#64748B' }}>
                                         {searchQuery
-                                            ? 'Try refining your name or admission number search above.'
-                                            : 'As students scan the QR code or enter code, their check-in cards will appear here.'}
+                                            ? 'Try searching by a different name or admission number.'
+                                            : 'When members scan the QR code or get manually checked in, they appear here live.'}
                                     </p>
                                     <button
                                         type="button"
@@ -1370,41 +1318,33 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     </button>
                                 </div>
                             ) : isMobile ? (
-                                /* MOBILE ATTENDEES COMPACT SMALL CARDS */
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.2rem 0.2rem' }}>
-                                        <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
-                                            Checked In ({filteredAttended.length})
-                                        </span>
-                                        <span style={{ fontSize: '0.74rem', color: '#10B981', fontWeight: 700 }}>
-                                            Live Ledger
-                                        </span>
-                                    </div>
+                                /* MOBILE ATTENDEES CARDS */
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                                     {filteredAttended.map((record) => (
                                         <div
                                             key={record._id || record.studentRegNo}
                                             style={{
                                                 background: '#FFFFFF',
-                                                borderRadius: '12px',
+                                                borderRadius: '13px',
                                                 border: '1.5px solid #E2E8F0',
-                                                padding: '0.55rem 0.75rem',
+                                                padding: '0.65rem 0.85rem',
                                                 boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'space-between',
-                                                gap: '0.45rem'
+                                                gap: '0.5rem'
                                             }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0, flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, flex: 1 }}>
                                                 <div
                                                     style={{
-                                                        width: '30px',
-                                                        height: '30px',
+                                                        width: '32px',
+                                                        height: '32px',
                                                         borderRadius: '50%',
                                                         background: record.memberType === 'Douloid' ? '#EFF6FF' : '#FEF3C7',
                                                         color: record.memberType === 'Douloid' ? '#1D4ED8' : '#D97706',
                                                         fontWeight: 900,
-                                                        fontSize: '0.78rem',
+                                                        fontSize: '0.8rem',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
@@ -1414,22 +1354,22 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                     ✓
                                                 </div>
                                                 <div style={{ minWidth: 0, flex: 1 }}>
-                                                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                         {record.memberName}
                                                     </div>
-                                                    <div style={{ fontSize: '0.71rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '1px' }}>
+                                                    <div style={{ fontSize: '0.72rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '1px' }}>
                                                         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#2563EB' }}>
                                                             {record.studentRegNo}
                                                         </span>
                                                         <span>•</span>
-                                                        <span className={`g5-pill ${record.memberType === 'Douloid' ? 'g5-pill-active' : 'g5-pill-recruit'}`} style={{ fontSize: '0.62rem', padding: '0.08rem 0.35rem' }}>
+                                                        <span className={`g5-pill ${record.memberType === 'Douloid' ? 'g5-pill-active' : 'g5-pill-recruit'}`} style={{ fontSize: '0.64rem', padding: '0.08rem 0.35rem' }}>
                                                             {record.memberType}
                                                         </span>
                                                         <span>•</span>
                                                         <span>{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
                                                     {questionText && record.answer && (
-                                                        <div style={{ marginTop: '3px', fontSize: '0.73rem', fontStyle: 'italic', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        <div style={{ marginTop: '4px', fontSize: '0.75rem', fontStyle: 'italic', color: '#334155', background: '#F8FAFC', padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #E2E8F0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                             "{record.answer}"
                                                         </div>
                                                     )}
@@ -1445,14 +1385,14 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                     border: 'none',
                                                     color: '#DC2626',
                                                     cursor: 'pointer',
-                                                    padding: '0.38rem',
+                                                    padding: '0.45rem',
                                                     borderRadius: '8px',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     flexShrink: 0
                                                 }}
-                                                title="Remove attendee"
+                                                title="Remove attendance"
                                             >
                                                 <Trash2 size={15} />
                                             </button>
@@ -1479,7 +1419,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                 <th>Role Type</th>
                                                 <th>Check-In Time</th>
                                                 {questionText && <th>Question Response</th>}
-                                                <th style={{ textAlign: 'right' }}>Actions</th>
+                                                <th style={{ textAlign: 'right' }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1576,378 +1516,10 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         </div>
                     )}
 
-                    {/* TAB 2: LIVE FEED & TICKER (FOR ACTIVE DRILLS) */}
-                    {activeTab === 'live' && (
-                        <div className="g5-overview-split" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
-                            {/* LIVE INCOMING TICKER */}
-                            <div className="g5-card" style={{ padding: isMobile ? '1rem' : '1.25rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                    <div>
-                                        <h3 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.1rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div className="g5-pulse-dot" style={{ width: '8px', height: '8px' }} />
-                                            Real-Time Attendance Stream
-                                        </h3>
-                                        <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.76rem', color: '#64748B' }}>
-                                            Auto-refreshing every 3s as students scan on-site
-                                        </p>
-                                    </div>
-                                    <span className="g5-pill g5-pill-active" style={{ fontSize: '0.76rem', fontWeight: 800 }}>
-                                        {attendedList.length} Checked In
-                                    </span>
-                                </div>
-
-                                {attendedList.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: isMobile ? '1.25rem 0.75rem' : '3rem 1rem', color: '#64748B', background: isMobile ? '#F8FAFC' : 'transparent', borderRadius: '12px', border: isMobile ? '1.5px dashed #CBD5E1' : 'none' }}>
-                                        <div style={{ fontWeight: 800, fontSize: isMobile ? '0.86rem' : '0.92rem', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}>
-                                            <Radio size={16} style={{ color: '#10B981' }} /> Awaiting First Check-In
-                                        </div>
-                                        <div style={{ fontSize: '0.74rem', marginTop: '0.25rem' }}>
-                                            Code <strong style={{ color: '#1D4ED8' }}>{meeting.code}</strong> • Scan QR or tap + Check In below
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: isMobile ? '280px' : '420px', overflowY: 'auto' }}>
-                                        {attendedList.slice(0, 25).map((a, idx) => (
-                                            <div
-                                                key={a._id || idx}
-                                                style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center',
-                                                    padding: isMobile ? '0.75rem 0.95rem' : '0.55rem 0.75rem',
-                                                    borderRadius: '13px',
-                                                    background: '#FFFFFF',
-                                                    border: '1.5px solid #E2E8F0',
-                                                    animation: 'fadeIn 0.3s ease-out',
-                                                    gap: '0.75rem',
-                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                                                }}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
-                                                    <div
-                                                        className="g5-avatar"
-                                                        style={{
-                                                            width: isMobile ? '38px' : '28px',
-                                                            height: isMobile ? '38px' : '28px',
-                                                            fontSize: isMobile ? '0.95rem' : '0.76rem',
-                                                            fontWeight: 900,
-                                                            background: '#DCFCE7',
-                                                            color: '#15803D',
-                                                            border: '1.5px solid #86EFAC',
-                                                            flexShrink: 0
-                                                        }}
-                                                    >
-                                                        ✓
-                                                    </div>
-                                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                                        <div style={{ fontWeight: 800, color: '#0F172A', fontSize: isMobile ? '1.02rem' : '0.86rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                            {a.memberName}
-                                                        </div>
-                                                        <div style={{ fontSize: isMobile ? '0.82rem' : '0.7rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
-                                                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#2563EB' }}>{a.studentRegNo}</span>
-                                                            <span style={{ color: '#CBD5E1' }}>•</span>
-                                                            <span>{a.memberType}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div style={{ fontSize: isMobile ? '0.86rem' : '0.74rem', fontWeight: 800, color: '#059669', flexShrink: 0, background: '#ECFDF5', padding: '0.25rem 0.5rem', borderRadius: '8px', border: '1px solid #A7F3D0' }}>
-                                                    {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* INSTANT MANUAL CHECK-IN BOX */}
-                            <div className="g5-card" style={{ padding: isMobile ? '1rem' : '1.25rem' }}>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <h3 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.1rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <UserPlus size={18} style={{ color: '#1D4ED8' }} />
-                                        Manual Check-In Override
-                                    </h3>
-                                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.76rem', color: '#64748B' }}>
-                                        One-tap check-in for members without their phone
-                                    </p>
-                                </div>
-
-                                {timingStatus.isBefore && !meeting.isTestMeeting && (
-                                    <div style={{
-                                        marginBottom: '0.85rem',
-                                        padding: '0.65rem 0.85rem',
-                                        background: '#EFF6FF',
-                                        border: '1.5px solid #BFDBFE',
-                                        borderRadius: '12px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        fontSize: '0.78rem',
-                                        color: '#1E40AF',
-                                        fontWeight: 600
-                                    }}>
-                                        <Clock size={16} style={{ color: '#2563EB', flexShrink: 0 }} />
-                                        <span>
-                                            Check-in begins at <strong>{meeting.startTime || 'stipulated time'}</strong>. Manual check-ins will unlock automatically then.
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: isMobile ? '480px' : '420px', overflowY: 'auto' }}>
-                                    {filteredAbsent.slice(0, isMobile ? 30 : 15).map((m) => {
-                                        const regUpper = String(m.studentRegNo).trim().toUpperCase();
-                                        const otherMeetingName = weeklyAttendedMap.get(regUpper);
-                                        const initials = (m.name || 'D').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-                                        return (
-                                            <div
-                                                key={m._id || m.studentRegNo}
-                                                style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center',
-                                                    padding: isMobile ? '0.85rem 1rem' : '0.65rem 0.85rem',
-                                                    borderRadius: '14px',
-                                                    background: otherMeetingName ? '#F1F5F9' : '#FFFFFF',
-                                                    border: '1.5px solid #E2E8F0',
-                                                    opacity: otherMeetingName ? 0.75 : 1,
-                                                    gap: '0.75rem',
-                                                    boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)'
-                                                }}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
-                                                    {/* Member Avatar Chip */}
-                                                    <div style={{
-                                                        width: isMobile ? '42px' : '36px',
-                                                        height: isMobile ? '42px' : '36px',
-                                                        borderRadius: '50%',
-                                                        background: m.memberType === 'Douloid' ? 'linear-gradient(135deg, #EFF6FF, #DBEAFE)' : 'linear-gradient(135deg, #F8FAFC, #E2E8F0)',
-                                                        color: m.memberType === 'Douloid' ? '#1D4ED8' : '#475569',
-                                                        border: `1.5px solid ${m.memberType === 'Douloid' ? '#93C5FD' : '#CBD5E1'}`,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontWeight: 900,
-                                                        fontSize: isMobile ? '0.95rem' : '0.82rem',
-                                                        flexShrink: 0
-                                                    }}>
-                                                        {initials}
-                                                    </div>
-
-                                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                                        <div style={{ fontWeight: 800, fontSize: isMobile ? '1.05rem' : '0.86rem', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>
-                                                            {m.name}
-                                                        </div>
-                                                        <div style={{ fontSize: isMobile ? '0.82rem' : '0.72rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                            {m.studentRegNo && (
-                                                                <>
-                                                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#2563EB' }}>{m.studentRegNo}</span>
-                                                                    <span style={{ color: '#CBD5E1' }}>•</span>
-                                                                </>
-                                                            )}
-                                                            <span style={{ fontWeight: 600, color: m.memberType === 'Douloid' ? '#1D4ED8' : '#64748B' }}>{m.memberType || 'Recruit'}</span>
-                                                            {otherMeetingName && (
-                                                                <span style={{ color: '#DC2626', fontWeight: 700, marginLeft: '0.2rem' }}>
-                                                                    • Attended {otherMeetingName}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {otherMeetingName ? (
-                                                    <span className="g5-pill g5-pill-inactive" style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', flexShrink: 0 }}>
-                                                        Attended
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        className="g5-btn-blue-solid"
-                                                        style={{
-                                                            padding: isMobile ? '0.7rem 1.25rem' : '0.5rem 0.95rem',
-                                                            fontSize: isMobile ? '0.95rem' : '0.8rem',
-                                                            fontWeight: 800,
-                                                            borderRadius: '11px',
-                                                            whiteSpace: 'nowrap',
-                                                            flexShrink: 0,
-                                                            minHeight: isMobile ? '44px' : '36px',
-                                                            boxShadow: '0 3px 8px rgba(37, 99, 235, 0.3)',
-                                                            letterSpacing: '0.01em',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                        disabled={actionLoading === (m.studentRegNo || m._id || m.name)}
-                                                        onClick={() => handleCheckInMember(m.studentRegNo, m.name, m._id)}
-                                                    >
-                                                        {actionLoading === (m.studentRegNo || m._id || m.name) ? '...' : '+ Check In'}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* TAB 3: QUESTION ANSWERS */}
-                    {activeTab === 'answers' && (
-                        <div>
-                            {answeredList.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: isMobile ? '3rem 1rem' : '4rem 2rem', background: '#FFFFFF', borderRadius: '16px', border: '1px dashed #CBD5E1' }}>
-                                    <MessageCircle size={32} style={{ color: '#D97706', margin: '0 auto 0.75rem' }} />
-                                    <h4 style={{ margin: 0, fontWeight: 800, color: '#0F172A' }}>No Answers Recorded Yet</h4>
-                                    <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
-                                        When members answer "{questionText}" during check-in, their feedback will appear here.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.85rem' }}>
-                                    {answeredList.map((item, idx) => (
-                                        <div
-                                            key={idx}
-                                            style={{
-                                                background: '#FFFFFF',
-                                                borderRadius: '14px',
-                                                padding: '1rem',
-                                                border: '1.5px solid #E2E8F0',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                justifyContent: 'space-between',
-                                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-                                            }}
-                                        >
-                                            <div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                                                        <div
-                                                            className="g5-avatar"
-                                                            style={{
-                                                                width: '32px',
-                                                                height: '32px',
-                                                                background: '#EFF6FF',
-                                                                color: '#1D4ED8',
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: 800
-                                                            }}
-                                                        >
-                                                            {item.memberName.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0F172A' }}>
-                                                                {item.memberName}
-                                                            </div>
-                                                            <div style={{ fontSize: '0.72rem', color: '#64748B', fontFamily: 'monospace' }}>
-                                                                {item.studentRegNo}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <span className={`g5-pill ${item.memberType === 'Douloid' ? 'g5-pill-active' : 'g5-pill-recruit'}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
-                                                        {item.memberType}
-                                                    </span>
-                                                </div>
-
-                                                <div
-                                                    style={{
-                                                        background: '#F8FAFC',
-                                                        borderRadius: '10px',
-                                                        padding: '0.75rem 0.9rem',
-                                                        border: '1px solid #E2E8F0',
-                                                        fontSize: '0.85rem',
-                                                        color: '#1E293B',
-                                                        lineHeight: 1.5,
-                                                        fontStyle: 'italic'
-                                                    }}
-                                                >
-                                                    "{item.answer}"
-                                                </div>
-                                            </div>
-
-                                            <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end', fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
-                                                {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* TAB 4: ABSENT MEMBERS / MANUAL CHECKLIST */}
+                    {/* TAB 2: CHECK IN ROSTER (ABSENT MEMBERS) */}
                     {activeTab === 'absent' && (
                         <div>
-                            {/* LIVE ARRIVALS SMALL CARDS TRAY (MOBILE ONLY) */}
-                            {isMobile && (
-                                <div style={{ marginBottom: '0.75rem', background: '#FFFFFF', padding: '0.6rem 0.75rem', borderRadius: '14px', border: '1.5px solid #E2E8F0' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', animation: 'g5Pulse 1.6s infinite', display: 'inline-block' }} />
-                                            Live Arrivals ({attendedList.length})
-                                        </span>
-                                        {attendedList.length > 0 && (
-                                            <span
-                                                onClick={() => setActiveTab('attended')}
-                                                style={{ fontSize: '0.74rem', color: '#2563EB', fontWeight: 700, cursor: 'pointer' }}
-                                            >
-                                                View All ({attendedList.length}) →
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {attendedList.length === 0 ? (
-                                        <div style={{ padding: '0.45rem 0.65rem', background: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1', fontSize: '0.74rem', color: '#64748B' }}>
-                                            ⚡ Awaiting arrivals • Tap <strong>+ Check In</strong> below to log attendance live
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', gap: '0.45rem', overflowX: 'auto', scrollbarWidth: 'none', padding: '0.1rem 0 0.25rem' }}>
-                                            {attendedList.slice(0, 15).map((a) => (
-                                                <div
-                                                    key={a._id || a.studentRegNo}
-                                                    style={{
-                                                        background: '#F0FDF4',
-                                                        border: '1.5px solid #BBF7D0',
-                                                        borderRadius: '10px',
-                                                        padding: '0.4rem 0.6rem',
-                                                        minWidth: '150px',
-                                                        maxWidth: '185px',
-                                                        flexShrink: 0,
-                                                        boxShadow: '0 2px 5px rgba(16, 185, 129, 0.08)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.45rem'
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            width: '22px',
-                                                            height: '22px',
-                                                            borderRadius: '50%',
-                                                            background: '#DCFCE7',
-                                                            color: '#15803D',
-                                                            fontSize: '0.68rem',
-                                                            fontWeight: 900,
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            flexShrink: 0
-                                                        }}
-                                                    >
-                                                        ✓
-                                                    </div>
-                                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                            {a.memberName}
-                                                        </div>
-                                                        <div style={{ fontSize: '0.67rem', color: '#64748B', display: 'flex', justifyContent: 'space-between', marginTop: '1px' }}>
-                                                            <span style={{ fontFamily: 'monospace', color: '#2563EB', fontWeight: 700 }}>{a.studentRegNo}</span>
-                                                            <span>{new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* STIPULATED START TIME ALERT (TAB 4) */}
+                            {/* STIPULATED START TIME ALERT */}
                             {timingStatus.isBefore && !meeting.isTestMeeting && (
                                 <div style={{
                                     marginBottom: '0.75rem',
@@ -1964,7 +1536,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                 }}>
                                     <Clock size={16} style={{ color: '#2563EB', flexShrink: 0 }} />
                                     <span>
-                                        Official check-in unlocks at <strong>{meeting.startTime || 'stipulated time'}</strong>. Tap actions are held until session start.
+                                        Official check-in begins at <strong>{meeting.startTime || 'stipulated time'}</strong>. Manual check-ins will unlock automatically then.
                                     </span>
                                 </div>
                             )}
@@ -2019,12 +1591,12 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     <CheckCircle2 size={36} style={{ color: '#10B981', margin: '0 auto 0.75rem' }} />
                                     <h4 style={{ margin: 0, fontWeight: 800, color: '#0F172A' }}>All Members Checked In!</h4>
                                     <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
-                                        100% attendance recorded for this campus cohort.
+                                        100% attendance recorded for this session.
                                     </p>
                                 </div>
                             ) : isMobile ? (
-                                /* MOBILE ABSENT COMPACT CHECK-IN CARDS */
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                                /* MOBILE ABSENT CARDS */
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                     {filteredAbsent.map((m) => {
                                         const regUpper = String(m.studentRegNo).trim().toUpperCase();
                                         const isSelected = selectedRegs.has(regUpper);
@@ -2035,49 +1607,48 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                 key={m._id || m.studentRegNo}
                                                 style={{
                                                     background: otherMeetingName ? '#F8FAFC' : '#FFFFFF',
-                                                    borderRadius: '14px',
+                                                    borderRadius: '13px',
                                                     border: '1.5px solid #E2E8F0',
-                                                    padding: '0.85rem 1rem',
+                                                    padding: '0.75rem 0.85rem',
                                                     opacity: otherMeetingName ? 0.75 : 1,
                                                     boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'space-between',
-                                                    gap: '0.75rem'
+                                                    gap: '0.65rem'
                                                 }}
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, flex: 1 }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         disabled={!!otherMeetingName}
                                                         onChange={() => toggleSelectReg(m.studentRegNo)}
-                                                        style={{ cursor: otherMeetingName ? 'not-allowed' : 'pointer', width: '22px', height: '22px', flexShrink: 0, accentColor: '#2563EB' }}
+                                                        style={{ cursor: otherMeetingName ? 'not-allowed' : 'pointer', width: '20px', height: '20px', flexShrink: 0, accentColor: '#2563EB' }}
                                                     />
                                                     
-                                                    {/* Member Avatar Chip */}
                                                     <div style={{
-                                                        width: '40px',
-                                                        height: '40px',
+                                                        width: '36px',
+                                                        height: '36px',
                                                         borderRadius: '50%',
-                                                        background: m.memberType === 'Douloid' ? 'linear-gradient(135deg, #EFF6FF, #DBEAFE)' : 'linear-gradient(135deg, #F8FAFC, #E2E8F0)',
+                                                        background: m.memberType === 'Douloid' ? '#EFF6FF' : '#F8FAFC',
                                                         color: m.memberType === 'Douloid' ? '#1D4ED8' : '#475569',
                                                         border: `1.5px solid ${m.memberType === 'Douloid' ? '#93C5FD' : '#CBD5E1'}`,
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         fontWeight: 900,
-                                                        fontSize: '0.92rem',
+                                                        fontSize: '0.88rem',
                                                         flexShrink: 0
                                                     }}>
                                                         {initials}
                                                     </div>
 
                                                     <div style={{ minWidth: 0, flex: 1 }}>
-                                                        <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '1.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>
+                                                        <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.98rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                             {m.name}
                                                         </div>
-                                                        <div style={{ fontSize: '0.82rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                             {m.studentRegNo && (
                                                                 <>
                                                                     <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#2563EB' }}>
@@ -2090,13 +1661,8 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                                 {m.memberType || 'Recruit'}
                                                             </span>
                                                             {otherMeetingName && (
-                                                                <span style={{ color: '#DC2626', fontWeight: 700, fontSize: '0.78rem' }}>
+                                                                <span style={{ color: '#DC2626', fontWeight: 700, fontSize: '0.74rem' }}>
                                                                     • Attended {otherMeetingName}
-                                                                </span>
-                                                            )}
-                                                            {m.consecutiveAbsences > 1 && !otherMeetingName && (
-                                                                <span style={{ color: '#DC2626', fontWeight: 700, fontSize: '0.78rem' }}>
-                                                                    • {m.consecutiveAbsences} Absences
                                                                 </span>
                                                             )}
                                                         </div>
@@ -2104,7 +1670,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                 </div>
 
                                                 {otherMeetingName ? (
-                                                    <span className="g5-pill g5-pill-inactive" style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', flexShrink: 0 }}>
+                                                    <span className="g5-pill g5-pill-inactive" style={{ fontSize: '0.72rem', padding: '0.3rem 0.55rem', flexShrink: 0 }}>
                                                         Attended
                                                     </span>
                                                 ) : (
@@ -2112,15 +1678,12 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                                         type="button"
                                                         className="g5-btn-blue-solid"
                                                         style={{
-                                                            padding: '0.7rem 1.25rem',
-                                                            fontSize: '0.95rem',
+                                                            padding: '0.55rem 0.95rem',
+                                                            fontSize: '0.85rem',
                                                             fontWeight: 800,
-                                                            borderRadius: '11px',
+                                                            borderRadius: '10px',
                                                             whiteSpace: 'nowrap',
                                                             flexShrink: 0,
-                                                            minHeight: '44px',
-                                                            boxShadow: '0 3px 8px rgba(37, 99, 235, 0.3)',
-                                                            letterSpacing: '0.01em',
                                                             cursor: 'pointer'
                                                         }}
                                                         disabled={actionLoading === (m.studentRegNo || m._id || m.name)}
@@ -2245,13 +1808,13 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                         </div>
                     )}
 
-                    {/* TAB 5: QR CODE PROJECTOR SCREEN */}
+                    {/* TAB 3: QR CODE PROJECTOR SCREEN */}
                     {activeTab === 'qrcode' && (
-                        <div style={{ textAlign: 'center', padding: isMobile ? '1rem 0.5rem' : '1.5rem 1rem', maxWidth: '620px', margin: '0 auto' }}>
+                        <div style={{ textAlign: 'center', padding: isMobile ? '1rem 0.5rem' : '1.5rem 1rem', maxWidth: '600px', margin: '0 auto' }}>
                             <div style={{
                                 background: '#FFFFFF',
                                 borderRadius: '24px',
-                                padding: isMobile ? '1.5rem 1rem' : '2rem 1.25rem',
+                                padding: isMobile ? '1.5rem 1rem' : '2.25rem 1.5rem',
                                 border: '1.5px solid rgba(37, 170, 225, 0.25)',
                                 boxShadow: '0 16px 48px rgba(15, 23, 42, 0.08)'
                             }}>
@@ -2274,24 +1837,11 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     display: 'inline-block',
                                     border: '2px solid rgba(37, 170, 225, 0.3)',
                                     boxShadow: '0 12px 36px rgba(37, 170, 225, 0.15)',
-                                    marginBottom: '1.25rem',
+                                    marginBottom: '1.5rem',
                                     maxWidth: '100%',
                                     boxSizing: 'border-box'
                                 }}>
                                     <QRCode value={checkInUrl} size={Math.min(240, typeof window !== 'undefined' ? Math.max(170, window.innerWidth - 100) : 240)} level="H" />
-                                </div>
-
-                                {/* MEETING CODE DISPLAY */}
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px' }}>
-                                        Join Code
-                                    </div>
-                                    <div style={{ fontSize: isMobile ? '2rem' : '2.4rem', fontWeight: 900, color: '#0284C7', letterSpacing: '3px', fontFamily: 'monospace', margin: '0.2rem 0' }}>
-                                        {(meeting.code || 'DOULOS').toUpperCase()}
-                                    </div>
-                                    <div style={{ fontSize: '0.82rem', color: '#64748B' }}>
-                                        Students can scan the QR code above or type this code manually at <strong style={{ color: '#0F172A' }}>{window.location.host}/check-in</strong>
-                                    </div>
                                 </div>
 
                                 {/* QUICK ACTIONS */}
@@ -2338,20 +1888,95 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh }) => {
                                     fontSize: '0.85rem'
                                 }}>
                                     <div className="g5-pulse-dot" style={{ width: '8px', height: '8px' }} />
-                                    <span style={{ color: '#64748B' }}>Live Status:</span>
+                                    <span style={{ color: '#64748B' }}>Live Attendance:</span>
                                     <strong style={{ color: '#10B981', fontWeight: 800 }}>
                                         {attendedList.length} Checked In
                                     </strong>
-                                    <button
-                                        type="button"
-                                        onClick={() => fetchData(true)}
-                                        style={{ background: 'transparent', border: 'none', color: '#1D4ED8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
-                                        title="Refresh live count"
-                                    >
-                                        <RefreshCw size={14} />
-                                    </button>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* TAB 4: QUESTION ANSWERS */}
+                    {activeTab === 'answers' && questionText && (
+                        <div>
+                            {answeredList.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: isMobile ? '3rem 1rem' : '4rem 2rem', background: '#FFFFFF', borderRadius: '16px', border: '1px dashed #CBD5E1' }}>
+                                    <MessageCircle size={32} style={{ color: '#D97706', margin: '0 auto 0.75rem' }} />
+                                    <h4 style={{ margin: 0, fontWeight: 800, color: '#0F172A' }}>No Answers Recorded Yet</h4>
+                                    <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
+                                        When members answer "{questionText}" during check-in, their feedback will appear here.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.85rem' }}>
+                                    {answeredList.map((item, idx) => (
+                                        <div
+                                            key={idx}
+                                            style={{
+                                                background: '#FFFFFF',
+                                                borderRadius: '14px',
+                                                padding: '1rem',
+                                                border: '1.5px solid #E2E8F0',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'space-between',
+                                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+                                            }}
+                                        >
+                                            <div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                                        <div
+                                                            className="g5-avatar"
+                                                            style={{
+                                                                width: '32px',
+                                                                height: '32px',
+                                                                background: '#EFF6FF',
+                                                                color: '#1D4ED8',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 800
+                                                            }}
+                                                        >
+                                                            {item.memberName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0F172A' }}>
+                                                                {item.memberName}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.72rem', color: '#64748B', fontFamily: 'monospace' }}>
+                                                                {item.studentRegNo}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`g5-pill ${item.memberType === 'Douloid' ? 'g5-pill-active' : 'g5-pill-recruit'}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
+                                                        {item.memberType}
+                                                    </span>
+                                                </div>
+
+                                                <div
+                                                    style={{
+                                                        background: '#F8FAFC',
+                                                        borderRadius: '10px',
+                                                        padding: '0.75rem 0.9rem',
+                                                        border: '1px solid #E2E8F0',
+                                                        fontSize: '0.85rem',
+                                                        color: '#1E293B',
+                                                        lineHeight: 1.5,
+                                                        fontStyle: 'italic'
+                                                    }}
+                                                >
+                                                    "{item.answer}"
+                                                </div>
+                                            </div>
+
+                                            <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end', fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
+                                                {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -66,7 +66,7 @@ export const login = async (req, res) => {
         if (process.env.NODE_ENV !== 'production') {
             console.log('Generating JWT token...');
         }
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user._id, role: user.role, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
         if (process.env.NODE_ENV !== 'production') {
             console.log('✅ Login successful');
         }

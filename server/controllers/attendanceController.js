@@ -163,9 +163,18 @@ export const submitAttendance = async (req, res) => {
         }
 
         const studentRegNo = String(rawRegNo).trim().toUpperCase();
+        const digits = String(rawRegNo).replace(/\D/g, '');
 
-        // 6. Member Registry Lookup
+        // 6. Member Registry Lookup (supports 24-1033, 241033, 24/1033)
         let member = await Member.findOne({ studentRegNo });
+        if (!member) {
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${studentRegNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        }
+        if (!member && digits.length >= 4) {
+            const prefix = digits.slice(0, 2);
+            const suffix = digits.slice(2);
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${prefix}[-/\\s]*${suffix}$`, 'i') } });
+        }
 
         if (member && member.isActive === false) {
             await logScanError(studentRegNo, 'Account Blocked', `Attempted check-in by blocked student: ${member.name}`, meeting.campus);
@@ -384,10 +393,20 @@ export const getAttendance = async (req, res) => {
 export const getStudentPortalData = async (req, res) => {
     const { regNo } = req.params;
     try {
-        const studentRegNo = regNo.trim().toUpperCase();
+        const rawReg = (regNo || '').trim();
+        const studentRegNo = rawReg.toUpperCase();
+        const digits = rawReg.replace(/\D/g, '');
 
-        // 1. Get member details from Registry
-        const member = await Member.findOne({ studentRegNo });
+        // 1. Get member details from Registry (supports 24-1033, 241033, 24/1033)
+        let member = await Member.findOne({ studentRegNo });
+        if (!member) {
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${studentRegNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        }
+        if (!member && digits.length >= 4) {
+            const prefix = digits.slice(0, 2);
+            const suffix = digits.slice(2);
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${prefix}[-/\\s]*${suffix}$`, 'i') } });
+        }
 
         if (!member) {
             return res.status(200).json({ 
@@ -993,11 +1012,12 @@ export const deleteAttendance = async (req, res) => {
         const attendance = await Attendance.findById(id).populate('meeting');
         if (!attendance) return res.status(404).json({ message: 'Record not found' });
 
-        // Security: Only allow deletion if it's a test meeting OR user is developer/superadmin
+        // Allowed: test meeting OR developer/superadmin OR G5 Training / Trainers / G-Council
+        const userRole = (req.user?.role || '').toLowerCase();
         const isTestMeeting = attendance.meeting?.isTestMeeting;
-        const isDeveloper = req.user && ['developer', 'superadmin'].includes(req.user.role);
+        const isAuthorized = ['developer', 'superadmin', 'trainer', 'g5_training', 'g5', 'g2_vice', 'g2_operations', 'g2', 'admin'].includes(userRole) || userRole.startsWith('g');
 
-        if (isTestMeeting || isDeveloper) {
+        if (isTestMeeting || isAuthorized) {
             await Attendance.findByIdAndDelete(id);
 
             // Deduct 10 points from the member's profile, clamping to minimum of 0
@@ -1011,7 +1031,7 @@ export const deleteAttendance = async (req, res) => {
 
             res.json({ message: 'Attendance record deleted' });
         } else {
-            res.status(403).json({ message: 'Only developers and superadmins can delete live attendance data' });
+            res.status(403).json({ message: 'Only G5 coordinators and admins can delete attendance data' });
         }
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -136,6 +136,11 @@ export const editMember = async (req, res) => {
         const { id } = req.params;
         const updates = req.body;
 
+        const member = await Member.findById(id);
+        if (!member) {
+            return res.status(404).json({ success: false, message: 'Member not found' });
+        }
+
         const allowedFields = ['name', 'campus', 'phone', 'email', 'status', 'groupName', 'studentRegNo', 'douloidRank', 'memberType', 'belayStatus', 'totalPoints'];
         const sanitizedUpdates = {};
         for (const key of allowedFields) {
@@ -145,21 +150,28 @@ export const editMember = async (req, res) => {
         // Support aliases for studentRegNo
         const targetReg = updates.studentRegNo !== undefined ? updates.studentRegNo : (updates.admissionNumber !== undefined ? updates.admissionNumber : updates.regNo);
         if (targetReg !== undefined) {
-            const cleanReg = targetReg ? targetReg.trim().toUpperCase() : '';
-            if (cleanReg) {
-                const existing = await Member.findOne({ studentRegNo: cleanReg, _id: { $ne: id } });
-                if (existing) {
+            const cleanReg = targetReg ? String(targetReg).trim().toUpperCase() : '';
+            const oldReg = member.studentRegNo ? String(member.studentRegNo).trim().toUpperCase() : '';
+
+            // Only check for duplicates if changing to a non-empty registration number different from current
+            if (cleanReg && cleanReg !== oldReg) {
+                const escapedReg = cleanReg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const existing = await Member.findOne({
+                    studentRegNo: { $regex: new RegExp(`^${escapedReg}$`, 'i') },
+                    _id: { $ne: member._id }
+                });
+                if (existing && existing._id.toString() !== member._id.toString()) {
                     return res.status(400).json({
                         success: false,
                         message: `Admission number ${cleanReg} is already used by ${existing.name}.`
                     });
                 }
             }
+
             // Cascade regNo change to attendance
-            const oldMember = await Member.findById(id);
-            if (oldMember && oldMember.studentRegNo && oldMember.studentRegNo !== cleanReg) {
+            if (oldReg && oldReg !== cleanReg) {
                 await Attendance.updateMany(
-                    { studentRegNo: oldMember.studentRegNo },
+                    { studentRegNo: oldReg },
                     { $set: { studentRegNo: cleanReg } }
                 );
             }
@@ -175,10 +187,6 @@ export const editMember = async (req, res) => {
             { $set: sanitizedUpdates },
             { new: true }
         );
-
-        if (!updated) {
-            return res.status(404).json({ success: false, message: 'Member not found' });
-        }
 
         res.json({
             success: true,

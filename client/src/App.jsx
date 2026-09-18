@@ -7,12 +7,9 @@ import SuperAdmin from './pages/SuperAdmin';
 import G5TrainingPortal from './pages/G5TrainingPortal';
 import G2OperationsPortal from './pages/G2OperationsPortal';
 
-import CheckIn from './pages/CheckIn';
 import StudentPortal from './pages/StudentPortal';
+import CheckIn from './pages/CheckIn';
 import ProtectedRoute from './components/ProtectedRoute';
-
-import LandingPage from './pages/LandingPage';
-import GuestEntry from './pages/GuestEntry';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +35,7 @@ function App() {
       <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="/guest" element={<GuestEntry />} />
+        <Route path="/guest" element={<Navigate to="/admin" replace />} />
 
         {/* Student Routes */}
         <Route path="/check-in/:meetingCode" element={<CheckIn />} />
