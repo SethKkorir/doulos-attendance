@@ -29,10 +29,13 @@ const AdminLogin = () => {
             setError('Your session has expired. Please login again.');
         }
 
-        if (localStorage.getItem('token')) {
-            navigate('/admin/dashboard');
-        }
-    }, [navigate]);
+        // Force a fresh login on every reload so the portal does not silently restore a session.
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('username');
+        localStorage.removeItem('campus');
+        localStorage.removeItem('isGuest');
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();

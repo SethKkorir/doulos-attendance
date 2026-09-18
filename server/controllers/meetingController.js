@@ -129,14 +129,7 @@ export const getMeetings = async (req, res) => {
             if (isPastDay || isPastEndTime) {
                 await Meeting.findByIdAndUpdate(m._id, { isActive: false });
                 console.log(`[AUTO-CLOSE] Meeting "${m.name}" (${meetingStr}) has been automatically closed.`);
-                
-                // Trigger summary email
-                try {
-                    const { sendMeetingSummaryEmail } = await import('../utils/emailService.js');
-                    await sendMeetingSummaryEmail(m._id, false);
-                } catch (emailError) {
-                    console.error('[AUTO-CLOSE] Failed to send email:', emailError);
-                }
+                // Summary emails are disabled globally.
             }
         }
         // --- END AUTO-CLOSE ---
@@ -401,16 +394,7 @@ export const updateMeetingStatus = async (req, res) => {
 
         const meeting = await Meeting.findByIdAndUpdate(id, updates, { new: true });
 
-        // Trigger email reports if meeting transitions from active -> closed
-        if (original.isActive && !meeting.isActive) {
-            try {
-                const { sendMeetingSummaryEmail } = await import('../utils/emailService.js');
-                await sendMeetingSummaryEmail(meeting._id, false);
-            } catch (emailError) {
-                console.error('[MANUAL-CLOSE] Failed to send email:', emailError);
-            }
-        }
-
+        // Summary emails are disabled globally; meeting closure remains valid without sending emails.
         res.json(meeting);
     } catch (error) {
         res.status(500).json({ message: error.message });

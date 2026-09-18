@@ -3,11 +3,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 const ProtectedRoute = ({ children }) => {
     const location = useLocation();
     const token = localStorage.getItem('token');
+    const username = (localStorage.getItem('username') || '').trim();
     const isGuest = location.state?.isGuest || localStorage.getItem('isGuest') === 'true';
 
-    // In a real app, verify token validity/expiration here or via API check
+    const isAuthorizedAdmin = username.toLowerCase() === 'seth' && !!token;
 
-    if (!token && !isGuest) {
+    if ((!token && !isGuest) || (!isGuest && !isAuthorizedAdmin)) {
         return <Navigate to="/admin" replace />;
     }
 

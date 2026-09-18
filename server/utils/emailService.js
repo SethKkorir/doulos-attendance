@@ -111,8 +111,14 @@ export const sendSystemAlert = async (type, title, details = {}) => {
 
 /**
  * Dispatches a meeting summary email with PDF (Roster) and CSV (Questionnaire responses) attachments.
+ * Disabled globally to stop post-session emails from being sent.
  */
 export const sendMeetingSummaryEmail = async (meetingId, isTraining = false) => {
+    console.log(`[EMAIL-REPORT] Disabled: ${isTraining ? 'Training' : 'Meeting'} summary email for ID ${meetingId} was blocked.`);
+    return { success: false, disabled: true };
+};
+
+export const sendMeetingSummaryEmail_legacy = async (meetingId, isTraining = false) => {
     try {
         console.log(`[EMAIL-REPORT] Initiating summary report for ${isTraining ? 'Training' : 'Meeting'} ID: ${meetingId}...`);
         
