@@ -74,7 +74,7 @@ const MeetingsTab = ({
         campus: 'Athi River',
         startTime: '20:30',
         endTime: '23:00',
-        semester: currentSemester || 'MAY-AUG 2026',
+        semester: currentSemester || 'SEP-DEC 2026',
         category: 'Meeting',
         allowManualOverride: false,
         requiredFields: [
@@ -97,7 +97,7 @@ const MeetingsTab = ({
         setFormData(prev => ({
             ...prev,
             date: new Date().toISOString().split('T')[0],
-            semester: currentSemester || 'MAY-AUG 2026'
+            semester: currentSemester || 'SEP-DEC 2026'
         }));
     }, [showCreate, currentSemester]);
 
@@ -289,7 +289,7 @@ const MeetingsTab = ({
                         }
                         .header { display: flex; flex-direction: column; align-items: center; gap: 8px; }
                         .logo-img { width: 85px; height: 85px; object-fit: contain; }
-                        .meeting-title { font-size: 2.2rem; font-weight: 900; line-height: 1.1; color: #0c1c36; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
+                        .meeting-title { font-size: 2.2rem; font-weight: 900; line-height: 1.1; color: #0c1c36; margin: 5px 0; max-width: 90%; text-align: center; font-family: Georgia, 'Times New Roman', serif; letter-spacing: -0.5px; }
                         .meeting-title span { color: #0066cc; }
                         
                         .meeting-meta-pill {
@@ -558,7 +558,7 @@ const MeetingsTab = ({
                         }
                         .header { display: flex; flex-direction: column; align-items: center; text-align: center; }
                         .logo-img { width: 110px; height: 110px; object-fit: contain; margin-bottom: 0.5rem; }
-                        .meeting-title { font-size: 3.2rem; font-weight: 900; line-height: 1.1; color: #0c1c36; margin: 0; font-family: 'Outfit', sans-serif; letter-spacing: -1px; }
+                        .meeting-title { font-size: 3.2rem; font-weight: 900; line-height: 1.1; color: #0c1c36; margin: 0; font-family: Georgia, 'Times New Roman', serif; letter-spacing: -1px; }
                         .meeting-title span { color: #0066cc; }
                         
                         .meeting-meta-pill { 

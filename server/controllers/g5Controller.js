@@ -16,7 +16,14 @@ export const getG5Stats = async (req, res) => {
         const totalMeetingsCount = await Meeting.countDocuments();
         const totalTrainingsCount = await Training.countDocuments();
         
-        const activeMembersCount = await Member.countDocuments({ status: 'Active' });
+        // Active member filter for this semester
+        const activeFilter = {
+            status: 'Active',
+            isActiveThisSemester: true,
+            lastConfirmedSemester: currentSemester
+        };
+
+        const activeMembersCount = await Member.countDocuments(activeFilter);
         const semesterMeetings = await Meeting.find({
             semester: currentSemester,
             isArchived: false
@@ -35,19 +42,19 @@ export const getG5Stats = async (req, res) => {
             attendancePercentage = 0;
         }
 
-        // 2. Recruits ready to graduate (>= 80 points or >= 8 meetings)
+        // 2. Recruits ready to graduate (>= 80 points or >= 8 meetings) — active this semester
         const recruitsReadyToGraduate = await Member.countDocuments({
+            ...activeFilter,
             memberType: 'Recruit',
-            status: 'Active',
             $or: [
                 { totalPoints: { $gte: 80 } },
                 { douloidRank: 'None', totalPoints: { $gte: 80 } }
             ]
         });
 
-        // 3. Promotions pending (Shadow or Basic Douloids with points or evaluation activity)
+        // 3. Promotions pending (Shadow or Basic Douloids with points or evaluation activity) — active this semester
         const promotionsPending = await Member.countDocuments({
-            status: 'Active',
+            ...activeFilter,
             douloidRank: { $in: ['Shadow Douloid', 'Basic Douloid'] }
         });
 
@@ -62,7 +69,7 @@ export const getG5Stats = async (req, res) => {
 
         // 4.5 Recruits in pipeline and in archive
         const totalRecruits = await Member.countDocuments({
-            status: 'Active',
+            ...activeFilter,
             memberType: 'Recruit'
         });
         const archivedRecruitsCount = await Member.countDocuments({
@@ -70,9 +77,9 @@ export const getG5Stats = async (req, res) => {
             memberType: 'Recruit'
         });
 
-        // 5. Absentee flags (consecutiveAbsences >= 3)
+        // 5. Absentee flags (consecutiveAbsences >= 3) — active this semester only
         const absenteeFlags = await Member.countDocuments({
-            status: 'Active',
+            ...activeFilter,
             consecutiveAbsences: { $gte: 3 }
         });
 

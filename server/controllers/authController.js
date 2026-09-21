@@ -78,15 +78,83 @@ export const login = async (req, res) => {
         if (process.env.NODE_ENV !== 'production') {
             console.log('Generating JWT token...');
         }
-        const token = jwt.sign({ id: user._id, role: user.role, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user._id, role: user.role, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
         if (process.env.NODE_ENV !== 'production') {
             console.log('✅ Login successful');
         }
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days session
+        };
+        res.cookie('doulos_session_token', token, cookieOptions);
+
         res.json({ token, role: user.role, username: user.username, campus: user.campus || 'Athi River' });
     } catch (error) {
         console.error('❌ Login error:', error.message);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
+};
+
+export const getSession = async (req, res) => {
+    try {
+        let token = req.cookies?.doulos_session_token || req.header('Authorization')?.split(' ')[1];
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const user = await User.findById(decoded.id).select('-password');
+                if (user) {
+                    return res.json({
+                        authenticated: true,
+                        type: 'admin',
+                        token,
+                        user: {
+                            id: user._id,
+                            username: user.username,
+                            role: user.role,
+                            campus: user.campus || 'Athi River'
+                        }
+                    });
+                }
+            } catch (tokenErr) {
+                // Admin token expired or invalid, continue checking student session
+            }
+        }
+
+        const studentSessionCookie = req.cookies?.doulos_student_session;
+        if (studentSessionCookie) {
+            try {
+                const studentData = typeof studentSessionCookie === 'string' ? JSON.parse(studentSessionCookie) : studentSessionCookie;
+                if (studentData && studentData.studentRegNo) {
+                    return res.json({
+                        authenticated: true,
+                        type: 'student',
+                        student: studentData
+                    });
+                }
+            } catch (cookieErr) {
+                // invalid json, proceed
+            }
+        }
+
+        return res.json({ authenticated: false });
+    } catch (error) {
+        return res.status(500).json({ message: 'Error checking session', error: error.message });
+    }
+};
+
+export const logout = (req, res) => {
+    const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    };
+    res.clearCookie('doulos_session_token', cookieOptions);
+    res.clearCookie('doulos_student_session', cookieOptions);
+    res.clearCookie('token', cookieOptions);
+    res.json({ success: true, message: 'Logged out successfully' });
 };
 
 export const promoteToDeveloper = async (req, res) => {

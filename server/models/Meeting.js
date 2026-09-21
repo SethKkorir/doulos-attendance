@@ -53,4 +53,8 @@ const meetingSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+meetingSchema.index({ isActive: 1, campus: 1, isArchived: 1, date: -1 });
+meetingSchema.index({ code: 1 }, { unique: true, sparse: true });
+meetingSchema.index({ campus: 1, isActive: 1, isArchived: 1 });
+
 export default mongoose.model('Meeting', meetingSchema);

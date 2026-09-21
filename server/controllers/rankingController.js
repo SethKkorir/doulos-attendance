@@ -2,6 +2,7 @@ import RankDefinition from '../models/RankDefinition.js';
 import EvaluationDomain from '../models/EvaluationDomain.js';
 import Evaluation from '../models/Evaluation.js';
 import Member from '../models/Member.js';
+import Settings from '../models/Settings.js';
 
 // Map Rank strings to next rank
 const NEXT_RANK_MAP = {
@@ -57,6 +58,13 @@ export const getPromotionCandidates = async (req, res) => {
         } else {
             // Exclude Lead Douloid (already highest rank) and None (handled in graduation queue)
             query.douloidRank = { $in: ['Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid'] };
+        }
+
+        if (req.query.includeInactive !== 'true') {
+            const semSetting = await Settings.findOne({ key: 'current_semester' });
+            const currentSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
+            query.isActiveThisSemester = true;
+            query.lastConfirmedSemester = currentSemester;
         }
 
         const candidates = await Member.find(query).sort({ totalPoints: -1 });

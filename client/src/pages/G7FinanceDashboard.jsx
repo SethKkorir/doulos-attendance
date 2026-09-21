@@ -40,16 +40,19 @@ const G7FinanceDashboard = () => {
         document.documentElement.setAttribute('data-theme', newTheme);
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {}
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         localStorage.removeItem('g9Role');
         localStorage.removeItem('username');
-        navigate('/admin');
+        navigate('/admin?logout=true');
     };
 
     return (
-        <div style={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden', fontFamily: "'Outfit', sans-serif" }}>
+        <div style={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden', fontFamily: "Georgia, 'Times New Roman', serif" }}>
             <BackgroundGallery show={true} />
             <div style={{ position: 'relative', zIndex: 1, padding: '2rem' }}>
 

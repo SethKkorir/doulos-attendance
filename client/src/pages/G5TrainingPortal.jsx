@@ -153,7 +153,7 @@ const G5TrainingPortal = () => {
     const [qrMeeting, setQrMeeting] = useState(null);
     const [copiedQrLink, setCopiedQrLink] = useState(false);
     const [newMeetingForm, setNewMeetingForm] = useState({
-        name: 'Weekly Doulos',
+        name: '',
         campus: 'Athi River',
         date: new Date().toISOString().split('T')[0],
         startTime: '20:30',
@@ -255,11 +255,27 @@ const G5TrainingPortal = () => {
     const { data: candidatesData, refetch: refetchCandidates } = usePortalData('promotion-candidates', '/ranking/candidates');
     const promotionCandidates = candidatesData?.candidates || [];
 
+    const getMeetingOrdinalLabel = (index) => {
+        const labels = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
+        return labels[Math.max(0, Math.min(index - 1, labels.length - 1))] || String(index);
+    };
+
+    const buildMeetingName = (campus, meetingList = meetings) => {
+        const targetCampus = campus || 'Athi River';
+        const count = (meetingList || []).filter((m) => {
+            if (!m || !m.campus || m.isArchived) return false;
+            return m.campus === targetCampus;
+        }).length + 1;
+        return `Meeting ${getMeetingOrdinalLabel(count)}`;
+    };
+
     const applyVenuePreset = (preset) => {
         if (!preset) return;
+        const targetCampus = preset.campus || newMeetingForm.campus || 'Athi River';
         setNewMeetingForm(prev => ({
             ...prev,
-            campus: preset.campus,
+            campus: targetCampus,
+            name: buildMeetingName(targetCampus, meetings),
             location: {
                 name: preset.name,
                 radius: preset.radius || 200,
@@ -267,7 +283,7 @@ const G5TrainingPortal = () => {
                 longitude: preset.lng || preset.longitude || 0
             }
         }));
-        showToast(`Venue set to ${preset.name} (${preset.campus})`);
+        showToast(`Campus venue set to ${preset.name} (${targetCampus})`);
     };
 
     const [showReportIncidentModal, setShowReportIncidentModal] = useState(false);
@@ -328,9 +344,12 @@ const G5TrainingPortal = () => {
         setTimeout(() => setToast(null), 4000);
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {}
         localStorage.clear();
-        navigate('/admin');
+        navigate('/admin?logout=true');
     };
 
     // Load portal data
@@ -860,6 +879,30 @@ const G5TrainingPortal = () => {
         });
     }, [newMeetingForm.date, newMeetingForm.campus, meetings]);
 
+    const handleOpenNewMeetingModal = () => {
+        const defaultCampus = 'Athi River';
+        const nextName = buildMeetingName(defaultCampus, meetings);
+        setNewMeetingForm({
+            name: nextName,
+            campus: defaultCampus,
+            date: new Date().toISOString().split('T')[0],
+            startTime: '20:30',
+            endTime: '23:00',
+            questionType: 'text',
+            questionOfDay: '',
+            questionOptions: ['', ''],
+            location: {
+                name: 'Doulos Store',
+                radius: 200,
+                latitude: '',
+                longitude: ''
+            }
+        });
+        setGpsCaptured(false);
+        setAllowMultipleMeeting(false);
+        setShowNewMeetingModal(true);
+    };
+
     // Meeting Creation handler (Full Session Details & Geofencing)
     const handleCreateMeeting = async (e) => {
         e.preventDefault();
@@ -893,8 +936,9 @@ const G5TrainingPortal = () => {
         }
         setMeetingCreating(true);
         try {
+                const generatedMeetingName = buildMeetingName(newMeetingForm.campus, meetings);
             const payload = {
-                name: newMeetingForm.name,
+                name: generatedMeetingName,
                 date: newMeetingForm.date,
                 campus: newMeetingForm.campus,
                 startTime: newMeetingForm.startTime,
@@ -2240,7 +2284,7 @@ const G5TrainingPortal = () => {
                                     <button
                                         type="button"
                                         className="g5-meetings-cta-btn"
-                                        onClick={() => setShowNewMeetingModal(true)}
+                                        onClick={handleOpenNewMeetingModal}
                                     >
                                         <Plus size={18} />
                                         <span>+ New Meeting</span>
@@ -2508,7 +2552,7 @@ const G5TrainingPortal = () => {
                                                         : 'Schedule a new drill or weekly fellowship meeting using the button below.'}
                                             </p>
                                             <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                                <button type="button" className="g5-btn-blue-solid" onClick={() => setShowNewMeetingModal(true)}>
+                                                <button type="button" className="g5-btn-blue-solid" onClick={handleOpenNewMeetingModal}>
                                                     <Plus size={18} /> Schedule New Meeting
                                                 </button>
                                                 {archivedMeetings.length > 0 && (
@@ -5483,10 +5527,10 @@ const G5TrainingPortal = () => {
                                             <input
                                                 type="text"
                                                 className="g5-form-input"
-                                                placeholder="e.g. Weekly Doulos / Weekend Field Drill"
-                                                required
-                                                value={newMeetingForm.name}
-                                                onChange={(e) => setNewMeetingForm({ ...newMeetingForm, name: e.target.value })}
+                                                placeholder="Meeting One"
+                                                readOnly
+                                                value={newMeetingForm.name || buildMeetingName(newMeetingForm.campus, meetings)}
+                                                onFocus={(e) => e.target.blur()}
                                             />
                                         </div>
 

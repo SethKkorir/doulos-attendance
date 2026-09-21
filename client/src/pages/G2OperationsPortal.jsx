@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePortalData } from '../hooks/usePortalQuery';
@@ -7,6 +8,7 @@ import ErrorState from '../components/common/ErrorState';
 import EmptyState from '../components/common/EmptyState';
 import api from '../api';
 import Logo from '../components/Logo';
+import { cn } from '../lib/utils';
 import RankBadge from '../components/common/RankBadge';
 import G2MemberImportModal from '../components/common/G2MemberImportModal';
 import '../styles/g2Portal.css';
@@ -50,6 +52,84 @@ import {
     QrCode,
     Printer
 } from 'lucide-react';
+
+const SemesterPosterPreview = ({ semester, theme, portalUrl = 'https://doulos-attendance.vercel.app/portal' }) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            whileHover={{ y: -4, scale: 1.01 }}
+            className={cn('relative overflow-hidden', 'max-w-[420px] w-full mx-auto')}
+            style={{
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,255,0.96))',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: '26px',
+                boxShadow: '0 16px 40px rgba(37,99,235,0.12)',
+                padding: '1rem',
+                position: 'relative'
+            }}
+        >
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top, rgba(59,130,246,0.20), transparent 52%)' }} />
+            <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', width: '2.25rem', height: '2.25rem', alignItems: 'center', justifyContent: 'center', borderRadius: '999px', background: '#E0F2FE', color: '#0369A1', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.9)' }}>
+                            <QrCode size={18} />
+                        </div>
+                    </div>
+                    <div style={{ borderRadius: '999px', border: '1px solid #BAE6FD', background: '#F0F9FF', padding: '0.2rem 0.55rem', fontSize: '9px', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0369A1' }}>
+                        {semester || 'SEP-DEC 2026'}
+                    </div>
+                </div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.05 }}
+                    style={{ borderRadius: '1rem', border: '1px solid rgba(125,211,252,0.6)', background: '#0F172A', padding: '0.8rem', color: '#FFF', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.08)' }}
+                >
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.28em', textTransform: 'uppercase', color: '#A5F3FC' }}>Meeting Check QR</div>
+                        <div style={{ marginTop: '0.45rem', fontSize: '22px', fontWeight: 900, letterSpacing: '0.08em' }}>DOULOS</div>
+                    </div>
+                    <div style={{ marginTop: '1rem', borderRadius: '1rem', background: '#FFF', padding: '0.75rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '0.2rem' }}>
+                            {Array.from({ length: 49 }).map((_, idx) => {
+                                const filled = idx % 3 === 0 || idx % 7 === 0 || (idx > 12 && idx < 18) || (idx > 20 && idx < 27) || (idx > 30 && idx < 37) || (idx > 40 && idx < 46);
+                                return (
+                                    <div
+                                        key={idx}
+                                        style={{
+                                            height: '10px',
+                                            borderRadius: '3px',
+                                            background: filled ? '#0F172A' : '#E2E8F0'
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+                </motion.div>
+
+                <div style={{ marginTop: '1rem', borderRadius: '1rem', padding: '0.75rem', textAlign: 'center', background: 'linear-gradient(90deg, #EFF6FF, #E0F2FE, #EEF2FF)', border: '1px solid rgba(147, 197, 253, 0.9)' }}>
+                    <div style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#0369A1' }}>Semester Theme</div>
+                    <div style={{ marginTop: '0.45rem', fontSize: '1rem', fontWeight: 900, color: '#0F172A' }}>{theme || 'Rooted & Built Up In Him'}</div>
+                </div>
+
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#F8FAFC', padding: '0.6rem 0.8rem' }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                        <div style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#64748B' }}>Portal</div>
+                        <div style={{ fontSize: '10px', fontWeight: 800, color: '#334155', overflowWrap: 'anywhere' }}>{portalUrl.replace(/^https?:\/\//i, '')}</div>
+                    </div>
+                    <div style={{ borderRadius: '999px', background: '#0EA5E9', padding: '0.2rem 0.55rem', fontSize: '9px', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#FFF' }}>
+                        Live
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
 
 const G2OperationsPortal = () => {
     const navigate = useNavigate();
@@ -106,16 +186,18 @@ const G2OperationsPortal = () => {
     const [filterCampus, setFilterCampus] = useState('All');
     const [filterRank, setFilterRank] = useState('All');
     const [filterStatus, setFilterStatus] = useState('All');
+    const [filterActiveSemester, setFilterActiveSemester] = useState('true'); // Default to active-only per Section 4/5
 
     // 2. Members Query (Single unified endpoint backing All, Douloids, Recruits, Alumni tabs)
+    const activeFilterParam = filterActiveSemester !== 'All' ? `&isActiveThisSemester=${filterActiveSemester}` : '';
     const {
         data: rosterData,
         isLoading: membersLoading,
         isError: membersError,
         refetch: refetchMembers
     } = usePortalData(
-        ['roster-members', memberTab, filterCampus, filterRank, filterStatus, searchQuery],
-        `/roster/members?memberType=${memberTab}&campus=${filterCampus}&rank=${filterRank}&status=${filterStatus}&search=${encodeURIComponent(searchQuery)}`
+        ['roster-members', memberTab, filterCampus, filterRank, filterStatus, filterActiveSemester, searchQuery],
+        `/roster/members?memberType=${memberTab}&campus=${filterCampus}&rank=${filterRank}&status=${filterStatus}${activeFilterParam}&search=${encodeURIComponent(searchQuery)}`
     );
     const filteredMembers = rosterData?.members || [];
 
@@ -279,6 +361,25 @@ const G2OperationsPortal = () => {
         }
     };
 
+    // Manual Override: Flip isActiveThisSemester directly (Section 5)
+    const handleToggleActiveSemester = async (member) => {
+        if (!member) return;
+        const currentActive = member.isActiveThisSemester && !member.needsSemesterConfirmation;
+        const newActive = !currentActive;
+        try {
+            const memberId = member._id || member.studentRegNo;
+            await api.post(`/members/${encodeURIComponent(memberId)}/confirm-semester`, {
+                isActiveThisSemester: newActive
+            });
+            showToast(`${member.name} marked as ${newActive ? 'Active' : 'Inactive'} this semester.`);
+            queryClient.invalidateQueries({ queryKey: ['roster-members'] });
+            queryClient.invalidateQueries({ queryKey: ['g2-stats'] });
+        } catch (err) {
+            console.error('Error toggling member semester status:', err);
+            showToast('Failed to update semester status', 'error');
+        }
+    };
+
     // Edit Member (Contact / Campus / Admission No / Category / Rank)
     const handleSaveMemberEdit = async (e) => {
         e.preventDefault();
@@ -294,7 +395,8 @@ const G2OperationsPortal = () => {
                 belayStatus: memberToEdit.belayStatus || 'Not Permitted',
                 phone: memberToEdit.phone,
                 email: memberToEdit.email,
-                status: memberToEdit.status || 'Active'
+                status: memberToEdit.status || 'Active',
+                isActiveThisSemester: memberToEdit.isActiveThisSemester !== undefined ? memberToEdit.isActiveThisSemester : true
             });
             showToast(`Member details updated for ${memberToEdit.name}`);
             setMemberToEdit(null);
@@ -483,11 +585,14 @@ const G2OperationsPortal = () => {
     };
 
     // Logout
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {}
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         localStorage.removeItem('username');
-        navigate('/admin');
+        navigate('/admin?logout=true');
     };
 
     // Sidebar items definition
@@ -797,6 +902,44 @@ const G2OperationsPortal = () => {
 
                                 <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
 
+                                    {/* Unconfirmed Members Follow-Up (Section 5) */}
+                                    {g2Stats.unconfirmedMembersCount > 0 && (
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '0.95rem 1.15rem',
+                                            background: '#FEF3C7',
+                                            border: '1px solid #FDE68A',
+                                            borderRadius: '14px'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '999px', background: '#D97706' }} />
+                                                <div>
+                                                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#92400E' }}>
+                                                        {g2Stats.unconfirmedMembersCount} members need semester active confirmation ({currentSemester})
+                                                    </div>
+                                                    <div style={{ fontSize: '0.78rem', color: '#B45309' }}>
+                                                        Stale/unconfirmed records are excluded from active calculations until confirmed via Portal or G2 override.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="g2-btn-outline"
+                                                style={{ padding: '0.45rem 0.95rem', fontSize: '0.78rem', background: '#FFFFFF', borderColor: '#F59E0B', color: '#92400E', fontWeight: 800 }}
+                                                onClick={() => {
+                                                    setActiveTab('members');
+                                                    setMemberTab('all');
+                                                    setFilterActiveSemester('unconfirmed');
+                                                    setFilterDrawerOpen(true);
+                                                }}
+                                            >
+                                                Chase Unconfirmed ({g2Stats.unconfirmedMembersCount})
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {g2Stats.recruitsAwaitingGrad > 0 && (
                                         <div style={{
                                             display: 'flex',
@@ -1062,6 +1205,22 @@ const G2OperationsPortal = () => {
                                         </select>
                                     </div>
 
+                                    {/* Active This Semester Filter (Section 5) */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>This Semester:</span>
+                                        <select
+                                            className="g2-form-input"
+                                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.82rem' }}
+                                            value={filterActiveSemester}
+                                            onChange={(e) => setFilterActiveSemester(e.target.value)}
+                                        >
+                                            <option value="All">All Members (Unfiltered)</option>
+                                            <option value="true">Active This Semester (Confirmed)</option>
+                                            <option value="false">Inactive This Semester (Away)</option>
+                                            <option value="unconfirmed">Needs Confirmation</option>
+                                        </select>
+                                    </div>
+
                                     <button
                                         type="button"
                                         className="g2-btn-outline"
@@ -1070,6 +1229,7 @@ const G2OperationsPortal = () => {
                                             setFilterCampus('All');
                                             setFilterRank('All');
                                             setFilterStatus('All');
+                                            setFilterActiveSemester('true');
                                         }}
                                     >
                                         Reset Filters
@@ -1086,6 +1246,7 @@ const G2OperationsPortal = () => {
                                             <th>Campus & Phone</th>
                                             <th>Email</th>
                                             <th>Cadre Rank (G5 Owned)</th>
+                                            <th>Active This Semester</th>
                                             <th>Status</th>
                                             <th style={{ textAlign: 'right' }}>Actions</th>
                                         </tr>
@@ -1093,21 +1254,21 @@ const G2OperationsPortal = () => {
                                     <tbody>
                                         {membersLoading ? (
                                             <>
-                                                <TableRowSkeleton columns={6} />
-                                                <TableRowSkeleton columns={6} />
-                                                <TableRowSkeleton columns={6} />
-                                                <TableRowSkeleton columns={6} />
-                                                <TableRowSkeleton columns={6} />
+                                                <TableRowSkeleton columns={7} />
+                                                <TableRowSkeleton columns={7} />
+                                                <TableRowSkeleton columns={7} />
+                                                <TableRowSkeleton columns={7} />
+                                                <TableRowSkeleton columns={7} />
                                             </>
                                         ) : membersError ? (
                                             <tr>
-                                                <td colSpan={6} style={{ padding: '2rem' }}>
+                                                <td colSpan={7} style={{ padding: '2rem' }}>
                                                     <ErrorState message="Failed to load member roster from database." onRetry={refetchMembers} />
                                                 </td>
                                             </tr>
                                         ) : filteredMembers.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} style={{ padding: '2rem' }}>
+                                                <td colSpan={7} style={{ padding: '2rem' }}>
                                                     <EmptyState
                                                         icon={Users}
                                                         title="No members found"
@@ -1158,6 +1319,70 @@ const G2OperationsPortal = () => {
                                                         <td>
                                                             {/* READ-ONLY RANK BADGE (G2 CANNOT EDIT) */}
                                                             <RankBadge rank={m.douloidRank} />
+                                                        </td>
+                                                        <td>
+                                                            {/* Active This Semester Column with Manual Override (Section 5) */}
+                                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                                                                {m.needsSemesterConfirmation ? (
+                                                                    <span style={{
+                                                                        padding: '0.2rem 0.6rem',
+                                                                        borderRadius: '999px',
+                                                                        fontSize: '0.72rem',
+                                                                        fontWeight: 700,
+                                                                        background: '#FEF3C7',
+                                                                        color: '#92400E',
+                                                                        border: '1px solid #FDE68A',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.3rem'
+                                                                    }}>
+                                                                        <span style={{ width: '6px', height: '6px', borderRadius: '999px', background: '#D97706' }} />
+                                                                        Unconfirmed
+                                                                    </span>
+                                                                ) : m.isActiveThisSemester ? (
+                                                                    <span style={{
+                                                                        padding: '0.2rem 0.6rem',
+                                                                        borderRadius: '999px',
+                                                                        fontSize: '0.72rem',
+                                                                        fontWeight: 700,
+                                                                        background: '#DCFCE7',
+                                                                        color: '#166534',
+                                                                        border: '1px solid #BBF7D0',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.3rem'
+                                                                    }}>
+                                                                        <span style={{ width: '6px', height: '6px', borderRadius: '999px', background: '#16A34A' }} />
+                                                                        Yes (Active)
+                                                                    </span>
+                                                                ) : (
+                                                                    <span style={{
+                                                                        padding: '0.2rem 0.6rem',
+                                                                        borderRadius: '999px',
+                                                                        fontSize: '0.72rem',
+                                                                        fontWeight: 700,
+                                                                        background: '#F1F5F9',
+                                                                        color: '#475569',
+                                                                        border: '1px solid #CBD5E1',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.3rem'
+                                                                    }}>
+                                                                        <span style={{ width: '6px', height: '6px', borderRadius: '999px', background: '#94A3B8' }} />
+                                                                        No (Away)
+                                                                    </span>
+                                                                )}
+
+                                                                <button
+                                                                    type="button"
+                                                                    className="g2-btn-outline"
+                                                                    style={{ padding: '0.2rem 0.45rem', fontSize: '0.68rem', borderRadius: '6px', whiteSpace: 'nowrap' }}
+                                                                    onClick={() => handleToggleActiveSemester(m)}
+                                                                    title={`Manual override: Flip semester status to ${m.isActiveThisSemester && !m.needsSemesterConfirmation ? 'Inactive' : 'Active'}`}
+                                                                >
+                                                                    {m.isActiveThisSemester && !m.needsSemesterConfirmation ? 'Set Away' : 'Set Active'}
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                         <td>
                                                             <span className={`g2-status-pill g2-status-${(m.status || 'Active').toLowerCase()}`}>
@@ -1257,9 +1482,23 @@ const G2OperationsPortal = () => {
 
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #F1F5F9' }}>
                                                 <RankBadge rank={m.douloidRank || 'Recruit'} />
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                                    Drills: <strong>{m.totalPoints || 0} pts</strong>
-                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    {m.needsSemesterConfirmation ? (
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#92400E', background: '#FEF3C7', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>⚠️ Unconfirmed</span>
+                                                    ) : m.isActiveThisSemester ? (
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#166534', background: '#DCFCE7', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>✅ Active</span>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>🌴 Away</span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        className="g2-btn-outline"
+                                                        style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem', borderRadius: '6px' }}
+                                                        onClick={() => handleToggleActiveSemester(m)}
+                                                    >
+                                                        {m.isActiveThisSemester && !m.needsSemesterConfirmation ? 'Away' : 'Active'}
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
@@ -1788,36 +2027,36 @@ const G2OperationsPortal = () => {
                                         <div style={{
                                             background: '#F8FAFC',
                                             border: '1.5px solid #E2E8F0',
-                                            borderRadius: '16px',
-                                            padding: '1.25rem',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '0.85rem'
+                                            borderRadius: '22px',
+                                            padding: '1rem',
+                                            display: 'grid',
+                                            gridTemplateColumns: '1.05fr 1fr',
+                                            gap: '1rem'
                                         }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                                                <span style={{ color: 'var(--color-text-muted)' }}>Members Carrying Forward:</span>
-                                                <strong>{g2Stats.totalActiveMembers} members</strong>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                                    <span style={{ color: 'var(--color-text-muted)' }}>Members Carrying Forward:</span>
+                                                    <strong>{g2Stats.totalActiveMembers} members</strong>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                                    <span style={{ color: 'var(--color-text-muted)' }}>Certified Douloid Cadres:</span>
+                                                    <strong style={{ color: '#10B981' }}>{g2Stats.totalActiveDouloids} facilitators</strong>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                                    <span style={{ color: 'var(--color-text-muted)' }}>Attendance Points & Streaks:</span>
+                                                    <strong style={{ color: '#D97706' }}>Archived & Reset for new term</strong>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                                    <span style={{ color: 'var(--color-text-muted)' }}>Hardware Device Links:</span>
+                                                    <strong style={{ color: '#2563EB' }}>Fresh Start</strong>
+                                                </div>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                                                <span style={{ color: 'var(--color-text-muted)' }}>Certified Douloid Cadres:</span>
-                                                <strong style={{ color: '#10B981' }}>{g2Stats.totalActiveDouloids} facilitators</strong>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                                                <span style={{ color: 'var(--color-text-muted)' }}>Attendance Points & Streaks:</span>
-                                                <strong style={{ color: '#D97706' }}>Archived & Reset for new term</strong>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                                                <span style={{ color: 'var(--color-text-muted)' }}>Hardware Device Links:</span>
-                                                <strong style={{ color: '#2563EB' }}>All Device Links Reset (Fresh Start)</strong>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                                                <span style={{ color: 'var(--color-text-muted)' }}>Master Semester QR Token:</span>
-                                                <strong style={{ color: 'var(--color-primary)' }}>Re-minted for {rolloverForm.toSemester}</strong>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                                                <span style={{ color: 'var(--color-text-muted)' }}>Automatic Atomic Backup:</span>
-                                                <strong style={{ color: '#10B981' }}>Captured in SemesterRolloverSnapshot</strong>
-                                            </div>
+
+                                            <SemesterPosterPreview
+                                                semester={rolloverForm.toSemester || currentSemester}
+                                                theme={rolloverForm.theme || 'Rooted & Built Up In Him'}
+                                                portalUrl="https://doulos-attendance.vercel.app/portal"
+                                            />
                                         </div>
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
@@ -2361,6 +2600,18 @@ const G2OperationsPortal = () => {
                                         <option value="Graduated">Graduated</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="g2-form-group">
+                                <label className="g2-form-label">Active This Semester ({currentSemester})</label>
+                                <select
+                                    className="g2-form-input"
+                                    value={memberToEdit.isActiveThisSemester !== false ? 'true' : 'false'}
+                                    onChange={(e) => setMemberToEdit({ ...memberToEdit, isActiveThisSemester: e.target.value === 'true' })}
+                                >
+                                    <option value="true">Yes — Active on Campus this Semester</option>
+                                    <option value="false">No — Away (Attachment / Clinicals / Leave)</option>
+                                </select>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>

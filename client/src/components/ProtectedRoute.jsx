@@ -7,10 +7,12 @@ const ProtectedRoute = ({ children }) => {
     const role = (localStorage.getItem('role') || '').trim();
     const isGuest = location.state?.isGuest || localStorage.getItem('isGuest') === 'true';
 
-    const isAuthorizedSession = !!token && ['seth', 'g5', 'g2', 'trainer', 'g2_vice', 'admin', 'superadmin'].includes(String(username).toLowerCase())
-        || !!token && ['trainer', 'g2_vice', 'admin', 'superadmin'].includes(role.toLowerCase());
+    const isAuthenticated = !!token && (
+        ['seth', 'g5', 'g2', 'trainer', 'g2_vice', 'admin', 'superadmin'].includes(String(username).toLowerCase())
+        || ['trainer', 'g2_vice', 'admin', 'superadmin'].includes(role.toLowerCase())
+    );
 
-    if ((!token && !isGuest) || (!isGuest && !isAuthorizedSession)) {
+    if (!isGuest && !isAuthenticated) {
         return <Navigate to="/admin" replace />;
     }
 

@@ -3,11 +3,11 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import {
     Calendar, CheckCircle, CheckCircle2, XCircle, BookOpen, Music, Bell, Star, Trophy, Search,
-    LogOut, GraduationCap, Sparkles, MessageCircle, Send, CreditCard, Wallet,
+    LogOut, GraduationCap, Sparkles, CreditCard, Wallet,
     History, FileText, LayoutDashboard, Activity, Clock, ChevronRight, Users,
     AlertCircle, ArrowRight, User, Award, Flame, Compass, HeartHandshake, ShieldCheck,
-    Shield, Layers, Info, Check, ArrowUpRight, RotateCcw, Trash2, Bot, QrCode, ScanLine, Camera,
-    Loader2
+    Shield, Layers, Info, Check, ArrowUpRight, Trash2, QrCode, ScanLine, Camera,
+    Loader2, Lock, Eye, EyeOff, LogIn
 } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -125,8 +125,6 @@ const getDouloidRankDetails = (memberType, douloidRank, belayStatus, soloStation
 
 /* ─── G5 Inspired White & Blue Theme CSS ─── */
 const CSS = `
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     
     :root {
@@ -153,7 +151,7 @@ const CSS = `
     body {
         background-color: var(--color-page-bg);
         color: var(--color-text-main);
-        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
     }
@@ -457,7 +455,7 @@ const StudentPortal = () => {
     const location = useLocation();
     const isGuest = location.state?.isGuest || false;
 
-    const SESSION_DURATION = 20 * 60 * 1000;
+    const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;
 
     const [regNo, setRegNo] = useState(() => {
         const stored = localStorage.getItem('studentSession');
@@ -478,23 +476,35 @@ const StudentPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
+    const [selectedRole, setSelectedRole] = useState('douloid'); // 'g9' | 'douloid' | 'recruit'
+    const [selectedSemester, setSelectedSemester] = useState('');
+    const [adminUsername, setAdminUsername] = useState('');
+    const [adminPassword, setAdminPassword] = useState('');
+    const [showAdminPassword, setShowAdminPassword] = useState(false);
+    const [isFocusedUser, setIsFocusedUser] = useState(false);
+    const [isFocusedPass, setIsFocusedPass] = useState(false);
     const [registrationRequired, setRegistrationRequired] = useState(false);
     const [newMemberName, setNewMemberName] = useState('');
     const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
     const [newMemberType, setNewMemberType] = useState('Douloid');
     const [isFocusedReg, setIsFocusedReg] = useState(false);
     const [showRolloverWelcome, setShowRolloverWelcome] = useState(false);
+    const [rolloverActiveToggle, setRolloverActiveToggle] = useState(true); // Defaults to Yes (pre-selected)
     const [toast, setToast] = useState(null);
     const [showScanner, setShowScanner] = useState(false);
     const [showRankDetailsModal, setShowRankDetailsModal] = useState(false);
-    const [botMessages, setBotMessages] = useState([
-        { sender: 'bot', text: 'Hi! I am your upcoming Doulos AI Assistant. You will soon be able to ask me anything about your attendance standing, Douloid rank qualifications, campus schedules, and upcoming camps.' }
-    ]);
-    const [botInput, setBotInput] = useState('');
-    const [isBotTyping, setIsBotTyping] = useState(false);
-    const chatScrollRef = useRef(null);
+    const [showAiComingSoon, setShowAiComingSoon] = useState(false);
+    const [forgotNotice, setForgotNotice] = useState('');
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        let timer;
+        if (forgotNotice) {
+            timer = setTimeout(() => setForgotNotice(''), 6000);
+        }
+        return () => clearTimeout(timer);
+    }, [forgotNotice]);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -511,12 +521,48 @@ const StudentPortal = () => {
 
     useEffect(() => {
         if (data) {
-            setShowRolloverWelcome(data.lastActiveSemester !== data.currentSemester);
+            const needsConfirmation = data.needsSemesterConfirmation !== undefined 
+                ? data.needsSemesterConfirmation 
+                : (data.lastConfirmedSemester !== data.currentSemester);
+            setShowRolloverWelcome(needsConfirmation);
         }
     }, [data]);
 
-    const handleLogin = async (e, customRegNo = null) => {
+    const handleLogin = async (e, customRegNo = null, semesterOverride = null) => {
         if (e && e.preventDefault) e.preventDefault();
+        setError(null);
+
+        if (selectedRole === 'g9' && !isLoggedIn) {
+            setLoading(true);
+            try {
+                const res = await api.post('/auth/login', { username: adminUsername, password: adminPassword });
+                localStorage.setItem('token', res.data.token);
+                localStorage.setItem('role', res.data.role);
+                localStorage.setItem('username', res.data.username);
+                localStorage.setItem('campus', res.data.campus || 'Athi River');
+
+                const u = res.data.username ? res.data.username.toLowerCase() : '';
+                const role = res.data.role || '';
+
+                if (u === 'supersuperadmin') {
+                    navigate('/superadmin');
+                } else if (u === 'g2' || u === 'g2_vice' || role === 'g2_vice') {
+                    localStorage.setItem('initialTab', 'dashboard');
+                    navigate('/g2/portal');
+                } else if (u === 'g5' || role === 'trainer' || role === 'g5_training' || u === 'trainer_athi' || u === 'g5_director') {
+                    localStorage.setItem('initialTab', 'dashboard');
+                    navigate('/g5/portal');
+                } else {
+                    navigate('/admin/dashboard');
+                }
+            } catch (err) {
+                setError(err.response?.data?.message || 'G9 Login failed');
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
         if (isGuest) {
             setData({
                 studentRegNo: 'GUEST-001', memberName: 'Guest Explorer', memberType: 'Visitor',
@@ -535,96 +581,135 @@ const StudentPortal = () => {
         if (!targetRegNo) return;
         setLoading(true); setError(null);
         try {
-            const res = await api.get(`/attendance/student/${targetRegNo}`);
+            const semToFetch = semesterOverride !== null ? semesterOverride : (selectedSemester || '');
+            const queryParam = semToFetch ? `?semester=${encodeURIComponent(semToFetch)}` : '';
+            const res = await api.get(`/attendance/student/${targetRegNo}${queryParam}`);
             if (res.data.registrationRequired) { setRegistrationRequired(true); setLoading(false); return; }
+
+            const memberType = (res.data.memberType || 'Douloid').trim();
+            const douloidRank = (res.data.douloidRank || '').trim();
+            const isDouloid = memberType.toLowerCase() === 'douloid' || (douloidRank && douloidRank !== 'None' && !douloidRank.toLowerCase().includes('candidate'));
+            const isRecruit = memberType.toLowerCase() === 'recruit';
+
+            // User requirement: deny access when recruit is clicked by a douloid
+            if (selectedRole === 'recruit' && isDouloid) {
+                setError("Access Denied: You are a Douloid, not a recruit! 😂 Please select Douloid to sign in.");
+                setLoading(false);
+                return;
+            }
+
+            if (selectedRole === 'douloid' && isRecruit) {
+                setError("Access Denied: You are registered as a Recruit, not a Douloid! Please select Recruit to sign in.");
+                setLoading(false);
+                return;
+            }
+
             setData(res.data);
             setRegNo(targetRegNo);
+            if (res.data.selectedSemester) {
+                setSelectedSemester(res.data.selectedSemester);
+            }
             setIsLoggedIn(true);
             localStorage.setItem('studentSession', JSON.stringify({ regNo: targetRegNo, expiry: Date.now() + SESSION_DURATION }));
         } catch (err) { setError(err.response?.data?.message || 'Something went wrong. Please try again.'); }
         finally { setLoading(false); }
     };
 
+    const handleSemesterChange = (newSem) => {
+        setSelectedSemester(newSem);
+        handleLogin(null, regNo || data?.studentRegNo, newSem);
+    };
+
     const handleSelfRegister = async (e) => {
         e.preventDefault(); setLoading(true); setError(null);
         try {
-            await api.post('/members/self-register', { studentRegNo: regNo, name: newMemberName, campus: newMemberCampus, memberType: newMemberType });
+            await api.post('/members/self-register', {
+                studentRegNo: regNo,
+                name: newMemberName,
+                campus: newMemberCampus,
+                memberType: newMemberType
+            });
             setRegistrationRequired(false);
             handleLogin();
         } catch (err) { setError(err.response?.data?.message || 'Registration failed. Please try again.'); setLoading(false); }
     };
 
     const handleLogout = () => {
+        api.post('/auth/logout').catch(() => {});
         localStorage.removeItem('studentSession');
         setIsLoggedIn(false); setData(null); setRegNo('');
         navigate('/portal', { replace: true, state: {} });
     };
 
-    const handleEnroll = async () => {
+    const handleConfirmSemester = async () => {
         setLoading(true);
         try {
-            await api.post('/members/enroll', { studentRegNo: data.studentRegNo, semester: data.currentSemester, isActiveThisSemester: true });
-            setData(prev => ({ ...prev, lastActiveSemester: data.currentSemester, status: 'Active' }));
+            const memberId = data._id || data.studentRegNo || regNo;
+            await api.post(`/members/${encodeURIComponent(memberId)}/confirm-semester`, {
+                isActiveThisSemester: rolloverActiveToggle
+            });
+            setData(prev => ({
+                ...prev,
+                isActiveThisSemester: rolloverActiveToggle,
+                lastConfirmedSemester: data.currentSemester,
+                needsSemesterConfirmation: false,
+                lastActiveSemester: rolloverActiveToggle ? data.currentSemester : prev.lastActiveSemester,
+                status: 'Active'
+            }));
             setShowRolloverWelcome(false);
-            showToast(`Enrolled for ${data.currentSemester}! Welcome. 🌿`, 'success');
+            showToast(
+                rolloverActiveToggle
+                    ? `Confirmed active for ${data.currentSemester}! Welcome back. 🌿`
+                    : `Recorded: Not active for ${data.currentSemester}. Roster status retained. 🛡️`,
+                'success'
+            );
         } catch (err) { 
-            showToast('Enrollment failed. Please try again.', 'error');
+            console.error('Confirmation error:', err);
+            showToast('Confirmation failed. Please try again.', 'error');
         } finally { 
             setLoading(false); 
         }
     };
+    const handleEnroll = handleConfirmSemester;
 
     const handleClearCongrats = async () => {
         try { await api.post(`/members/clear-congrats/${data.studentRegNo}`); } catch (err) { console.error('Failed to clear congrats status'); }
         setData({ ...data, needsGraduationCongrats: false });
     };
 
-    const handleClearConversation = () => {
-        setBotMessages([
-            { sender: 'bot', text: 'Conversation cleared! 🧹 Ask me anything about your attendance standing, Douloid rank qualifications, campus schedules, and upcoming camps.' }
-        ]);
-        showToast('Conversation cleared', 'info');
-    };
-
-    const handleSendBotMessage = (e, presetText = null) => {
-        if (e) e.preventDefault();
-        const query = (presetText || botInput).trim();
-        if (!query) return;
-
-        setBotMessages(prev => [...prev, { sender: 'user', text: query }]);
-        if (!presetText) setBotInput('');
-        setIsBotTyping(true);
-
-        setTimeout(() => {
-            setIsBotTyping(false);
-            setBotMessages(prev => [...prev, {
-                sender: 'bot',
-                text: "✨ Doulos AI Assistant is currently in active development and coming soon! Full query resolution for attendance standing, facilitator rank criteria, and camp schedules will be available shortly."
-            }]);
-        }, 650);
-    };
-
     useEffect(() => {
-        if (activeTab === 'bot' && chatScrollRef.current) {
-            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        if (isLoggedIn && !data) {
+            handleLogin();
         }
-    }, [botMessages, isBotTyping, activeTab]);
+    }, [isLoggedIn, isGuest]);
 
     useEffect(() => {
-        if (isLoggedIn && !data) { handleLogin(); }
-    }, [isLoggedIn, isGuest]);
+        if (!isLoggedIn || isGuest || !(regNo || data?.studentRegNo)) return;
+
+        const refreshLivePortal = () => {
+            const activeRegNo = regNo || data?.studentRegNo;
+            const semToFetch = selectedSemester || data?.selectedSemester || '';
+            if (activeRegNo) {
+                handleLogin(null, activeRegNo, semToFetch);
+            }
+        };
+
+        refreshLivePortal();
+        const interval = setInterval(refreshLivePortal, 15000);
+        return () => clearInterval(interval);
+    }, [isLoggedIn, isGuest, regNo, selectedSemester, data?.studentRegNo, data?.selectedSemester]);
 
     /* ═══════════════════════════════════════════════════════════
        1. LOGIN VIEW (Matched to Admin/G9 Aesthetic)
     ═══════════════════════════════════════════════════════════ */
     if (!isLoggedIn) {
         return (
-            <div style={{
+            <div className="login-mobile-container" style={{
                 minHeight: '100vh',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '1.5rem',
+                padding: '1.5rem 1rem',
                 position: 'relative',
                 fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                 overflow: 'hidden'
@@ -632,8 +717,46 @@ const StudentPortal = () => {
                 <style>{CSS}</style>
 
                 <style>{`
-                    input::placeholder { color: rgba(200, 220, 255, 0.7) !important; }
-                    input { caret-color: #fff; }
+                    input::placeholder { color: #64748B !important; }
+                    input { caret-color: #38BDF8; }
+                    @keyframes slideDown {
+                        from { opacity: 0; transform: translate(-50%, -12px); }
+                        to { opacity: 1; transform: translate(-50%, 0); }
+                    }
+                    @media (max-width: 640px) {
+                        .login-mobile-container {
+                            padding: 1rem 0.85rem !important;
+                        }
+                        .login-mobile-card {
+                            padding: 1.5rem 1.15rem !important;
+                            border-radius: 20px !important;
+                        }
+                        .login-brand-logo {
+                            width: 48px !important;
+                            height: 48px !important;
+                        }
+                        .login-brand-title {
+                            font-size: 1.35rem !important;
+                        }
+                        .login-role-container {
+                            display: flex !important;
+                            flex-direction: row !important;
+                            width: 100% !important;
+                            gap: 0.45rem !important;
+                        }
+                        .login-role-btn {
+                            flex: 1 1 0 !important;
+                            min-width: 0 !important;
+                            height: 42px !important;
+                            padding: 0 0.35rem !important;
+                            display: flex !important;
+                            flex-direction: row !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 0.35rem !important;
+                            white-space: nowrap !important;
+                        }
+                    }
                 `}</style>
 
                 {/* Photo Background */}
@@ -650,11 +773,11 @@ const StudentPortal = () => {
                     willChange: 'transform',
                     zIndex: 0
                 }} />
-                {/* Clean solid overlay — no gradient noise */}
+                {/* Clean dark solid overlay for high contrast & elegance */}
                 <div style={{
                     position: 'fixed',
                     inset: 0,
-                    background: 'rgba(10, 8, 28, 0.22)',
+                    background: 'rgba(10, 15, 29, 0.45)',
                     zIndex: 1
                 }} />
 
@@ -684,17 +807,43 @@ const StudentPortal = () => {
                     </div>
                 )}
 
-                {/* Main Login Card — Glassmorphism */}
-                <div style={{
+                {/* Forgot Password / Info Toast */}
+                {forgotNotice && (
+                    <div style={{
+                        position: 'fixed',
+                        top: '2rem',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 2000,
+                        minWidth: '320px',
+                        maxWidth: '90%',
+                        padding: '0.9rem 1.25rem',
+                        borderRadius: '12px',
+                        background: '#0F172A',
+                        border: '1px solid #38BDF8',
+                        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.45)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#E0F2FE',
+                        animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <Info size={20} style={{ color: '#38BDF8', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.86rem', fontWeight: 600, lineHeight: 1.4 }}>{forgotNotice}</span>
+                    </div>
+                )}
+
+                {/* Main Login Card — Sleek Glassmorphism */}
+                <div className="login-mobile-card" style={{
                     width: '100%',
-                    maxWidth: '420px',
-                    background: 'rgba(255, 255, 255, 0.13)',
+                    maxWidth: '410px',
+                    background: 'rgba(15, 23, 42, 0.82)',
                     backdropFilter: 'blur(28px)',
                     WebkitBackdropFilter: 'blur(28px)',
-                    borderRadius: '28px',
-                    padding: '2.5rem 2.25rem',
-                    boxShadow: '0 24px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25)',
-                    border: '1px solid rgba(255, 255, 255, 0.22)',
+                    borderRadius: '24px',
+                    padding: '2.25rem 1.75rem',
+                    boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
                     position: 'relative',
                     zIndex: 10
                 }}>
@@ -703,60 +852,146 @@ const StudentPortal = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        marginBottom: '2rem',
+                        marginBottom: '1.6rem',
                         textAlign: 'center'
                     }}>
-                        <div style={{
+                        <div className="login-brand-logo" style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '16px',
+                            background: 'rgba(30, 41, 59, 0.75)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '1.25rem'
+                            marginBottom: '0.85rem',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                            overflow: 'hidden'
                         }}>
-                            <Logo size={88} showText={false} />
+                            <Logo size={42} showText={false} />
                         </div>
 
-                        <h1 style={{
+                        <h1 className="login-brand-title" style={{
                             fontSize: '1.45rem',
                             fontWeight: 800,
                             color: '#FFFFFF',
-                            margin: '0 0 0.4rem 0',
-                            letterSpacing: '-0.5px',
-                            textShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                            margin: '0 0 0.35rem 0',
+                            letterSpacing: '-0.5px'
                         }}>
-                            {registrationRequired ? 'Douloid / Recruit Enrollment' : 'Douloid or Recruit Portal'}
+                            {registrationRequired ? 'Douloid / Recruit Enrollment' : 'Doulos System'}
                         </h1>
                         <p style={{
-                            fontSize: '0.85rem',
-                            color: 'rgba(255,255,255,0.72)',
+                            fontSize: '0.82rem',
+                            color: '#94A3B8',
                             margin: 0,
                             fontWeight: 500
                         }}>
-                            {registrationRequired ? 'Complete your enrollment to activate your portal' : 'Enter your admission number to access your portal'}
+                            {registrationRequired ? 'Complete your enrollment to activate your portal' : 'Attendance & Fellowship Management System'}
                         </p>
                     </div>
 
+                    {/* ══ LOGIN AS ROLE SELECTOR (Inspo: G9, Douloid, Recruit) ══ */}
+                    {!registrationRequired && (
+                        <div style={{ marginBottom: '1.35rem' }}>
+                            <label style={{
+                                display: 'block',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                color: '#94A3B8',
+                                marginBottom: '0.6rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                                textAlign: 'left'
+                            }}>
+                                LOGIN AS
+                            </label>
+                            <div className="login-role-container" style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                width: '100%',
+                                gap: '0.5rem'
+                            }}>
+                                {[
+                                    { id: 'g9', label: 'G9', icon: ShieldCheck },
+                                    { id: 'douloid', label: 'Douloid', icon: Award },
+                                    { id: 'recruit', label: 'Recruit', icon: Compass }
+                                ].map((item) => {
+                                    const isSelected = selectedRole === item.id;
+                                    const IconComponent = item.icon;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            className="login-role-btn"
+                                            onClick={() => {
+                                                setSelectedRole(item.id);
+                                                setError(null);
+                                            }}
+                                            style={{
+                                                flex: '1 1 0',
+                                                minWidth: 0,
+                                                height: '42px',
+                                                background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(30, 41, 59, 0.45)',
+                                                border: isSelected ? '1.5px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.10)',
+                                                borderRadius: '12px',
+                                                padding: '0 0.45rem',
+                                                display: 'flex',
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.4rem',
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                                boxShadow: isSelected ? '0 0 16px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)' : 'none',
+                                                transform: isSelected ? 'scale(1.02)' : 'scale(1)'
+                                            }}
+                                        >
+                                            <IconComponent
+                                                size={17}
+                                                style={{
+                                                    color: isSelected ? '#38BDF8' : '#94A3B8',
+                                                    flexShrink: 0,
+                                                    transition: 'color 0.2s ease'
+                                                }}
+                                            />
+                                            <span style={{
+                                                fontSize: '0.8rem',
+                                                fontWeight: isSelected ? 700 : 600,
+                                                color: isSelected ? '#38BDF8' : '#CBD5E1',
+                                                lineHeight: 1,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }}>
+                                                {item.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {registrationRequired ? (
-                        <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                        <form onSubmit={handleSelfRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
                             <div>
                                 <label style={{
                                     display: 'block',
                                     fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    color: 'rgba(255,255,255,0.85)',
-                                    marginBottom: '0.45rem',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
+                                    fontWeight: 600,
+                                    color: '#CBD5E1',
+                                    marginBottom: '0.4rem'
                                 }}>
                                     Full Name
                                 </label>
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    background: 'rgba(255,255,255,0.10)',
-                                    border: '1.5px solid rgba(255,255,255,0.25)',
-                                    borderRadius: '12px',
-                                    padding: '0 1rem',
-                                    height: '48px'
+                                    background: 'rgba(15, 23, 42, 0.65)',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    borderRadius: '10px',
+                                    padding: '0 0.85rem',
+                                    height: '46px'
                                 }}>
                                     <input
                                         type="text"
@@ -769,9 +1004,45 @@ const StudentPortal = () => {
                                             background: 'transparent',
                                             border: 'none',
                                             outline: 'none',
-                                            fontSize: '0.9rem',
+                                            fontSize: '0.88rem',
                                             color: '#FFFFFF',
                                             fontWeight: 500
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 600,
+                                    color: '#CBD5E1',
+                                    marginBottom: '0.4rem'
+                                }}>
+                                    Admission Number
+                                </label>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    background: 'rgba(15, 23, 42, 0.65)',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    borderRadius: '10px',
+                                    padding: '0 0.85rem',
+                                    height: '46px'
+                                }}>
+                                    <input
+                                        type="text"
+                                        value={regNo}
+                                        readOnly
+                                        style={{
+                                            width: '100%',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            outline: 'none',
+                                            fontSize: '0.88rem',
+                                            color: '#E2E8F0',
+                                            fontWeight: 700
                                         }}
                                     />
                                 </div>
@@ -782,11 +1053,9 @@ const StudentPortal = () => {
                                     <label style={{
                                         display: 'block',
                                         fontSize: '0.78rem',
-                                        fontWeight: 700,
-                                        color: 'rgba(255,255,255,0.85)',
-                                        marginBottom: '0.45rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
+                                        fontWeight: 600,
+                                        color: '#CBD5E1',
+                                        marginBottom: '0.4rem'
                                     }}>
                                         Campus
                                     </label>
@@ -795,10 +1064,10 @@ const StudentPortal = () => {
                                         onChange={e => setNewMemberCampus(e.target.value)}
                                         style={{
                                             width: '100%',
-                                            height: '48px',
-                                            background: 'rgba(255,255,255,0.10)',
-                                            border: '1.5px solid rgba(255,255,255,0.25)',
-                                            borderRadius: '12px',
+                                            height: '46px',
+                                            background: 'rgba(15, 23, 42, 0.85)',
+                                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                                            borderRadius: '10px',
                                             color: '#FFFFFF',
                                             padding: '0 0.75rem',
                                             fontSize: '0.88rem',
@@ -813,11 +1082,9 @@ const StudentPortal = () => {
                                     <label style={{
                                         display: 'block',
                                         fontSize: '0.78rem',
-                                        fontWeight: 700,
-                                        color: 'rgba(255,255,255,0.85)',
-                                        marginBottom: '0.45rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
+                                        fontWeight: 600,
+                                        color: '#CBD5E1',
+                                        marginBottom: '0.4rem'
                                     }}>
                                         Category
                                     </label>
@@ -826,10 +1093,10 @@ const StudentPortal = () => {
                                         onChange={e => setNewMemberType(e.target.value)}
                                         style={{
                                             width: '100%',
-                                            height: '48px',
-                                            background: 'rgba(255,255,255,0.10)',
-                                            border: '1.5px solid rgba(255,255,255,0.25)',
-                                            borderRadius: '12px',
+                                            height: '46px',
+                                            background: 'rgba(15, 23, 42, 0.85)',
+                                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                                            borderRadius: '10px',
                                             color: '#FFFFFF',
                                             padding: '0 0.75rem',
                                             fontSize: '0.88rem',
@@ -846,19 +1113,19 @@ const StudentPortal = () => {
                                 type="submit"
                                 disabled={loading}
                                 style={{
-                                    height: '48px',
-                                    background: 'rgba(255,255,255,0.95)',
-                                    color: '#2D2060',
+                                    height: '46px',
+                                    background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
+                                    color: '#FFFFFF',
                                     border: 'none',
-                                    borderRadius: '12px',
-                                    fontSize: '0.92rem',
-                                    fontWeight: 800,
+                                    borderRadius: '10px',
+                                    fontSize: '0.94rem',
+                                    fontWeight: 700,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '0.5rem',
                                     cursor: loading ? 'not-allowed' : 'pointer',
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                    boxShadow: '0 4px 16px rgba(14, 165, 233, 0.35)',
                                     transition: 'all 0.2s ease',
                                     marginTop: '0.5rem'
                                 }}
@@ -870,7 +1137,7 @@ const StudentPortal = () => {
                                     </>
                                 ) : (
                                     <>
-                                        <span>Complete Registration</span>
+                                        <span>Register & Check In</span>
                                         <ArrowRight size={18} />
                                     </>
                                 )}
@@ -881,7 +1148,7 @@ const StudentPortal = () => {
                                 style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: 'rgba(255,255,255,0.65)',
+                                    color: '#94A3B8',
                                     fontSize: '0.82rem',
                                     fontWeight: 700,
                                     cursor: 'pointer',
@@ -893,103 +1160,238 @@ const StudentPortal = () => {
                             </button>
                         </form>
                     ) : (
-                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-                            {/* Admission Number Input */}
-                            <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    color: 'rgba(255,255,255,0.85)',
-                                    marginBottom: '0.45rem',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
-                                }}>
-                                    Admission Number
-                                </label>
-                                <div style={{
-                                    position: 'relative',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    background: isFocusedReg ? 'rgba(59,130,246,0.28)' : 'rgba(59,130,246,0.15)',
-                                    border: `1.5px solid ${isFocusedReg ? 'rgba(147,197,253,0.8)' : 'rgba(147,197,253,0.35)'}`,
-                                    borderRadius: '12px',
-                                    padding: '0 1rem',
-                                    height: '48px',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: isFocusedReg ? '0 0 0 4px rgba(59,130,246,0.2)' : 'none'
-                                }}>
-                                    <User size={18} style={{ color: isFocusedReg ? '#fff' : 'rgba(255,255,255,0.55)', marginRight: '0.75rem', flexShrink: 0 }} />
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. 24-1033"
-                                        value={regNo}
-                                        onChange={e => {
-                                            let v = e.target.value.replace(/\D/g, '');
-                                            if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2, 6);
-                                            setRegNo(v);
-                                        }}
-                                        onFocus={() => setIsFocusedReg(true)}
-                                        onBlur={() => setIsFocusedReg(false)}
-                                        required
-                                        style={{
-                                            width: '100%',
-                                            background: 'transparent',
-                                            border: 'none',
-                                            outline: 'none',
-                                            fontSize: '0.95rem',
-                                            fontWeight: 700,
-                                            letterSpacing: '1px',
-                                            color: '#FFFFFF'
-                                        }}
-                                    />
+                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                            {selectedRole === 'g9' ? (
+                                <>
+                                    {/* Username Input for G9 */}
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 600,
+                                            color: '#CBD5E1',
+                                            marginBottom: '0.4rem'
+                                        }}>
+                                            Username
+                                        </label>
+                                        <div style={{
+                                            position: 'relative',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            background: 'rgba(15, 23, 42, 0.65)',
+                                            border: `1.5px solid ${isFocusedUser ? '#38BDF8' : 'rgba(255, 255, 255, 0.12)'}`,
+                                            borderRadius: '10px',
+                                            padding: '0 0.85rem',
+                                            height: '46px',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isFocusedUser ? '0 0 0 3px rgba(56, 189, 248, 0.2)' : 'none'
+                                        }}>
+                                            <User size={18} style={{ color: isFocusedUser ? '#38BDF8' : '#64748B', marginRight: '0.7rem', flexShrink: 0 }} />
+                                            <input
+                                                type="text"
+                                                value={adminUsername}
+                                                onChange={(e) => setAdminUsername(e.target.value)}
+                                                onFocus={() => setIsFocusedUser(true)}
+                                                onBlur={() => setIsFocusedUser(false)}
+                                                placeholder="Enter your username"
+                                                required
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    outline: 'none',
+                                                    fontSize: '0.88rem',
+                                                    color: '#F8FAFC',
+                                                    fontWeight: 500
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Password Input for G9 */}
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 600,
+                                            color: '#CBD5E1',
+                                            marginBottom: '0.4rem'
+                                        }}>
+                                            Password
+                                        </label>
+                                        <div style={{
+                                            position: 'relative',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            background: 'rgba(15, 23, 42, 0.65)',
+                                            border: `1.5px solid ${isFocusedPass ? '#38BDF8' : 'rgba(255, 255, 255, 0.12)'}`,
+                                            borderRadius: '10px',
+                                            padding: '0 0.85rem',
+                                            height: '46px',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isFocusedPass ? '0 0 0 3px rgba(56, 189, 248, 0.2)' : 'none'
+                                        }}>
+                                            <Lock size={18} style={{ color: isFocusedPass ? '#38BDF8' : '#64748B', marginRight: '0.7rem', flexShrink: 0 }} />
+                                            <input
+                                                type={showAdminPassword ? 'text' : 'password'}
+                                                value={adminPassword}
+                                                onChange={(e) => setAdminPassword(e.target.value)}
+                                                onFocus={() => setIsFocusedPass(true)}
+                                                onBlur={() => setIsFocusedPass(false)}
+                                                placeholder="Enter your password"
+                                                required
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    outline: 'none',
+                                                    fontSize: '0.88rem',
+                                                    color: '#F8FAFC',
+                                                    fontWeight: 500
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAdminPassword(!showAdminPassword)}
+                                                tabIndex={-1}
+                                                aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    color: '#64748B',
+                                                    padding: '0.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center'
+                                                }}
+                                            >
+                                                {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setForgotNotice('For G9 password reset, please contact the G9 Secretary or Tech Lead.')}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: '#38BDF8',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    padding: 0
+                                                }}
+                                            >
+                                                Forgot password?
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                /* Admission Number Input for Douloid and Recruit */
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 600,
+                                        color: '#CBD5E1',
+                                        marginBottom: '0.4rem'
+                                    }}>
+                                        Admission Number
+                                    </label>
+                                    <div style={{
+                                        position: 'relative',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(15, 23, 42, 0.65)',
+                                        border: `1.5px solid ${isFocusedReg ? '#38BDF8' : 'rgba(255, 255, 255, 0.12)'}`,
+                                        borderRadius: '10px',
+                                        padding: '0 0.85rem',
+                                        height: '46px',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: isFocusedReg ? '0 0 0 3px rgba(56, 189, 248, 0.2)' : 'none'
+                                    }}>
+                                        <User size={18} style={{ color: isFocusedReg ? '#38BDF8' : '#64748B', marginRight: '0.7rem', flexShrink: 0 }} />
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. 24-1033"
+                                            value={regNo}
+                                            onChange={e => {
+                                                let v = e.target.value.replace(/\D/g, '');
+                                                if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2, 6);
+                                                setRegNo(v);
+                                            }}
+                                            onFocus={() => setIsFocusedReg(true)}
+                                            onBlur={() => setIsFocusedReg(false)}
+                                            required
+                                            style={{
+                                                width: '100%',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                outline: 'none',
+                                                fontSize: '0.92rem',
+                                                fontWeight: 700,
+                                                letterSpacing: '1px',
+                                                color: '#FFFFFF'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Submit Button */}
                             <button
                                 type="submit"
                                 disabled={loading}
                                 style={{
-                                    height: '48px',
-                                    background: 'rgba(255,255,255,0.95)',
-                                    color: '#2D2060',
+                                    height: '46px',
+                                    background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
+                                    color: '#FFFFFF',
                                     border: 'none',
-                                    borderRadius: '12px',
-                                    fontSize: '0.92rem',
-                                    fontWeight: 800,
+                                    borderRadius: '10px',
+                                    fontSize: '0.94rem',
+                                    fontWeight: 700,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '0.5rem',
                                     cursor: loading ? 'not-allowed' : 'pointer',
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                    boxShadow: '0 4px 16px rgba(14, 165, 233, 0.35)',
                                     transition: 'all 0.2s ease',
-                                    marginTop: '0.5rem'
+                                    marginTop: '0.35rem'
                                 }}
-                                onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                                onMouseLeave={e => { if (!loading) { e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+                                onMouseEnter={e => { if (!loading) { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                                onMouseLeave={e => { if (!loading) { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'translateY(0)'; } }}
                             >
                                 {loading ? (
                                     <>
                                         <Loader2 size={18} className="spinner-animate" />
-                                        <span>Accessing Portal...</span>
+                                        <span>Verifying credentials...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Access My Portal</span>
-                                        <ArrowRight size={18} />
+                                        <LogIn size={18} />
+                                        <span>Sign In</span>
                                     </>
                                 )}
                             </button>
                         </form>
                     )}
 
-
+                    {/* Subtext info */}
+                    <p style={{
+                        fontSize: '0.74rem',
+                        color: '#64748B',
+                        margin: '1.25rem 0 0 0',
+                        textAlign: 'center',
+                        fontWeight: 500
+                    }}>
+                        Select your role above, and enter your credentials.
+                    </p>
 
                     {/* Subfooter */}
                     <div style={{
-                        marginTop: '1.5rem',
+                        marginTop: '1.25rem',
                         textAlign: 'center',
                         fontSize: '0.72rem',
                         color: '#9E9EA7',
@@ -1144,13 +1546,11 @@ const StudentPortal = () => {
 
                 {/* ══ TOP BAR ══ */}
                 <header className="sp-top-bar">
-                    <div className="sp-brand">
-                        <div className="sp-brand-logo">
-                            <Logo size={24} showText={false} />
-                        </div>
+                    <div className="sp-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Logo size={40} showText={false} />
                         <div>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0F172A', lineHeight: 1.1 }}>DOULOS</div>
-                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#1D4ED8', letterSpacing: '1px', textTransform: 'uppercase' }}>Member Portal</div>
+                            <div style={{ fontSize: '1.12rem', fontWeight: 900, color: '#0F172A', lineHeight: 1.1, letterSpacing: '-0.02em' }}>DOULOS</div>
+                            <div style={{ fontSize: '0.66rem', fontWeight: 800, color: '#1D4ED8', letterSpacing: '1.2px', textTransform: 'uppercase', marginTop: '1px' }}>Member Portal</div>
                         </div>
                     </div>
 
@@ -1193,46 +1593,70 @@ const StudentPortal = () => {
                         </button>
                     </div>
 
-                    {/* Douloid Rank Status Card (Synced directly with G5) */}
+                    {/* Douloid Rank Status Card (Synced directly with G5 - Mobile Optimized) */}
                     <div 
                         style={{ 
                             background: rank.badgeBg, 
                             border: `1px solid ${rank.border}`, 
-                            borderRadius: '14px', 
-                            padding: '0.85rem 1.15rem', 
+                            borderRadius: '12px', 
+                            padding: '0.7rem 0.95rem', 
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'space-between', 
+                            gap: '0.75rem',
                             cursor: 'pointer', 
-                            transition: 'all 0.2s' 
+                            transition: 'all 0.2s',
+                            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.02)'
                         }} 
                         onClick={() => setShowRankDetailsModal(true)}
+                        onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.98)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: rank.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: rank.color, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', minWidth: 0 }}>
+                            <div style={{ 
+                                width: '36px', 
+                                height: '36px', 
+                                borderRadius: '10px', 
+                                background: rank.bg, 
+                                border: `1px solid ${rank.border}`,
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                color: rank.color, 
+                                flexShrink: 0,
+                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+                            }}>
                                 <Award size={20} />
                             </div>
-                            <div>
-                                <div style={{ fontSize: '0.62rem', fontWeight: 900, color: rank.color, letterSpacing: '1px', textTransform: 'uppercase' }}>DOULOID RANK</div>
-                                <div style={{ fontSize: '0.98rem', fontWeight: 900, color: '#0F172A' }}>{rank.rankName}</div>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 900, color: rank.color, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.1 }}>
+                                    DOULOID RANK
+                                </div>
+                                <div style={{ fontSize: '0.94rem', fontWeight: 900, color: '#0F172A', lineHeight: 1.2, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {rank.rankName}
+                                </div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: rank.color, fontSize: '0.76rem', fontWeight: 800 }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.25rem', 
+                            color: rank.color, 
+                            fontSize: '0.72rem', 
+                            fontWeight: 800,
+                            background: '#FFFFFF',
+                            padding: '0.32rem 0.65rem',
+                            borderRadius: '999px',
+                            border: `1px solid ${rank.border}`,
+                            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
+                            flexShrink: 0
+                        }}>
                             <span>Rank Info</span>
-                            <ChevronRight size={16} />
+                            <ChevronRight size={14} />
                         </div>
                     </div>
                 </div>
 
-                {/* ══ 2. SEGMENTED TABS (Overview, Attendance History, Events) ══ */}
-                <div className="sp-tabs">
-                    {TABS.map(t => (
-                        <button key={t.id} className={`sp-tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
-                            <t.icon size={16} />
-                            <span>{t.label}</span>
-                        </button>
-                    ))}
-                </div>
 
                 {/* ══ 3. TAB CONTENT ══ */}
                 <div style={{ animation: 'fadeUp 0.25s ease' }}>
@@ -1242,13 +1666,36 @@ const StudentPortal = () => {
                         <div>
                             {/* Semester Fellowship Standing Card (Modernized & Polished) */}
                             <div className="sp-card" style={{ padding: '1.65rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                                     <div>
                                         <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#1D4ED8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                                             SEMESTER FELLOWSHIP STANDING
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, marginTop: '2px' }}>
-                                            Active Term: {currentSem}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px' }}>
+                                            <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 700 }}>Term:</span>
+                                            {data?.availableSemesters && data.availableSemesters.length > 1 ? (
+                                                <select
+                                                    value={selectedSemester || data?.selectedSemester || currentSem}
+                                                    onChange={e => handleSemesterChange(e.target.value)}
+                                                    style={{
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 800,
+                                                        color: '#1E293B',
+                                                        background: '#F8FAFC',
+                                                        border: '1px solid #CBD5E1',
+                                                        borderRadius: '8px',
+                                                        padding: '0.2rem 0.6rem',
+                                                        cursor: 'pointer',
+                                                        outline: 'none'
+                                                    }}
+                                                >
+                                                    {data.availableSemesters.map(semOption => (
+                                                        <option key={semOption} value={semOption}>{semOption}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span style={{ fontSize: '0.8rem', color: '#0F172A', fontWeight: 800 }}>{selectedSemester || currentSem}</span>
+                                            )}
                                         </div>
                                     </div>
                                     <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '0.35rem 0.85rem', borderRadius: '999px', background: totalMeetings === 0 ? '#EFF6FF' : pct >= 75 ? '#ECFDF5' : '#FEF3C7', color: totalMeetings === 0 ? '#1D4ED8' : pct >= 75 ? '#065F46' : '#92400E', border: `1px solid ${totalMeetings === 0 ? '#BFDBFE' : pct >= 75 ? '#A7F3D0' : '#FDE68A'}` }}>
@@ -1271,7 +1718,7 @@ const StudentPortal = () => {
                                             {totalMeetings === 0 ? 'Semester Just Begun' : `${totalAttended} of ${totalMeetings} Sessions`}
                                         </div>
                                         <div style={{ fontSize: '0.74rem', color: '#64748B', marginTop: '2px', lineHeight: 1.4 }}>
-                                            {totalMeetings === 0 ? 'Attend weekly fellowships to build your consistency score.' : 'Aim for 75%+ weekly attendance.'}
+                                            {totalMeetings === 0 ? 'Attend weekly fellowships to build your consistency score.' : pct >= 75 ? 'Excellent standing! Keep up the fellowship. 🌟' : 'Aim for 75%+ weekly attendance.'}
                                         </div>
                                     </div>
                                 </div>
@@ -1393,205 +1840,144 @@ const StudentPortal = () => {
                             <StudentEvents />
                         </div>
                     )}
-
-                    {/* ──── DOULOS AI TAB (COMING SOON) ──── */}
-                    {activeTab === 'bot' && (
-                        <div className="sp-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', minHeight: '480px' }}>
-                            {/* Header with Clear Chat & Coming Soon Badge */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid #E2E8F0', marginBottom: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(29, 78, 216, 0.25)' }}>
-                                        <Sparkles size={20} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0F172A' }}>
-                                            Doulos AI Assistant
-                                        </div>
-                                        <div style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 600 }}>Ask questions about attendance, ranks & camps</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <button
-                                        type="button"
-                                        onClick={handleClearConversation}
-                                        title="Clear conversation"
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.35rem',
-                                            background: '#F8FAFC',
-                                            border: '1px solid #CBD5E1',
-                                            borderRadius: '999px',
-                                            padding: '0.35rem 0.65rem',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            color: '#475569',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s'
-                                        }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#0F172A'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#475569'; }}
-                                    >
-                                        <RotateCcw size={13} />
-                                        <span>Clear Chat</span>
-                                    </button>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 900, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '0.3rem 0.65rem', borderRadius: '999px', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                                        COMING SOON
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Chat Messages Feed */}
-                            <div
-                                ref={chatScrollRef}
-                                style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '320px', paddingRight: '0.25rem', marginBottom: '1rem' }}
-                            >
-                                {botMessages.map((msg, idx) => (
-                                    <div
-                                        key={idx}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                                            animation: 'fadeUp 0.25s ease'
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                maxWidth: '85%',
-                                                padding: '0.75rem 1rem',
-                                                borderRadius: msg.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                                                background: msg.sender === 'user' ? '#1D4ED8' : '#F1F5F9',
-                                                color: msg.sender === 'user' ? '#FFFFFF' : '#0F172A',
-                                                fontSize: '0.84rem',
-                                                fontWeight: 500,
-                                                lineHeight: 1.5,
-                                                border: msg.sender === 'user' ? 'none' : '1px solid #E2E8F0',
-                                                boxShadow: msg.sender === 'user' ? '0 4px 12px rgba(29, 78, 216, 0.2)' : 'none'
-                                            }}
-                                        >
-                                            {msg.text}
-                                        </div>
-                                    </div>
-                                ))}
-                                {isBotTyping && (
-                                    <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                                        <div style={{ padding: '0.6rem 0.9rem', borderRadius: '16px 16px 16px 4px', background: '#F1F5F9', border: '1px solid #E2E8F0', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                            <div className="loading-spinner" style={{ width: '12px', height: '12px', borderWidth: '2px' }} />
-                                            <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Doulos AI is thinking...</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Suggested Quick Inquiries Down Near Bottom */}
-                            <div style={{ marginBottom: '0.75rem' }}>
-                                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.4rem' }}>
-                                    Suggested Inquiries
-                                </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                    {[
-                                        "What is my current rank?",
-                                        "How many meetings to reach 75%?",
-                                        "When is the next camp?",
-                                        "What are the Douloid requirements?"
-                                    ].map((q, idx) => (
-                                        <button
-                                            key={idx}
-                                            type="button"
-                                            onClick={() => handleSendBotMessage(null, q)}
-                                            style={{
-                                                background: '#F8FAFC',
-                                                border: '1px solid #CBD5E1',
-                                                borderRadius: '999px',
-                                                padding: '0.35rem 0.75rem',
-                                                fontSize: '0.74rem',
-                                                fontWeight: 600,
-                                                color: '#334155',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.3rem',
-                                                transition: 'all 0.15s'
-                                            }}
-                                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1D4ED8'; e.currentTarget.style.color = '#1D4ED8'; }}
-                                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#334155'; }}
-                                        >
-                                            <span>{q}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Chat Input */}
-                            <form onSubmit={(e) => handleSendBotMessage(e)} style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-                                <input
-                                    type="text"
-                                    value={botInput}
-                                    onChange={(e) => setBotInput(e.target.value)}
-                                    placeholder="Ask Doulos AI a question..."
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.75rem 1rem',
-                                        background: '#F8FAFC',
-                                        border: '1px solid #CBD5E1',
-                                        borderRadius: '12px',
-                                        fontSize: '0.85rem',
-                                        color: '#0F172A',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s'
-                                    }}
-                                    onFocus={(e) => e.target.style.borderColor = '#1D4ED8'}
-                                    onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!botInput.trim()}
-                                    style={{
-                                        background: botInput.trim() ? '#1D4ED8' : '#94A3B8',
-                                        color: '#FFFFFF',
-                                        border: 'none',
-                                        borderRadius: '12px',
-                                        padding: '0 1rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: botInput.trim() ? 'pointer' : 'default',
-                                        transition: 'background 0.2s'
-                                    }}
-                                >
-                                    <Send size={16} />
-                                </button>
-                            </form>
-                        </div>
-                    )}
                 </div>
 
                 {/* ══ FLOATING BOTTOM DOCK ══ */}
                 <nav className="sp-bottom-dock">
                     {TABS.map(t => (
-                        <button key={t.id} className={`sp-dock-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+                        <button
+                            key={t.id}
+                            className={`sp-dock-btn ${activeTab === t.id ? 'active' : ''}`}
+                            onClick={() => {
+                                if (t.id === 'bot') {
+                                    setShowAiComingSoon(true);
+                                } else {
+                                    setActiveTab(t.id);
+                                }
+                            }}
+                        >
                             <t.icon size={19} />
                             <span>{t.label}</span>
                         </button>
                     ))}
                 </nav>
 
-                {/* ══ SEMESTER ROLLOVER ENROLLMENT MODAL ══ */}
+                {/* ══ SEMESTER ROLLOVER CONFIRMATION MODAL (SECTION 2) ══ */}
                 {showRolloverWelcome && data && (
-                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1.25rem' }}>
-                        <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '24px', padding: '2.5rem 2rem', maxWidth: '440px', width: '100%', textAlign: 'center', boxShadow: '0 25px 60px rgba(15, 23, 42, 0.25)', animation: 'popScale 0.35s' }}>
-                            <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #1D4ED8 0%, #172554 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', boxShadow: '0 8px 20px rgba(29, 78, 216, 0.25)' }}>
-                                <Logo size={36} showText={false} />
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1.25rem' }}>
+                        <div style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '24px', padding: '2.25rem 1.75rem', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 25px 60px rgba(15, 23, 42, 0.25)', animation: 'popScale 0.35s' }}>
+                            <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: 'linear-gradient(135deg, #1D4ED8 0%, #172554 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: '0 8px 20px rgba(29, 78, 216, 0.25)' }}>
+                                <Logo size={34} showText={false} />
                             </div>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#1D4ED8', letterSpacing: '2px', textTransform: 'uppercase' }}>NEW SEMESTER ROLLOVER</span>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0F172A', margin: '0.35rem 0 0.75rem' }}>{currentSem}</h2>
-                            <p style={{ fontSize: '0.88rem', color: '#475569', marginBottom: '1.75rem', lineHeight: 1.6 }}>Are you planning to be active in the Doulos class for the {currentSem} semester?</p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <button disabled={loading} onClick={handleEnroll} style={{ width: '100%', padding: '1rem', background: 'var(--color-primary)', color: '#FFFFFF', border: 'none', borderRadius: '14px', fontWeight: 800, fontSize: '0.92rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(29, 78, 216, 0.3)' }}>
-                                    {loading ? 'Enrolling...' : 'YES, I AM ACTIVE! 🌿'}
+                            <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#1D4ED8', letterSpacing: '2px', textTransform: 'uppercase' }}>SEMESTER CONFIRMATION</span>
+                            <h2 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0F172A', margin: '0.35rem 0 0.5rem' }}>{currentSem}</h2>
+                            
+                            {data.semesterTheme && (
+                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1E40AF', marginBottom: '0.25rem' }}>
+                                    "{data.semesterTheme}"
+                                </div>
+                            )}
+                            {data.semesterVerse && (
+                                <div style={{ fontSize: '0.74rem', fontStyle: 'italic', color: '#64748B', marginBottom: '1.25rem' }}>
+                                    {data.semesterVerse}
+                                </div>
+                            )}
+
+                            <div style={{ margin: '1rem 0 0.5rem', textAlign: 'left' }}>
+                                <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.5rem' }}>
+                                    Are you active this semester?
+                                </label>
+                                
+                                {/* Simple Yes / No Toggle (Defaults to Yes pre-selected) */}
+                                <div style={{
+                                    display: 'flex',
+                                    background: '#F1F5F9',
+                                    borderRadius: '14px',
+                                    padding: '4px',
+                                    gap: '4px',
+                                    border: '1px solid #E2E8F0'
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRolloverActiveToggle(true)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.7rem 0.5rem',
+                                            borderRadius: '10px',
+                                            border: 'none',
+                                            fontWeight: 800,
+                                            fontSize: '0.88rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.18s ease',
+                                            background: rolloverActiveToggle ? '#10B981' : 'transparent',
+                                            color: rolloverActiveToggle ? '#FFFFFF' : '#475569',
+                                            boxShadow: rolloverActiveToggle ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none'
+                                        }}
+                                    >
+                                        Yes, I am Active 🚀
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRolloverActiveToggle(false)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.7rem 0.5rem',
+                                            borderRadius: '10px',
+                                            border: 'none',
+                                            fontWeight: 800,
+                                            fontSize: '0.88rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.18s ease',
+                                            background: !rolloverActiveToggle ? '#475569' : 'transparent',
+                                            color: !rolloverActiveToggle ? '#FFFFFF' : '#475569',
+                                            boxShadow: !rolloverActiveToggle ? '0 2px 8px rgba(71, 85, 105, 0.3)' : 'none'
+                                        }}
+                                    >
+                                        No, Away (Leave/Attach)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p style={{ fontSize: '0.76rem', color: '#64748B', margin: '0.65rem 0 1.5rem', lineHeight: 1.5, textAlign: 'left' }}>
+                                {rolloverActiveToggle 
+                                    ? '✨ You will be counted in active fellowships, drills, and rank evaluations.' 
+                                    : '🛡️ Your Douloid standing remains completely intact; you are exempted from missed-meeting flags while away.'}
+                            </p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                                <button
+                                    disabled={loading}
+                                    onClick={handleConfirmSemester}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.95rem',
+                                        background: rolloverActiveToggle ? 'var(--color-primary)' : '#334155',
+                                        color: '#FFFFFF',
+                                        border: 'none',
+                                        borderRadius: '14px',
+                                        fontWeight: 800,
+                                        fontSize: '0.92rem',
+                                        cursor: 'pointer',
+                                        boxShadow: rolloverActiveToggle ? '0 4px 14px rgba(29, 78, 216, 0.3)' : 'none'
+                                    }}
+                                >
+                                    {loading ? 'Confirming...' : (rolloverActiveToggle ? 'CONFIRM: YES, I AM ACTIVE! 🚀' : 'CONFIRM STATUS AS AWAY')}
                                 </button>
-                                <button onClick={() => setShowRolloverWelcome(false)} style={{ width: '100%', padding: '0.85rem', background: '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '14px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}>
-                                    Just attending today (Visitor)
+                                <button
+                                    onClick={() => setShowRolloverWelcome(false)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        background: 'transparent',
+                                        color: '#94A3B8',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Remind me later
                                 </button>
                             </div>
                         </div>
@@ -1606,6 +1992,97 @@ const StudentPortal = () => {
                     memberName={data?.memberName}
                     onCheckInSuccess={handleCheckInSuccess}
                 />
+
+                {/* ══ DOULOS AI COMING SOON POPUP MODAL ══ */}
+                {showAiComingSoon && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(15, 23, 42, 0.65)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2000,
+                            padding: '1.25rem'
+                        }}
+                        onClick={() => setShowAiComingSoon(false)}
+                    >
+                        <div
+                            style={{
+                                background: '#FFFFFF',
+                                border: '1px solid #CBD5E1',
+                                borderRadius: '24px',
+                                padding: '2rem 1.75rem',
+                                maxWidth: '340px',
+                                width: '100%',
+                                textAlign: 'center',
+                                boxShadow: '0 25px 60px rgba(15, 23, 42, 0.25)',
+                                animation: 'popScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                            }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div
+                                style={{
+                                    width: '56px',
+                                    height: '56px',
+                                    borderRadius: '16px',
+                                    background: 'linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1.25rem',
+                                    color: '#FFFFFF',
+                                    boxShadow: '0 8px 20px rgba(29, 78, 216, 0.25)'
+                                }}
+                            >
+                                <Sparkles size={28} />
+                            </div>
+                            <span
+                                style={{
+                                    fontSize: '0.68rem',
+                                    fontWeight: 900,
+                                    color: '#1D4ED8',
+                                    letterSpacing: '1.5px',
+                                    textTransform: 'uppercase',
+                                    display: 'block',
+                                    marginBottom: '0.35rem'
+                                }}
+                            >
+                                DOULOS AI
+                            </span>
+                            <h3
+                                style={{
+                                    fontSize: '1.45rem',
+                                    fontWeight: 900,
+                                    color: '#0F172A',
+                                    margin: '0 0 1.5rem'
+                                }}
+                            >
+                                Coming Soon
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowAiComingSoon(false)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.85rem',
+                                    background: 'var(--color-primary, #1D4ED8)',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    borderRadius: '14px',
+                                    fontWeight: 800,
+                                    fontSize: '0.92rem',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 14px rgba(29, 78, 216, 0.25)'
+                                }}
+                            >
+                                Okay
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

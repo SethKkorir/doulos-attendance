@@ -11,13 +11,32 @@ export const getG2Stats = async (req, res) => {
         const endDateSetting = await Setting.findOne({ key: 'semester_end_date' });
         let semesterEndDate = endDateSetting?.value || '';
 
-        // 1. Total Active Douloids
+        // 1. Total Active Douloids (Physically active this semester)
         const totalActiveDouloids = await Member.countDocuments({
             status: 'Active',
+            isActiveThisSemester: true,
+            lastConfirmedSemester: currentSemester,
             $or: [
                 { memberType: 'Douloid' },
                 { douloidRank: { $in: ['Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid'] } }
             ]
+        });
+
+        // 1b. Unconfirmed Members Count (needs semester confirmation)
+        const unconfirmedMembersCount = await Member.countDocuments({
+            status: 'Active',
+            $or: [
+                { lastConfirmedSemester: { $ne: currentSemester } },
+                { lastConfirmedSemester: null },
+                { lastConfirmedSemester: { $exists: false } }
+            ]
+        });
+
+        // 1c. Total Active This Semester (across all cadres)
+        const totalActiveThisSemester = await Member.countDocuments({
+            status: 'Active',
+            isActiveThisSemester: true,
+            lastConfirmedSemester: currentSemester
         });
 
         // 2. Recruits awaiting graduation (read-only pull from G5 qualification threshold)
@@ -82,6 +101,8 @@ export const getG2Stats = async (req, res) => {
             success: true,
             stats: {
                 totalActiveDouloids,
+                unconfirmedMembersCount,
+                totalActiveThisSemester,
                 recruitsAwaitingGrad,
                 totalRecruits,
                 unplacedMembers,

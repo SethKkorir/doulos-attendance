@@ -188,7 +188,7 @@ const TrainingsTab = ({
                         }
                         .header { display: flex; flex-direction: column; align-items: center; gap: 10px; }
                         .logo-img { width: 95px; height: 95px; object-fit: contain; margin-bottom: 0.2rem; }
-                        .meeting-title { font-size: 2.5rem; font-weight: 900; line-height: 1.1; color: #FFFFFF; margin: 5px 0; max-width: 90%; text-align: center; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
+                        .meeting-title { font-size: 2.5rem; font-weight: 900; line-height: 1.1; color: #FFFFFF; margin: 5px 0; max-width: 90%; text-align: center; font-family: Georgia, 'Times New Roman', serif; letter-spacing: -0.5px; }
                         .meeting-meta { font-size: 1.25rem; color: #25AAE1; margin-top: 5px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: flex; align-items: center; gap: 10px; }
                         .meeting-meta-dot { color: rgba(15, 23, 42, 0.2); }
                         .qr-outer-container { position: relative; padding: 12px; background: white; border-radius: 36px; border: 4px solid #FFFFFF; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
@@ -211,7 +211,7 @@ const TrainingsTab = ({
                             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
                         }
                         .theme-title { font-size: 0.9rem; font-weight: 900; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
-                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #FFFFFF; font-style: italic; margin: 10px 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.3px; line-height: 1.25; }
+                        .theme-text { font-size: 1.8rem; font-weight: 800; color: #FFFFFF; font-style: italic; margin: 10px 0; font-family: Georgia, 'Times New Roman', serif; letter-spacing: -0.3px; line-height: 1.25; }
                         .theme-verse { font-size: 1.05rem; color: #475569; font-weight: 600; line-height: 1.5; margin-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.05); padding-top: 10px; }
                         .theme-verse strong { color: #FFFFFF; font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; }
                         .meta { text-align: right; font-size: 0.95rem; color: #64748b; font-weight: 700; line-height: 1.4; }

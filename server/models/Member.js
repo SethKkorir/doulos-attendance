@@ -32,6 +32,8 @@ const memberSchema = new mongoose.Schema({
     }],
     groupName: { type: String, default: null },
     isActive: { type: Boolean, default: true },
+    isActiveThisSemester: { type: Boolean, default: true },
+    lastConfirmedSemester: { type: String, default: null },
     isTestAccount: { type: Boolean, default: false },
     needsGraduationCongrats: { type: Boolean, default: false },
     linkedDeviceId: { type: String, default: null },
@@ -103,6 +105,7 @@ memberSchema.index(
         partialFilterExpression: { studentRegNo: { $type: "string", $gt: "" } } 
     }
 );
+memberSchema.index({ linkedDeviceId: 1 });
 
 const Member = mongoose.model('Member', memberSchema);
 Member.collection.dropIndex('studentRegNo_1').catch(() => {});

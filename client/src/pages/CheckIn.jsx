@@ -150,6 +150,7 @@ const CheckIn = () => {
     const [currentSemester, setCurrentSemester] = useState('');
     const [lastActiveSemester, setLastActiveSemester] = useState('');
     const [semesterTheme, setSemesterTheme] = useState('');
+    const [semesterVerse, setSemesterVerse] = useState('');
     const searchParams = new URLSearchParams(window.location.search);
     const urlToken = searchParams.get('t') || searchParams.get('token') || '';
     const [token, setToken] = useState(urlToken);
@@ -157,6 +158,12 @@ const CheckIn = () => {
     const [isStampingFallback, setIsStampingFallback] = useState(false);
     const [locationErrorType, setLocationErrorType] = useState(null); // 'denied' | 'weak_signal' | null
     const [preciseLocationWarning, setPreciseLocationWarning] = useState(false);
+    const [showSelfRegistration, setShowSelfRegistration] = useState(false);
+    const [selfRegForm, setSelfRegForm] = useState({
+        name: '',
+        campus: 'Athi River',
+        memberType: 'Douloid'
+    });
 
     useEffect(() => {
         let timer;
@@ -321,14 +328,28 @@ const CheckIn = () => {
         const cleanDigits = (regNo || '').replace(/\D/g, '');
         if (!regNo || cleanDigits.length < 6) {
             setMemberInfo(null);
+            setShowSelfRegistration(false);
             return;
         }
         setIsLookingUp(true);
         try {
             const res = await api.get(`/attendance/student/${encodeURIComponent(regNo)}`);
+            if (res.data && res.data.registrationRequired) {
+                setMemberInfo(null);
+                setShowSelfRegistration(true);
+                setSelfRegForm(prev => ({
+                    ...prev,
+                    name: '',
+                    campus: prev.campus || 'Athi River',
+                    memberType: prev.memberType || 'Douloid'
+                }));
+                return;
+            }
+
             if (res.data && res.data.stats && res.data.stats.percentage !== undefined) {
                 const name = res.data.memberName || 'Member';
                 setMemberInfo({ name, type: res.data.memberType });
+                setShowSelfRegistration(false);
 
                 // Store semester info for welcome check
                 setCurrentSemester(res.data.currentSemester || '');
@@ -349,11 +370,73 @@ const CheckIn = () => {
                 });
             } else {
                 setMemberInfo(null);
+                setShowSelfRegistration(false);
             }
         } catch (err) {
+            const isRegistrationCase = err.response?.data?.registrationRequired || (err.response?.status === 200 && err.response?.data?.registrationRequired);
+            if (isRegistrationCase) {
+                setMemberInfo(null);
+                setShowSelfRegistration(true);
+                setSelfRegForm(prev => ({
+                    ...prev,
+                    name: '',
+                    campus: prev.campus || 'Athi River',
+                    memberType: prev.memberType || 'Douloid'
+                }));
+                return;
+            }
             setMemberInfo(null);
+            setShowSelfRegistration(false);
         } finally {
             setIsLookingUp(false);
+        }
+    };
+
+    const handleSelfRegisterAndCheckIn = async () => {
+        const regNo = String(responses.studentRegNo || '').trim().toUpperCase();
+        const fullName = selfRegForm.name.trim();
+
+        if (!regNo) {
+            setMsg('Please enter an Admission Number first.');
+            setStatus('error');
+            return;
+        }
+
+        if (!fullName) {
+            setMsg('Full name is required to create a new attendance record.');
+            setStatus('error');
+            return;
+        }
+
+        setStatus('submitting');
+        setMsg('');
+
+        try {
+            await api.post('/members/self-register', {
+                studentRegNo: regNo,
+                name: fullName,
+                campus: selfRegForm.campus,
+                memberType: selfRegForm.memberType
+            });
+
+            setMemberInfo({ name: fullName, type: selfRegForm.memberType });
+            setShowSelfRegistration(false);
+            setResponses(prev => ({
+                ...prev,
+                studentRegNo: regNo,
+                studentName: fullName
+            }));
+
+            await submitAttendanceRecord({
+                studentRegNo: regNo,
+                name: fullName,
+                campus: selfRegForm.campus,
+                memberType: selfRegForm.memberType
+            });
+        } catch (err) {
+            console.error('Self registration failed:', err);
+            setStatus('error');
+            setMsg(err.response?.data?.message || 'Registration failed. Please try again.');
         }
     };
 
@@ -665,7 +748,7 @@ const CheckIn = () => {
         }
     };
 
-    const submitAttendanceRecord = async () => {
+    const submitAttendanceRecord = async (registrationOverride = null) => {
         let userLocation = { lat: null, long: null, accuracy: null };
 
         // Check if meeting requires location and fallback is not already active
@@ -751,6 +834,7 @@ const CheckIn = () => {
             }
 
             const deviceId = await getPersistentDeviceId();
+            const registrationData = registrationOverride || null;
             const res = await api.post('/attendance/submit', {
                 meetingCode: meetingCode.toLowerCase(),
                 deviceId,
@@ -758,6 +842,14 @@ const CheckIn = () => {
                 userLat: userLocation.lat,
                 userLong: userLocation.long,
                 accuracy: userLocation.accuracy,
+                ...(registrationData ? {
+                    isNewMember: true,
+                    registrationData: {
+                        name: registrationData.name,
+                        campus: registrationData.campus || meeting?.campus || 'Athi River',
+                        memberType: registrationData.memberType || 'Douloid',
+                    }
+                } : {}),
                 responses: {
                     ...responses,
                     studentRegNo: responses.studentRegNo // Ensure it's passed
@@ -1079,8 +1171,102 @@ const CheckIn = () => {
                             </div>
                         )}
 
+                        {showSelfRegistration && (
+                            <div style={{
+                                padding: '1rem',
+                                background: 'rgba(14, 165, 233, 0.10)',
+                                border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                                borderRadius: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.8rem',
+                                animation: 'fadeIn 0.3s ease'
+                            }}>
+                                <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#E0F2FE', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                    Quick Registration
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Full Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={selfRegForm.name}
+                                        onChange={e => setSelfRegForm(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="e.g. John Doe"
+                                        style={{ width: '100%', height: '44px', background: '#020617', border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '0 0.9rem', color: '#FFFFFF', fontWeight: 700, boxSizing: 'border-box' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Admission No
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={responses.studentRegNo || ''}
+                                            readOnly
+                                            style={{ width: '100%', height: '44px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '0 0.9rem', color: '#E2E8F0', fontWeight: 800, boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Campus
+                                        </label>
+                                        <select
+                                            value={selfRegForm.campus}
+                                            onChange={e => setSelfRegForm(prev => ({ ...prev, campus: e.target.value }))}
+                                            style={{ width: '100%', height: '44px', background: '#020617', border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '0 0.7rem', color: '#FFFFFF', fontWeight: 700, boxSizing: 'border-box' }}
+                                        >
+                                            <option value="Athi River">Athi River</option>
+                                            <option value="Valley Road">Valley Road</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Member Type
+                                    </label>
+                                    <select
+                                        value={selfRegForm.memberType}
+                                        onChange={e => setSelfRegForm(prev => ({ ...prev, memberType: e.target.value }))}
+                                        style={{ width: '100%', height: '44px', background: '#020617', border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '0 0.7rem', color: '#FFFFFF', fontWeight: 700, boxSizing: 'border-box' }}
+                                    >
+                                        <option value="Douloid">Douloid</option>
+                                        <option value="Recruit">Recruit</option>
+                                        <option value="Visitor">Visitor</option>
+                                    </select>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSelfRegisterAndCheckIn}
+                                    disabled={status === 'submitting'}
+                                    style={{ width: '100%', height: '46px', background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)', border: 'none', borderRadius: '12px', color: '#FFFFFF', fontWeight: 900, cursor: 'pointer' }}
+                                >
+                                    {status === 'submitting' ? 'Registering & Checking In...' : 'Register & Check In'}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowSelfRegistration(false);
+                                        setMemberInfo(null);
+                                        setResponses(prev => ({ ...prev, studentRegNo: '' }));
+                                        setMsg('');
+                                    }}
+                                    style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+
                         {/* Member Verified Badge Card */}
-                        {memberInfo && (
+                        {memberInfo && !showSelfRegistration && (
                             <div style={{
                                 padding: '0.85rem 1.1rem',
                                 background: 'rgba(16, 185, 129, 0.12)',

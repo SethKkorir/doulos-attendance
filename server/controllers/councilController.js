@@ -20,6 +20,9 @@ import { getKenyanTime, getKenyanDate } from '../utils/kenyanTime.js';
 
 export const getExecutiveRadar = async (req, res) => {
     try {
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semesterSetting ? semesterSetting.value.trim() : 'SEP-DEC 2026';
+
         const [
             athiMembersCount,
             vrMembersCount,
@@ -29,25 +32,34 @@ export const getExecutiveRadar = async (req, res) => {
             unverifiedMpesaCount,
             openIncidentsCount,
             pendingG1Requisitions,
-            recentSnapshots
+            recentSnapshots,
+            activePoolCount
         ] = await Promise.all([
-            Member.countDocuments({ campus: 'Athi River', isActive: true }),
-            Member.countDocuments({ campus: 'Valley Road', isActive: true }),
-            Member.countDocuments({ campus: 'Athi River', isActive: true, douloidRank: { $in: ['None', null] } }),
-            Member.countDocuments({ campus: 'Valley Road', isActive: true, douloidRank: { $in: ['None', null] } }),
+            Member.countDocuments({ campus: 'Athi River', status: 'Active', isActiveThisSemester: true, lastConfirmedSemester: currentSemester }),
+            Member.countDocuments({ campus: 'Valley Road', status: 'Active', isActiveThisSemester: true, lastConfirmedSemester: currentSemester }),
+            Member.countDocuments({ campus: 'Athi River', status: 'Active', isActiveThisSemester: true, lastConfirmedSemester: currentSemester, douloidRank: { $in: ['None', null] } }),
+            Member.countDocuments({ campus: 'Valley Road', status: 'Active', isActiveThisSemester: true, lastConfirmedSemester: currentSemester, douloidRank: { $in: ['None', null] } }),
             GearAsset.countDocuments({ status: { $in: ['Inspection Due', 'DECOMMISSION REQUIRED'] } }),
             Payment.countDocuments({ status: 'pending' }),
             IncidentLog.countDocuments({ status: 'Under Investigation' }),
             Requisition.find({ status: 'Pending G1 Approval' }).sort({ urgency: -1, createdAt: -1 }),
-            SemesterRolloverSnapshot.findOne({ isRollbackAvailable: true }).sort({ createdAt: -1 })
+            SemesterRolloverSnapshot.findOne({ isRollbackAvailable: true }).sort({ createdAt: -1 }),
+            Member.countDocuments({ status: 'Active', isActiveThisSemester: true, lastConfirmedSemester: currentSemester })
         ]);
 
         const recentMeetings = await Meeting.find().sort({ date: -1 }).limit(5);
+        const quorumThreshold = 5;
 
         res.json({
             campuses: {
                 athiRiver: { activeMembers: athiMembersCount, recruitsInPipeline: athiRecruitsCount },
                 valleyRoad: { activeMembers: vrMembersCount, recruitsInPipeline: vrRecruitsCount }
+            },
+            governanceQuorum: {
+                required: quorumThreshold,
+                activePoolCount,
+                quorumMet: activePoolCount >= quorumThreshold,
+                basis: 'Active semester pool'
             },
             gearLoad: { alertsCount: gearAlertsCount },
             treasury: { unverifiedMpesaCount },

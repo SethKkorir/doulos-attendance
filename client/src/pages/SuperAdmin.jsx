@@ -340,7 +340,7 @@ const SuperAdmin = () => {
             background: '#020617',
             color: 'white',
             padding: '2rem',
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "Georgia, 'Times New Roman', serif",
             position: 'relative',
             overflow: 'hidden'
         }}>

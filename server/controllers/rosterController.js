@@ -5,8 +5,11 @@ import Setting from '../models/Settings.js';
 // 1. Get Members Table (unified for Douloids, Recruits, Alumni, All)
 export const getRosterMembers = async (req, res) => {
     try {
-        const { status, campus, rank, search, memberType } = req.query;
+        const { status, campus, rank, search, memberType, isActiveThisSemester } = req.query;
         const query = {};
+
+        const semSetting = await Setting.findOne({ key: 'current_semester' });
+        const currentSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
 
         // Status filter
         if (status && status !== 'All' && status !== 'all') {
@@ -29,6 +32,23 @@ export const getRosterMembers = async (req, res) => {
         // Rank filter
         if (rank && rank !== 'All' && rank !== 'all') {
             query.douloidRank = rank;
+        }
+
+        // Active this semester filter (Section 4 & 5)
+        if (isActiveThisSemester === 'true') {
+            query.isActiveThisSemester = true;
+            query.lastConfirmedSemester = currentSemester;
+        } else if (isActiveThisSemester === 'false') {
+            query.$or = [
+                { isActiveThisSemester: false },
+                { lastConfirmedSemester: { $ne: currentSemester } }
+            ];
+        } else if (isActiveThisSemester === 'unconfirmed') {
+            query.$or = [
+                { lastConfirmedSemester: { $ne: currentSemester } },
+                { lastConfirmedSemester: null },
+                { lastConfirmedSemester: { $exists: false } }
+            ];
         }
 
         // Member Type tab filter (all / douloids / recruits / alumni)
@@ -63,10 +83,17 @@ export const getRosterMembers = async (req, res) => {
 
         const members = await Member.find(query).sort({ updatedAt: -1, createdAt: -1 });
 
+        const enrichedMembers = members.map(m => {
+            const doc = m.toObject();
+            doc.needsSemesterConfirmation = (doc.lastConfirmedSemester || '') !== currentSemester;
+            return doc;
+        });
+
         res.json({
             success: true,
-            count: members.length,
-            members
+            count: enrichedMembers.length,
+            currentSemester,
+            members: enrichedMembers
         });
     } catch (err) {
         console.error('Error fetching roster members:', err);
@@ -180,6 +207,11 @@ export const editMember = async (req, res) => {
 
         if (sanitizedUpdates.campus && sanitizedUpdates.campus === 'Nairobi') {
             sanitizedUpdates.campus = 'Valley Road';
+        }
+
+        if (sanitizedUpdates.isActiveThisSemester !== undefined && !sanitizedUpdates.lastConfirmedSemester) {
+            const semSetting = await Setting.findOne({ key: 'current_semester' });
+            sanitizedUpdates.lastConfirmedSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
         }
 
         const updated = await Member.findByIdAndUpdate(

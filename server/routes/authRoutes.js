@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, register, promoteToDeveloper, getUsers, updateUser, deleteUser } from '../controllers/authController.js';
+import { login, register, getSession, logout, promoteToDeveloper, getUsers, updateUser, deleteUser } from '../controllers/authController.js';
 import { triggerManualBackup } from '../controllers/systemController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.post('/register', verifyAdmin, register);
 router.post('/login', login);
+router.get('/session', getSession);
+router.post('/logout', logout);
 router.post('/promote', promoteToDeveloper);
 
 // Manual Backup compat routes

@@ -1,9 +1,10 @@
 import Payment from '../models/Payment.js';
 import Member from '../models/Member.js';
+import Settings from '../models/Settings.js';
 
 export const getContributionsStatus = async (req, res) => {
     try {
-        const { month, year } = req.query;
+        const { month, year, includeInactive, isActiveThisSemester } = req.query;
         const currentMonth = month || new Date().toLocaleString('en-US', { month: 'long' });
         const currentYear = Number(year) || new Date().getFullYear();
 
@@ -28,8 +29,19 @@ export const getContributionsStatus = async (req, res) => {
             }
         });
 
-        // 2. Fetch active members to determine who hasn't paid (chase list)
-        const activeMembers = await Member.find({ status: 'Active' });
+        // 2. Fetch members to determine who hasn't paid (chase list)
+        // Leadership decides whether inactive members owe dues — accepts includeInactive/isActiveThisSemester
+        const memberQuery = { status: 'Active' };
+        if (isActiveThisSemester !== undefined) {
+            memberQuery.isActiveThisSemester = isActiveThisSemester === 'true';
+        } else if (includeInactive !== 'true') {
+            const semSetting = await Settings.findOne({ key: 'current_semester' });
+            const currentSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
+            memberQuery.isActiveThisSemester = true;
+            memberQuery.lastConfirmedSemester = currentSemester;
+        }
+
+        const activeMembers = await Member.find(memberQuery);
         const chaseList = [];
 
         activeMembers.forEach(m => {

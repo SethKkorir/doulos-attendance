@@ -140,7 +140,7 @@ const GGenericDashboard = ({ roleId }) => {
 
 
     return (
-        <div style={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden', fontFamily: "'Outfit', sans-serif" }}>
+        <div style={{ minHeight: '100vh', position: 'relative', overflowX: 'hidden', fontFamily: "Georgia, 'Times New Roman', serif" }}>
             <BackgroundGallery show={true} />
             <ValentineRain />
 

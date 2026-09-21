@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -50,11 +51,16 @@ app.set('trust proxy', true);
 const PORT = process.env.PORT || 5000;
 
 // Essential Middleware
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 // MongoDB Connection Strategy for Serverless
 let cachedConnection = null;
+let connectionPromise = null;
 
 // Register Models Early to prevent MissingSchemaError during health checks
 import './models/User.js';
@@ -86,7 +92,17 @@ const connectDB = async () => {
         return cachedConnection;
     }
 
-    if (cachedConnection && mongoose.connection.readyState !== 1) {
+    if (mongoose.connection.readyState === 1) {
+        cachedConnection = mongoose.connection;
+        return cachedConnection;
+    }
+
+    // Reuse in-flight connection promise to prevent simultaneous connection storms
+    if (connectionPromise) {
+        return connectionPromise;
+    }
+
+    if (cachedConnection && mongoose.connection.readyState !== 1 && mongoose.connection.readyState !== 2) {
         console.log('🔄 Stale MongoDB connection detected. Clearing cache and reconnecting...');
         cachedConnection = null;
     }
@@ -97,80 +113,88 @@ const connectDB = async () => {
     console.log('URI Presence:', !!process.env.MONGO_URI);
     console.log('Connecting to MongoDB URI type:', primaryUri.startsWith('mongodb+srv://') ? 'srv' : 'standard');
 
-    try {
-        const conn = await mongoose.connect(primaryUri, {
-            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s or more
-            socketTimeoutMS: 120000, // Keep-alive for serverless
-        });
-        cachedConnection = conn;
-        console.log('✅ MongoDB Connected');
+    connectionPromise = (async () => {
+        try {
+            const conn = await mongoose.connect(primaryUri, {
+                serverSelectionTimeoutMS: 30000,
+                connectTimeoutMS: 30000,
+                socketTimeoutMS: 120000,
+            });
+            cachedConnection = conn;
+            console.log('✅ MongoDB Connected');
 
-        // Auto-seed admin (deferred)
-        (async () => {
-            const User = mongoose.model('User');
-            
-            const adminExists = await User.findOne({ role: 'admin' });
-            if (!adminExists) {
-                console.log('Seeding initial admin user...');
-                await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
-            }
+            // Auto-seed admin (deferred)
+            (async () => {
+                const User = mongoose.model('User');
+                
+                const adminExists = await User.findOne({ role: 'admin' });
+                if (!adminExists) {
+                    console.log('Seeding initial admin user...');
+                    await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
+                }
 
-            const superAdminExists = await User.findOne({ username: 'superadmin' });
-            if (!superAdminExists) {
-                await new User({ username: 'superadmin', password: process.env.SUPERADMIN_PASSWORD || 'superadmin123', role: 'superadmin' }).save();
-                console.log('✅ Premium Super Admin account initialized: superadmin');
-            }
+                const superAdminExists = await User.findOne({ username: 'superadmin' });
+                if (!superAdminExists) {
+                    await new User({ username: 'superadmin', password: process.env.SUPERADMIN_PASSWORD || 'superadmin123', role: 'superadmin' }).save();
+                    console.log('✅ Premium Super Admin account initialized: superadmin');
+                }
 
-            const superSuperAdminExists = await User.findOne({ username: 'supersuperadmin' });
-            if (!superSuperAdminExists) {
-                await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
-                console.log('✅ Premium Super Admin account initialized: supersuperadmin');
-            }
+                const superSuperAdminExists = await User.findOne({ username: 'supersuperadmin' });
+                if (!superSuperAdminExists) {
+                    await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
+                    console.log('✅ Premium Super Admin account initialized: supersuperadmin');
+                }
 
-            // G5 Training Directorate & G2 Operations Accounts
-            const activeRolesToSeed = [
-                { username: 'G5', password: '123', role: 'trainer', campus: 'Both' },
-                { username: 'G2', password: '123', role: 'g2_vice', campus: 'Both' }
-            ];
+                // G5 Training Directorate & G2 Operations Accounts
+                const activeRolesToSeed = [
+                    { username: 'G5', password: '123', role: 'trainer', campus: 'Both' },
+                    { username: 'G2', password: '123', role: 'g2_vice', campus: 'Both' }
+                ];
 
-            for (const a of activeRolesToSeed) {
-                const existing = await User.findOne({ username: { $regex: new RegExp(`^${a.username}$`, 'i') } });
-                if (!existing) {
-                    await new User({
-                        username: a.username,
-                        password: a.password,
-                        role: a.role,
-                        campus: a.campus
-                    }).save();
-                    console.log(`✅ Account seeded: ${a.username} (${a.role})`);
+                for (const a of activeRolesToSeed) {
+                    const existing = await User.findOne({ username: { $regex: new RegExp(`^${a.username}$`, 'i') } });
+                    if (!existing) {
+                        await new User({
+                            username: a.username,
+                            password: a.password,
+                            role: a.role,
+                            campus: a.campus
+                        }).save();
+                        console.log(`✅ Account seeded: ${a.username} (${a.role})`);
+                    }
+                }
+
+                // Seed reference data (Ranks, Domains, Venues, LOP Docs)
+                await seedReferenceData();
+            })().catch(err => console.error('Seeding Error:', err.message));
+
+            return conn;
+        } catch (err) {
+            console.error('❌ MongoDB Error:', err.message);
+
+            if (fallbackUri && primaryUri.startsWith('mongodb+srv://')) {
+                console.log('Trying fallback MongoDB URI due to SRV lookup failure...');
+                try {
+                    const conn = await mongoose.connect(fallbackUri, {
+                        serverSelectionTimeoutMS: 30000,
+                        connectTimeoutMS: 30000,
+                        socketTimeoutMS: 120000,
+                    });
+                    cachedConnection = conn;
+                    console.log('✅ MongoDB Connected with fallback URI');
+                    return conn;
+                } catch (fallbackErr) {
+                    console.error('❌ MongoDB Fallback Error:', fallbackErr.message);
                 }
             }
 
-            // Seed reference data (Ranks, Domains, Venues, LOP Docs)
-            await seedReferenceData();
-        })().catch(err => console.error('Seeding Error:', err.message));
-
-        return conn;
-    } catch (err) {
-        console.error('❌ MongoDB Error:', err.message);
-
-        if (fallbackUri && primaryUri.startsWith('mongodb+srv://')) {
-            console.log('Trying fallback MongoDB URI due to SRV lookup failure...');
-            try {
-                const conn = await mongoose.connect(fallbackUri, {
-                    serverSelectionTimeoutMS: 5000,
-                    socketTimeoutMS: 120000,
-                });
-                cachedConnection = conn;
-                console.log('✅ MongoDB Connected with fallback URI');
-                return conn;
-            } catch (fallbackErr) {
-                console.error('❌ MongoDB Fallback Error:', fallbackErr.message);
-            }
+            throw err;
+        } finally {
+            connectionPromise = null;
         }
+    })();
 
-        throw err;
-    }
+    return connectionPromise;
 };
 
 // 1. Connection Initializer (MUST BE FIRST)

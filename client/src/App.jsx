@@ -20,6 +20,19 @@ const queryClient = new QueryClient({
   }
 });
 
+const clearPersistedAuth = () => {
+  const authKeys = ['token', 'role', 'username', 'campus', 'isGuest', 'studentSession', 'initialTab'];
+  authKeys.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch (err) {
+      console.warn('Failed to clear auth storage key:', key, err);
+    }
+  });
+};
+
+clearPersistedAuth();
+
 function App() {
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');

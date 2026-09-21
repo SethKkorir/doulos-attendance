@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
 
 export const verifyToken = (req, res, next) => {
-    const token = req.header('Authorization')?.split(' ')[1];
+    let token = req.header('Authorization')?.split(' ')[1];
+    if (!token && req.cookies) {
+        token = req.cookies.doulos_session_token || req.cookies.token;
+    }
     if (!token) return res.status(401).json({ message: 'Access Denied' });
 
     try {
@@ -31,7 +34,10 @@ export const verifyAdmin = (req, res, next) => {
 };
 
 export const optionalVerify = (req, res, next) => {
-    const token = req.header('Authorization')?.split(' ')[1];
+    let token = req.header('Authorization')?.split(' ')[1];
+    if (!token && req.cookies) {
+        token = req.cookies.doulos_session_token || req.cookies.token;
+    }
     if (!token) return next();
 
     try {

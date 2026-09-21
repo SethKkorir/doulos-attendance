@@ -3,6 +3,7 @@ import Training from '../models/Training.js';
 import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import Venue from '../models/Venue.js';
+import Settings from '../models/Settings.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getKenyanTime, getWeekRange } from '../utils/kenyanTime.js';
@@ -72,14 +73,25 @@ export const createMeeting = async (req, res) => {
             }
         }
 
+        // Retrieve active semester setting to prevent stale defaults
+        const currentSemesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const activeSemester = currentSemesterSetting ? currentSemesterSetting.value : 'SEP-DEC 2026';
+        const meetingSemester = (semester && semester.trim() && semester !== 'undefined' && semester !== 'MAY-AUG 2026') 
+            ? semester.trim() 
+            : activeSemester;
+
+        const ordinalLabels = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
+        const meetingSequence = await Meeting.countDocuments({ campus: selectedCampus, semester: meetingSemester, isArchived: { $ne: true } });
+        const resolvedName = `Meeting ${ordinalLabels[Math.max(0, Math.min(meetingSequence, ordinalLabels.length - 1))]}`;
+
         const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // Simple code
         const meeting = new Meeting({
-            name,
+            name: resolvedName,
             date,
             campus: selectedCampus,
             startTime,
             endTime,
-            semester,
+            semester: meetingSemester,
             code,
             requiredFields,
             location: {

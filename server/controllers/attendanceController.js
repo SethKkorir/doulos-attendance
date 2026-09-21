@@ -8,6 +8,7 @@ import CheckInToken from '../models/CheckInToken.js';
 import mongoose from 'mongoose';
 import { getKenyanTime, getKenyanDate, getWeekRange } from '../utils/kenyanTime.js';
 import { resolveMeetingOrTraining } from '../utils/sessionResolver.js';
+import { getCached, setCached, CACHE_TTL } from '../utils/checkInCache.js';
 
 const logScanError = async (studentRegNo, errorType, desc, campus) => {
     try {
@@ -56,23 +57,14 @@ export const submitAttendance = async (req, res) => {
         // 2. User & Role check
         const isSuperUser = req.user && ['developer', 'superadmin'].includes(req.user.role);
 
-        // 2.5. Stage 0: Token Issuance & Single-Use Burning Check
+        // 2.5. Stage 0: Token Validation only. Do not burn a token on a failed attempt.
         let tokenDoc = null;
         if (token) {
-            tokenDoc = await CheckInToken.findOneAndUpdate(
-                {
-                    token,
-                    isUsed: false,
-                    expiresAt: { $gt: new Date() }
-                },
-                {
-                    $set: {
-                        isUsed: true,
-                        usedAt: new Date()
-                    }
-                },
-                { new: true }
-            );
+            tokenDoc = await CheckInToken.findOne({
+                token,
+                isUsed: false,
+                expiresAt: { $gt: new Date() }
+            });
 
             if (!tokenDoc && !isSuperUser && !meeting.isTestMeeting) {
                 const existing = await CheckInToken.findOne({ token });
@@ -181,16 +173,17 @@ export const submitAttendance = async (req, res) => {
             return res.status(403).json({ message: 'ACCESS DENIED: Your account is suspended/blocked. Please contact the administrator.' });
         }
 
-        // 7. Stage 3: Geofencing Check (Accuracy-Aware + Fallback Stamped Path)
+        // 7. Stage 3: Geofencing / Device checks are only needed for non-QR flows or suspicious cases.
+        // For a valid QR token, skip the expensive secondary validation set to keep check-in fast.
+        const fastQrPath = !!tokenDoc && !isSuperUser && !meeting.isTestMeeting;
         const isFallbackPath = tokenDoc?.fallbackUsed && tokenDoc?.stampedDeviceId;
+
         if (isFallbackPath) {
-            // Validate that the submitting device matches the stamped device
             if (tokenDoc.stampedDeviceId !== deviceId && !isSuperUser && !meeting.isTestMeeting) {
                 await logScanError(studentRegNo, 'Device Signature Mismatch', `Fallback token device mismatch: stamped=${tokenDoc.stampedDeviceId}, current=${deviceId}`, meeting.campus);
                 return res.status(403).json({ message: 'Device signature mismatch: This fallback check-in can only be redeemed on the device that requested it.' });
             }
-            // Location check is bypassed because fallback path was verified & device-stamped!
-        } else if (meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTrainingSession) {
+        } else if (!fastQrPath && meeting.location?.latitude && meeting.location?.longitude && !isSuperUser && !member?.isTestAccount && !isTrainingSession) {
             if (!userLat || !userLong) {
                 await logScanError(req.body.studentRegNo || 'UNKNOWN', 'GPS Required', `Location disabled for geofenced meeting: ${meeting.name}`, meeting.campus);
                 return res.status(400).json({ message: 'GPS data is required for this meeting. Please enable location.' });
@@ -206,7 +199,7 @@ export const submitAttendance = async (req, res) => {
                 return res.status(400).json({ message: 'Invalid GPS coordinates sent. Please enable location and try again.' });
             }
 
-            const R = 6371e3; // meters
+            const R = 6371e3;
             const φ1 = (mLat * Math.PI) / 180;
             const φ2 = (uLat * Math.PI) / 180;
             const Δφ = ((uLat - mLat) * Math.PI) / 180;
@@ -219,11 +212,9 @@ export const submitAttendance = async (req, res) => {
             const distance = R * c;
 
             const baseRadius = meeting.location.radius || 200;
-            // Accuracy-aware standard: confident reading held tighter than uncertain one
-            // We evaluate effectiveDistance = max(0, distance - reportedAccuracy)
             const effectiveDistance = Math.max(0, distance - reportedAccuracy);
 
-            if (effectiveDistance > (baseRadius + 100)) { // 100m grace buffer
+            if (effectiveDistance > (baseRadius + 100)) {
                 await logScanError(req.body.studentRegNo || 'UNKNOWN', 'Geofence Violation', `Outside range for ${meeting.location.name} (dist=${Math.round(distance)}m, acc=${Math.round(reportedAccuracy)}m, eff=${Math.round(effectiveDistance)}m). Required: <${baseRadius + 100}m`, meeting.campus);
                 return res.status(403).json({
                     message: `Location Mismatch: You are too far from ${meeting.location.name}. Please ensure you are at the correct venue.`
@@ -235,8 +226,10 @@ export const submitAttendance = async (req, res) => {
         let isBypassed = false;
         let shouldLinkDevice = false;
         if (member) {
-            const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
-            isBypassed = bypassSetting?.value === 'true';
+            if (!fastQrPath) {
+                const bypassSetting = await Settings.findOne({ key: 'bypass_device_lock' });
+                isBypassed = bypassSetting?.value === 'true';
+            }
 
             if (!isBypassed && member.memberType !== 'Visitor') {
                 if (!deviceId && !isSuperUser && !meeting.isTestMeeting && !member.isTestAccount) {
@@ -251,13 +244,18 @@ export const submitAttendance = async (req, res) => {
             }
         }
 
-
         // 8.5. Anti-Proxy Check (One check-in per device per session)
-        if (!isBypassed && deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount && member?.memberType !== 'Visitor') {
+        if (!fastQrPath && !isBypassed && deviceId && !isSuperUser && !meeting.isTestMeeting && !member?.isTestAccount && member?.memberType !== 'Visitor') {
             const deviceQuery = isTrainingModel
                 ? { trainingId: meeting._id, deviceId, trainingDay: meeting.activeDay || 1 }
                 : { meeting: meeting._id, deviceId };
-            const deviceUsed = await Attendance.findOne(deviceQuery);
+
+            const deviceCacheKey = `attendance:device:${meeting._id}:${deviceId}`;
+            let deviceUsed = getCached(deviceCacheKey);
+            if (deviceUsed === null) {
+                deviceUsed = await Attendance.findOne(deviceQuery);
+                setCached(deviceCacheKey, deviceUsed || false, CACHE_TTL.deviceCheck);
+            }
             if (deviceUsed) {
                 await logScanError(studentRegNo, 'Anti-Proxy Block', `Device already used to scan another attendee in this session (${meeting.name})`, meeting.campus);
                 return res.status(403).json({ message: 'This device has already been used for a check-in for this session.' });
@@ -268,20 +266,26 @@ export const submitAttendance = async (req, res) => {
         const dupQuery = isTrainingModel
             ? { trainingId: meeting._id, studentRegNo, trainingDay: meeting.activeDay || 1 }
             : { meeting: meeting._id, studentRegNo };
-        const existing = await Attendance.findOne(dupQuery);
+
+        const duplicateCacheKey = `attendance:dupe:${meeting._id}:${studentRegNo}`;
+        let existing = getCached(duplicateCacheKey);
+        if (existing === null) {
+            existing = await Attendance.findOne(dupQuery);
+            setCached(duplicateCacheKey, existing || false, CACHE_TTL.duplicateCheck);
+        }
+
         if (existing && !member?.isTestAccount) {
             await logScanError(studentRegNo, 'Duplicate Check-In', `Attempted duplicate scan for session: ${meeting.name}`, meeting.campus);
             return res.status(409).json({ message: 'You have already signed in for this session.' });
         }
 
-        // 9.5. Weekly Check-In Restriction — A member can only attend ONE meeting per week (Trainings exempt)
-        if (!isSuperUser && !meeting.isTestMeeting && !isTrainingSession && !member?.isTestAccount) {
+        // 9.5. Weekly Check-In Restriction — keep this only for non-QR/manual edge cases to preserve fast QR flow.
+        if (!fastQrPath && !isSuperUser && !meeting.isTestMeeting && !isTrainingSession && !member?.isTestAccount) {
             const { startOfWeek, endOfWeek } = getWeekRange(meeting.date);
 
-            // Find all meetings this week globally across all campuses
             const meetingsThisWeek = await Meeting.find({
                 date: { $gte: startOfWeek, $lte: endOfWeek },
-                _id: { $ne: meeting._id } // Exclude current meeting
+                _id: { $ne: meeting._id }
             }).select('_id name campus');
 
             const otherMeetingIds = meetingsThisWeek.map(m => m._id);
@@ -328,6 +332,29 @@ export const submitAttendance = async (req, res) => {
 
         // 11. Record Attendance (Skip if Test Account)
         if (!member.isTestAccount) {
+            if (token && !isSuperUser && !meeting.isTestMeeting) {
+                const consumedToken = await CheckInToken.findOneAndUpdate(
+                    {
+                        token,
+                        isUsed: false,
+                        expiresAt: { $gt: new Date() }
+                    },
+                    {
+                        $set: {
+                            isUsed: true,
+                            usedAt: new Date()
+                        }
+                    },
+                    { new: true }
+                );
+
+                if (!consumedToken) {
+                    await logScanError(studentRegNo, 'Token Reused', `Concurrent token use detected at final submission: ${token}`, meeting.campus);
+                    return res.status(403).json({ message: 'This check-in link/token has already been used. Please scan the QR code again.' });
+                }
+                tokenDoc = consumedToken;
+            }
+
             if (shouldLinkDevice && deviceId) {
                 await Member.findOneAndUpdate({ studentRegNo }, { $set: { linkedDeviceId: deviceId } });
             }
@@ -345,6 +372,11 @@ export const submitAttendance = async (req, res) => {
                 trainingDay: isTrainingModel ? (meeting.activeDay || 1) : undefined
             });
             await attendance.save();
+
+            setCached(`attendance:dupe:${meeting._id}:${studentRegNo}`, attendance, CACHE_TTL.duplicateCheck);
+            if (deviceId) {
+                setCached(`attendance:device:${meeting._id}:${deviceId}`, attendance, CACHE_TTL.deviceCheck);
+            }
 
             // Clear database scan errors for this student since check-in was successful
             if (mongoose.connection.readyState === 1) {
@@ -424,33 +456,24 @@ export const getStudentPortalData = async (req, res) => {
             });
         }
 
-        // 2. Fetch the active semester setting
+        // 2. Fetch the active semester setting & available semesters
         const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
-        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'MAY-AUG 2026';
+        const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'SEP-DEC 2026';
 
-        // 3. Find IDs of all meetings and trainings within the target semester
-        let targetSemester = req.query.semester || currentSemester;
-        let semMeetings = await Meeting.find({ 
-            $or: [
-                { semester: targetSemester },
-                { semester: new RegExp(`^${targetSemester}$`, 'i') },
-                { semester: { $exists: false } },
-                { semester: null },
-                { semester: '' }
-            ]
-        }, '_id');
-        let semMeetingIds = semMeetings.map(m => m._id);
-        let semTrainings = await Training.find({ 
-            $or: [
-                { semester: targetSemester },
-                { semester: new RegExp(`^${targetSemester}$`, 'i') },
-                { semester: { $exists: false } },
-                { semester: null },
-                { semester: '' }
-            ],
-            campus: { $in: [member.campus, 'Both'] } 
-        });
-        let semTrainingIds = semTrainings.map(t => t._id);
+        // Find all distinct semesters present in the database for selection
+        const distinctMeetingSemesters = await Meeting.distinct('semester');
+        const distinctTrainingSemesters = await Training.distinct('semester');
+        const availableSemesters = Array.from(new Set([
+            currentSemester,
+            ...distinctMeetingSemesters,
+            ...distinctTrainingSemesters,
+            'MAY-AUG 2026'
+        ])).filter(s => s && typeof s === 'string' && s.trim());
+
+        // 3. Target semester resolution
+        let targetSemester = (req.query.semester || currentSemester).trim();
+        const isAllSemesters = targetSemester.toLowerCase() === 'all';
+        const semRegex = isAllSemesters ? null : new RegExp(`^${targetSemester.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
         // 4. Query student's attendance records matching sessions
         const attendanceRecords = await Attendance.find({
@@ -458,15 +481,25 @@ export const getStudentPortalData = async (req, res) => {
         }).sort({ timestamp: -1 });
 
         // 5. Get all meetings of the student's default campus for the selected semester
+        const memberCampusRegex = new RegExp(`^${(member.campus || 'Athi River').trim()}$`, 'i');
+        const campusFilter = { $in: [memberCampusRegex, 'Both', 'All'] };
+        const meetingSemesterQuery = isAllSemesters ? {} : { semester: semRegex };
+
+        let semMeetings = await Meeting.find({ 
+            ...meetingSemesterQuery
+        }, '_id');
+        let semMeetingIds = semMeetings.map(m => m._id);
+
+        let semTrainings = await Training.find({ 
+            campus: { $in: [member.campus, 'Both', 'All'] },
+            ...(isAllSemesters ? {} : { semester: semRegex })
+        });
+        let semTrainingIds = semTrainings.map(t => t._id);
+
         const campusMeetings = await Meeting.find({ 
-            campus: member.campus, 
-            $or: [
-                { semester: targetSemester },
-                { semester: new RegExp(`^${targetSemester}$`, 'i') },
-                { semester: { $exists: false } },
-                { semester: null },
-                { semester: '' }
-            ]
+            campus: campusFilter,
+            category: { $ne: 'Training' },
+            ...meetingSemesterQuery
         }).sort({ date: -1 });
 
         // 6. Helper to get start of week (Sunday)
@@ -545,12 +578,33 @@ export const getStudentPortalData = async (req, res) => {
             });
         });
 
+        // Helper to match target semester
+        const matchesTargetSemester = (itemSemester, recordTimestamp) => {
+            if (isAllSemesters) return true;
+            if (itemSemester) {
+                return itemSemester.trim().toLowerCase() === targetSemester.toLowerCase();
+            }
+            if (recordTimestamp) {
+                const d = new Date(recordTimestamp);
+                const month = d.getUTCMonth();
+                if (month >= 8 && targetSemester.includes('SEP-DEC')) return true;
+                if (month >= 4 && month <= 7 && targetSemester.includes('MAY-AUG')) return true;
+                if (month >= 0 && month <= 3 && targetSemester.includes('JAN-APR')) return true;
+            }
+            return false;
+        };
+
         // Overlay with actual attendance
         const attendedMeetingIds = attendanceRecords.filter(a => a.meeting).map(a => a.meeting);
         const attendedMeetings = await Meeting.find({ _id: { $in: attendedMeetingIds } });
+        const attendedTrainingIds = attendanceRecords.filter(a => a.trainingId).map(a => a.trainingId);
+        const attendedTrainings = await Training.find({ _id: { $in: attendedTrainingIds } });
 
         attendanceRecords.forEach(record => {
             if (record.trainingId) {
+                const training = attendedTrainings.find(t => t._id.toString() === record.trainingId.toString());
+                if (!matchesTargetSemester(training?.semester || record.semester, record.timestamp)) return;
+
                 const dayNum = record.trainingDay || 1;
                 const mapKey = record.trainingId.toString() + '_' + dayNum;
                 const existingEntry = trainingMap.get(mapKey);
@@ -567,6 +621,8 @@ export const getStudentPortalData = async (req, res) => {
             const isTrainingMeeting = meeting.category === 'Training';
 
             if (isTrainingMeeting) {
+                if (!matchesTargetSemester(meeting.semester || record.semester, record.timestamp)) return;
+
                 const mapKey = meeting._id.toString() + '_1';
                 const existingEntry = trainingMap.get(mapKey);
                 if (existingEntry) {
@@ -586,11 +642,13 @@ export const getStudentPortalData = async (req, res) => {
                 return;
             }
 
-            const weekKey = getWeekStart(meeting.date);
+            if (!matchesTargetSemester(meeting.semester || record.semester, record.timestamp)) return;
+
+            const weekKey = getWeekStart(meeting.date || record.timestamp);
             weeklyData.set(weekKey, {
                 _id: meeting._id,
                 name: meeting.name,
-                date: meeting.date,
+                date: meeting.date || record.timestamp,
                 campus: meeting.campus,
                 devotion: meeting.devotion,
                 iceBreaker: meeting.iceBreaker,
@@ -607,29 +665,39 @@ export const getStudentPortalData = async (req, res) => {
         const trainingHistory = Array.from(trainingMap.values());
         const history = [...meetingHistory, ...trainingHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // Stats calculation (separate meetings from trainings)
-        const meetingRecords = attendanceRecords.filter(a => {
+        // Stats calculation (strictly scoped to the target semester)
+        const relevantMeetingRecords = attendanceRecords.filter(a => {
             if (a.meeting) {
                 const meeting = attendedMeetings.find(m => m._id.toString() === a.meeting.toString());
-                return meeting && meeting.category !== 'Training';
+                if (!meeting || meeting.category === 'Training') return false;
+                return matchesTargetSemester(meeting.semester || a.semester, a.timestamp);
             }
             return false;
         });
 
-        const trainingRecords = attendanceRecords.filter(a => {
-            if (a.trainingId) return true;
+        const relevantTrainingRecords = attendanceRecords.filter(a => {
+            if (a.trainingId) {
+                const training = attendedTrainings.find(t => t._id.toString() === a.trainingId.toString());
+                return matchesTargetSemester(training?.semester || a.semester, a.timestamp);
+            }
             if (a.meeting) {
                 const meeting = attendedMeetings.find(m => m._id.toString() === a.meeting.toString());
-                return meeting && meeting.category === 'Training';
+                if (meeting && meeting.category === 'Training') {
+                    return matchesTargetSemester(meeting.semester || a.semester, a.timestamp);
+                }
             }
             return false;
         });
 
-        const totalMeetings = campusMeetings.length;
-        const physicalAttended = meetingRecords.filter(a => !a.isExempted).length;
-        const exemptedCount = meetingRecords.filter(a => a.isExempted).length;
-        const totalTrainingAttended = trainingRecords.length;
+        const physicalAttended = relevantMeetingRecords.filter(a => !a.isExempted).length;
+        const exemptedCount = relevantMeetingRecords.filter(a => a.isExempted).length;
+        const totalTrainingAttended = relevantTrainingRecords.length;
         const totalValid = physicalAttended + exemptedCount;
+
+        // Total fellowship meetings held for this semester:
+        // Number of campus meetings held so far, or at least the number of meetings attended by the student
+        const totalMeetings = Math.max(campusMeetings.length, totalValid);
+        const percentage = totalMeetings > 0 ? Math.min(100, Math.round((totalValid / totalMeetings) * 100)) : 0;
 
         // 8. Doulos Hours & Activity Check (filtered by current semester)
         const activityLogs = await ActivityLog.find({ studentRegNo, semester: currentSemester }).sort({ timestamp: -1 }).limit(10);
@@ -702,6 +770,19 @@ export const getStudentPortalData = async (req, res) => {
         const wateringActiveSetting = await mongoose.model('Settings').findOne({ key: 'watering_selector_active' });
         const wateringSelectorActive = wateringActiveSetting ? wateringActiveSetting.value === 'true' : false;
 
+        // Set persistent HTTP session cookie for student portal
+        const studentCookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        };
+        res.cookie('doulos_student_session', JSON.stringify({
+            studentRegNo,
+            memberName: member.name || 'Visitor',
+            memberType: member.memberType || 'Douloid'
+        }), studentCookieOptions);
+
         res.json({
             studentRegNo,
             memberName: member.name || 'Visitor',
@@ -718,7 +799,12 @@ export const getStudentPortalData = async (req, res) => {
             wateringSelectorActive,
             totalPoints: member.totalPoints || 0,
             lastActiveSemester: member.lastActiveSemester,
+            isActiveThisSemester: member.isActiveThisSemester !== undefined ? member.isActiveThisSemester : true,
+            lastConfirmedSemester: member.lastConfirmedSemester || null,
+            needsSemesterConfirmation: (member.lastConfirmedSemester || '') !== currentSemester,
             currentSemester,
+            availableSemesters,
+            selectedSemester: targetSemester,
             semesterTheme,
             semesterVerse,
             needsGraduationCongrats: member.needsGraduationCongrats || false,
@@ -729,7 +815,7 @@ export const getStudentPortalData = async (req, res) => {
                 trainingAttended: totalTrainingAttended,
                 totalTrainings: semTrainings.length * 3,
                 totalAttended: totalValid,
-                percentage: totalMeetings > 0 ? Math.round((totalValid / totalMeetings) * 100) : 0
+                percentage
             },
             isMember: !!member,
             history,
@@ -1120,7 +1206,7 @@ export const getLiveAttendance = async (req, res) => {
 export const getAttendanceRollup = async (req, res) => {
     try {
         const { semester, campus } = req.query;
-        const semSetting = await Setting.findOne({ key: 'current_semester' });
+        const semSetting = await Settings.findOne({ key: 'current_semester' });
         let targetSemester = semester || semSetting?.value || 'MAY-AUG 2026';
 
         const meetingQuery = {};
@@ -1147,6 +1233,10 @@ export const getAttendanceRollup = async (req, res) => {
 
         const memberQuery = { status: 'Active' };
         if (campus && campus !== 'All') memberQuery.campus = campus;
+        if (req.query.includeInactive !== 'true') {
+            memberQuery.isActiveThisSemester = true;
+            memberQuery.lastConfirmedSemester = targetSemester;
+        }
         const totalActiveMembers = await Member.countDocuments(memberQuery);
 
         const totalMeetings = meetings.length;
@@ -1159,12 +1249,13 @@ export const getAttendanceRollup = async (req, res) => {
             const count = records.filter(r => r.meeting?.toString() === m._id.toString()).length;
             const rate = totalActiveMembers > 0 ? Math.round((count / totalActiveMembers) * 100) : 0;
             return {
-                id: m._id,
-                name: m.name,
+                meetingId: m._id,
+                title: m.title || m.name,
+                category: m.category,
                 date: m.date,
                 campus: m.campus,
-                attendeesCount: count,
-                rate
+                attendedCount: count,
+                attendanceRate: rate
             };
         });
 
@@ -1172,13 +1263,15 @@ export const getAttendanceRollup = async (req, res) => {
             success: true,
             semester: targetSemester,
             campus: campus || 'All',
+            includeInactive: req.query.includeInactive === 'true',
             summary: {
                 totalMeetings,
                 totalActiveMembers,
                 totalAttended,
+                totalPossible,
                 overallRate
             },
-            meetings: meetingBreakdown
+            meetingBreakdown
         });
     } catch (error) {
         console.error('Error in getAttendanceRollup:', error);
@@ -1198,6 +1291,13 @@ export const getAbsenteeRadar = async (req, res) => {
         };
 
         if (campus && campus !== 'All') query.campus = campus;
+
+        if (req.query.includeInactive !== 'true') {
+            const semSetting = await Settings.findOne({ key: 'current_semester' });
+            const currentSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
+            query.isActiveThisSemester = true;
+            query.lastConfirmedSemester = currentSemester;
+        }
 
         const absentees = await Member.find(query).sort({ consecutiveAbsences: -1 });
 

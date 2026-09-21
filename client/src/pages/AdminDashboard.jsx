@@ -84,7 +84,7 @@ const AdminDashboard = () => {
     const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') !== 'light');
     const [quickRegNo, setQuickRegNo] = useState('');
     const [quickCheckInLoading, setQuickCheckInLoading] = useState(false);
-    const [currentSemester, setCurrentSemester] = useState('MAY-AUG 2026');
+    const [currentSemester, setCurrentSemester] = useState('SEP-DEC 2026');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
     const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
@@ -537,9 +537,12 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {}
         localStorage.clear();
-        window.location.href = '/admin';
+        window.location.href = '/admin?logout=true';
     };
 
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -563,7 +566,7 @@ const AdminDashboard = () => {
         campus: 'Valley Road',
         startTime: '17:30',
         endTime: '20:30',
-        semester: currentSemester || 'MAY-AUG 2026',
+        semester: currentSemester || 'SEP-DEC 2026',
         location: { name: '', latitude: null, longitude: null, radius: 200 }
     });
 
@@ -575,7 +578,7 @@ const AdminDashboard = () => {
         campus: 'Both',
         startTime: '14:00',
         endTime: '17:00',
-        semester: currentSemester || 'MAY-AUG 2026',
+        semester: currentSemester || 'SEP-DEC 2026',
         requiredFields: [
             { label: 'Full Name', key: 'studentName', required: true },
             { label: 'Admission Number', key: 'studentRegNo', required: true }

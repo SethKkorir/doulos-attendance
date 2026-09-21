@@ -7,10 +7,12 @@ import {
     archiveMember,
     getMemberPortalView
 } from '../controllers/rosterController.js';
+import { confirmSemester } from '../controllers/memberController.js';
 
 const router = express.Router();
 
 router.get('/members', getRosterMembers);
+router.post('/members/:id/confirm-semester', confirmSemester);
 router.post('/recruits', addRecruit);
 router.patch('/members/:id', editMember);
 router.delete('/members/:id', deleteMember);

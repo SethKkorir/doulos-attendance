@@ -174,6 +174,11 @@ export const updateMember = async (req, res) => {
             updates.studentRegNo = cleanReg;
         }
 
+        if (updates.isActiveThisSemester !== undefined && !updates.lastConfirmedSemester) {
+            const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+            updates.lastConfirmedSemester = semesterSetting ? semesterSetting.value.trim() : 'SEP-DEC 2026';
+        }
+
         const updated = await Member.findByIdAndUpdate(id, updates, { new: true });
         res.json(updated);
     } catch (error) {
@@ -680,14 +685,18 @@ export const enrollMember = async (req, res) => {
     const { studentRegNo, semester, isActiveThisSemester } = req.body;
     try {
         const regNo = studentRegNo.trim().toUpperCase();
-        const updateFields = {};
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semester || (semesterSetting ? semesterSetting.value.trim() : 'SEP-DEC 2026');
+        const activeFlag = typeof isActiveThisSemester === 'boolean' ? isActiveThisSemester : true;
 
-        if (isActiveThisSemester) {
-            updateFields.lastActiveSemester = semester;
+        const updateFields = {
+            isActiveThisSemester: activeFlag,
+            lastConfirmedSemester: currentSemester
+        };
+
+        if (activeFlag) {
+            updateFields.lastActiveSemester = currentSemester;
             updateFields.status = 'Active';
-        } else {
-            // Keep them in the database but mark them as Inactive for active semester tracking/points
-            updateFields.status = 'Inactive';
         }
 
         const member = await Member.findOneAndUpdate(
@@ -931,5 +940,57 @@ export const blockMemberByReg = async (req, res) => {
         res.json({ message: `Student ${studentRegNo} has been blocked successfully.`, member });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// Confirm semester status (called by Member Portal rollover modal & G2 manual override)
+export const confirmSemester = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActiveThisSemester } = req.body;
+
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semesterSetting ? semesterSetting.value.trim() : 'SEP-DEC 2026';
+
+        let member = null;
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            member = await Member.findById(id);
+        }
+        if (!member) {
+            member = await Member.findOne({ studentRegNo: id.toUpperCase().trim() });
+        }
+        if (!member) {
+            const escaped = id.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${escaped}$`, 'i') } });
+        }
+
+        if (!member) {
+            return res.status(404).json({ success: false, message: 'Member not found' });
+        }
+
+        const activeBool = typeof isActiveThisSemester === 'boolean' ? isActiveThisSemester : true;
+        member.isActiveThisSemester = activeBool;
+        member.lastConfirmedSemester = currentSemester;
+        if (activeBool) {
+            member.lastActiveSemester = currentSemester;
+        }
+
+        await member.save();
+
+        res.json({
+            success: true,
+            message: `Semester confirmation recorded for ${currentSemester}`,
+            member: {
+                _id: member._id,
+                name: member.name,
+                studentRegNo: member.studentRegNo,
+                isActiveThisSemester: member.isActiveThisSemester,
+                lastConfirmedSemester: member.lastConfirmedSemester,
+                needsSemesterConfirmation: false
+            }
+        });
+    } catch (error) {
+        console.error('Error in confirmSemester:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };

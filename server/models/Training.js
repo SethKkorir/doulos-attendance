@@ -55,4 +55,8 @@ const trainingSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+trainingSchema.index({ isActive: 1, campus: 1, date: -1 });
+trainingSchema.index({ code: 1 }, { unique: true, sparse: true });
+trainingSchema.index({ campus: 1, isActive: 1 });
+
 export default mongoose.model('Training', trainingSchema);

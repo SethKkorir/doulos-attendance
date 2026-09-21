@@ -63,7 +63,7 @@
     min-height: 100vh;
     background-color: var(--color-page-bg);
     color: #2D2D3A;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     position: relative;
     overflow-x: hidden;
     display: flex;

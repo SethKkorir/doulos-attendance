@@ -38,6 +38,10 @@ attendanceSchema.index(
 );
 
 attendanceSchema.index({ studentRegNo: 1 });
+attendanceSchema.index({ meeting: 1, deviceId: 1 });
+attendanceSchema.index({ trainingId: 1, deviceId: 1, trainingDay: 1 });
+attendanceSchema.index({ studentRegNo: 1, meeting: 1 });
+attendanceSchema.index({ studentRegNo: 1, trainingId: 1 });
 
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 
