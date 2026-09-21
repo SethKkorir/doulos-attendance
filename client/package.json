@@ -12,6 +12,7 @@
     "dependencies": {
         "@tanstack/react-query": "^5.103.0",
         "axios": "^1.4.0",
+        "clsx": "^2.1.1",
         "html5-qrcode": "^2.3.8",
         "lucide-react": "^0.263.1",
         "mammoth": "^1.11.0",
@@ -22,6 +23,7 @@
         "react-qr-code": "^2.0.18",
         "react-router-dom": "^6.15.0",
         "recharts": "^3.7.0",
+        "tailwind-merge": "^2.5.2",
         "xlsx": "^0.18.5"
     },
     "devDependencies": {
