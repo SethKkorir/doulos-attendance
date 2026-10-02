@@ -57,8 +57,10 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
-
-// MongoDB Connection Strategy for Serverless
+app.use(express.static(path.resolve(process.cwd(), '../client/public')));
+app.use(express.static(path.resolve(process.cwd(), 'client/public')));
+app.use('/public', express.static(path.resolve(process.cwd(), '../client/public')));
+app.use('/public', express.static(path.resolve(process.cwd(), 'client/public')));
 let cachedConnection = null;
 let connectionPromise = null;
 
@@ -253,8 +255,8 @@ import { initBackupScheduler } from './utils/backupService.js';
 
 // Start Server locally
 if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, async () => {
-        console.log(`Server running on port ${PORT}`);
+    app.listen(PORT, '0.0.0.0', async () => {
+        console.log(`Server running on http://0.0.0.0:${PORT} (Accessible across local Wi-Fi LAN)`);
         try {
             await connectDB();
             initBackupScheduler(); // Start the midnight backup clock

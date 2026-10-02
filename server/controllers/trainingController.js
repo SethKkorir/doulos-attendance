@@ -49,8 +49,20 @@ export const getTrainings = async (req, res) => {
             }
         }
 
+        const { campus } = req.query;
+
         // Fetch trainings with attendance count
-        const pipeline = [
+        const pipeline = [];
+
+        if (campus && campus.trim()) {
+            pipeline.push({
+                $match: {
+                    campus: { $in: [new RegExp(`^${campus.trim()}$`, 'i'), 'Both', 'All'] }
+                }
+            });
+        }
+
+        pipeline.push(
             {
                 $lookup: {
                     from: 'attendances', // We reuse attendance records, using trainingId field
@@ -62,7 +74,7 @@ export const getTrainings = async (req, res) => {
             { $addFields: { attendanceCount: { $size: '$attendance' } } },
             { $project: { attendance: 0 } },
             { $sort: { date: -1 } }
-        ];
+        );
 
         const trainings = await Training.aggregate(pipeline);
 

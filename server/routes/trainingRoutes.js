@@ -21,7 +21,7 @@ router.post('/members/:id/evaluate', verifyAdmin, evaluateMember);
 
 // Existing Training Drills & Sessions
 router.post('/', verifyAdmin, createTraining);
-router.get('/', verifyAdmin, getTrainings);
+router.get('/', optionalVerify, getTrainings);
 router.get('/code/:code', optionalVerify, getTrainingByCode);
 router.patch('/:id', verifyAdmin, updateTrainingStatus);
 router.post('/:id/location', verifyAdmin, setTrainingLocation);

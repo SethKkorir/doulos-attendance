@@ -146,10 +146,18 @@ export const getMeetings = async (req, res) => {
         }
         // --- END AUTO-CLOSE ---
 
-        const { includeArchived, range } = req.query;
+        const { includeArchived, range, campus } = req.query;
 
         // 1. Fetch meetings with attendance count
         const pipeline = [];
+
+        if (campus && campus.trim()) {
+            pipeline.push({
+                $match: {
+                    campus: { $in: [new RegExp(`^${campus.trim()}$`, 'i'), 'Both', 'All'] }
+                }
+            });
+        }
 
         if (includeArchived !== 'true') {
             pipeline.push({

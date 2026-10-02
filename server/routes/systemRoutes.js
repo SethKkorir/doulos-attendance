@@ -5,6 +5,29 @@ import { getSystemStatus, updateSystemStatus, runMasterMerge, triggerManualBacku
 const router = express.Router();
 
 router.get('/system-status', getSystemStatus);
+router.get('/branding', async (req, res) => {
+    try {
+        const Settings = (await import('../models/Settings.js')).default;
+        const [themeSetting, verseSetting, semesterSetting] = await Promise.all([
+            Settings.findOne({ key: 'semester_theme' }),
+            Settings.findOne({ key: 'semester_verse' }),
+            Settings.findOne({ key: 'current_semester' }),
+        ]);
+
+        res.json({
+            appName: 'Doulos Fellowship',
+            organization: 'Doulos',
+            subTitle: 'Member Portal',
+            logoUrl: '/logo.png',
+            semesterTheme: themeSetting?.value || 'True Friendship',
+            semesterVerse: verseSetting?.value || 'John 15:12-15',
+            currentSemester: semesterSetting?.value || 'SEP-DEC 2026',
+            campuses: ['Athi River', 'Valley Road']
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 router.post('/system-config', verifyAdmin, updateSystemStatus);
 router.post('/merge-clusters', verifyAdmin, runMasterMerge);
 router.post('/manual-backup', verifyAdmin, triggerManualBackup);

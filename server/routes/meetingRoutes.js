@@ -8,7 +8,7 @@ import { verifyAdmin, optionalVerify } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 router.post('/', verifyAdmin, createMeeting);
-router.get('/', verifyAdmin, getMeetings);
+router.get('/', optionalVerify, getMeetings);
 router.get('/code/:code', optionalVerify, getMeetingByCode);
 router.put('/:id', verifyAdmin, updateMeeting);
 router.patch('/:id/details', verifyAdmin, updateMeeting);

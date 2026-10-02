@@ -786,6 +786,9 @@ export const getStudentPortalData = async (req, res) => {
         res.json({
             studentRegNo,
             memberName: member.name || 'Visitor',
+            campus: member.campus || 'Athi River',
+            email: member.email || '',
+            phone: member.phone || '',
             memberType: member.memberType || 'Visitor',
             douloidRank: member.douloidRank || 'None',
             belayStatus: member.belayStatus || 'Not Permitted',
