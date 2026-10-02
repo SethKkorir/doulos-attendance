@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../core/app_colors.dart';
+import '../../core/api_service.dart';
 import '../../core/constants.dart';
 import '../auth/login_screen.dart';
 
@@ -16,6 +17,55 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  String? _remoteLogoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranding();
+  }
+
+  Future<void> _loadBranding() async {
+    try {
+      final branding = await ApiService().fetchBranding();
+      final logoRelative = branding['logoUrl'] as String?;
+      if (logoRelative != null && logoRelative.isNotEmpty) {
+        final resolvedLogo = await ApiService.resolveMediaUrl(logoRelative);
+        if (mounted) {
+          setState(() {
+            _remoteLogoUrl = resolvedLogo;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Widget _buildLogo({required double size, EdgeInsets padding = const EdgeInsets.all(4.0)}) {
+    return ClipOval(
+      child: Padding(
+        padding: padding,
+        child: _remoteLogoUrl != null && _remoteLogoUrl!.isNotEmpty
+            ? Image.network(
+                _remoteLogoUrl!,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Image.asset(
+                  'assets/logo.png',
+                  width: size,
+                  height: size,
+                  fit: BoxFit.contain,
+                ),
+              )
+            : Image.asset(
+                'assets/logo.png',
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+              ),
+      ),
+    );
+  }
 
   final List<OnboardingItem> _items = [
     const OnboardingItem(
@@ -79,18 +129,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.accent],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.verified_user_rounded,
+                          shape: BoxShape.circle,
                           color: Colors.white,
-                          size: 20,
+                          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
+                        child: _buildLogo(size: 38, padding: const EdgeInsets.all(4.0)),
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -139,7 +192,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Decorative Icon Container
+                          // Decorative Hero Container with Official Doulos Logo
                           Container(
                             width: 160,
                             height: 160,
@@ -147,7 +200,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  item.gradientColors[0].withValues(alpha: 0.35),
+                                  item.gradientColors[0].withValues(alpha: 0.25),
                                   Colors.transparent,
                                 ],
                                 radius: 0.8,
@@ -155,28 +208,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             child: Center(
                               child: Container(
-                                width: 96,
-                                height: 96,
+                                width: 104,
+                                height: 104,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: item.gradientColors,
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: item.gradientColors[0].withValues(alpha: 0.4),
+                                    width: 3,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: item.gradientColors[0].withValues(alpha: 0.4),
-                                      blurRadius: 20,
+                                      color: item.gradientColors[0].withValues(alpha: 0.28),
+                                      blurRadius: 22,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
-                                child: Icon(
-                                  item.icon,
-                                  size: 46,
-                                  color: Colors.white,
-                                ),
+                                child: _buildLogo(size: 104, padding: const EdgeInsets.all(12.0)),
                               ),
                             ),
                           ),

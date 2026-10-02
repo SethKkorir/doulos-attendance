@@ -371,10 +371,14 @@ class ApiService {
         'userLong': userLong,
         'accuracy': accuracy,
         'studentRegNo': cleanReg,
+        'questionOfDay': dailyQuestionAnswer?.trim() ?? '',
+        'dailyQuestionAnswer': dailyQuestionAnswer?.trim() ?? '',
         'responses': {
           'studentRegNo': cleanReg,
           'studentName': studentName,
           'dailyQuestionAnswer': dailyQuestionAnswer?.trim() ?? '',
+          'questionOfDay': dailyQuestionAnswer?.trim() ?? '',
+          'answer': dailyQuestionAnswer?.trim() ?? '',
         },
       },
     );

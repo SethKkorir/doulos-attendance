@@ -56,37 +56,43 @@ class _EventsTabState extends State<EventsTab> {
 
     for (final tr in _events) {
       if (tr is Map<String, dynamic>) {
-        allEvents.add({
-          'title': tr['title'] ?? tr['name'] ?? 'Fellowship Training',
-          'date': tr['date'] ?? tr['startDate'] ?? DateTime.now().toIso8601String(),
-          'venue': tr['location'] ?? tr['venue'] ?? 'Freedom Base',
-          'type': 'Training',
-        });
+        final d = tr['date'] ?? tr['startDate'];
+        if (d != null) {
+          allEvents.add({
+            'title': tr['title'] ?? tr['name'] ?? 'Fellowship Training',
+            'date': d.toString(),
+            'venue': tr['location'] ?? tr['venue'] ?? 'Freedom Base',
+            'type': 'Training',
+          });
+        }
       }
     }
 
     for (final m in historyMeetings) {
       if (m is Map<String, dynamic>) {
-        allEvents.add({
-          'title': m['name'] ?? 'Doulos Fellowship',
-          'date': m['date'] ?? DateTime.now().toIso8601String(),
-          'venue': m['campus'] ?? 'Campus Meeting',
-          'type': 'Meeting',
-        });
+        final d = m['date'];
+        if (d != null) {
+          allEvents.add({
+            'title': m['name'] ?? 'Doulos Fellowship',
+            'date': d.toString(),
+            'venue': m['campus'] ?? 'Campus Meeting',
+            'type': 'Meeting',
+          });
+        }
       }
     }
 
     final now = DateTime.now();
     final displayedEvents = allEvents.where((e) {
-      try {
-        final d = DateTime.parse(e['date'].toString());
-        if (_selectedTab == 'Upcoming') {
-          return d.isAfter(now.subtract(const Duration(days: 1)));
-        } else {
-          return d.isBefore(now);
-        }
-      } catch (_) {
-        return true;
+      final dateStr = e['date']?.toString();
+      if (dateStr == null) return false;
+      final d = DateTime.tryParse(dateStr);
+      if (d == null) return false;
+
+      if (_selectedTab == 'Upcoming') {
+        return d.isAfter(now.subtract(const Duration(hours: 12)));
+      } else {
+        return d.isBefore(now.subtract(const Duration(hours: 12)));
       }
     }).toList();
 
@@ -137,7 +143,9 @@ class _EventsTabState extends State<EventsTab> {
                 : displayedEvents.isEmpty
                     ? Center(
                         child: Text(
-                          'No $_selectedTab events scheduled',
+                          _selectedTab == 'Upcoming'
+                              ? 'No upcoming events scheduled'
+                              : 'No past events found',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.textSecondary,

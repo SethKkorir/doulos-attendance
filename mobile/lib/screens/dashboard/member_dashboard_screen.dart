@@ -309,7 +309,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
       }
     }
 
-    // Check upcoming by date
+    // Check upcoming by date (must be today or in the future)
     final now = DateTime.now();
     for (final m in matchingMeetings) {
       if (m is Map && m['date'] != null) {
@@ -319,17 +319,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
         }
       }
     }
-    if (matchingMeetings.isNotEmpty) {
-      return Map<String, dynamic>.from(matchingMeetings.first as Map);
-    }
 
-    // 2. Fallback to student's history meetings for this campus
-    final history = (_data['history'] as List<dynamic>?) ?? [];
-    for (final h in history) {
-      if (h is Map && _matchesCampus(h['campus'], memberCampus)) {
-        return Map<String, dynamic>.from(h);
-      }
-    }
+    // Strictly return null if no meeting is active or in the future
     return null;
   }
 
@@ -547,7 +538,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
     final name = _data['memberName']?.toString() ?? 'Seth Korir';
     final memberType = _data['memberType']?.toString() ?? 'Doulos Member';
     final douloidRank = _data['douloidRank']?.toString() ?? 'Shadow Douloid';
-    final initial = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'S';
 
     // Stats calculation from backend
     final stats = (_data['stats'] as Map<String, dynamic>?) ?? {};
@@ -585,24 +575,32 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFDBEAFE),
-                      border: Border.all(color: Colors.white, width: 2),
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color: AppColors.primary.withValues(alpha: 0.08),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Text(
-                        initial,
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
-                        ),
+                    child: ClipOval(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: _remoteLogoUrl != null && _remoteLogoUrl!.isNotEmpty
+                            ? Image.network(
+                                _remoteLogoUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => Image.asset(
+                                  'assets/logo.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              )
+                            : Image.asset(
+                                'assets/logo.png',
+                                fit: BoxFit.contain,
+                              ),
                       ),
                     ),
                   ),
@@ -667,37 +665,112 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
             ),
             const SizedBox(height: 20),
 
-            // Next Meeting Card (Screen 3: Purple banner with calendar)
-            GestureDetector(
-              onTap: _openAttendancePass,
-              child: Container(
+            // Next Meeting Section
+            if (nextMeeting != null)
+              GestureDetector(
+                onTap: _openAttendancePass,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE9D5FF), width: 1.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7E22CE).withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF3E8FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFF7E22CE),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Next Meeting',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF7E22CE),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              nextMeetingTitle,
+                              style: GoogleFonts.inter(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              nextMeetingSubtitle,
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF7E22CE),
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE9D5FF), width: 1.2),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF7E22CE).withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 42,
-                      height: 42,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF3E8FF),
-                        shape: BoxShape.circle,
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
-                        Icons.star_rounded,
-                        color: Color(0xFF7E22CE),
-                        size: 22,
+                        Icons.event_busy_rounded,
+                        color: Color(0xFF64748B),
+                        size: 20,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -706,26 +779,16 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Next Meeting',
+                            'No Upcoming Meeting Scheduled',
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF7E22CE),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            nextMeetingTitle,
-                            style: GoogleFonts.inter(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
                               color: AppColors.textDark,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            nextMeetingSubtitle,
+                            'Campus: $memberCampus • Check back later',
                             style: GoogleFonts.inter(
                               fontSize: 11.5,
                               color: AppColors.textSecondary,
@@ -734,15 +797,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFF7E22CE),
-                      size: 22,
-                    ),
                   ],
                 ),
               ),
-            ),
             const SizedBox(height: 16),
 
             // Check In for Attendance Card (Screen 3)
@@ -932,12 +989,21 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
             ),
             const SizedBox(height: 12),
 
-            // Upcoming Events Section (Campus-specific, zero mockups)
+            // Upcoming Events Section (Campus-specific, strictly upcoming or active, zero mockups)
             Builder(
               builder: (context) {
+                final now = DateTime.now();
                 final campusEvents = _upcomingEvents.where((e) {
                   if (e is! Map) return false;
-                  return _matchesCampus(e['campus'], memberCampus);
+                  if (!_matchesCampus(e['campus'], memberCampus)) return false;
+
+                  if (e['isActive'] == true) return true;
+
+                  final dateRaw = e['date'] ?? e['startDate'];
+                  if (dateRaw == null) return false;
+                  final d = DateTime.tryParse(dateRaw.toString());
+                  if (d == null) return false;
+                  return d.isAfter(now.subtract(const Duration(hours: 12)));
                 }).toList();
 
                 if (_isLoadingEvents) {
@@ -974,7 +1040,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
 
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
@@ -984,12 +1050,12 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
                     children: [
                       Icon(
                         Icons.event_available_rounded,
-                        size: 34,
+                        size: 32,
                         color: AppColors.textMuted.withValues(alpha: 0.6),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'No Upcoming Events for $memberCampus',
+                        'No upcoming events scheduled',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
@@ -998,10 +1064,10 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Scheduled trainings and camps for your campus will appear here.',
+                        'Scheduled trainings and camps for $memberCampus will appear here.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           color: AppColors.textSecondary,
                         ),
                       ),
