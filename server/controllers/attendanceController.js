@@ -359,6 +359,16 @@ export const submitAttendance = async (req, res) => {
                 await Member.findOneAndUpdate({ studentRegNo }, { $set: { linkedDeviceId: deviceId } });
             }
 
+            const qAnswer = (
+                req.body.questionOfDay ||
+                req.body.dailyQuestionAnswer ||
+                responses?.dailyQuestionAnswer ||
+                responses?.['dailyQuestionAnswer'] ||
+                responses?.questionOfDay ||
+                responses?.answer ||
+                ''
+            ).toString().trim();
+
             const attendance = new Attendance({
                 meeting: isTrainingModel ? undefined : meeting._id,
                 trainingId: isTrainingModel ? meeting._id : undefined,
@@ -366,8 +376,15 @@ export const submitAttendance = async (req, res) => {
                 campus: meeting.campus,
                 studentRegNo,
                 memberType: member.memberType,
-                responses: responses || { studentName: data.studentName, studentRegNo },
-                questionOfDay: responses?.dailyQuestionAnswer || '',
+                responses: {
+                    ...(responses || {}),
+                    studentName: responses?.studentName || data.studentName || member.name,
+                    studentRegNo: studentRegNo,
+                    dailyQuestionAnswer: qAnswer,
+                    questionOfDay: qAnswer,
+                    answer: qAnswer
+                },
+                questionOfDay: qAnswer,
                 deviceId,
                 trainingDay: isTrainingModel ? (meeting.activeDay || 1) : undefined
             });
@@ -920,6 +937,7 @@ export const manualCheckIn = async (req, res) => {
             console.log(`[ADMIN-AUTO-REGISTER] New student created: ${regNo || member.name} (${member.name})`);
         }
 
+        const fallbackAns = req.body.reason || 'Coordinator Check-In';
         const attendance = new Attendance({
             meeting: isTraining ? undefined : meetingId,
             trainingId: isTraining ? meetingId : undefined,
@@ -927,7 +945,14 @@ export const manualCheckIn = async (req, res) => {
             campus: meeting.campus,
             studentRegNo: effectiveReg,
             memberType: member.memberType,
-            responses: { studentName: member.name, studentRegNo: member.studentRegNo || '' },
+            responses: { 
+                studentName: member.name, 
+                studentRegNo: member.studentRegNo || '',
+                dailyQuestionAnswer: fallbackAns,
+                questionOfDay: fallbackAns,
+                answer: fallbackAns
+            },
+            questionOfDay: fallbackAns,
             trainingDay: isTraining ? targetDay : undefined
         });
 
@@ -1056,6 +1081,7 @@ export const bulkManualCheckIn = async (req, res) => {
                 await dbMember.save();
             }
 
+            const fallbackReason = req.body.reason || 'Bulk Coordinator Check-In';
             const attendance = new Attendance({
                 meeting: isTraining ? undefined : meetingId,
                 trainingId: isTraining ? meetingId : undefined,
@@ -1063,7 +1089,14 @@ export const bulkManualCheckIn = async (req, res) => {
                 campus: meeting.campus,
                 studentRegNo: effectiveReg,
                 memberType: dbMember.memberType,
-                responses: { studentName: dbMember.name, studentRegNo: dbMember.studentRegNo || '' },
+                responses: { 
+                    studentName: dbMember.name, 
+                    studentRegNo: dbMember.studentRegNo || '',
+                    dailyQuestionAnswer: fallbackReason,
+                    questionOfDay: fallbackReason,
+                    answer: fallbackReason
+                },
+                questionOfDay: fallbackReason,
                 trainingDay: isTraining ? targetDay : undefined
             });
 

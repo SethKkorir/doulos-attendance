@@ -2444,6 +2444,11 @@ const G5TrainingPortal = () => {
                                                         <div style={{ fontSize: '0.86rem', color: '#DBEAFE', marginTop: '0.25rem' }}>
                                                             📍 {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
                                                         </div>
+                                                        {activeM.questionOfDay && (
+                                                            <div style={{ fontSize: '0.84rem', color: '#FEF08A', marginTop: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                                💬 Question: "{activeM.questionOfDay}"
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="g5-live-banner-actions">
@@ -2636,6 +2641,27 @@ const G5TrainingPortal = () => {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontSize: '0.86rem', marginBottom: '0.85rem', fontWeight: 600 }}>
                                                             <MapPin size={15} style={{ color: '#2563EB', flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meeting.location?.name || meeting.venue || (meeting.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
                                                         </div>
+
+                                                        {meeting.questionOfDay && (
+                                                            <div style={{
+                                                                background: '#FEF3C7',
+                                                                border: '1px solid #FDE68A',
+                                                                borderRadius: '8px',
+                                                                padding: '0.35rem 0.65rem',
+                                                                marginBottom: '0.75rem',
+                                                                fontSize: '0.8rem',
+                                                                color: '#92400E',
+                                                                fontWeight: 600,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.4rem'
+                                                            }}>
+                                                                <span style={{ fontWeight: 800, color: '#78350F', flexShrink: 0 }}>💬 Q:</span>
+                                                                <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                    "{meeting.questionOfDay}"
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     {/* CARD ACTION BUTTONS (MOBILE & DESKTOP OPTIMIZED TWO-TIER SYSTEM) */}

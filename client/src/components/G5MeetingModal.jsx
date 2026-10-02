@@ -39,6 +39,11 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
     };
 
     const [activeTab, setActiveTab] = useState(() => resolveInitialTab(meeting?.initialTab));
+    const [currentMeeting, setCurrentMeeting] = useState(meeting);
+
+    useEffect(() => {
+        if (meeting) setCurrentMeeting(meeting);
+    }, [meeting]);
 
     useEffect(() => {
         setActiveTab(resolveInitialTab(meeting?.initialTab));
@@ -102,10 +107,19 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
                 setAllMembers(memRes.value.data || []);
             }
 
-            // Check other meetings in the same week to enforce 1 attendance per week
-            if (meetingsRes.status === 'fulfilled' && meeting.date) {
+            // Refresh currentMeeting with live meeting data
+            if (meetingsRes.status === 'fulfilled' && meeting?._id) {
                 const allMeetings = meetingsRes.value.data || [];
-                const range = getWeekRange(meeting.date);
+                const freshMeeting = allMeetings.find(m => m._id === meeting._id);
+                if (freshMeeting) {
+                    setCurrentMeeting(prev => ({ ...prev, ...freshMeeting }));
+                }
+            }
+
+            // Check other meetings in the same week to enforce 1 attendance per week
+            if (meetingsRes.status === 'fulfilled' && (meeting.date || currentMeeting?.date)) {
+                const allMeetings = meetingsRes.value.data || [];
+                const range = getWeekRange(meeting.date || currentMeeting?.date);
                 const otherM = allMeetings.filter(m => {
                     if (m._id === meeting._id) return false;
                     const md = new Date(m.date);
@@ -157,15 +171,24 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
             const memberObj = allMembers.find(
                 m => String(m.studentRegNo || '').trim().toUpperCase() === regUpper
             );
+            const answerRaw = record.questionOfDay ||
+                (record.responses && typeof record.responses === 'object'
+                    ? (record.responses.dailyQuestionAnswer || record.responses.answer || record.responses.questionOfDay)
+                    : null) ||
+                record.dailyQuestionAnswer ||
+                record.answer ||
+                record.responses?.dailyQuestionAnswer ||
+                record.responses?.answer ||
+                null;
             return {
                 ...record,
                 memberName: record.memberName || record.responses?.studentName || memberObj?.name || 'Member',
                 memberType: record.memberType || memberObj?.memberType || (memberObj?.status === 'Recruit' ? 'Recruit' : 'Douloid'),
-                campus: record.campus || memberObj?.campus || meeting?.campus || 'Athi River',
-                answer: record.responses?.answer || record.answer || null
+                campus: record.campus || memberObj?.campus || currentMeeting?.campus || meeting?.campus || 'Athi River',
+                answer: (answerRaw && String(answerRaw).trim().length > 0) ? String(answerRaw).trim() : null
             };
         });
-    }, [attendanceRecords, allMembers, meeting?.campus]);
+    }, [attendanceRecords, allMembers, meeting?.campus, currentMeeting?.campus]);
 
     // Absent members (in registry for this meeting's campus who have not yet checked in)
     const absentList = useMemo(() => {
@@ -410,7 +433,7 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
         showToast('Exported CSV roster successfully!');
     };
 
-    const questionText = meeting.questionOfDay || meeting.question || '';
+    const questionText = currentMeeting?.questionOfDay || currentMeeting?.question || currentMeeting?.dailyQuestion || meeting?.questionOfDay || meeting?.question || '';
 
     return (
         <div
