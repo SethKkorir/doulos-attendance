@@ -776,15 +776,22 @@ export const selfRegisterMember = async (req, res) => {
         const exists = await Member.findOne({ studentRegNo: regNo });
         if (exists) return res.status(400).json({ message: 'Member record already exists.' });
 
+        let resolvedCampus = (campus || 'Athi River').trim();
+        if (resolvedCampus.toLowerCase().includes('nairobi') || resolvedCampus.toLowerCase().includes('valley')) {
+            resolvedCampus = 'Valley Road';
+        } else {
+            resolvedCampus = 'Athi River';
+        }
+
         const member = new Member({
             studentRegNo: regNo,
-            name: name,
-            campus: campus || 'Athi River',
-            memberType: memberType || 'Douloid',
+            name: (name || '').trim(),
+            campus: resolvedCampus,
+            memberType: memberType || 'Recruit',
             status: 'Active'
         });
         await member.save();
-        res.status(201).json({ message: 'Welcome to Doulos! Your record has been created.', member });
+        res.status(201).json({ message: 'Welcome to Doulos! Your recruit record has been created.', member });
     } catch (error) {
         res.status(500).json({ message: 'Failed to register', error: error.message });
     }

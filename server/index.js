@@ -32,6 +32,9 @@ import crewsRoutes from './routes/crewsRoutes.js';
 import registerRoutes from './routes/registerRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
 import tokenRoutes from './routes/tokenRoutes.js';
+import fellowshipRoutes from './routes/fellowshipRoutes.js';
+import questionRoutes from './routes/questionRoutes.js';
+import supportRequestRoutes from './routes/supportRequestRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import { seedReferenceData } from './utils/seedReferenceData.js';
 
@@ -88,6 +91,9 @@ import './models/Venue.js';
 import './models/LopDoc.js';
 import './models/Crew.js';
 import './models/CheckInToken.js';
+import './models/Fellowship.js';
+import './models/Question.js';
+import './models/QuestionResponse.js';
 
 const connectDB = async () => {
     if (cachedConnection && mongoose.connection.readyState === 1) {
@@ -242,6 +248,9 @@ app.use('/api/crews', crewsRoutes);
 app.use('/api/register', registerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/tokens', tokenRoutes);
+app.use('/api/fellowships', fellowshipRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/support-requests', supportRequestRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

@@ -311,15 +311,22 @@ export const submitAttendance = async (req, res) => {
             const { isNewMember, registrationData } = req.body;
 
             if (isNewMember && registrationData?.name) {
+                let resolvedCampus = (registrationData.campus || meeting.campus || 'Athi River').trim();
+                if (resolvedCampus.toLowerCase().includes('nairobi') || resolvedCampus.toLowerCase().includes('valley')) {
+                    resolvedCampus = 'Valley Road';
+                } else {
+                    resolvedCampus = 'Athi River';
+                }
+
                 member = new Member({
                     studentRegNo,
-                    name: registrationData.name,
-                    campus: registrationData.campus || meeting.campus,
-                    memberType: registrationData.memberType || 'Douloid',
+                    name: registrationData.name.trim(),
+                    campus: resolvedCampus,
+                    memberType: registrationData.memberType || 'Recruit',
                     status: 'Active'
                 });
                 await member.save();
-                console.log(`[AUTO-REGISTER] New student created: ${studentRegNo} (${registrationData.name})`);
+                console.log(`[AUTO-REGISTER] New recruit created: ${studentRegNo} (${registrationData.name})`);
             } else {
                 const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
                 const isRecovery = recoverySetting?.value === 'true';

@@ -173,19 +173,9 @@ class DoulosDrawer extends StatelessWidget {
                     },
                   ),
                   _buildDrawerItem(
-                    index: 3,
-                    icon: Icons.person_outline_rounded,
-                    label: 'Profile',
-                    isSelected: selectedIndex == 3,
-                    onTap: () {
-                      Navigator.pop(context);
-                      onSelectTab(3);
-                    },
-                  ),
-                  _buildDrawerItem(
                     index: 1,
-                    icon: Icons.access_time_rounded,
-                    label: 'Attendance History',
+                    icon: Icons.auto_stories_rounded,
+                    label: 'Fellowship',
                     isSelected: selectedIndex == 1,
                     onTap: () {
                       Navigator.pop(context);
@@ -194,12 +184,32 @@ class DoulosDrawer extends StatelessWidget {
                   ),
                   _buildDrawerItem(
                     index: 2,
-                    icon: Icons.calendar_today_rounded,
-                    label: 'Events & Meetings',
+                    icon: Icons.access_time_rounded,
+                    label: 'Attendance History',
                     isSelected: selectedIndex == 2,
                     onTap: () {
                       Navigator.pop(context);
                       onSelectTab(2);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    index: 3,
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Events & Meetings',
+                    isSelected: selectedIndex == 3,
+                    onTap: () {
+                      Navigator.pop(context);
+                      onSelectTab(3);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    index: 4,
+                    icon: Icons.person_outline_rounded,
+                    label: 'Profile',
+                    isSelected: selectedIndex == 4,
+                    onTap: () {
+                      Navigator.pop(context);
+                      onSelectTab(4);
                     },
                   ),
                   const Divider(color: Colors.white12, height: 24),

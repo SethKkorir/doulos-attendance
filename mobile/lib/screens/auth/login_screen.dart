@@ -123,9 +123,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (data['registrationRequired'] == true) {
         setState(() {
-          _errorMessage = data['message'] ??
-              "We couldn't find your Admission Number in our registry. Please check your number.";
+          _isLoading = false;
         });
+        if (!mounted) return;
+        _showRecruitRegistrationSheet(regNo);
         return;
       }
 
@@ -159,6 +160,573 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  void _showRecruitRegistrationSheet(String regNo) {
+    final nameController = TextEditingController();
+    String selectedCampus = 'Athi River';
+    bool isSubmitting = false;
+    String? localError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 20,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Badge + Title
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🌿', style: TextStyle(fontSize: 12)),
+                              const SizedBox(width: 4),
+                              Text(
+                                'NEW RECRUIT',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF1D4ED8),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Welcome to Doulos!',
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF0F172A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Complete your profile below to register as a Doulos Recruit and enter your portal.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    if (localError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFECACA)),
+                        ),
+                        child: Text(
+                          localError!,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: const Color(0xFFDC2626),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // Pre-filled & Locked Admission Number
+                    Text(
+                      'Admission Number',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_rounded, size: 16, color: Color(0xFF64748B)),
+                          const SizedBox(width: 8),
+                          Text(
+                            regNo,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1E293B),
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Pre-filled · Locked',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: const Color(0xFF94A3B8),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Full Name Input
+                    Text(
+                      'Full Name *',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameController,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.words,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Samuel Kibet',
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: const Color(0xFF94A3B8),
+                          fontWeight: FontWeight.normal,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: Color(0xFF64748B), size: 20),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Campus Selector (Athi River / Nairobi)
+                    Text(
+                      'Campus *',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setSheetState(() => selectedCampus = 'Athi River'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: selectedCampus == 'Athi River'
+                                    ? const Color(0xFFEFF6FF)
+                                    : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selectedCampus == 'Athi River'
+                                      ? const Color(0xFF2563EB)
+                                      : const Color(0xFFE2E8F0),
+                                  width: selectedCampus == 'Athi River' ? 1.8 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.school_rounded,
+                                    size: 16,
+                                    color: selectedCampus == 'Athi River'
+                                        ? const Color(0xFF2563EB)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Athi River',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: selectedCampus == 'Athi River'
+                                          ? const Color(0xFF1D4ED8)
+                                          : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setSheetState(() => selectedCampus = 'Nairobi'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: selectedCampus == 'Nairobi'
+                                    ? const Color(0xFFEFF6FF)
+                                    : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selectedCampus == 'Nairobi'
+                                      ? const Color(0xFF2563EB)
+                                      : const Color(0xFFE2E8F0),
+                                  width: selectedCampus == 'Nairobi' ? 1.8 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.location_city_rounded,
+                                    size: 16,
+                                    color: selectedCampus == 'Nairobi'
+                                        ? const Color(0xFF2563EB)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Nairobi',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: selectedCampus == 'Nairobi'
+                                          ? const Color(0xFF1D4ED8)
+                                          : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Role Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.verified_user_rounded, size: 18, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Enrolled as: Doulos Recruit (Candidate)',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF15803D),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Submit Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final name = nameController.text.trim();
+                                if (name.length < 2) {
+                                  setSheetState(() {
+                                    localError = 'Please enter your full name.';
+                                  });
+                                  return;
+                                }
+
+                                setSheetState(() {
+                                  isSubmitting = true;
+                                  localError = null;
+                                });
+
+                                try {
+                                  await ApiService().selfRegisterMember(
+                                    studentRegNo: regNo,
+                                    name: name,
+                                    campus: selectedCampus,
+                                    memberType: 'Recruit',
+                                  );
+
+                                  final freshData = await ApiService().fetchStudentData(regNo);
+
+                                  if (!context.mounted) return;
+                                  Navigator.pop(sheetContext);
+
+                                  _showCelebratoryWelcome(freshData, regNo, name);
+                                } catch (e) {
+                                  setSheetState(() {
+                                    isSubmitting = false;
+                                    localError = ApiService.extractErrorMessage(e);
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Complete Registration & Enter',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward_rounded, size: 18),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showCelebratoryWelcome(
+    Map<String, dynamic> studentData,
+    String regNo,
+    String memberName,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          elevation: 16,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Celebration Icon
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text('🎉', style: TextStyle(fontSize: 34)),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                Text(
+                  'WELCOME TO DOULOS!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                    color: const Color(0xFF1E3A8A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Text(
+                  'Welcome, $memberName!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Text(
+                    'Status: Doulos Recruit 🌿',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF1D4ED8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                Text(
+                  'Your recruit record is officially set up. We are thrilled to welcome you to the Doulos community!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: const Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(dialogContext);
+
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString(AppConstants.keyStudentRegNo, regNo);
+                      await prefs.setString(AppConstants.keyMemberName, memberName);
+                      await prefs.setString(AppConstants.keyMemberType, 'Recruit');
+                      await prefs.setString(
+                        AppConstants.keyStudentDataJson,
+                        jsonEncode(studentData),
+                      );
+
+                      if (!mounted) return;
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              MemberDashboardScreen(initialData: studentData),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D4ED8),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Open My Recruit Portal',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override

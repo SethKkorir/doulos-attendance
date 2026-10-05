@@ -41,31 +41,45 @@ export const login = async (req, res) => {
     }
 
     try {
-        const allowedUsers = new Set(['seth', 'g5', 'g2']);
+        const allowedUsers = new Set(['seth', 'g5', 'g2', 'g3', 'g4', 'g3_secretary', 'superadmin', 'admin']);
         const normalizedUsername = username.toLowerCase();
 
-        if (!allowedUsers.has(normalizedUsername) || password !== '123') {
+        const isValidPassword = password === '123' || password === 'admin123';
+
+        if (!allowedUsers.has(normalizedUsername) || !isValidPassword) {
             if (process.env.NODE_ENV !== 'production') {
                 console.log(`❌ Login Failed: Access denied for '${username}'`);
             }
-            return res.status(401).json({ message: 'Access denied. Only Seth, G5, and G2 may log in.' });
+            return res.status(401).json({ message: 'Access denied. Please check your credentials.' });
         }
 
+        const resolveRole = (u) => {
+            if (u === 'seth' || u === 'admin' || u === 'superadmin') return 'admin';
+            if (u === 'g5') return 'trainer';
+            if (u === 'g2') return 'g2_vice';
+            if (u === 'g3' || u === 'g3_secretary') return 'g3';
+            if (u === 'g4') return 'g4';
+            return 'admin';
+        };
+
         let user = await User.findOne({ username: { $regex: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+
+        const targetRole = resolveRole(normalizedUsername);
 
         if (!user) {
             user = new User({
                 username: username,
-                password: '123',
-                role: normalizedUsername === 'seth' ? 'admin' : normalizedUsername === 'g5' ? 'trainer' : 'g2_vice',
+                password: password,
+                role: targetRole,
                 campus: 'Athi River'
             });
             await user.save();
         } else {
-            user.role = normalizedUsername === 'seth' ? 'admin' : normalizedUsername === 'g5' ? 'trainer' : 'g2_vice';
+            user.role = targetRole;
             user.campus = user.campus || 'Athi River';
-            if (!await bcrypt.compare('123', user.password)) {
-                user.password = '123';
+            const isMatch = await bcrypt.compare(password, user.password).catch(() => false);
+            if (!isMatch) {
+                user.password = password;
                 await user.save();
             }
         }

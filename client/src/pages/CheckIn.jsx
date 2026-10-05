@@ -159,10 +159,11 @@ const CheckIn = () => {
     const [locationErrorType, setLocationErrorType] = useState(null); // 'denied' | 'weak_signal' | null
     const [preciseLocationWarning, setPreciseLocationWarning] = useState(false);
     const [showSelfRegistration, setShowSelfRegistration] = useState(false);
+    const [isNewRecruitRegistered, setIsNewRecruitRegistered] = useState(false);
     const [selfRegForm, setSelfRegForm] = useState({
         name: '',
         campus: 'Athi River',
-        memberType: 'Douloid'
+        memberType: 'Recruit'
     });
 
     useEffect(() => {
@@ -340,8 +341,8 @@ const CheckIn = () => {
                 setSelfRegForm(prev => ({
                     ...prev,
                     name: '',
-                    campus: prev.campus || 'Athi River',
-                    memberType: prev.memberType || 'Douloid'
+                    campus: prev.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
+                    memberType: 'Recruit'
                 }));
                 return;
             }
@@ -380,8 +381,8 @@ const CheckIn = () => {
                 setSelfRegForm(prev => ({
                     ...prev,
                     name: '',
-                    campus: prev.campus || 'Athi River',
-                    memberType: prev.memberType || 'Douloid'
+                    campus: prev.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
+                    memberType: 'Recruit'
                 }));
                 return;
             }
@@ -402,8 +403,14 @@ const CheckIn = () => {
             return;
         }
 
-        if (!fullName) {
-            setMsg('Full name is required to create a new attendance record.');
+        if (!fullName || fullName.length < 2) {
+            setMsg('Please enter your Full Name to complete registration.');
+            setStatus('error');
+            return;
+        }
+
+        if (meeting?.questionOfDay && !responses.dailyQuestionAnswer?.trim()) {
+            setMsg('Please answer the Question of the Day before submitting.');
             setStatus('error');
             return;
         }
@@ -416,10 +423,11 @@ const CheckIn = () => {
                 studentRegNo: regNo,
                 name: fullName,
                 campus: selfRegForm.campus,
-                memberType: selfRegForm.memberType
+                memberType: 'Recruit'
             });
 
-            setMemberInfo({ name: fullName, type: selfRegForm.memberType });
+            setIsNewRecruitRegistered(true);
+            setMemberInfo({ name: fullName, type: 'Recruit' });
             setShowSelfRegistration(false);
             setResponses(prev => ({
                 ...prev,
@@ -431,7 +439,7 @@ const CheckIn = () => {
                 studentRegNo: regNo,
                 name: fullName,
                 campus: selfRegForm.campus,
-                memberType: selfRegForm.memberType
+                memberType: 'Recruit'
             });
         } catch (err) {
             console.error('Self registration failed:', err);
@@ -847,7 +855,7 @@ const CheckIn = () => {
                     registrationData: {
                         name: registrationData.name,
                         campus: registrationData.campus || meeting?.campus || 'Athi River',
-                        memberType: registrationData.memberType || 'Douloid',
+                        memberType: registrationData.memberType || 'Recruit',
                     }
                 } : {}),
                 responses: {
@@ -875,6 +883,19 @@ const CheckIn = () => {
         } catch (err) {
             const errorMsg = err.response?.data?.message || 'Submission failed. Please try again.';
             const status = err.response?.status;
+
+            // Intercept not in registry and immediately pop recruit registration
+            if (errorMsg.includes("not in the Doulos Registry") || err.response?.data?.registrationRequired) {
+                setShowSelfRegistration(true);
+                setSelfRegForm(prev => ({
+                    ...prev,
+                    campus: prev.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
+                    memberType: 'Recruit'
+                }));
+                setStatus('idle');
+                setMsg("Welcome! Please complete the quick recruit form below to register and check in.");
+                return;
+            }
 
             // Lock out on specific violations (403 Forbidden / 409 Conflict)
             // e.g. Device Mismatch, One Scan Per Week, Time Violation
@@ -1173,81 +1194,210 @@ const CheckIn = () => {
 
                         {showSelfRegistration && (
                             <div style={{
-                                padding: '1rem',
-                                background: 'rgba(14, 165, 233, 0.10)',
-                                border: '1.5px solid rgba(56, 189, 248, 0.35)',
-                                borderRadius: '16px',
+                                padding: '1.25rem',
+                                background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                                border: '2px solid #38BDF8',
+                                borderRadius: '20px',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '0.8rem',
+                                gap: '1rem',
+                                boxShadow: '0 12px 36px rgba(14, 165, 233, 0.25)',
                                 animation: 'fadeIn 0.3s ease'
                             }}>
-                                <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#E0F2FE', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                    Quick Registration
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        padding: '0.3rem 0.75rem',
+                                        background: 'rgba(56, 189, 248, 0.15)',
+                                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                                        borderRadius: '20px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 900,
+                                        color: '#38BDF8',
+                                        letterSpacing: '0.8px',
+                                        textTransform: 'uppercase'
+                                    }}>
+                                        <span>🌿</span>
+                                        <span>NEW RECRUIT REGISTRATION</span>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Full Name
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 0.25rem 0' }}>
+                                        Welcome to Doulos!
+                                    </h3>
+                                    <p style={{ fontSize: '0.82rem', color: '#94A3B8', margin: 0, lineHeight: 1.45 }}>
+                                        We didn't find your Admission Number in our registry. Enter your name and campus to complete your profile and sign in.
+                                    </p>
+                                </div>
+
+                                {/* Admission Number - Pre-filled & Locked */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                        <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Admission Number
+                                        </label>
+                                        <span style={{ fontSize: '0.7rem', color: '#38BDF8', fontWeight: 700 }}>
+                                            🔒 Locked from scan
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={responses.studentRegNo || ''}
+                                        readOnly
+                                        style={{
+                                            width: '100%',
+                                            height: '46px',
+                                            background: 'rgba(15, 23, 42, 0.85)',
+                                            border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                                            borderRadius: '12px',
+                                            padding: '0 1rem',
+                                            color: '#94A3B8',
+                                            fontWeight: 800,
+                                            fontSize: '1rem',
+                                            letterSpacing: '1px',
+                                            boxSizing: 'border-box',
+                                            cursor: 'not-allowed'
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Full Name */}
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Full Name <span style={{ color: '#EF4444' }}>*</span>
                                     </label>
                                     <input
                                         type="text"
                                         value={selfRegForm.name}
                                         onChange={e => setSelfRegForm(prev => ({ ...prev, name: e.target.value }))}
-                                        placeholder="e.g. John Doe"
-                                        style={{ width: '100%', height: '44px', background: '#020617', border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '0 0.9rem', color: '#FFFFFF', fontWeight: 700, boxSizing: 'border-box' }}
+                                        placeholder="e.g. Samuel Kibet"
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            height: '46px',
+                                            background: '#020617',
+                                            border: '1.5px solid #38BDF8',
+                                            borderRadius: '12px',
+                                            padding: '0 1rem',
+                                            color: '#FFFFFF',
+                                            fontWeight: 700,
+                                            fontSize: '0.95rem',
+                                            boxSizing: 'border-box',
+                                            outline: 'none'
+                                        }}
                                     />
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            Admission No
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={responses.studentRegNo || ''}
-                                            readOnly
-                                            style={{ width: '100%', height: '44px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '0 0.9rem', color: '#E2E8F0', fontWeight: 800, boxSizing: 'border-box' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            Campus
-                                        </label>
-                                        <select
-                                            value={selfRegForm.campus}
-                                            onChange={e => setSelfRegForm(prev => ({ ...prev, campus: e.target.value }))}
-                                            style={{ width: '100%', height: '44px', background: '#020617', border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '0 0.7rem', color: '#FFFFFF', fontWeight: 700, boxSizing: 'border-box' }}
+                                {/* Campus Selection */}
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Campus <span style={{ color: '#EF4444' }}>*</span>
+                                    </label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelfRegForm(prev => ({ ...prev, campus: 'Athi River' }))}
+                                            style={{
+                                                padding: '0.75rem',
+                                                borderRadius: '12px',
+                                                border: selfRegForm.campus === 'Athi River' ? '2px solid #38BDF8' : '1.5px solid rgba(255, 255, 255, 0.12)',
+                                                background: selfRegForm.campus === 'Athi River' ? 'rgba(14, 165, 233, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                                                color: selfRegForm.campus === 'Athi River' ? '#38BDF8' : '#94A3B8',
+                                                fontWeight: 800,
+                                                fontSize: '0.86rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.4rem'
+                                            }}
                                         >
-                                            <option value="Athi River">Athi River</option>
-                                            <option value="Valley Road">Valley Road</option>
-                                        </select>
+                                            <span>🏫</span>
+                                            <span>Athi River</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelfRegForm(prev => ({ ...prev, campus: 'Valley Road' }))}
+                                            style={{
+                                                padding: '0.75rem',
+                                                borderRadius: '12px',
+                                                border: (selfRegForm.campus === 'Valley Road' || selfRegForm.campus === 'Nairobi') ? '2px solid #38BDF8' : '1.5px solid rgba(255, 255, 255, 0.12)',
+                                                background: (selfRegForm.campus === 'Valley Road' || selfRegForm.campus === 'Nairobi') ? 'rgba(14, 165, 233, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                                                color: (selfRegForm.campus === 'Valley Road' || selfRegForm.campus === 'Nairobi') ? '#38BDF8' : '#94A3B8',
+                                                fontWeight: 800,
+                                                fontSize: '0.86rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.4rem'
+                                            }}
+                                        >
+                                            <span>🏙️</span>
+                                            <span>Nairobi</span>
+                                        </button>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Member Type
-                                    </label>
-                                    <select
-                                        value={selfRegForm.memberType}
-                                        onChange={e => setSelfRegForm(prev => ({ ...prev, memberType: e.target.value }))}
-                                        style={{ width: '100%', height: '44px', background: '#020617', border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '0 0.7rem', color: '#FFFFFF', fontWeight: 700, boxSizing: 'border-box' }}
-                                    >
-                                        <option value="Douloid">Douloid</option>
-                                        <option value="Recruit">Recruit</option>
-                                        <option value="Visitor">Visitor</option>
-                                    </select>
+                                {/* Fixed Role Badge */}
+                                <div style={{
+                                    padding: '0.75rem 1rem',
+                                    background: 'rgba(16, 185, 129, 0.12)',
+                                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    borderRadius: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.65rem'
+                                }}>
+                                    <span style={{ fontSize: '1.1rem' }}>🎖️</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#34D399' }}>
+                                            Role: Doulos Recruit (Candidate)
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>
+                                            You will be enrolled in the official recruit curriculum
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <button
                                     type="button"
                                     onClick={handleSelfRegisterAndCheckIn}
                                     disabled={status === 'submitting'}
-                                    style={{ width: '100%', height: '46px', background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)', border: 'none', borderRadius: '12px', color: '#FFFFFF', fontWeight: 900, cursor: 'pointer' }}
+                                    style={{
+                                        width: '100%',
+                                        height: '50px',
+                                        background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
+                                        border: 'none',
+                                        borderRadius: '14px',
+                                        color: '#FFFFFF',
+                                        fontWeight: 900,
+                                        fontSize: '0.95rem',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 6px 20px rgba(14, 165, 233, 0.35)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        marginTop: '0.3rem'
+                                    }}
                                 >
-                                    {status === 'submitting' ? 'Registering & Checking In...' : 'Register & Check In'}
+                                    {status === 'submitting' ? (
+                                        <>
+                                            <Loader2 className="animate-spin" size={18} />
+                                            <span>Registering & Checking In...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Join Doulos & Check In 🎉</span>
+                                            <ArrowRight size={18} />
+                                        </>
+                                    )}
                                 </button>
 
                                 <button
@@ -1258,7 +1408,16 @@ const CheckIn = () => {
                                         setResponses(prev => ({ ...prev, studentRegNo: '' }));
                                         setMsg('');
                                     }}
-                                    style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#94A3B8',
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer',
+                                        textAlign: 'center',
+                                        padding: '0.2rem'
+                                    }}
                                 >
                                     Cancel
                                 </button>
@@ -1605,84 +1764,134 @@ const CheckIn = () => {
                                 `}</style>
                             </div>
                         )}
-                        <div style={{
-                            background: 'radial-gradient(circle, rgba(74, 222, 128, 0.2) 0%, transparent 70%)',
-                            width: '120px', height: '120px', borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            margin: '0 auto 2rem',
-                            animation: 'pulse 2s infinite'
-                        }}>
-                            <CheckCircle size={64} color="#4ade80" />
-                        </div>
-                        <h2 style={{ color: '#4ade80', marginBottom: '1rem', fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.05em' }}>CHECK-IN SUCCESSFUL</h2>
-                        <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', marginBottom: '2.5rem', fontSize: '1.1rem' }}>
-                            Your attendance for <strong>{meeting?.name}</strong> has been successfully recorded.
-                        </p>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                            <button
-                                type="button"
-                                style={{
-                                    width: '100%',
-                                    height: '52px',
-                                    borderRadius: '1rem',
-                                    fontSize: '0.95rem',
-                                    fontWeight: 900,
-                                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                                    border: 'none',
-                                    color: '#FFFFFF',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 8px 25px rgba(16, 185, 129, 0.35)',
-                                    display: 'flex',
+                        {(isNewRecruitRegistered || memberInfo?.type === 'Recruit') ? (
+                            <div>
+                                <div style={{
+                                    background: 'radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, transparent 70%)',
+                                    width: '120px', height: '120px', borderRadius: '50%',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 1.5rem',
+                                    fontSize: '3.5rem',
+                                    animation: 'pulse 2s infinite'
+                                }}>
+                                    🎉
+                                </div>
+                                <div style={{
+                                    display: 'inline-flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '0.5rem'
-                                }}
-                                onClick={() => navigate(`/portal?reg=${encodeURIComponent(responses.studentRegNo || '')}`)}
-                            >
-                                <span>Go to My Douloid / Recruit Portal</span>
-                                <ArrowRight size={18} />
-                            </button>
-                            <button
-                                type="button"
-                                style={{
-                                    width: '100%',
-                                    height: '48px',
-                                    borderRadius: '1rem',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 800,
-                                    background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)',
-                                    border: 'none',
-                                    color: '#FFFFFF',
-                                    cursor: 'pointer'
-                                }}
-                                onClick={() => {
-                                    setStatus('idle');
-                                    setMemberInfo(null);
-                                    setResponses({ studentRegNo: '', dailyQuestionAnswer: '' });
-                                    setMsg('');
-                                }}
-                            >
-                                Check In Another Person
-                            </button>
-                            <button
-                                className="btn"
-                                style={{
-                                    width: '100%',
-                                    height: '44px',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '0.75rem',
-                                    fontSize: '0.82rem',
-                                    fontWeight: 800,
-                                    color: 'var(--color-text-dim)',
-                                    cursor: 'pointer'
-                                }}
-                                onClick={() => window.close()}
-                            >
-                                CLOSE
-                            </button>
-                        </div>
+                                    gap: '0.45rem',
+                                    padding: '0.4rem 1rem',
+                                    background: 'rgba(56, 189, 248, 0.15)',
+                                    border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                                    borderRadius: '24px',
+                                    marginBottom: '1rem'
+                                }}>
+                                    <span>🌿</span>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 900, color: '#38BDF8', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                        Officially Registered · Doulos Recruit
+                                    </span>
+                                </div>
+                                <h2 style={{ color: '#FFFFFF', marginBottom: '0.4rem', fontSize: '1.9rem', fontWeight: 900, letterSpacing: '-0.03em' }}>
+                                    WELCOME TO DOULOS!
+                                </h2>
+                                <p style={{ fontSize: '1.15rem', fontWeight: 800, color: '#38BDF8', margin: '0 0 0.8rem' }}>
+                                    {memberInfo?.name || selfRegForm.name || responses.studentName || 'New Recruit'}
+                                </p>
+                                <p style={{ lineHeight: 1.7, color: 'rgba(255,255,255,0.85)', marginBottom: '2.5rem', fontSize: '1rem', maxWidth: '420px', margin: '0 auto 2.5rem' }}>
+                                    We are thrilled to welcome you to the Doulos family! Your attendance for <strong>{meeting?.name}</strong> has been officially recorded.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                    <button
+                                        type="button"
+                                        style={{
+                                            width: '100%',
+                                            height: '54px',
+                                            borderRadius: '1rem',
+                                            fontSize: '1rem',
+                                            fontWeight: 900,
+                                            background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
+                                            border: 'none',
+                                            color: '#FFFFFF',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 8px 30px rgba(14, 165, 233, 0.45)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.6rem'
+                                        }}
+                                        onClick={() => navigate(`/portal?reg=${encodeURIComponent(responses.studentRegNo || '')}`)}
+                                    >
+                                        <span>Open My Recruit Portal</span>
+                                        <ArrowRight size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div style={{
+                                    background: 'radial-gradient(circle, rgba(74, 222, 128, 0.2) 0%, transparent 70%)',
+                                    width: '120px', height: '120px', borderRadius: '50%',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 2rem',
+                                    animation: 'pulse 2s infinite'
+                                }}>
+                                    <CheckCircle size={64} color="#4ade80" />
+                                </div>
+                                <h2 style={{ color: '#4ade80', marginBottom: '1rem', fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.05em' }}>CHECK-IN SUCCESSFUL</h2>
+                                <p style={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.8)', marginBottom: '2.5rem', fontSize: '1.1rem' }}>
+                                    Your attendance for <strong>{meeting?.name}</strong> has been successfully recorded.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                    <button
+                                        type="button"
+                                        style={{
+                                            width: '100%',
+                                            height: '52px',
+                                            borderRadius: '1rem',
+                                            fontSize: '0.95rem',
+                                            fontWeight: 900,
+                                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                            border: 'none',
+                                            color: '#FFFFFF',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 8px 25px rgba(16, 185, 129, 0.35)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem'
+                                        }}
+                                        onClick={() => navigate(`/portal?reg=${encodeURIComponent(responses.studentRegNo || '')}`)}
+                                    >
+                                        <span>Go to My Member Portal</span>
+                                        <ArrowRight size={18} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        style={{
+                                            width: '100%',
+                                            height: '48px',
+                                            borderRadius: '1rem',
+                                            fontSize: '0.9rem',
+                                            fontWeight: 800,
+                                            background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)',
+                                            border: 'none',
+                                            color: '#FFFFFF',
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={() => {
+                                            setStatus('idle');
+                                            setMemberInfo(null);
+                                            setResponses({ studentRegNo: '', dailyQuestionAnswer: '' });
+                                            setMsg('');
+                                        }}
+                                    >
+                                        Check In Another Person
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : status === 'maintenance' ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>

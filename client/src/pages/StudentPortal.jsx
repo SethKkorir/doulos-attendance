@@ -7,7 +7,8 @@ import {
     History, FileText, LayoutDashboard, Activity, Clock, ChevronRight, Users,
     AlertCircle, ArrowRight, User, Award, Flame, Compass, HeartHandshake, ShieldCheck,
     Shield, Layers, Info, Check, ArrowUpRight, Trash2, QrCode, ScanLine, Camera,
-    Loader2, Lock, Eye, EyeOff, LogIn
+    Loader2, Lock, Eye, EyeOff, LogIn,
+    HelpCircle, Send, Bookmark
 } from 'lucide-react';
 import BackgroundGallery from '../components/BackgroundGallery';
 import ValentineRain from '../components/ValentineRain';
@@ -27,7 +28,8 @@ const getTimeGreeting = () => {
 
 const TABS = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'history',  label: 'Attendance History', icon: History },
+    { id: 'fellowship', label: 'Fellowship', icon: BookOpen },
+    { id: 'history',  label: 'Attendance', icon: History },
     { id: 'events',   label: 'Events & Camp', icon: Calendar },
     { id: 'bot',      label: 'Doulos AI', icon: Sparkles },
 ];
@@ -125,6 +127,7 @@ const getDouloidRankDetails = (memberType, douloidRank, belayStatus, soloStation
 
 /* ─── G5 Inspired White & Blue Theme CSS ─── */
 const CSS = `
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     
     :root {
@@ -402,14 +405,17 @@ const CSS = `
         flex-direction: column;
         align-items: center;
         gap: 0.2rem;
-        padding: 0.45rem 1.15rem;
+        padding: 0.45rem 0.35rem;
+        flex: 1;
+        min-width: 0;
         background: none;
         border: none;
         color: var(--color-text-muted);
         cursor: pointer;
-        font-size: 0.68rem;
+        font-size: 0.65rem;
         font-weight: 800;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
         border-radius: var(--radius-pill);
         transition: all 0.2s;
     }
@@ -484,9 +490,10 @@ const StudentPortal = () => {
     const [isFocusedUser, setIsFocusedUser] = useState(false);
     const [isFocusedPass, setIsFocusedPass] = useState(false);
     const [registrationRequired, setRegistrationRequired] = useState(false);
+    const [showRecruitWelcomeModal, setShowRecruitWelcomeModal] = useState(false);
     const [newMemberName, setNewMemberName] = useState('');
     const [newMemberCampus, setNewMemberCampus] = useState('Athi River');
-    const [newMemberType, setNewMemberType] = useState('Douloid');
+    const [newMemberType, setNewMemberType] = useState('Recruit');
     const [isFocusedReg, setIsFocusedReg] = useState(false);
     const [showRolloverWelcome, setShowRolloverWelcome] = useState(false);
     const [rolloverActiveToggle, setRolloverActiveToggle] = useState(true); // Defaults to Yes (pre-selected)
@@ -495,6 +502,112 @@ const StudentPortal = () => {
     const [showRankDetailsModal, setShowRankDetailsModal] = useState(false);
     const [showAiComingSoon, setShowAiComingSoon] = useState(false);
     const [forgotNotice, setForgotNotice] = useState('');
+
+    // Spiritual Ministry States (Fellowship & Question of the Day)
+    const [todayFellowship, setTodayFellowship] = useState(null);
+    const [loadingFellowship, setLoadingFellowship] = useState(false);
+    const [todayQuestion, setTodayQuestion] = useState(null);
+    const [loadingQuestion, setLoadingQuestion] = useState(false);
+    const [questionAnswer, setQuestionAnswer] = useState('');
+    const [requestCheckIn, setRequestCheckIn] = useState(false);
+    const [isSubmittingQ, setIsSubmittingQ] = useState(false);
+    const [questionResult, setQuestionResult] = useState(null);
+    const [reflectionText, setReflectionText] = useState('');
+    const [isSavingReflection, setIsSavingReflection] = useState(false);
+    const [reflectionSaved, setReflectionSaved] = useState(false);
+    const [prayerEngaged, setPrayerEngaged] = useState(false);
+
+    const loadSpiritualData = async () => {
+        try {
+            setLoadingFellowship(true);
+            setLoadingQuestion(true);
+            const [fellowshipRes, questionRes] = await Promise.allSettled([
+                api.get('/fellowships/today'),
+                api.get('/questions/active')
+            ]);
+            if (fellowshipRes.status === 'fulfilled' && fellowshipRes.value?.data) {
+                const fel = fellowshipRes.value.data;
+                setTodayFellowship(fel);
+                const activeReg = data?.studentRegNo || regNo || 'member';
+                const key = `doulos_reflection_${fel._id}_${activeReg}`;
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    setReflectionText(saved);
+                    setReflectionSaved(true);
+                }
+            }
+            if (questionRes.status === 'fulfilled' && questionRes.value?.data) {
+                const q = questionRes.value.data;
+                if (q && q.category !== 'BANTER') {
+                    setTodayQuestion(q);
+                } else {
+                    setTodayQuestion(null);
+                }
+            }
+        } catch (err) {
+            console.warn('Failed to load spiritual ministry content for member portal:', err);
+        } finally {
+            setLoadingFellowship(false);
+            setLoadingQuestion(false);
+        }
+    };
+
+    const handleSubmitQuestion = async () => {
+        if (!questionAnswer.trim() || !todayQuestion) return;
+        setIsSubmittingQ(true);
+        try {
+            const res = await api.post('/questions/response', {
+                questionId: todayQuestion._id,
+                memberId: data?._id || regNo || 'MEMBER',
+                response: questionAnswer,
+                memberName: data?.memberName || 'Member',
+                campus: data?.campus || 'Athi River',
+                memberType: data?.memberType || 'Douloid',
+                requestCheckIn,
+                checkInReason: requestCheckIn ? 'Member requested pastoral care from mobile web portal' : ''
+            });
+            setQuestionResult(res.data);
+            showToast(
+                todayQuestion.category === 'SKILLS'
+                    ? (res.data.isCorrect ? '🎯 Correct answer recorded!' : '📌 Field Learning Point recorded.')
+                    : '✨ Your answer has been recorded!',
+                'success'
+            );
+        } catch (err) {
+            showToast('Failed to record response. Please try again.', 'error');
+        } finally {
+            setIsSubmittingQ(false);
+        }
+    };
+
+    const handleSaveReflection = async () => {
+        if (!todayFellowship || !reflectionText.trim()) return;
+        setIsSavingReflection(true);
+        try {
+            const activeReg = data?.studentRegNo || regNo || 'member';
+            const key = `doulos_reflection_${todayFellowship._id}_${activeReg}`;
+            localStorage.setItem(key, reflectionText);
+            await api.post(`/fellowships/${todayFellowship._id}/interaction`, { type: 'reflected' });
+            setReflectionSaved(true);
+            showToast('🔒 Reflection saved privately to your journal', 'success');
+        } catch (err) {
+            setReflectionSaved(true);
+            showToast('Saved locally to your device', 'info');
+        } finally {
+            setIsSavingReflection(false);
+        }
+    };
+
+    const handleEngagePrayer = async () => {
+        if (!todayFellowship || prayerEngaged) return;
+        try {
+            await api.post(`/fellowships/${todayFellowship._id}/interaction`, { type: 'prayer' });
+            setPrayerEngaged(true);
+            showToast('🙏 Amen! Closing prayer engaged.', 'success');
+        } catch (err) {
+            setPrayerEngaged(true);
+        }
+    };
 
     const navigate = useNavigate();
 
@@ -505,6 +618,16 @@ const StudentPortal = () => {
         }
         return () => clearTimeout(timer);
     }, [forgotNotice]);
+
+    useEffect(() => {
+        if (activeTab === 'fellowship') {
+            if (!todayFellowship) {
+                loadSpiritualData();
+            } else if (todayFellowship._id) {
+                api.post(`/fellowships/${todayFellowship._id}/interaction`, { type: 'opened' }).catch(() => {});
+            }
+        }
+    }, [activeTab]);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -610,6 +733,7 @@ const StudentPortal = () => {
                 setSelectedSemester(res.data.selectedSemester);
             }
             setIsLoggedIn(true);
+            loadSpiritualData();
             localStorage.setItem('studentSession', JSON.stringify({ regNo: targetRegNo, expiry: Date.now() + SESSION_DURATION }));
         } catch (err) { setError(err.response?.data?.message || 'Something went wrong. Please try again.'); }
         finally { setLoading(false); }
@@ -625,12 +749,13 @@ const StudentPortal = () => {
         try {
             await api.post('/members/self-register', {
                 studentRegNo: regNo,
-                name: newMemberName,
-                campus: newMemberCampus,
-                memberType: newMemberType
+                name: newMemberName.trim(),
+                campus: newMemberCampus === 'Nairobi' ? 'Valley Road' : newMemberCampus,
+                memberType: 'Recruit'
             });
+            setLoading(false);
             setRegistrationRequired(false);
-            handleLogin();
+            setShowRecruitWelcomeModal(true);
         } catch (err) { setError(err.response?.data?.message || 'Registration failed. Please try again.'); setLoading(false); }
     };
 
@@ -678,8 +803,9 @@ const StudentPortal = () => {
     };
 
     useEffect(() => {
-        if (isLoggedIn && !data) {
-            handleLogin();
+        if (isLoggedIn) {
+            if (!data) handleLogin();
+            loadSpiritualData();
         }
     }, [isLoggedIn, isGuest]);
 
@@ -1075,7 +1201,8 @@ const StudentPortal = () => {
                                             outline: 'none'
                                         }}
                                     >
-                                        {['Athi River', 'Valley Road'].map(o => <option key={o} value={o}>{o}</option>)}
+                                        <option value="Athi River">Athi River</option>
+                                        <option value="Valley Road">Nairobi</option>
                                     </select>
                                 </div>
                                 <div>
@@ -1086,26 +1213,24 @@ const StudentPortal = () => {
                                         color: '#CBD5E1',
                                         marginBottom: '0.4rem'
                                     }}>
-                                        Category
+                                        Role
                                     </label>
-                                    <select
-                                        value={newMemberType}
-                                        onChange={e => setNewMemberType(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            height: '46px',
-                                            background: 'rgba(15, 23, 42, 0.85)',
-                                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                                            borderRadius: '10px',
-                                            color: '#FFFFFF',
-                                            padding: '0 0.75rem',
-                                            fontSize: '0.88rem',
-                                            fontWeight: 600,
-                                            outline: 'none'
-                                        }}
-                                    >
-                                        {['Douloid', 'Recruit', 'Visitor'].map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select>
+                                    <div style={{
+                                        height: '46px',
+                                        background: 'rgba(29, 78, 216, 0.18)',
+                                        border: '1px solid rgba(59, 130, 246, 0.4)',
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '0 0.75rem',
+                                        gap: '0.45rem',
+                                        color: '#93C5FD',
+                                        fontSize: '0.84rem',
+                                        fontWeight: 800
+                                    }}>
+                                        <span>🎖️</span>
+                                        <span>Doulos Recruit</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1113,13 +1238,13 @@ const StudentPortal = () => {
                                 type="submit"
                                 disabled={loading}
                                 style={{
-                                    height: '46px',
+                                    height: '48px',
                                     background: 'linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)',
                                     color: '#FFFFFF',
                                     border: 'none',
                                     borderRadius: '10px',
                                     fontSize: '0.94rem',
-                                    fontWeight: 700,
+                                    fontWeight: 800,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -1133,11 +1258,11 @@ const StudentPortal = () => {
                                 {loading ? (
                                     <>
                                         <Loader2 size={18} className="spinner-animate" />
-                                        <span>Enrolling...</span>
+                                        <span>Enrolling Recruit...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Register & Check In</span>
+                                        <span>Complete Registration & Enter Portal</span>
                                         <ArrowRight size={18} />
                                     </>
                                 )}
@@ -1399,6 +1524,101 @@ const StudentPortal = () => {
                     }}>
                         Doulos Timeregistrering System
                     </div>
+
+                    {/* Celebratory Recruit Welcome Modal */}
+                    {showRecruitWelcomeModal && (
+                        <div style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(15, 23, 42, 0.85)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 3000,
+                            padding: '1.25rem'
+                        }}>
+                            <div style={{
+                                background: '#FFFFFF',
+                                border: '1px solid #CBD5E1',
+                                borderRadius: '24px',
+                                padding: '2.5rem 2rem',
+                                maxWidth: '420px',
+                                width: '100%',
+                                textAlign: 'center',
+                                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.35)',
+                                animation: 'slideDown 0.3s ease'
+                            }}>
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+                                    border: '2px solid #BFDBFE',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1.25rem',
+                                    fontSize: '2.5rem'
+                                }}>
+                                    🎉
+                                </div>
+                                <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    padding: '0.35rem 0.85rem',
+                                    background: '#EFF6FF',
+                                    border: '1px solid #BFDBFE',
+                                    borderRadius: '20px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 900,
+                                    color: '#1D4ED8',
+                                    letterSpacing: '0.8px',
+                                    textTransform: 'uppercase',
+                                    marginBottom: '0.75rem'
+                                }}>
+                                    <span>🌿</span>
+                                    <span>OFFICIALLY REGISTERED</span>
+                                </div>
+                                <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0F172A', margin: '0 0 0.35rem 0' }}>
+                                    WELCOME TO DOULOS!
+                                </h2>
+                                <p style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1D4ED8', margin: '0 0 0.85rem 0' }}>
+                                    {newMemberName}
+                                </p>
+                                <p style={{ fontSize: '0.88rem', color: '#475569', lineHeight: 1.55, margin: '0 0 1.75rem 0' }}>
+                                    Your profile has been created as a <strong>Doulos Recruit</strong>. We are thrilled to welcome you to our fellowship family!
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowRecruitWelcomeModal(false);
+                                        handleLogin();
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        height: '50px',
+                                        background: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)',
+                                        color: '#FFFFFF',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontSize: '0.96rem',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: '0 4px 16px rgba(29, 78, 216, 0.35)'
+                                    }}
+                                >
+                                    <span>Open My Recruit Portal</span>
+                                    <ArrowRight size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -1500,7 +1720,9 @@ const StudentPortal = () => {
                                 <Award size={28} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: rank.color, letterSpacing: '1px', textTransform: 'uppercase' }}>G5 DOULOID RANK</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: rank.color, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                    {data?.memberType === 'Recruit' ? 'DOULOS RECRUIT' : 'G5 DOULOID RANK'}
+                                </span>
                                 <h3 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0F172A', margin: 0 }}>{rank.rankName}</h3>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B' }}>{rank.level}</div>
                             </div>
@@ -1630,7 +1852,7 @@ const StudentPortal = () => {
                             </div>
                             <div style={{ minWidth: 0 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 900, color: rank.color, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.1 }}>
-                                    DOULOID RANK
+                                    {data?.memberType === 'Recruit' ? 'RECRUIT STATUS' : 'DOULOID RANK'}
                                 </div>
                                 <div style={{ fontSize: '0.94rem', fontWeight: 900, color: '#0F172A', lineHeight: 1.2, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {rank.rankName}
@@ -1749,6 +1971,189 @@ const StudentPortal = () => {
                                 </div>
                             </div>
 
+                            {/* Question of the Day Card */}
+                            {todayQuestion && todayQuestion.category !== 'BANTER' && (
+                                <div className="sp-card" style={{
+                                    border: '1.5px solid rgba(217, 119, 6, 0.25)',
+                                    background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFDF8 100%)',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#FEF3C7', color: '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Sparkles size={14} />
+                                            </div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#B45309', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                                Question of the Day
+                                            </span>
+                                        </div>
+                                        <span style={{
+                                            fontSize: '0.68rem',
+                                            fontWeight: 800,
+                                            padding: '0.2rem 0.55rem',
+                                            borderRadius: '20px',
+                                            textTransform: 'uppercase',
+                                            background: todayQuestion.category === 'SKILLS' ? '#EEF2FF' : todayQuestion.category === 'LIFE' ? '#ECFDF5' : '#FFF7ED',
+                                            color: todayQuestion.category === 'SKILLS' ? '#4F46E5' : todayQuestion.category === 'LIFE' ? '#059669' : '#EA580C',
+                                            border: `1px solid ${todayQuestion.category === 'SKILLS' ? '#C7D2FE' : todayQuestion.category === 'LIFE' ? '#A7F3D0' : '#FFEDD5'}`
+                                        }}>
+                                            {todayQuestion.category === 'SKILLS' ? 'Field Skill' : todayQuestion.category === 'LIFE' ? 'Life & Pastoral' : 'Banter'}
+                                        </span>
+                                    </div>
+
+                                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', margin: '0 0 0.85rem 0', lineHeight: '1.45' }}>
+                                        {todayQuestion.text}
+                                    </h4>
+
+                                    {questionResult ? (
+                                        <div style={{
+                                            padding: '0.9rem',
+                                            borderRadius: '12px',
+                                            background: questionResult.isCorrect === true ? '#ECFDF5' : questionResult.isCorrect === false ? '#FEF3C7' : '#F8FAFC',
+                                            border: `1px solid ${questionResult.isCorrect === true ? '#A7F3D0' : questionResult.isCorrect === false ? '#FDE68A' : '#E2E8F0'}`,
+                                            marginBottom: '0.75rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '0.85rem', color: questionResult.isCorrect === true ? '#065F46' : questionResult.isCorrect === false ? '#92400E' : '#1E293B' }}>
+                                                {questionResult.isCorrect === true && <span>🎯 Correct Answer!</span>}
+                                                {questionResult.isCorrect === false && <span>📌 Field Learning Point</span>}
+                                                {questionResult.isCorrect === null && <span>✓ Response Recorded</span>}
+                                            </div>
+                                            {todayQuestion.explanation && (
+                                                <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '0.35rem', lineHeight: '1.4' }}>
+                                                    {todayQuestion.explanation}
+                                                </div>
+                                            )}
+                                            {requestCheckIn && (
+                                                <div style={{ marginTop: '0.45rem', fontSize: '0.74rem', color: '#059669', fontWeight: 700 }}>
+                                                    💚 Pastoral follow-up requested. A spiritual coordinator will connect with you.
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div style={{ marginBottom: '0.75rem' }}>
+                                            {todayQuestion.options && todayQuestion.options.length > 0 ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '0.75rem' }}>
+                                                    {todayQuestion.options.map((opt, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() => setQuestionAnswer(opt)}
+                                                            style={{
+                                                                textAlign: 'left',
+                                                                padding: '0.65rem 0.85rem',
+                                                                borderRadius: '10px',
+                                                                border: questionAnswer === opt ? '2px solid #D97706' : '1px solid #CBD5E1',
+                                                                background: questionAnswer === opt ? '#FEF3C7' : '#FFFFFF',
+                                                                color: questionAnswer === opt ? '#92400E' : '#1E293B',
+                                                                fontWeight: questionAnswer === opt ? 800 : 600,
+                                                                fontSize: '0.86rem',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.15s ease'
+                                                            }}
+                                                        >
+                                                            {opt}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    placeholder="Type your response..."
+                                                    value={questionAnswer}
+                                                    onChange={e => setQuestionAnswer(e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '0.7rem 0.9rem',
+                                                        borderRadius: '10px',
+                                                        border: '1.5px solid #CBD5E1',
+                                                        fontSize: '0.88rem',
+                                                        outline: 'none',
+                                                        marginBottom: '0.75rem',
+                                                        boxSizing: 'border-box'
+                                                    }}
+                                                />
+                                            )}
+
+                                            {todayQuestion.category === 'LIFE' && (
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: '#475569', marginBottom: '0.85rem', cursor: 'pointer' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={requestCheckIn}
+                                                        onChange={e => setRequestCheckIn(e.target.checked)}
+                                                    />
+                                                    <span>I would appreciate a confidential check-in from a spiritual coordinator</span>
+                                                </label>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={handleSubmitQuestion}
+                                                disabled={!questionAnswer.trim() || isSubmittingQ}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.7rem',
+                                                    borderRadius: '10px',
+                                                    border: 'none',
+                                                    background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)',
+                                                    color: '#FFFFFF',
+                                                    fontWeight: 800,
+                                                    fontSize: '0.86rem',
+                                                    cursor: (!questionAnswer.trim() || isSubmittingQ) ? 'not-allowed' : 'pointer',
+                                                    opacity: (!questionAnswer.trim() || isSubmittingQ) ? 0.6 : 1,
+                                                    boxShadow: '0 4px 12px rgba(217, 119, 6, 0.25)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.45rem'
+                                                }}
+                                            >
+                                                {isSubmittingQ ? <Loader2 size={16} className="spinner-animate" /> : <Send size={15} />}
+                                                <span>{isSubmittingQ ? 'Submitting...' : 'Submit Answer'}</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Today's Devotional Spotlight Banner */}
+                            {todayFellowship && (
+                                <div className="sp-card" style={{
+                                    border: '1.5px solid rgba(217, 119, 6, 0.2)',
+                                    background: 'linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '1rem',
+                                    cursor: 'pointer'
+                                }} onClick={() => setActiveTab('fellowship')}>
+                                    <div>
+                                        <div style={{ fontSize: '0.68rem', fontWeight: 900, color: '#B45309', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+                                            TODAY'S DEVOTIONAL
+                                        </div>
+                                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.25 }}>
+                                            {todayFellowship.title}
+                                        </div>
+                                        <div style={{ fontSize: '0.78rem', color: '#92400E', fontWeight: 700, marginTop: '3px' }}>
+                                            {todayFellowship.scriptureReference}
+                                        </div>
+                                    </div>
+                                    <div style={{
+                                        width: '38px',
+                                        height: '38px',
+                                        borderRadius: '10px',
+                                        background: '#FEF3C7',
+                                        color: '#B45309',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                        <ChevronRight size={18} />
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Spiritual Theme Card */}
                             {data?.semesterTheme && (
                                 <div className="sp-card" style={{ background: '#F8FAFC' }}>
@@ -1830,6 +2235,197 @@ const StudentPortal = () => {
                                         </span>
                                     </div>
                                 ))
+                            )}
+                        </div>
+                    )}
+
+                    {/* ──── FELLOWSHIP TAB ──── */}
+                    {activeTab === 'fellowship' && (
+                        <div>
+                            {todayFellowship ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {/* Header & Theme Pill */}
+                                    <div className="sp-card" style={{ padding: '1.4rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#B45309', background: '#FEF3C7', padding: '0.2rem 0.6rem', borderRadius: '14px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                                {todayFellowship.theme || "TODAY'S FELLOWSHIP"}
+                                            </span>
+                                            <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 700 }}>
+                                                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                            </span>
+                                        </div>
+
+                                        <h2 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '1.55rem', fontWeight: 800, color: '#0F172A', margin: '0 0 0.85rem 0', lineHeight: 1.3 }}>
+                                            {todayFellowship.title}
+                                        </h2>
+
+                                        {/* Scripture Reference Quote */}
+                                        {todayFellowship.scriptureReference && (
+                                            <div style={{
+                                                background: '#FFFDF8',
+                                                borderLeft: '3.5px solid #D97706',
+                                                borderTop: '1px solid #FEF3C7',
+                                                borderRight: '1px solid #FEF3C7',
+                                                borderBottom: '1px solid #FEF3C7',
+                                                padding: '0.9rem 1rem',
+                                                borderRadius: '0 12px 12px 0',
+                                                marginBottom: '1.15rem'
+                                            }}>
+                                                <div style={{ fontWeight: 800, fontSize: '0.78rem', color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                                    {todayFellowship.scriptureReference}
+                                                </div>
+                                                <div style={{ fontFamily: '"Playfair Display", Georgia, serif', fontStyle: 'italic', fontSize: '0.94rem', color: '#334155', marginTop: '5px', lineHeight: '1.55' }}>
+                                                    "{todayFellowship.scriptureText || 'Scripture reading for today...'}"
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Devotional Word */}
+                                        <div style={{ fontSize: '0.92rem', lineHeight: '1.7', color: '#334155', whiteSpace: 'pre-line' }}>
+                                            {todayFellowship.devotional}
+                                        </div>
+                                    </div>
+
+                                    {/* Personal Reflection Card */}
+                                    {todayFellowship.reflectionQuestion && (
+                                        <div className="sp-card" style={{ padding: '1.35rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    MY REFLECTION
+                                                </div>
+                                                <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700 }}>
+                                                    🔒 Confidential
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.75rem', lineHeight: '1.4' }}>
+                                                {todayFellowship.reflectionQuestion}
+                                            </div>
+                                            <textarea
+                                                rows={3}
+                                                placeholder="Write your private reflection here (only you can see this)..."
+                                                value={reflectionText}
+                                                onChange={e => {
+                                                    setReflectionText(e.target.value);
+                                                    setReflectionSaved(false);
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.75rem',
+                                                    borderRadius: '10px',
+                                                    border: '1.5px solid #CBD5E1',
+                                                    fontSize: '0.88rem',
+                                                    lineHeight: '1.5',
+                                                    outline: 'none',
+                                                    boxSizing: 'border-box',
+                                                    marginBottom: '0.65rem',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                            />
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.72rem', color: reflectionSaved ? '#059669' : '#64748B', fontWeight: 700 }}>
+                                                    {reflectionSaved ? '✓ Saved to your journal' : 'Unsaved reflection note'}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSaveReflection}
+                                                    disabled={!reflectionText.trim() || isSavingReflection}
+                                                    style={{
+                                                        padding: '0.45rem 0.95rem',
+                                                        borderRadius: '8px',
+                                                        border: 'none',
+                                                        background: '#1D4ED8',
+                                                        color: '#FFFFFF',
+                                                        fontWeight: 800,
+                                                        fontSize: '0.8rem',
+                                                        cursor: (!reflectionText.trim() || isSavingReflection) ? 'not-allowed' : 'pointer',
+                                                        opacity: (!reflectionText.trim() || isSavingReflection) ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    {isSavingReflection ? 'Saving...' : 'Save Note'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Closing Prayer Card */}
+                                    {todayFellowship.prayer && (
+                                        <div className="sp-card" style={{
+                                            padding: '1.35rem',
+                                            background: 'linear-gradient(135deg, #FFFDF8 0%, #FFFBEB 100%)',
+                                            border: '1px solid #FEF3C7'
+                                        }}>
+                                            <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.4rem' }}>
+                                                CLOSING PRAYER
+                                            </div>
+                                            <div style={{ fontSize: '0.88rem', color: '#78350F', fontStyle: 'italic', lineHeight: '1.6', marginBottom: '0.85rem' }}>
+                                                "{todayFellowship.prayer}"
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleEngagePrayer}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.65rem',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid #F59E0B',
+                                                    background: prayerEngaged ? '#FEF3C7' : '#FFFFFF',
+                                                    color: '#B45309',
+                                                    fontWeight: 800,
+                                                    fontSize: '0.84rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.45rem'
+                                                }}
+                                            >
+                                                <span>{prayerEngaged ? '🙏 Amen (Prayer Engaged)' : '🙏 Say Amen'}</span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Community Prompt */}
+                                    {todayFellowship.communityPrompt && (
+                                        <div className="sp-card" style={{
+                                            padding: '1.25rem',
+                                            background: '#EEF2FF',
+                                            border: '1px solid #C7D2FE'
+                                        }}>
+                                            <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#4338CA', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.35rem' }}>
+                                                COMMUNITY SHARING CIRCLE
+                                            </div>
+                                            <div style={{ fontSize: '0.86rem', color: '#312E81', lineHeight: '1.45', fontWeight: 600 }}>
+                                                {todayFellowship.communityPrompt}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="sp-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+                                    <BookOpen size={42} color="#D97706" style={{ opacity: 0.8, marginBottom: '1rem' }} />
+                                    <h3 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#0F172A', margin: '0 0 0.4rem 0' }}>
+                                        No Devotional Published Today
+                                    </h3>
+                                    <p style={{ fontSize: '0.86rem', color: '#64748B', maxWidth: '380px', margin: '0 auto 1.25rem', lineHeight: '1.5' }}>
+                                        Check back shortly. The G3/G4 Spiritual Coordinators will release today's scripture meditation and reflection soon.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('overview')}
+                                        style={{
+                                            padding: '0.65rem 1.25rem',
+                                            borderRadius: '10px',
+                                            border: 'none',
+                                            background: '#1D4ED8',
+                                            color: '#FFFFFF',
+                                            fontWeight: 800,
+                                            fontSize: '0.84rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Back to Overview
+                                    </button>
+                                </div>
                             )}
                         </div>
                     )}
@@ -1991,6 +2587,10 @@ const StudentPortal = () => {
                     studentRegNo={data?.studentRegNo || regNo}
                     memberName={data?.memberName}
                     onCheckInSuccess={handleCheckInSuccess}
+                    onOpenFellowship={() => {
+                        setShowScanner(false);
+                        setActiveTab('fellowship');
+                    }}
                 />
 
                 {/* ══ DOULOS AI COMING SOON POPUP MODAL ══ */}

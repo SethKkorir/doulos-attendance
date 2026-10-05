@@ -9,12 +9,14 @@ class PortalQrScannerSheet extends StatefulWidget {
   final String studentRegNo;
   final String memberName;
   final VoidCallback onCheckInSuccess;
+  final VoidCallback? onNavigateToFellowship;
 
   const PortalQrScannerSheet({
     super.key,
     required this.studentRegNo,
     required this.memberName,
     required this.onCheckInSuccess,
+    this.onNavigateToFellowship,
   });
 
   @override
@@ -38,10 +40,15 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
 
   String? _pendingMeetingCode;
   Map<String, dynamic>? _pendingMeeting;
+  Map<String, dynamic>? _activeQuestion;
+  String? _selectedOption;
+  bool _requestCheckIn = false;
   final TextEditingController _questionAnswerController = TextEditingController();
+  final TextEditingController _checkInReasonController = TextEditingController();
   final TextEditingController _manualCodeController = TextEditingController();
   String? _questionError;
   Map<String, dynamic>? _checkInResult;
+  Map<String, dynamic>? _skillsFeedback;
   bool _isTorchOn = false;
   Position? _currentPosition;
   bool _isProcessingScan = false;
@@ -88,6 +95,7 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
   void dispose() {
     _scannerController.dispose();
     _questionAnswerController.dispose();
+    _checkInReasonController.dispose();
     _manualCodeController.dispose();
     super.dispose();
   }
@@ -180,10 +188,20 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
       });
 
       if (hasQuestion && questionText.trim().isNotEmpty) {
+        // Fetch full question metadata (category, options, skills feedback)
+        Map<String, dynamic>? enrichedQuestion;
+        try {
+          enrichedQuestion = await ApiService().fetchActiveQuestion(meetingCode: code);
+        } catch (_) {}
+
         setState(() {
+          _activeQuestion = enrichedQuestion;
           _status = ScannerStatus.question;
           _questionError = null;
+          _selectedOption = null;
+          _requestCheckIn = false;
           _questionAnswerController.clear();
+          _checkInReasonController.clear();
         });
       } else {
         await _submitCheckIn('');
@@ -220,10 +238,28 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
         accuracy: _currentPosition?.accuracy,
       );
 
+      // Decoupled Question Response submission
+      Map<String, dynamic>? questionRes;
+      if (_activeQuestion != null && _activeQuestion!['_id'] != null) {
+        try {
+          questionRes = await ApiService().submitQuestionResponse(
+            questionId: _activeQuestion!['_id'].toString(),
+            memberId: widget.studentRegNo,
+            memberName: widget.memberName,
+            meetingId: _pendingMeeting?['_id']?.toString(),
+            attendanceId: res['attendanceId']?.toString(),
+            response: answer,
+            requestCheckIn: _requestCheckIn,
+            checkInReason: _checkInReasonController.text.trim(),
+          );
+        } catch (_) {}
+      }
+
       widget.onCheckInSuccess();
 
       setState(() {
         _status = ScannerStatus.success;
+        _skillsFeedback = questionRes;
         _checkInResult = {
           'meetingName': res['meetingName'] ?? _pendingMeeting?['name'] ?? code.toUpperCase(),
           'pointsAwarded': res['pointsAwarded'] ?? 10,
@@ -601,34 +637,96 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
 
   Widget _buildQuestionView() {
     final meetingName = _pendingMeeting?['name']?.toString() ?? 'Fellowship Meeting';
-    final questionText = _pendingMeeting?['questionOfDay']?.toString() ?? '';
+    final questionText = _activeQuestion?['text']?.toString() ??
+        _pendingMeeting?['questionOfDay']?.toString() ??
+        '';
+    final category = (_activeQuestion?['category'] ?? 'BANTER').toString().toUpperCase();
+    final options = _activeQuestion?['options'] is List ? (_activeQuestion!['options'] as List) : [];
+    final skill = _activeQuestion?['skill']?.toString();
+    final difficulty = _activeQuestion?['difficulty']?.toString();
+
+    // Category styling metadata
+    Color catColor;
+    Color catBg;
+    IconData catIcon;
+    String catLabel;
+
+    switch (category) {
+      case 'SKILLS':
+        catColor = const Color(0xFF059669);
+        catBg = const Color(0xFFECFDF5);
+        catIcon = Icons.military_tech_rounded;
+        catLabel = 'Field & Safety Skills';
+        break;
+      case 'LIFE':
+        catColor = const Color(0xFF7C3AED);
+        catBg = const Color(0xFFF5F3FF);
+        catIcon = Icons.favorite_rounded;
+        catLabel = 'Life & Personal Check-In';
+        break;
+      case 'BANTER':
+      default:
+        catColor = const Color(0xFFD97706);
+        catBg = const Color(0xFFFFFBEB);
+        catIcon = Icons.sentiment_satisfied_alt_rounded;
+        catLabel = 'Banter & Community';
+        break;
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.event_available_rounded, size: 15, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Text(
-                  meetingName,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.event_available_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 5),
+                    Text(
+                      meetingName,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: catBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: catColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(catIcon, size: 14, color: catColor),
+                    const SizedBox(width: 5),
+                    Text(
+                      catLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: catColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
@@ -645,28 +743,57 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          if (skill != null && skill.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'Skill: $skill',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (difficulty != null && difficulty.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceSoft,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      difficulty.toUpperCase(),
+                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.purpleBg,
+              color: catBg.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+              border: Border.all(color: catColor.withValues(alpha: 0.25)),
             ),
             child: Text(
               questionText,
               style: GoogleFonts.inter(
-                fontSize: 14,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textDark,
-                height: 1.4,
+                height: 1.45,
               ),
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            'Your Answer',
+            'Your Response',
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -674,24 +801,132 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: _questionAnswerController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Type your reflection or response...',
-              hintStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
-              filled: true,
-              fillColor: AppColors.surfaceSoft,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+
+          // Render options tiles if available, else text input
+          if (options.isNotEmpty)
+            ...options.map((opt) {
+              final optText = opt.toString();
+              final isSelected = _selectedOption == optText;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedOption = optText;
+                    _questionError = null;
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.surfaceSoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                      width: isSelected ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          optText,
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? AppColors.primary : AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            })
+          else
+            TextField(
+              controller: _questionAnswerController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Type your reflection or response...',
+                hintStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+                filled: true,
+                fillColor: AppColors.surfaceSoft,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
               ),
             ),
-          ),
+
+          // Pastoral Care request checkbox for LIFE questions
+          if (category == 'LIFE') ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBF8FF),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE9D5FF)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _requestCheckIn,
+                        activeColor: const Color(0xFF7C3AED),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        onChanged: (val) {
+                          setState(() {
+                            _requestCheckIn = val ?? false;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Request someone from Doulos to check in with me',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF581C87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_requestCheckIn) ...[
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _checkInReasonController,
+                      decoration: InputDecoration(
+                        hintText: 'Optional: Brief note or how we can pray for you...',
+                        hintStyle: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFDDD6FE)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+
           if (_questionError != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -705,10 +940,14 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
             height: 50,
             child: ElevatedButton(
               onPressed: () {
-                final ans = _questionAnswerController.text.trim();
+                final ans = options.isNotEmpty
+                    ? (_selectedOption ?? '')
+                    : _questionAnswerController.text.trim();
                 if (ans.isEmpty) {
                   setState(() {
-                    _questionError = 'Please provide an answer before submitting.';
+                    _questionError = options.isNotEmpty
+                        ? 'Please select an option before submitting.'
+                        : 'Please provide an answer before submitting.';
                   });
                   return;
                 }
@@ -736,104 +975,221 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
   Widget _buildSuccessView() {
     final meetingName = _checkInResult?['meetingName'] ?? 'Meeting';
     final points = _checkInResult?['pointsAwarded'] ?? 10;
+    final isSkills = _skillsFeedback?['category'] == 'SKILLS';
+    final isCorrect = _skillsFeedback?['isCorrect'] == true;
+    final explanation = _skillsFeedback?['explanation']?.toString();
+    final requestedCare = _skillsFeedback?['requestCheckIn'] == true || _requestCheckIn;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: AppColors.successBg,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.3), width: 2),
+            ),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.success,
+              size: 46,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Check-In Confirmed!',
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your attendance has been recorded in the live registry.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceSoft,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  meetingName,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.stars_rounded, color: Colors.amber, size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      '+$points Points Awarded',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Skills feedback banner
+          if (isSkills && _skillsFeedback != null) ...[
+            const SizedBox(height: 14),
             Container(
-              width: 80,
-              height: 80,
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.successBg,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.success.withValues(alpha: 0.3), width: 2),
-              ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.success,
-                size: 48,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Check-In Confirmed!',
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textDark,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Your attendance has been recorded in the live registry.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceSoft,
+                color: isCorrect ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color: isCorrect ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                ),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    meetingName,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.stars_rounded, color: Colors.amber, size: 18),
-                      const SizedBox(width: 4),
+                      Icon(
+                        isCorrect ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                        color: isCorrect ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        '+$points Points Awarded',
+                        isCorrect ? 'Correct Field Response! 🎯' : 'Field Learning Point 📌',
                         style: GoogleFonts.inter(
                           fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.success,
+                          fontWeight: FontWeight.bold,
+                          color: isCorrect ? const Color(0xFF059669) : const Color(0xFFDC2626),
                         ),
                       ),
                     ],
                   ),
+                  if (!isCorrect && _skillsFeedback?['correctAnswer'] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Expected: ${_skillsFeedback!['correctAnswer']}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                  if (explanation != null && explanation.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      explanation,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
+          ],
+
+          // Pastoral Care request acknowledgment
+          if (requestedCare) ...[
+            const SizedBox(height: 14),
+            Container(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text(
-                  'Done',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF5FF),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE9D5FF)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.favorite_rounded, color: Color(0xFF7C3AED), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Pastoral check-in requested 🤍 Our spiritual coordinators will reach out with care and discretion.',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF581C87),
+                        height: 1.35,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
-        ),
+
+          const SizedBox(height: 24),
+
+          // Continue to Today's Fellowship button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onNavigateToFellowship?.call();
+              },
+              icon: const Icon(Icons.auto_stories_rounded, size: 18, color: Colors.white),
+              label: Text(
+                'Continue Today\'s Fellowship',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF966C2D),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Done',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

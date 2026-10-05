@@ -219,11 +219,13 @@ class ProfileTab extends StatelessWidget {
                   const Icon(Icons.person_rounded, size: 14, color: AppColors.primary),
                   const SizedBox(width: 6),
                   Text(
-                    memberType == 'Douloid' ? douloidRank : memberType,
+                    memberType == 'Recruit'
+                        ? 'Doulos Recruit'
+                        : (memberType == 'Douloid' ? douloidRank : memberType),
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: memberType == 'Recruit' ? const Color(0xFF1D4ED8) : AppColors.primary,
                     ),
                   ),
                 ],

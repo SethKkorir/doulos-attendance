@@ -8,8 +8,10 @@ const ProtectedRoute = ({ children }) => {
     const isGuest = location.state?.isGuest || localStorage.getItem('isGuest') === 'true';
 
     const isAuthenticated = !!token && (
-        ['seth', 'g5', 'g2', 'trainer', 'g2_vice', 'admin', 'superadmin'].includes(String(username).toLowerCase())
-        || ['trainer', 'g2_vice', 'admin', 'superadmin'].includes(role.toLowerCase())
+        ['seth', 'g5', 'g2', 'trainer', 'g2_vice', 'admin', 'superadmin', 'g3', 'g4', 'g3_secretary', 'g4_logistics'].includes(String(username).toLowerCase())
+        || ['trainer', 'g2_vice', 'admin', 'superadmin', 'g3', 'g4', 'g3_secretary', 'g4_logistics'].includes(role.toLowerCase())
+        || String(username).toLowerCase().startsWith('g3')
+        || String(username).toLowerCase().startsWith('g4')
     );
 
     if (!isGuest && !isAuthenticated) {

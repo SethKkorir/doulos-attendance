@@ -389,6 +389,133 @@ class ApiService {
     throw Exception('Failed to submit attendance');
   }
 
+  // Fellowship Endpoints
+  Future<Map<String, dynamic>?> fetchTodayFellowship({String? campus}) async {
+    try {
+      final query = campus != null && campus.isNotEmpty ? '?campus=$campus' : '';
+      final url = await resolveEndpoint('/fellowships/today$query');
+      final res = await dio.get(url);
+      if (res.statusCode == 200 && res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> recordFellowshipInteraction(String fellowshipId, String type) async {
+    try {
+      final url = await resolveEndpoint('/fellowships/$fellowshipId/interaction');
+      await dio.post(url, data: {'type': type});
+    } catch (_) {}
+  }
+
+  // Question Bank Endpoints
+  Future<Map<String, dynamic>?> fetchActiveQuestion({String? meetingCode, String? campus}) async {
+    try {
+      final params = <String>[];
+      if (meetingCode != null && meetingCode.isNotEmpty) params.add('meetingCode=$meetingCode');
+      if (campus != null && campus.isNotEmpty) params.add('campus=$campus');
+      final query = params.isNotEmpty ? '?${params.join('&')}' : '';
+      final url = await resolveEndpoint('/questions/active$query');
+      final res = await dio.get(url);
+      if (res.statusCode == 200 && res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> submitQuestionResponse({
+    required String questionId,
+    required String memberId,
+    String? memberName,
+    String? campus,
+    String? memberType,
+    String? meetingId,
+    String? attendanceId,
+    required dynamic response,
+    bool requestCheckIn = false,
+    String? checkInReason,
+  }) async {
+    final url = await resolveEndpoint('/questions/response');
+    final res = await dio.post(
+      url,
+      data: {
+        'questionId': questionId,
+        'memberId': memberId,
+        'memberName': memberName,
+        'campus': campus,
+        'memberType': memberType,
+        'meetingId': meetingId,
+        'attendanceId': attendanceId,
+        'response': response,
+        'requestCheckIn': requestCheckIn,
+        'checkInReason': checkInReason,
+      },
+    );
+    if ((res.statusCode == 200 || res.statusCode == 201) && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to record question response');
+  }
+
+  // Self-register new member (Recruit by default)
+  Future<Map<String, dynamic>> selfRegisterMember({
+    required String studentRegNo,
+    required String name,
+    required String campus,
+    String memberType = 'Recruit',
+  }) async {
+    final url = await resolveEndpoint('/members/self-register');
+    final res = await dio.post(
+      url,
+      data: {
+        'studentRegNo': studentRegNo,
+        'name': name,
+        'campus': campus,
+        'memberType': memberType,
+      },
+    );
+    if ((res.statusCode == 200 || res.statusCode == 201) && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to register member');
+  }
+
+  // Member Care Support Request
+  Future<Map<String, dynamic>> submitSupportRequest({
+    required String memberId,
+    String? memberName,
+    String? campus,
+    String? memberType,
+    required String reason,
+    String? preferredContactMethod,
+    String? details,
+  }) async {
+    final url = await resolveEndpoint('/support-requests');
+    final res = await dio.post(
+      url,
+      data: {
+        'memberId': memberId,
+        'memberName': memberName,
+        'campus': campus,
+        'memberType': memberType,
+        'reason': reason,
+        'preferredContactMethod': preferredContactMethod ?? 'In Person',
+        'details': details ?? '',
+      },
+    );
+    if ((res.statusCode == 200 || res.statusCode == 201) && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to submit support request');
+  }
+
+
   // Safe parsing helper utilities
   static String safeString(dynamic val, [String fallback = '']) =>
       val != null ? val.toString() : fallback;

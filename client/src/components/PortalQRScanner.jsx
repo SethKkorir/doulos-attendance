@@ -102,7 +102,7 @@ const safeStopScanner = async (scanner) => {
     }
 };
 
-const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInSuccess }) => {
+const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInSuccess, onOpenFellowship }) => {
     const scannerId = "doulos-portal-qr-viewfinder";
     // Status states: 'initializing' | 'scanning' | 'processing' | 'question' | 'submitting' | 'success' | 'error'
     const [scannerStatus, setScannerStatus] = useState('initializing');
@@ -1112,6 +1112,37 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
                             >
                                 Back to My Dashboard 🚀
                             </button>
+
+                            {onOpenFellowship && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (onCheckInSuccess && checkInResult) {
+                                            onCheckInSuccess(checkInResult);
+                                        }
+                                        onOpenFellowship();
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.85rem',
+                                        marginTop: '0.65rem',
+                                        background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+                                        border: '1px solid #F59E0B',
+                                        borderRadius: '16px',
+                                        color: '#B45309',
+                                        fontWeight: 800,
+                                        fontSize: '0.92rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem'
+                                    }}
+                                >
+                                    <BookOpen size={16} />
+                                    <span>Continue Today's Fellowship 📖</span>
+                                </button>
+                            )}
                         </div>
                     )}
 

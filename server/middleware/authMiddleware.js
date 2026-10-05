@@ -33,6 +33,31 @@ export const verifyAdmin = (req, res, next) => {
     });
 };
 
+export const verifySpiritualCoordinator = (req, res, next) => {
+    verifyToken(req, res, () => {
+        const allowedRoles = [
+            'g3', 'g3_secretary', 'g4', 'g4_logistics',
+            'admin', 'superadmin', 'developer'
+        ];
+        const userRole = (req.user?.role || '').toLowerCase();
+        const username = (req.user?.username || '').toLowerCase();
+        if (
+            allowedRoles.includes(userRole) ||
+            userRole.startsWith('g3') ||
+            userRole.startsWith('g4') ||
+            username.startsWith('g3') ||
+            username.startsWith('g4') ||
+            username === 'superadmin' ||
+            username === 'supersuperadmin' ||
+            username === 'seth'
+        ) {
+            next();
+        } else {
+            res.status(403).json({ message: 'Access Denied: Spiritual Ministry (G3/G4) coordinator privileges required' });
+        }
+    });
+};
+
 export const optionalVerify = (req, res, next) => {
     let token = req.header('Authorization')?.split(' ')[1];
     if (!token && req.cookies) {

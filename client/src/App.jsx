@@ -6,6 +6,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SuperAdmin from './pages/SuperAdmin';
 import G5TrainingPortal from './pages/G5TrainingPortal';
 import G2OperationsPortal from './pages/G2OperationsPortal';
+import G3SpiritualPortal from './pages/G3SpiritualPortal';
 
 import StudentPortal from './pages/StudentPortal';
 import CheckIn from './pages/CheckIn';
@@ -88,6 +89,15 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/g3/portal"
+          element={
+            <ProtectedRoute>
+              <G3SpiritualPortal />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/spiritual/portal" element={<Navigate to="/g3/portal" replace />} />
       </Routes >
     </Router >
     </QueryClientProvider>
