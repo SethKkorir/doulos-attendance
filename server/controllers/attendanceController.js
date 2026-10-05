@@ -308,10 +308,19 @@ export const submitAttendance = async (req, res) => {
 
         // 10. Member Registry Lookup & Auto-Registration
         if (!member) {
-            const { isNewMember, registrationData } = req.body;
+            // First check if member was just created (e.g. concurrent self-register request)
+            member = await Member.findOne({ studentRegNo });
+            if (!member) {
+                member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${studentRegNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+            }
+        }
 
-            if (isNewMember && registrationData?.name) {
-                let resolvedCampus = (registrationData.campus || meeting.campus || 'Athi River').trim();
+        if (!member) {
+            const { isNewMember, registrationData } = req.body;
+            const candidateName = registrationData?.name || responses?.studentName || req.body.name || req.body.studentName;
+
+            if ((isNewMember || candidateName) && candidateName && candidateName.trim().length >= 2) {
+                let resolvedCampus = (registrationData?.campus || req.body.campus || responses?.campus || meeting.campus || 'Athi River').trim();
                 if (resolvedCampus.toLowerCase().includes('nairobi') || resolvedCampus.toLowerCase().includes('valley')) {
                     resolvedCampus = 'Valley Road';
                 } else {
@@ -320,19 +329,20 @@ export const submitAttendance = async (req, res) => {
 
                 member = new Member({
                     studentRegNo,
-                    name: registrationData.name.trim(),
+                    name: candidateName.trim(),
                     campus: resolvedCampus,
-                    memberType: registrationData.memberType || 'Recruit',
+                    memberType: registrationData?.memberType || 'Recruit',
                     status: 'Active'
                 });
                 await member.save();
-                console.log(`[AUTO-REGISTER] New recruit created: ${studentRegNo} (${registrationData.name})`);
+                console.log(`[AUTO-REGISTER] New recruit created on check-in: ${studentRegNo} (${candidateName})`);
             } else {
                 const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
                 const isRecovery = recoverySetting?.value === 'true';
                 await logScanError(studentRegNo, 'Registry Mismatch', `Admission Number not found in MongoDB registry. Recovery: ${isRecovery}`, meeting.campus);
                 return res.status(403).json({
-                    message: "Access Denied: Your Admission Number is not in the Doulos Registry. Please check details or register."
+                    message: "Access Denied: Your Admission Number is not in the Doulos Registry. Please check details or register.",
+                    registrationRequired: true
                 });
             }
         }

@@ -393,9 +393,10 @@ const CheckIn = () => {
         }
     };
 
-    const handleSelfRegisterAndCheckIn = async () => {
+    const handleSelfRegisterAndCheckIn = async (e) => {
+        if (e && e.preventDefault) e.preventDefault();
         const regNo = String(responses.studentRegNo || '').trim().toUpperCase();
-        const fullName = selfRegForm.name.trim();
+        const fullName = (selfRegForm.name || '').trim();
 
         if (!regNo) {
             setMsg('Please enter an Admission Number first.');
@@ -419,12 +420,16 @@ const CheckIn = () => {
         setMsg('');
 
         try {
-            await api.post('/members/self-register', {
-                studentRegNo: regNo,
-                name: fullName,
-                campus: selfRegForm.campus,
-                memberType: 'Recruit'
-            });
+            try {
+                await api.post('/members/self-register', {
+                    studentRegNo: regNo,
+                    name: fullName,
+                    campus: selfRegForm.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
+                    memberType: 'Recruit'
+                });
+            } catch (regErr) {
+                console.warn('Self registration pre-call note:', regErr?.response?.data?.message);
+            }
 
             setIsNewRecruitRegistered(true);
             setMemberInfo({ name: fullName, type: 'Recruit' });
@@ -438,13 +443,13 @@ const CheckIn = () => {
             await submitAttendanceRecord({
                 studentRegNo: regNo,
                 name: fullName,
-                campus: selfRegForm.campus,
+                campus: selfRegForm.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
                 memberType: 'Recruit'
             });
         } catch (err) {
-            console.error('Self registration failed:', err);
+            console.error('Self registration check-in failed:', err);
             setStatus('error');
-            setMsg(err.response?.data?.message || 'Registration failed. Please try again.');
+            setMsg(err.response?.data?.message || 'Check-in failed. Please try again.');
         }
     };
 
@@ -682,6 +687,11 @@ const CheckIn = () => {
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
 
+        // If recruit registration is currently active or recruit name is filled, route directly to recruit handler
+        if (showSelfRegistration || (selfRegForm.name?.trim() && !memberInfo)) {
+            return handleSelfRegisterAndCheckIn(e);
+        }
+
         const currentRegNo = responses.studentRegNo?.trim();
         if (!currentRegNo || currentRegNo.length < 5) {
             setStatus('error');
@@ -842,7 +852,12 @@ const CheckIn = () => {
             }
 
             const deviceId = await getPersistentDeviceId();
-            const registrationData = registrationOverride || null;
+            const effectiveReg = registrationOverride || (selfRegForm.name?.trim() ? {
+                name: selfRegForm.name.trim(),
+                campus: selfRegForm.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
+                memberType: 'Recruit'
+            } : null);
+
             const res = await api.post('/attendance/submit', {
                 meetingCode: meetingCode.toLowerCase(),
                 deviceId,
@@ -850,17 +865,18 @@ const CheckIn = () => {
                 userLat: userLocation.lat,
                 userLong: userLocation.long,
                 accuracy: userLocation.accuracy,
-                ...(registrationData ? {
+                ...(effectiveReg ? {
                     isNewMember: true,
                     registrationData: {
-                        name: registrationData.name,
-                        campus: registrationData.campus || meeting?.campus || 'Athi River',
-                        memberType: registrationData.memberType || 'Recruit',
+                        name: effectiveReg.name,
+                        campus: effectiveReg.campus || meeting?.campus || 'Athi River',
+                        memberType: effectiveReg.memberType || 'Recruit',
                     }
                 } : {}),
                 responses: {
                     ...responses,
-                    studentRegNo: responses.studentRegNo // Ensure it's passed
+                    studentRegNo: responses.studentRegNo || selfRegForm.studentRegNo,
+                    studentName: responses.studentName || effectiveReg?.name || selfRegForm.name?.trim()
                 }
             });
             setStatus('success');
@@ -1365,6 +1381,51 @@ const CheckIn = () => {
                                     </div>
                                 </div>
 
+                                {/* Question of the Day (inside recruit registration) */}
+                                {meeting?.questionOfDay && (
+                                    <div style={{
+                                        width: '100%',
+                                        padding: '1.1rem 1.15rem',
+                                        background: 'rgba(15, 23, 42, 0.85)',
+                                        border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                                        borderRadius: '16px',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem' }}>
+                                            <div style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(251, 191, 36, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FBBF24' }}>
+                                                <Sparkles size={13} />
+                                            </div>
+                                            <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                Question of the Day <span style={{ color: '#EF4444' }}>*</span>
+                                            </span>
+                                        </div>
+
+                                        <div style={{
+                                            borderLeft: '3.5px solid #38BDF8',
+                                            paddingLeft: '0.85rem',
+                                            marginBottom: '0.85rem'
+                                        }}>
+                                            <p style={{
+                                                fontSize: '0.98rem',
+                                                fontWeight: 800,
+                                                color: '#FFFFFF',
+                                                margin: 0,
+                                                lineHeight: 1.45
+                                            }}>
+                                                {meeting.questionOfDay}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.4rem' }}>
+                                                Your Answer <span style={{ color: '#EF4444' }}>*</span>
+                                            </div>
+                                            {renderQuestionInput()}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <button
                                     type="button"
                                     onClick={handleSelfRegisterAndCheckIn}
@@ -1466,154 +1527,156 @@ const CheckIn = () => {
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            {/* Admission Number Input */}
-                            <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '0.5rem',
-                                    fontSize: '0.76rem',
-                                    fontWeight: 900,
-                                    letterSpacing: '0.8px',
-                                    textTransform: 'uppercase',
-                                    color: '#94A3B8'
-                                }}>
-                                    Admission Number <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        className="input-field"
-                                        placeholder="22-0990"
-                                        style={{
-                                            height: '48px',
-                                            fontSize: '1.05rem',
-                                            fontWeight: 800,
-                                            padding: '0 1.15rem',
-                                            background: '#020617',
-                                            border: memberInfo ? '1.5px solid #10B981' : '1.5px solid rgba(56, 189, 248, 0.35)',
-                                            color: '#FFFFFF',
-                                            borderRadius: '14px',
-                                            transition: 'all 0.2s ease',
-                                            width: '100%',
-                                            boxSizing: 'border-box',
-                                            outline: 'none'
-                                        }}
-                                        value={responses.studentRegNo || ''}
-                                        readOnly={!!memberInfo}
-                                        onChange={e => {
-                                            if (memberInfo) return;
-                                            let val = e.target.value;
-                                            let digits = val.replace(/\D/g, '');
-                                            let formatted = digits;
-                                            if (digits.length > 2) {
-                                                formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
-                                            }
-                                            val = formatted;
-
-                                            if (digits.length >= 6) {
-                                                lookupMember(formatted);
-                                            } else {
-                                                setMemberInfo(null);
-                                            }
-
-                                            setResponses(prev => ({ ...prev, studentRegNo: val }));
-                                            if (msg) setMsg('');
-                                        }}
-                                        maxLength={7}
-                                        required
-                                        disabled={status === 'submitting'}
-                                    />
-                                    {isLookingUp && (
-                                        <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
-                                            <Loader2 className="animate-spin" size={18} color="#38BDF8" />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* ══ INTERACTIVE QUESTION OF THE DAY CARD (ALWAYS VISIBLE WHEN CONFIGURED) ══ */}
-                            {meeting?.questionOfDay && (
-                                <div style={{
-                                    width: '100%',
-                                    padding: '1.15rem 1.25rem',
-                                    background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                                    border: '1.5px solid rgba(56, 189, 248, 0.35)',
-                                    borderRadius: '18px',
-                                    boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
-                                    boxSizing: 'border-box'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.6rem' }}>
-                                        <div style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(251, 191, 36, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FBBF24' }}>
-                                            <Sparkles size={13} />
-                                        </div>
-                                        <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                            Question of the Day
-                                        </span>
-                                    </div>
-
-                                    <div style={{
-                                        borderLeft: '3.5px solid #38BDF8',
-                                        paddingLeft: '0.85rem',
-                                        marginBottom: '0.9rem'
+                        {!showSelfRegistration && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                {/* Admission Number Input */}
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontSize: '0.76rem',
+                                        fontWeight: 900,
+                                        letterSpacing: '0.8px',
+                                        textTransform: 'uppercase',
+                                        color: '#94A3B8'
                                     }}>
-                                        <p style={{
-                                            fontSize: '1.02rem',
-                                            fontWeight: 800,
-                                            color: '#FFFFFF',
-                                            margin: 0,
-                                            lineHeight: 1.45
-                                        }}>
-                                            {meeting.questionOfDay}
-                                        </p>
-                                    </div>
+                                        Admission Number <span style={{ color: '#EF4444' }}>*</span>
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            className="input-field"
+                                            placeholder="22-0990"
+                                            style={{
+                                                height: '48px',
+                                                fontSize: '1.05rem',
+                                                fontWeight: 800,
+                                                padding: '0 1.15rem',
+                                                background: '#020617',
+                                                border: memberInfo ? '1.5px solid #10B981' : '1.5px solid rgba(56, 189, 248, 0.35)',
+                                                color: '#FFFFFF',
+                                                borderRadius: '14px',
+                                                transition: 'all 0.2s ease',
+                                                width: '100%',
+                                                boxSizing: 'border-box',
+                                                outline: 'none'
+                                            }}
+                                            value={responses.studentRegNo || ''}
+                                            readOnly={!!memberInfo}
+                                            onChange={e => {
+                                                if (memberInfo) return;
+                                                let val = e.target.value;
+                                                let digits = val.replace(/\D/g, '');
+                                                let formatted = digits;
+                                                if (digits.length > 2) {
+                                                    formatted = digits.slice(0, 2) + '-' + digits.slice(2, 6);
+                                                }
+                                                val = formatted;
 
-                                    <div>
-                                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.4rem' }}>
-                                            Your Answer <span style={{ color: '#EF4444' }}>*</span>
-                                        </div>
-                                        {renderQuestionInput()}
+                                                if (digits.length >= 6) {
+                                                    lookupMember(formatted);
+                                                } else {
+                                                    setMemberInfo(null);
+                                                }
+
+                                                setResponses(prev => ({ ...prev, studentRegNo: val }));
+                                                if (msg) setMsg('');
+                                            }}
+                                            maxLength={7}
+                                            required
+                                            disabled={status === 'submitting'}
+                                        />
+                                        {isLookingUp && (
+                                            <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                                                <Loader2 className="animate-spin" size={18} color="#38BDF8" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Submit Button */}
-                            <button
-                                type="submit"
-                                disabled={status === 'submitting' || isLocating || !responses.studentRegNo?.trim()}
-                                style={{
-                                    width: '100%',
-                                    height: '52px',
-                                    marginTop: '0.5rem',
-                                    background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #0284C7 100%)',
-                                    border: 'none',
-                                    borderRadius: '16px',
-                                    color: '#FFFFFF',
-                                    fontSize: '0.96rem',
-                                    fontWeight: 900,
-                                    letterSpacing: '0.5px',
-                                    cursor: (!responses.studentRegNo?.trim() || status === 'submitting' || isLocating) ? 'not-allowed' : 'pointer',
-                                    opacity: (!responses.studentRegNo?.trim() || status === 'submitting' || isLocating) ? 0.6 : 1,
-                                    boxShadow: '0 8px 25px rgba(37, 99, 235, 0.45)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '0.6rem',
-                                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
-                                }}
-                            >
-                                {status === 'submitting' || isLocating ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                                        <Loader2 className="animate-spin" size={20} />
-                                        <span>{isLocating ? 'Verifying Location...' : 'Submitting Attendance...'}</span>
+                                {/* ══ INTERACTIVE QUESTION OF THE DAY CARD (ALWAYS VISIBLE WHEN CONFIGURED) ══ */}
+                                {meeting?.questionOfDay && (
+                                    <div style={{
+                                        width: '100%',
+                                        padding: '1.15rem 1.25rem',
+                                        background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                                        border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                                        borderRadius: '18px',
+                                        boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.6rem' }}>
+                                            <div style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'rgba(251, 191, 36, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FBBF24' }}>
+                                                <Sparkles size={13} />
+                                            </div>
+                                            <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                Question of the Day
+                                            </span>
+                                        </div>
+
+                                        <div style={{
+                                            borderLeft: '3.5px solid #38BDF8',
+                                            paddingLeft: '0.85rem',
+                                            marginBottom: '0.9rem'
+                                        }}>
+                                            <p style={{
+                                                fontSize: '1.02rem',
+                                                fontWeight: 800,
+                                                color: '#FFFFFF',
+                                                margin: 0,
+                                                lineHeight: 1.45
+                                            }}>
+                                                {meeting.questionOfDay}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.4rem' }}>
+                                                Your Answer <span style={{ color: '#EF4444' }}>*</span>
+                                            </div>
+                                            {renderQuestionInput()}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <>
-                                        <span>Complete Check-In</span>
-                                        <ArrowRight size={18} />
-                                    </>
                                 )}
-                            </button>
-                        </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
+                                    disabled={status === 'submitting' || isLocating || !responses.studentRegNo?.trim()}
+                                    style={{
+                                        width: '100%',
+                                        height: '52px',
+                                        marginTop: '0.5rem',
+                                        background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #0284C7 100%)',
+                                        border: 'none',
+                                        borderRadius: '16px',
+                                        color: '#FFFFFF',
+                                        fontSize: '0.96rem',
+                                        fontWeight: 900,
+                                        letterSpacing: '0.5px',
+                                        cursor: (!responses.studentRegNo?.trim() || status === 'submitting' || isLocating) ? 'not-allowed' : 'pointer',
+                                        opacity: (!responses.studentRegNo?.trim() || status === 'submitting' || isLocating) ? 0.6 : 1,
+                                        boxShadow: '0 8px 25px rgba(37, 99, 235, 0.45)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.6rem',
+                                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                                    }}
+                                >
+                                    {status === 'submitting' || isLocating ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                            <Loader2 className="animate-spin" size={20} />
+                                            <span>{isLocating ? 'Verifying Location...' : 'Submitting Attendance...'}</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span>Complete Check-In</span>
+                                            <ArrowRight size={18} />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
 
                         {meeting?.previousRecap && (
                             <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>

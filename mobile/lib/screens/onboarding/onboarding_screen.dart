@@ -77,11 +77,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       gradientColors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
     ),
     const OnboardingItem(
-      title: 'Instant Digital\nQR Pass',
+      title: 'Fast Venue\nQR Check-In',
       subtitle:
-          'Check in at fellowship gatherings, retreats, and camps with your personal digital QR badge.',
-      icon: Icons.qr_code_2_rounded,
-      badgeText: 'DIGITAL PASS',
+          'Scan the official Doulos meeting QR code at fellowship gatherings to instantly record your attendance.',
+      icon: Icons.qr_code_scanner_rounded,
+      badgeText: 'VENUE CHECK-IN',
       gradientColors: [Color(0xFF06B6D4), Color(0xFF10B981)],
     ),
     const OnboardingItem(

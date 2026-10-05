@@ -8,7 +8,6 @@ import '../../core/api_service.dart';
 import '../../core/constants.dart';
 import '../auth/login_screen.dart';
 import '../scanner/portal_qr_scanner_sheet.dart';
-import 'attendance_screen.dart';
 import 'profile_tab.dart';
 import 'history_tab.dart';
 import 'events_tab.dart';
@@ -551,17 +550,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
   }
 
   void _openAttendancePass() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AttendanceScreen(
-          studentData: _data,
-          onCheckInSuccess: () {
-            _refreshData();
-          },
-        ),
-      ),
-    );
+    _openCameraScanner();
   }
 
   void _openCameraScanner() {
