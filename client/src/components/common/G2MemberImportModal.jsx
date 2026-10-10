@@ -250,7 +250,9 @@ const G2MemberImportModal = ({ isOpen, onClose, currentSemester, api, showToast,
                 status: 'Active',
                 douloidRank: 'None',
                 totalPoints: 10,
-                lastActiveSemester: currentSemester
+                lastActiveSemester: currentSemester,
+                lastConfirmedSemester: currentSemester,
+                isActiveThisSemester: true
             }));
 
             const res = await api.post('/members/import', { members: payload });

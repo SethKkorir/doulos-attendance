@@ -13,6 +13,9 @@ export const importMembers = async (req, res) => {
             return res.status(400).json({ message: 'No members provided for import' });
         }
 
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semesterSetting?.value?.trim() || 'SEP-DEC 2026';
+
         const operations = members.map(m => {
             const rawReg = m.studentRegNo || m.admissionNumber || m.regNo || '';
             const regNo = rawReg.trim().toUpperCase() || ('TMP-' + Date.now() + '-' + Math.floor(Math.random() * 1000));
@@ -30,12 +33,16 @@ export const importMembers = async (req, res) => {
                             campus: campus,
                             phone: (m.phone || '').trim(),
                             email: (m.email || '').trim(),
-                            status: m.status || 'Active'
+                            status: m.status || 'Active',
+                            lastActiveSemester: m.lastActiveSemester || currentSemester,
+                            lastConfirmedSemester: currentSemester,
+                            isActiveThisSemester: true
                         },
                         $setOnInsert: {
                             douloidRank: m.douloidRank || 'None',
                             totalPoints: m.totalPoints || 10,
-                            studentRegNo: regNo
+                            studentRegNo: regNo,
+                            isActive: true
                         }
                     },
                     upsert: true
@@ -207,6 +214,9 @@ export const createMember = async (req, res) => {
         const exists = await Member.findOne({ studentRegNo: studentRegNo.trim().toUpperCase() });
         if (exists) return res.status(400).json({ message: 'Member with this admission number already exists' });
 
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semesterSetting?.value?.trim() || 'SEP-DEC 2026';
+
         const member = new Member({
             studentRegNo: studentRegNo.trim().toUpperCase(),
             name,
@@ -215,7 +225,10 @@ export const createMember = async (req, res) => {
             status: status || 'Active',
             phone: phone || '',
             email: email || '',
-            lastActiveSemester,
+            lastActiveSemester: lastActiveSemester || currentSemester,
+            lastConfirmedSemester: currentSemester,
+            isActiveThisSemester: true,
+            isActive: true,
             wateringDays: wateringDays || []
         });
         await member.save();
@@ -783,12 +796,19 @@ export const selfRegisterMember = async (req, res) => {
             resolvedCampus = 'Athi River';
         }
 
+        const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+        const currentSemester = semesterSetting?.value?.trim() || 'SEP-DEC 2026';
+
         const member = new Member({
             studentRegNo: regNo,
             name: (name || '').trim(),
             campus: resolvedCampus,
             memberType: memberType || 'Recruit',
-            status: 'Active'
+            status: 'Active',
+            lastActiveSemester: currentSemester,
+            lastConfirmedSemester: currentSemester,
+            isActiveThisSemester: true,
+            isActive: true
         });
         await member.save();
         res.status(201).json({ message: 'Welcome to Doulos! Your recruit record has been created.', member });

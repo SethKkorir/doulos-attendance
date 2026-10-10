@@ -323,16 +323,21 @@ export const submitAttendance = async (req, res) => {
                 let resolvedCampus = (registrationData?.campus || req.body.campus || responses?.campus || meeting.campus || 'Athi River').trim();
                 if (resolvedCampus.toLowerCase().includes('nairobi') || resolvedCampus.toLowerCase().includes('valley')) {
                     resolvedCampus = 'Valley Road';
-                } else {
-                    resolvedCampus = 'Athi River';
                 }
+
+                const semesterSetting = await Settings.findOne({ key: 'current_semester' });
+                const currentSemester = semesterSetting?.value?.trim() || 'SEP-DEC 2026';
 
                 member = new Member({
                     studentRegNo,
                     name: candidateName.trim(),
                     campus: resolvedCampus,
                     memberType: registrationData?.memberType || 'Recruit',
-                    status: 'Active'
+                    status: 'Active',
+                    lastActiveSemester: currentSemester,
+                    lastConfirmedSemester: currentSemester,
+                    isActiveThisSemester: true,
+                    isActive: true
                 });
                 await member.save();
                 console.log(`[AUTO-REGISTER] New recruit created on check-in: ${studentRegNo} (${candidateName})`);

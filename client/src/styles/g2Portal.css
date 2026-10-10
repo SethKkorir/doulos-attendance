@@ -4,18 +4,20 @@
    Aesthetic: Warm, rounded, human, royal blue + warm amber
    ======================================================== */
 
-:root {
-  --color-primary: #1D4ED8;          /* Royal Blue */
-  --color-primary-dark: #1E40AF;     /* Deep Navy Blue */
-  --color-primary-soft: #EFF6FF;     /* Light Blue Wash */
-  --color-primary-border: #BFDBFE;   /* Light Sky Border */
-  --color-accent-warm: #E8A33D;      /* Warm Amber (Primary Action) */
-  --color-accent-warm-hover: #D97706;/* Rich Amber */
-  --color-surface: #FFFFFF;
-  --color-page-bg: #F8FAFC;
-  --color-text-main: #0F172A;
-  --color-text-muted: #64748B;
-  --color-border-subtle: #E2E8F0;
+:root,
+.g2-portal-root,
+.light-mode .g2-portal-root {
+  --color-primary: #1D4ED8 !important;          /* Royal Blue */
+  --color-primary-dark: #1E40AF !important;     /* Deep Navy Blue */
+  --color-primary-soft: #EFF6FF !important;     /* Light Blue Wash */
+  --color-primary-border: #BFDBFE !important;   /* Light Sky Border */
+  --color-accent-warm: #E8A33D !important;      /* Warm Amber (Primary Action) */
+  --color-accent-warm-hover: #D97706 !important;/* Rich Amber */
+  --color-surface: #FFFFFF !important;
+  --color-page-bg: #F8FAFC !important;
+  --color-text-main: #0F172A !important;
+  --color-text-muted: #64748B !important;
+  --color-border-subtle: #E2E8F0 !important;
 
   /* Status Tokens */
   --color-status-active: #10B981;
@@ -366,6 +368,44 @@
   border-color: var(--color-primary-border);
   background: var(--color-primary-soft);
   color: var(--color-primary);
+}
+
+/* ================= FILTER PILLS (MEMBERS REGISTER SUB-TABS) ================= */
+.g2-filter-pill {
+  padding: 0.45rem 1.15rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  background: #FFFFFF;
+  color: #334155;
+  border: 1.5px solid #CBD5E1;
+  text-decoration: none;
+  user-select: none;
+  outline: none;
+}
+
+.g2-filter-pill:hover {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
+.g2-filter-pill.active {
+  background: #1D4ED8 !important;
+  color: #FFFFFF !important;
+  border-color: #1D4ED8 !important;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.28);
+}
+
+.g2-filter-pill.active:hover {
+  background: #1E40AF !important;
+  color: #FFFFFF !important;
+  border-color: #1E40AF !important;
 }
 
 .g2-status-pill {

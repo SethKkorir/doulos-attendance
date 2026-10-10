@@ -4,6 +4,14 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
+import dns from 'dns';
+
+// Fix for Node.js macOS / ISP DNS query timeout on MongoDB Atlas SRV lookup (querySrv ETIMEOUT)
+try {
+    dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4', '1.0.0.1']);
+} catch (dnsErr) {
+    console.warn('DNS server configuration warning:', dnsErr.message);
+}
 
 // Routes
 import authRoutes from './routes/authRoutes.js';
@@ -95,6 +103,52 @@ import './models/Fellowship.js';
 import './models/Question.js';
 import './models/QuestionResponse.js';
 
+const runInitialSeeds = async () => {
+    try {
+        const User = mongoose.model('User');
+        
+        const adminExists = await User.findOne({ role: 'admin' });
+        if (!adminExists) {
+            console.log('Seeding initial admin user...');
+            await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
+        }
+
+        const superAdminExists = await User.findOne({ username: 'superadmin' });
+        if (!superAdminExists) {
+            await new User({ username: 'superadmin', password: process.env.SUPERADMIN_PASSWORD || 'superadmin123', role: 'superadmin' }).save();
+            console.log('✅ Premium Super Admin account initialized: superadmin');
+        }
+
+        const superSuperAdminExists = await User.findOne({ username: 'supersuperadmin' });
+        if (!superSuperAdminExists) {
+            await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
+            console.log('✅ Premium Super Admin account initialized: supersuperadmin');
+        }
+
+        const activeRolesToSeed = [
+            { username: 'G5', password: '123', role: 'trainer', campus: 'Both' },
+            { username: 'G2', password: '123', role: 'g2_vice', campus: 'Both' }
+        ];
+
+        for (const a of activeRolesToSeed) {
+            const existing = await User.findOne({ username: { $regex: new RegExp(`^${a.username}$`, 'i') } });
+            if (!existing) {
+                await new User({
+                    username: a.username,
+                    password: a.password,
+                    role: a.role,
+                    campus: a.campus
+                }).save();
+                console.log(`✅ Account seeded: ${a.username} (${a.role})`);
+            }
+        }
+
+        await seedReferenceData();
+    } catch (err) {
+        console.error('Seeding Error:', err.message);
+    }
+};
+
 const connectDB = async () => {
     if (cachedConnection && mongoose.connection.readyState === 1) {
         return cachedConnection;
@@ -132,64 +186,26 @@ const connectDB = async () => {
             console.log('✅ MongoDB Connected');
 
             // Auto-seed admin (deferred)
-            (async () => {
-                const User = mongoose.model('User');
-                
-                const adminExists = await User.findOne({ role: 'admin' });
-                if (!adminExists) {
-                    console.log('Seeding initial admin user...');
-                    await new User({ username: 'admin', password: process.env.ADMIN_PASSWORD || 'admin123', role: 'admin' }).save();
-                }
-
-                const superAdminExists = await User.findOne({ username: 'superadmin' });
-                if (!superAdminExists) {
-                    await new User({ username: 'superadmin', password: process.env.SUPERADMIN_PASSWORD || 'superadmin123', role: 'superadmin' }).save();
-                    console.log('✅ Premium Super Admin account initialized: superadmin');
-                }
-
-                const superSuperAdminExists = await User.findOne({ username: 'supersuperadmin' });
-                if (!superSuperAdminExists) {
-                    await new User({ username: 'supersuperadmin', password: '123', role: 'superadmin' }).save();
-                    console.log('✅ Premium Super Admin account initialized: supersuperadmin');
-                }
-
-                // G5 Training Directorate & G2 Operations Accounts
-                const activeRolesToSeed = [
-                    { username: 'G5', password: '123', role: 'trainer', campus: 'Both' },
-                    { username: 'G2', password: '123', role: 'g2_vice', campus: 'Both' }
-                ];
-
-                for (const a of activeRolesToSeed) {
-                    const existing = await User.findOne({ username: { $regex: new RegExp(`^${a.username}$`, 'i') } });
-                    if (!existing) {
-                        await new User({
-                            username: a.username,
-                            password: a.password,
-                            role: a.role,
-                            campus: a.campus
-                        }).save();
-                        console.log(`✅ Account seeded: ${a.username} (${a.role})`);
-                    }
-                }
-
-                // Seed reference data (Ranks, Domains, Venues, LOP Docs)
-                await seedReferenceData();
-            })().catch(err => console.error('Seeding Error:', err.message));
+            runInitialSeeds().catch(err => console.error('Seeding Error:', err.message));
 
             return conn;
         } catch (err) {
             console.error('❌ MongoDB Error:', err.message);
 
-            if (fallbackUri && primaryUri.startsWith('mongodb+srv://')) {
-                console.log('Trying fallback MongoDB URI due to SRV lookup failure...');
+            const directFallback = process.env.MONGO_URI_FALLBACK || 
+                'mongodb://zsethkipchumba179_db_user:kipchumba@ac-9tyrvgc-shard-00-00.ypnrghc.mongodb.net:27017,ac-9tyrvgc-shard-00-01.ypnrghc.mongodb.net:27017,ac-9tyrvgc-shard-00-02.ypnrghc.mongodb.net:27017/doulos-attendance?ssl=true&authSource=admin&replicaSet=atlas-rkw7jb-shard-0&retryWrites=true&w=majority';
+
+            if (primaryUri.startsWith('mongodb+srv://') && directFallback) {
+                console.log('🔄 Trying direct non-SRV fallback MongoDB URI...');
                 try {
-                    const conn = await mongoose.connect(fallbackUri, {
-                        serverSelectionTimeoutMS: 30000,
-                        connectTimeoutMS: 30000,
+                    const conn = await mongoose.connect(directFallback, {
+                        serverSelectionTimeoutMS: 15000,
+                        connectTimeoutMS: 15000,
                         socketTimeoutMS: 120000,
                     });
                     cachedConnection = conn;
-                    console.log('✅ MongoDB Connected with fallback URI');
+                    console.log('✅ MongoDB Connected with direct fallback URI');
+                    runInitialSeeds().catch(seedErr => console.error('Seeding Error on fallback:', seedErr.message));
                     return conn;
                 } catch (fallbackErr) {
                     console.error('❌ MongoDB Fallback Error:', fallbackErr.message);

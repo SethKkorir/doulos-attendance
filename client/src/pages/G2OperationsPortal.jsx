@@ -332,8 +332,18 @@ const G2OperationsPortal = () => {
             setRecruitPhone('');
             setShowAddRecruitModal(false);
 
-            queryClient.invalidateQueries({ queryKey: ['roster-members'] });
-            queryClient.invalidateQueries({ queryKey: ['g2-stats'] });
+            // Ensure the user lands on the members tab & recruits tab so the new recruit is immediately visible
+            if (activeTab === 'dashboard') {
+                setActiveTab('members');
+                setMemberTab('recruits');
+            } else if (memberTab === 'douloids') {
+                setMemberTab('recruits');
+            }
+
+            await queryClient.invalidateQueries({ queryKey: ['roster-members'] });
+            await queryClient.invalidateQueries({ queryKey: ['g2-stats'] });
+            refetchMembers();
+            refetchStats();
         } catch (err) {
             console.error('Error adding recruit:', err);
             showToast(err.response?.data?.message || 'Error adding recruit to database', 'error');
@@ -1078,18 +1088,10 @@ const G2OperationsPortal = () => {
                                 flexWrap: 'wrap',
                                 gap: '1rem'
                             }}>
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                     <button
                                         type="button"
-                                        className={`g2-btn-outline ${memberTab === 'all' ? 'active' : ''}`}
-                                        style={{
-                                            padding: '0.45rem 1rem',
-                                            borderRadius: '999px',
-                                            fontSize: '0.82rem',
-                                            background: memberTab === 'all' ? 'var(--color-primary)' : '#FFFFFF',
-                                            color: memberTab === 'all' ? '#FFFFFF' : 'var(--color-text-main)',
-                                            borderColor: memberTab === 'all' ? 'var(--color-primary)' : 'var(--color-border-subtle)'
-                                        }}
+                                        className={`g2-filter-pill ${memberTab === 'all' ? 'active' : ''}`}
                                         onClick={() => setMemberTab('all')}
                                     >
                                         All Members ({g2Stats.totalActiveMembers || 0})
@@ -1097,48 +1099,27 @@ const G2OperationsPortal = () => {
 
                                     <button
                                         type="button"
-                                        className={`g2-btn-outline ${memberTab === 'douloids' ? 'active' : ''}`}
-                                        style={{
-                                            padding: '0.45rem 1rem',
-                                            borderRadius: '999px',
-                                            fontSize: '0.82rem',
-                                            background: memberTab === 'douloids' ? 'var(--color-primary)' : '#FFFFFF',
-                                            color: memberTab === 'douloids' ? '#FFFFFF' : 'var(--color-text-main)',
-                                            borderColor: memberTab === 'douloids' ? 'var(--color-primary)' : 'var(--color-border-subtle)'
-                                        }}
+                                        className={`g2-filter-pill ${memberTab === 'douloids' ? 'active' : ''}`}
                                         onClick={() => setMemberTab('douloids')}
                                     >
-                                        Douloids ({g2Stats.totalActiveDouloids})
+                                        Douloids ({g2Stats.totalActiveDouloids || 0})
                                     </button>
 
                                     <button
                                         type="button"
-                                        className={`g2-btn-outline ${memberTab === 'recruits' ? 'active' : ''}`}
-                                        style={{
-                                            padding: '0.45rem 1rem',
-                                            borderRadius: '999px',
-                                            fontSize: '0.82rem',
-                                            background: memberTab === 'recruits' ? 'var(--color-primary)' : '#FFFFFF',
-                                            color: memberTab === 'recruits' ? '#FFFFFF' : 'var(--color-text-main)',
-                                            borderColor: memberTab === 'recruits' ? 'var(--color-primary)' : 'var(--color-border-subtle)'
-                                        }}
+                                        className={`g2-filter-pill ${memberTab === 'recruits' ? 'active' : ''}`}
                                         onClick={() => setMemberTab('recruits')}
                                     >
-                                        Recruits ({g2Stats.totalRecruits})
+                                        Recruits ({g2Stats.totalRecruits || 0})
                                     </button>
 
                                     <button
                                         type="button"
-                                        className={`g2-btn-outline ${memberTab === 'alumni' ? 'active' : ''}`}
-                                        style={{
-                                            padding: '0.45rem 1rem',
-                                            borderRadius: '999px',
-                                            fontSize: '0.82rem',
-                                            background: memberTab === 'alumni' ? 'var(--color-primary)' : '#FFFFFF',
-                                            color: memberTab === 'alumni' ? '#FFFFFF' : 'var(--color-text-main)',
-                                            borderColor: memberTab === 'alumni' ? 'var(--color-primary)' : 'var(--color-border-subtle)'
+                                        className={`g2-filter-pill ${memberTab === 'alumni' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setMemberTab('alumni');
+                                            setFilterActiveSemester('All');
                                         }}
-                                        onClick={() => setMemberTab('alumni')}
                                     >
                                         Associates & Alumni ({g2Stats.totalAlumni || 0})
                                     </button>

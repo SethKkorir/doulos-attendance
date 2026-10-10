@@ -6,7 +6,7 @@ import Setting from '../models/Settings.js';
 export const getRosterMembers = async (req, res) => {
     try {
         const { status, campus, rank, search, memberType, isActiveThisSemester } = req.query;
-        const query = {};
+        const conditions = [];
 
         const semSetting = await Setting.findOne({ key: 'current_semester' });
         const currentSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
@@ -14,78 +14,109 @@ export const getRosterMembers = async (req, res) => {
         // Status filter
         if (status && status !== 'All' && status !== 'all') {
             if (status === 'alumni' || status === 'Archived') {
-                query.status = { $in: ['Archived', 'Archived-Concluded', 'Graduated'] };
+                conditions.push({ status: { $in: ['Archived', 'Archived-Concluded', 'Graduated'] } });
             } else {
-                query.status = status;
+                conditions.push({ status });
             }
         }
 
         // Campus filter (support 'Nairobi' alias for 'Valley Road')
         if (campus && campus !== 'All' && campus !== 'all') {
             if (campus === 'Nairobi' || campus === 'Valley Road') {
-                query.campus = { $in: ['Valley Road', 'Nairobi'] };
+                conditions.push({ campus: { $in: ['Valley Road', 'Nairobi'] } });
             } else {
-                query.campus = campus;
+                conditions.push({ campus });
             }
         }
 
         // Rank filter
         if (rank && rank !== 'All' && rank !== 'all') {
-            query.douloidRank = rank;
+            conditions.push({ douloidRank: rank });
         }
 
-        // Active this semester filter (Section 4 & 5)
-        if (isActiveThisSemester === 'true') {
-            query.isActiveThisSemester = true;
-            query.lastConfirmedSemester = currentSemester;
-        } else if (isActiveThisSemester === 'false') {
-            query.$or = [
-                { isActiveThisSemester: false },
-                { lastConfirmedSemester: { $ne: currentSemester } }
-            ];
-        } else if (isActiveThisSemester === 'unconfirmed') {
-            query.$or = [
-                { lastConfirmedSemester: { $ne: currentSemester } },
-                { lastConfirmedSemester: null },
-                { lastConfirmedSemester: { $exists: false } }
-            ];
+        // Active this semester filter (Section 4 & 5 - does not apply to alumni)
+        if (memberType !== 'alumni') {
+            if (isActiveThisSemester === 'true') {
+                // A member is active this semester if confirmed active Douloid OR an active Recruit
+                conditions.push({
+                    $or: [
+                        { isActiveThisSemester: true, lastConfirmedSemester: currentSemester },
+                        { memberType: 'Recruit', status: 'Active' },
+                        { douloidRank: { $in: ['None', null] }, status: 'Active' }
+                    ]
+                });
+            } else if (isActiveThisSemester === 'false') {
+                conditions.push({
+                    memberType: { $ne: 'Recruit' },
+                    $or: [
+                        { isActiveThisSemester: false },
+                        { lastConfirmedSemester: { $ne: currentSemester } }
+                    ]
+                });
+            } else if (isActiveThisSemester === 'unconfirmed') {
+                conditions.push({
+                    memberType: { $ne: 'Recruit' },
+                    status: 'Active',
+                    $or: [
+                        { lastConfirmedSemester: { $ne: currentSemester } },
+                        { lastConfirmedSemester: null },
+                        { lastConfirmedSemester: { $exists: false } }
+                    ]
+                });
+            }
         }
 
         // Member Type tab filter (all / douloids / recruits / alumni)
         if (memberType === 'douloids') {
-            query.status = { $nin: ['Archived', 'Archived-Concluded'] };
-            query.$or = [
-                { memberType: 'Douloid' },
-                { douloidRank: { $in: ['Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid'] } }
-            ];
+            conditions.push({
+                status: { $nin: ['Archived', 'Archived-Concluded'] },
+                $or: [
+                    { memberType: 'Douloid' },
+                    { douloidRank: { $in: ['Shadow Douloid', 'Basic Douloid', 'Intermediate Douloid', 'Lead Douloid'] } }
+                ]
+            });
         } else if (memberType === 'recruits') {
-            query.status = { $nin: ['Archived', 'Archived-Concluded'] };
-            query.memberType = 'Recruit';
+            conditions.push({
+                status: { $nin: ['Archived', 'Archived-Concluded'] },
+                $or: [
+                    { memberType: 'Recruit' },
+                    { douloidRank: 'None' },
+                    { douloidRank: null }
+                ]
+            });
         } else if (memberType === 'alumni') {
-            query.status = { $in: ['Archived', 'Archived-Concluded', 'Graduated'] };
+            conditions.push({
+                status: { $in: ['Archived', 'Archived-Concluded', 'Graduated'] }
+            });
         } else if (memberType === 'all' || !memberType) {
             // All active members unless status explicitly filters otherwise
             if (!status || status === 'All' || status === 'all') {
-                query.status = { $nin: ['Archived', 'Archived-Concluded'] };
+                conditions.push({
+                    status: { $nin: ['Archived', 'Archived-Concluded'] }
+                });
             }
         }
 
         // Search filter
         if (search && search.trim()) {
             const regex = new RegExp(search.trim(), 'i');
-            query.$or = [
-                { name: regex },
-                { studentRegNo: regex },
-                { phone: regex },
-                { email: regex }
-            ];
+            conditions.push({
+                $or: [
+                    { name: regex },
+                    { studentRegNo: regex },
+                    { phone: regex },
+                    { email: regex }
+                ]
+            });
         }
+
+        const query = conditions.length > 0 ? { $and: conditions } : {};
 
         const members = await Member.find(query).sort({ updatedAt: -1, createdAt: -1 });
 
         const enrichedMembers = members.map(m => {
             const doc = m.toObject();
-            doc.needsSemesterConfirmation = (doc.lastConfirmedSemester || '') !== currentSemester;
+            doc.needsSemesterConfirmation = doc.memberType === 'Recruit' ? false : (doc.lastConfirmedSemester || '') !== currentSemester;
             return doc;
         });
 
@@ -112,7 +143,7 @@ export const addRecruit = async (req, res) => {
         }
 
         const semSetting = await Setting.findOne({ key: 'current_semester' });
-        const currentSemester = semSetting?.value || 'MAY-AUG 2026';
+        const currentSemester = semSetting?.value?.trim() || 'SEP-DEC 2026';
 
         // Check if member with reg number already exists
         const cleanReg = (admissionNumber || studentRegNo || regNo || '').trim().toUpperCase();
@@ -141,6 +172,8 @@ export const addRecruit = async (req, res) => {
             soloStationAllowed: false,
             totalPoints: 10, // Enrolment orientation bonus
             lastActiveSemester: currentSemester,
+            lastConfirmedSemester: currentSemester,
+            isActiveThisSemester: true,
             isActive: true
         });
 
