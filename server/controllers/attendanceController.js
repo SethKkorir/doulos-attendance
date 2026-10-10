@@ -495,13 +495,22 @@ export const getStudentPortalData = async (req, res) => {
             });
         }
 
-        // 2. Fetch the active semester setting & available semesters
-        const currentSemesterSetting = await mongoose.model('Settings').findOne({ key: 'current_semester' });
+        // 2. Fetch active semester setting, available semesters, and student attendance concurrently
+        const [
+            currentSemesterSetting,
+            distinctMeetingSemesters,
+            distinctTrainingSemesters,
+            attendanceRecords
+        ] = await Promise.all([
+            mongoose.model('Settings').findOne({ key: 'current_semester' }),
+            Meeting.distinct('semester'),
+            Training.distinct('semester'),
+            Attendance.find({ studentRegNo }).sort({ timestamp: -1 })
+        ]);
+
         const currentSemester = currentSemesterSetting ? currentSemesterSetting.value : 'SEP-DEC 2026';
 
         // Find all distinct semesters present in the database for selection
-        const distinctMeetingSemesters = await Meeting.distinct('semester');
-        const distinctTrainingSemesters = await Training.distinct('semester');
         const availableSemesters = Array.from(new Set([
             currentSemester,
             ...distinctMeetingSemesters,
@@ -514,32 +523,26 @@ export const getStudentPortalData = async (req, res) => {
         const isAllSemesters = targetSemester.toLowerCase() === 'all';
         const semRegex = isAllSemesters ? null : new RegExp(`^${targetSemester.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
-        // 4. Query student's attendance records matching sessions
-        const attendanceRecords = await Attendance.find({
-            studentRegNo
-        }).sort({ timestamp: -1 });
-
-        // 5. Get all meetings of the student's default campus for the selected semester
+        // 4. Fetch meetings and trainings for the selected semester concurrently
         const memberCampusRegex = new RegExp(`^${(member.campus || 'Athi River').trim()}$`, 'i');
         const campusFilter = { $in: [memberCampusRegex, 'Both', 'All'] };
         const meetingSemesterQuery = isAllSemesters ? {} : { semester: semRegex };
 
-        let semMeetings = await Meeting.find({ 
-            ...meetingSemesterQuery
-        }, '_id');
+        const [semMeetings, semTrainings, campusMeetings] = await Promise.all([
+            Meeting.find({ ...meetingSemesterQuery }, '_id'),
+            Training.find({ 
+                campus: { $in: [member.campus, 'Both', 'All'] },
+                ...(isAllSemesters ? {} : { semester: semRegex })
+            }),
+            Meeting.find({ 
+                campus: campusFilter,
+                category: { $ne: 'Training' },
+                ...meetingSemesterQuery
+            }).sort({ date: -1 })
+        ]);
+
         let semMeetingIds = semMeetings.map(m => m._id);
-
-        let semTrainings = await Training.find({ 
-            campus: { $in: [member.campus, 'Both', 'All'] },
-            ...(isAllSemesters ? {} : { semester: semRegex })
-        });
         let semTrainingIds = semTrainings.map(t => t._id);
-
-        const campusMeetings = await Meeting.find({ 
-            campus: campusFilter,
-            category: { $ne: 'Training' },
-            ...meetingSemesterQuery
-        }).sort({ date: -1 });
 
         // 6. Helper to get start of week (Sunday)
         const getWeekStart = (date) => {
@@ -635,9 +638,11 @@ export const getStudentPortalData = async (req, res) => {
 
         // Overlay with actual attendance
         const attendedMeetingIds = attendanceRecords.filter(a => a.meeting).map(a => a.meeting);
-        const attendedMeetings = await Meeting.find({ _id: { $in: attendedMeetingIds } });
         const attendedTrainingIds = attendanceRecords.filter(a => a.trainingId).map(a => a.trainingId);
-        const attendedTrainings = await Training.find({ _id: { $in: attendedTrainingIds } });
+        const [attendedMeetings, attendedTrainings] = await Promise.all([
+            Meeting.find({ _id: { $in: attendedMeetingIds } }),
+            Training.find({ _id: { $in: attendedTrainingIds } })
+        ]);
 
         attendanceRecords.forEach(record => {
             if (record.trainingId) {
@@ -738,31 +743,44 @@ export const getStudentPortalData = async (req, res) => {
         const totalMeetings = Math.max(campusMeetings.length, totalValid);
         const percentage = totalMeetings > 0 ? Math.min(100, Math.round((totalValid / totalMeetings) * 100)) : 0;
 
-        // 8. Doulos Hours & Activity Check (filtered by current semester)
-        const activityLogs = await ActivityLog.find({ studentRegNo, semester: currentSemester }).sort({ timestamp: -1 }).limit(10);
-
-        // 9. Finance Check (Mock logic for now - check if paid for current month)
         const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
-        const hasPaidThisMonth = await mongoose.model('Payment').findOne({
-            studentRegNo,
-            month: currentMonthName,
-            status: 'approved'
-        });
+
+        const [
+            activityLogs,
+            hasPaidThisMonth,
+            themeSetting,
+            verseSetting,
+            wateringActiveSetting,
+            groupMembers
+        ] = await Promise.all([
+            ActivityLog.find({ studentRegNo, semester: currentSemester }).sort({ timestamp: -1 }).limit(10),
+            mongoose.model('Payment').findOne({
+                studentRegNo,
+                month: currentMonthName,
+                status: 'approved'
+            }),
+            mongoose.model('Settings').findOne({ key: 'semester_theme' }),
+            mongoose.model('Settings').findOne({ key: 'semester_verse' }),
+            mongoose.model('Settings').findOne({ key: 'watering_selector_active' }),
+            member.groupName
+                ? Member.find({
+                    groupName: member.groupName,
+                    status: 'Active',
+                    studentRegNo: { $ne: studentRegNo }
+                }).select('name studentRegNo campus memberType').lean()
+                : Promise.resolve([])
+        ]);
+
+        const semesterTheme = themeSetting ? themeSetting.value : '';
+        const semesterVerse = verseSetting ? verseSetting.value : '';
+        const wateringSelectorActive = wateringActiveSetting ? wateringActiveSetting.value === 'true' : false;
 
         // 10. Reminder Logic
         const alerts = [];
 
-        // Semester Alert Settings Fetch
-        const themeSetting = await mongoose.model('Settings').findOne({ key: 'semester_theme' });
-        const verseSetting = await mongoose.model('Settings').findOne({ key: 'semester_verse' });
-        const semesterTheme = themeSetting ? themeSetting.value : '';
-        const semesterVerse = verseSetting ? verseSetting.value : '';
-
-        // Legacy enrollment alerts are removed as per requirements since we use a warm pop-up wizard instead
-
         // Watering Alert
         const todayDay = new Date().toLocaleString('default', { weekday: 'long' });
-        if (member.wateringDays.includes(todayDay)) {
+        if (member.wateringDays && member.wateringDays.includes(todayDay)) {
             const wateredToday = activityLogs.find(log =>
                 log.type === 'Tree Watering' &&
                 new Date(log.timestamp).toDateString() === new Date().toDateString()
@@ -782,7 +800,6 @@ export const getStudentPortalData = async (req, res) => {
         // Missed Watering Check (Last Week)
         const lastWeekWateringDay = new Date();
         lastWeekWateringDay.setDate(lastWeekWateringDay.getDate() - 7);
-        // ... more complex logic could go here, but keeping it simple for now
 
         // Finance Alert
         if (!hasPaidThisMonth && member.memberType !== 'Visitor') {
@@ -794,20 +811,6 @@ export const getStudentPortalData = async (req, res) => {
                 action: 'PAY'
             });
         }
-
-        // Fetch other group members
-        let groupMembers = [];
-        if (member.groupName) {
-            groupMembers = await Member.find({
-                groupName: member.groupName,
-                status: 'Active',
-                studentRegNo: { $ne: studentRegNo }
-            }).select('name studentRegNo campus memberType').lean();
-        }
-
-        // Fetch watering selector active setting
-        const wateringActiveSetting = await mongoose.model('Settings').findOne({ key: 'watering_selector_active' });
-        const wateringSelectorActive = wateringActiveSetting ? wateringActiveSetting.value === 'true' : false;
 
         // Set persistent HTTP session cookie for student portal
         const studentCookieOptions = {

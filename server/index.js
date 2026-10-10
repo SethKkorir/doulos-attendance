@@ -177,9 +177,10 @@ const connectDB = async () => {
 
     connectionPromise = (async () => {
         try {
+            const isSrv = primaryUri.startsWith('mongodb+srv://');
             const conn = await mongoose.connect(primaryUri, {
-                serverSelectionTimeoutMS: 30000,
-                connectTimeoutMS: 30000,
+                serverSelectionTimeoutMS: isSrv ? 5000 : 15000,
+                connectTimeoutMS: isSrv ? 5000 : 15000,
                 socketTimeoutMS: 120000,
             });
             cachedConnection = conn;
@@ -193,9 +194,9 @@ const connectDB = async () => {
             console.error('❌ MongoDB Error:', err.message);
 
             const directFallback = process.env.MONGO_URI_FALLBACK || 
-                'mongodb://zsethkipchumba179_db_user:kipchumba@ac-9tyrvgc-shard-00-00.ypnrghc.mongodb.net:27017,ac-9tyrvgc-shard-00-01.ypnrghc.mongodb.net:27017,ac-9tyrvgc-shard-00-02.ypnrghc.mongodb.net:27017/doulos-attendance?ssl=true&authSource=admin&replicaSet=atlas-rkw7jb-shard-0&retryWrites=true&w=majority';
+                'mongodb://zsethkipchumba179_db_user:kipchumba@ac-9tyrvgc-shard-00-00.ypnrghc.mongodb.net:27017,ac-9tyrvgc-shard-00-01.ypnrghc.mongodb.net:27017,ac-9tyrvgc-shard-00-02.ypnrghc.mongodb.net:27017/test?ssl=true&authSource=admin&replicaSet=atlas-rkw7jb-shard-0&retryWrites=true&w=majority';
 
-            if (primaryUri.startsWith('mongodb+srv://') && directFallback) {
+            if (primaryUri !== directFallback) {
                 console.log('🔄 Trying direct non-SRV fallback MongoDB URI...');
                 try {
                     const conn = await mongoose.connect(directFallback, {

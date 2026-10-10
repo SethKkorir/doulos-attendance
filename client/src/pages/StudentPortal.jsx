@@ -651,9 +651,13 @@ const StudentPortal = () => {
         }
     }, [data]);
 
-    const handleLogin = async (e, customRegNo = null, semesterOverride = null) => {
+    const handleLogin = async (e, customRegNo = null, semesterOverride = null, isBackground = false) => {
+        const isExplicitSubmit = !!e;
         if (e && e.preventDefault) e.preventDefault();
-        setError(null);
+        if (!isBackground) {
+            setError(null);
+            setLoading(true);
+        }
 
         if (selectedRole === 'g9' && !isLoggedIn) {
             setLoading(true);
@@ -698,33 +702,51 @@ const StudentPortal = () => {
                 groupName: 'Alpha Vanguard'
             });
             setIsLoggedIn(true);
+            if (!isBackground) setLoading(false);
             return;
         }
         const targetRegNo = (customRegNo || regNo || data?.studentRegNo || '').trim().toUpperCase();
-        if (!targetRegNo) return;
-        setLoading(true); setError(null);
+        if (!targetRegNo) {
+            if (!isBackground) setLoading(false);
+            return;
+        }
+
         try {
             const semToFetch = semesterOverride !== null ? semesterOverride : (selectedSemester || '');
             const queryParam = semToFetch ? `?semester=${encodeURIComponent(semToFetch)}` : '';
             const res = await api.get(`/attendance/student/${targetRegNo}${queryParam}`);
-            if (res.data.registrationRequired) { setRegistrationRequired(true); setLoading(false); return; }
+            if (res.data.registrationRequired) {
+                setRegistrationRequired(true);
+                if (!isBackground) setLoading(false);
+                if (!data) {
+                    setIsLoggedIn(false);
+                    localStorage.removeItem('studentSession');
+                }
+                return;
+            }
 
             const memberType = (res.data.memberType || 'Douloid').trim();
             const douloidRank = (res.data.douloidRank || '').trim();
             const isDouloid = memberType.toLowerCase() === 'douloid' || (douloidRank && douloidRank !== 'None' && !douloidRank.toLowerCase().includes('candidate'));
             const isRecruit = memberType.toLowerCase() === 'recruit';
 
-            // User requirement: deny access when recruit is clicked by a douloid
-            if (selectedRole === 'recruit' && isDouloid) {
-                setError("Access Denied: You are a Douloid, not a recruit! 😂 Please select Douloid to sign in.");
-                setLoading(false);
-                return;
-            }
+            // User requirement: deny access when recruit is clicked by a douloid (only on explicit user submission)
+            if (isExplicitSubmit) {
+                if (selectedRole === 'recruit' && isDouloid) {
+                    setError("Access Denied: You are a Douloid, not a recruit! 😂 Please select Douloid to sign in.");
+                    setLoading(false);
+                    return;
+                }
 
-            if (selectedRole === 'douloid' && isRecruit) {
-                setError("Access Denied: You are registered as a Recruit, not a Douloid! Please select Recruit to sign in.");
-                setLoading(false);
-                return;
+                if (selectedRole === 'douloid' && isRecruit) {
+                    setError("Access Denied: You are registered as a Recruit, not a Douloid! Please select Recruit to sign in.");
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                // Auto-sync tab role to the member's profile
+                if (isRecruit) setSelectedRole('recruit');
+                else if (isDouloid) setSelectedRole('douloid');
             }
 
             setData(res.data);
@@ -735,8 +757,17 @@ const StudentPortal = () => {
             setIsLoggedIn(true);
             loadSpiritualData();
             localStorage.setItem('studentSession', JSON.stringify({ regNo: targetRegNo, expiry: Date.now() + SESSION_DURATION }));
-        } catch (err) { setError(err.response?.data?.message || 'Something went wrong. Please try again.'); }
-        finally { setLoading(false); }
+        } catch (err) {
+            const errMsg = err.response?.data?.message || 'Something went wrong. Please try again.';
+            setError(errMsg);
+            if (!data) {
+                // If initial load fails, release logged in trap
+                setIsLoggedIn(false);
+                localStorage.removeItem('studentSession');
+            }
+        } finally {
+            if (!isBackground) setLoading(false);
+        }
     };
 
     const handleSemesterChange = (newSem) => {
@@ -810,20 +841,18 @@ const StudentPortal = () => {
     }, [isLoggedIn, isGuest]);
 
     useEffect(() => {
-        if (!isLoggedIn || isGuest || !(regNo || data?.studentRegNo)) return;
+        if (!isLoggedIn || isGuest || !data) return;
 
-        const refreshLivePortal = () => {
-            const activeRegNo = regNo || data?.studentRegNo;
+        const interval = setInterval(() => {
+            const activeRegNo = data?.studentRegNo || regNo;
             const semToFetch = selectedSemester || data?.selectedSemester || '';
             if (activeRegNo) {
-                handleLogin(null, activeRegNo, semToFetch);
+                handleLogin(null, activeRegNo, semToFetch, true);
             }
-        };
+        }, 15000);
 
-        refreshLivePortal();
-        const interval = setInterval(refreshLivePortal, 15000);
         return () => clearInterval(interval);
-    }, [isLoggedIn, isGuest, regNo, selectedSemester, data?.studentRegNo, data?.selectedSemester]);
+    }, [isLoggedIn, isGuest, !!data, selectedSemester]);
 
     /* ═══════════════════════════════════════════════════════════
        1. LOGIN VIEW (Matched to Admin/G9 Aesthetic)
@@ -1594,7 +1623,8 @@ const StudentPortal = () => {
                                     type="button"
                                     onClick={() => {
                                         setShowRecruitWelcomeModal(false);
-                                        handleLogin();
+                                        setSelectedRole('recruit');
+                                        handleLogin(null, regNo);
                                     }}
                                     style={{
                                         width: '100%',
@@ -1629,10 +1659,69 @@ const StudentPortal = () => {
     ═══════════════════════════════════════════════════════════ */
     if (!data) {
         return (
-            <div className="sp-viewport" style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
+            <div className="sp-viewport" style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1.25rem', padding: '2rem', textAlign: 'center' }}>
                 <style>{CSS}</style>
-                <div className="loading-spinner" style={{ width: '44px', height: '44px', borderWidth: '3px' }} />
-                <p style={{ color: '#1D4ED8', fontWeight: 800, letterSpacing: '1px', fontSize: '0.85rem', textTransform: 'uppercase' }}>Loading Portal Data...</p>
+                {error ? (
+                    <div style={{ maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', background: '#FFFFFF', padding: '2rem', borderRadius: '16px', border: '1px solid #FECACA', boxShadow: '0 10px 25px rgba(239, 68, 68, 0.1)' }}>
+                        <div style={{ fontSize: '2.2rem' }}>⚠️</div>
+                        <p style={{ color: '#DC2626', fontWeight: 700, fontSize: '0.92rem', margin: 0, lineHeight: 1.5 }}>{error}</p>
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', width: '100%' }}>
+                            <button
+                                type="button"
+                                onClick={() => handleLogin(null, regNo)}
+                                style={{
+                                    flex: 1,
+                                    height: '42px',
+                                    borderRadius: '10px',
+                                    background: '#1D4ED8',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Retry
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                style={{
+                                    flex: 1,
+                                    height: '42px',
+                                    borderRadius: '10px',
+                                    background: '#F1F5F9',
+                                    color: '#475569',
+                                    border: '1px solid #CBD5E1',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Back to Sign In
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="loading-spinner" style={{ width: '44px', height: '44px', borderWidth: '3px' }} />
+                        <p style={{ color: '#1D4ED8', fontWeight: 800, letterSpacing: '1px', fontSize: '0.85rem', textTransform: 'uppercase', margin: 0 }}>Loading Portal Data...</p>
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            style={{
+                                marginTop: '1.5rem',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#64748B',
+                                fontSize: '0.82rem',
+                                fontWeight: 600,
+                                textDecoration: 'underline',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Cancel & Back to Sign In
+                        </button>
+                    </>
+                )}
             </div>
         );
     }
