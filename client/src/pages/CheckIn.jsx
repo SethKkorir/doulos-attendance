@@ -908,6 +908,8 @@ const CheckIn = () => {
         }
 
         setStatus('submitting');
+        let deviceId = '';
+        let effectiveReg = null;
         try {
             let activeToken = token;
             if (!activeToken) {
@@ -922,8 +924,8 @@ const CheckIn = () => {
                 }
             }
 
-            const deviceId = await getPersistentDeviceId();
-            const effectiveReg = registrationOverride || (selfRegForm.name?.trim() ? {
+            deviceId = await getPersistentDeviceId();
+            effectiveReg = registrationOverride || (selfRegForm.name?.trim() ? {
                 name: selfRegForm.name.trim(),
                 campus: selfRegForm.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
                 memberType: 'Recruit'
@@ -970,6 +972,57 @@ const CheckIn = () => {
         } catch (err) {
             const errorMsg = err.response?.data?.message || 'Submission failed. Please try again.';
             const status = err.response?.status;
+
+            // Auto-heal on expired check-in token: seamlessly issue a fresh token and retry once
+            if (status === 410 || errorMsg.toLowerCase().includes('token expired') || errorMsg.toLowerCase().includes('expired check-in token')) {
+                try {
+                    console.warn("Check-in token expired. Auto-issuing fresh token and retrying submission...");
+                    const freshTokenRes = await api.post('/tokens/issue', { meetingCode });
+                    const freshToken = freshTokenRes.data?.token;
+                    if (freshToken) {
+                        setToken(freshToken);
+                        const retryRes = await api.post('/attendance/submit', {
+                            meetingCode: meetingCode.toLowerCase(),
+                            deviceId,
+                            token: freshToken,
+                            userLat: userLocation.lat,
+                            userLong: userLocation.long,
+                            accuracy: userLocation.accuracy,
+                            ...(effectiveReg ? {
+                                isNewMember: true,
+                                registrationData: {
+                                    name: effectiveReg.name,
+                                    campus: effectiveReg.campus || meeting?.campus || 'Athi River',
+                                    memberType: effectiveReg.memberType || 'Recruit',
+                                }
+                            } : {}),
+                            responses: {
+                                ...responses,
+                                studentRegNo: responses.studentRegNo || selfRegForm.studentRegNo,
+                                studentName: responses.studentName || effectiveReg?.name || selfRegForm.name?.trim()
+                            }
+                        });
+                        setStatus('success');
+                        setMsg(`Attendance recorded successfully for ${retryRes.data.memberName || 'you'}!`);
+                        const isTrainingNow = meeting?.isTraining || meeting?.category === 'Training';
+                        const dayNow = meeting?.activeDay || 1;
+                        const successKey = isTrainingNow
+                            ? `doulos_attendance_status_${meetingCode}_day${dayNow}`
+                            : `doulos_attendance_status_${meetingCode}`;
+                        localStorage.setItem(successKey, 'success');
+                        if (isTrainingNow) {
+                            setShowTrainingBanner(true);
+                            setTimeout(() => setShowTrainingBanner(false), 5000);
+                        }
+                        if (retryRes.data.showGraduationCongrats) {
+                            setShowCongrats(true);
+                        }
+                        return;
+                    }
+                } catch (retryErr) {
+                    console.error("Auto token refresh & retry failed:", retryErr);
+                }
+            }
 
             // Intercept not in registry and immediately pop recruit registration
             if (errorMsg.includes("not in the Doulos Registry") || err.response?.data?.registrationRequired) {

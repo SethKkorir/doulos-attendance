@@ -31,7 +31,7 @@ export const issueToken = async (req, res) => {
 
         // 2. Generate single-use cryptographic token
         const token = 'ck_' + crypto.randomBytes(16).toString('hex');
-        const expiresAt = new Date(Date.now() + 65 * 1000); // 65 seconds grace
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes grace window
 
         const tokenDoc = new CheckInToken({
             token,
@@ -49,7 +49,7 @@ export const issueToken = async (req, res) => {
             success: true,
             token,
             expiresAt,
-            validitySeconds: 60,
+            validitySeconds: 900,
             meetingCode: resolvedCode,
             meetingName: meeting.name,
             campus: meeting.campus
@@ -85,7 +85,7 @@ export const stampFallback = async (req, res) => {
                 $set: {
                     stampedDeviceId: deviceId,
                     fallbackUsed: true,
-                    expiresAt: new Date(Date.now() + 120 * 1000) // Extend to 2 minutes from now
+                    expiresAt: new Date(Date.now() + 15 * 60 * 1000) // Extend to 15 minutes from now
                 }
             },
             { new: true }

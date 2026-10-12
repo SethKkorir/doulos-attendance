@@ -236,7 +236,51 @@ const PortalQRScanner = ({ isOpen, onClose, studentRegNo, memberName, onCheckInS
 
         } catch (err) {
             console.error("Portal QR Check-In Error:", err);
+            const status = err.response?.status;
             const errMsg = err.response?.data?.message || 'Check-in failed. Please verify you are at the venue and try again.';
+
+            // Auto-heal on expired check-in token: seamlessly issue a fresh token and retry once
+            if (status === 410 || errMsg.toLowerCase().includes('token expired') || errMsg.toLowerCase().includes('expired check-in token')) {
+                try {
+                    console.warn("Portal QR token expired. Auto-issuing fresh token and retrying submission...");
+                    const tokenRes = await api.post('/tokens/issue', { meetingCode: pendingMeetingCode });
+                    const freshToken = tokenRes.data?.token;
+                    if (freshToken) {
+                        const deviceId = cachedDeviceId || pendingDeviceId || await getPersistentDeviceId();
+                        const userLocation = cachedLocation || pendingUserLocation || { lat: null, long: null, accuracy: null };
+                        const retryPayload = {
+                            meetingCode: pendingMeetingCode,
+                            token: freshToken,
+                            deviceId,
+                            userLat: userLocation.lat,
+                            userLong: userLocation.long,
+                            accuracy: userLocation.accuracy,
+                            responses: {
+                                studentRegNo: studentRegNo.trim().toUpperCase(),
+                                studentName: memberName,
+                                dailyQuestionAnswer: (finalAnswer || '').trim()
+                            }
+                        };
+                        const res = await api.post('/attendance/submit', retryPayload);
+                        setScannerStatus('success');
+                        const resultData = {
+                            meetingName: res.data.meetingName || pendingMeetingData?.name || pendingMeetingCode.toUpperCase(),
+                            memberName: res.data.memberName || memberName,
+                            studentRegNo: studentRegNo.trim().toUpperCase(),
+                            memberType: res.data.memberType || 'Member',
+                            pointsAwarded: 10
+                        };
+                        setCheckInResult(resultData);
+                        if (onCheckInSuccess) {
+                            onCheckInSuccess({ ...res.data, studentRegNo: studentRegNo.trim().toUpperCase() });
+                        }
+                        return;
+                    }
+                } catch (retryErr) {
+                    console.error("Auto token refresh & retry failed in PortalQRScanner:", retryErr);
+                }
+            }
+
             setScannerStatus('error');
             setErrorMessage(errMsg);
         }

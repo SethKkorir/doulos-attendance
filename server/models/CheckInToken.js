@@ -21,7 +21,7 @@ const checkInTokenSchema = new mongoose.Schema({
     expiresAt: {
         type: Date,
         required: true,
-        index: { expires: 300 } // TTL index for cleanup
+        index: { expires: 1800 } // TTL index for cleanup
     },
     isUsed: {
         type: Boolean,
