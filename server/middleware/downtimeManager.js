@@ -80,12 +80,34 @@ class DowntimeManager {
                 }
 
                 if (Settings) {
-                    const [maintenance, recovery] = await Promise.all([
+                    const [maintenance, recovery, scheduleSetting] = await Promise.all([
                         Settings.findOne({ key: 'MANUAL_MAINTENANCE' }),
-                        Settings.findOne({ key: 'RECOVERY_MODE' })
+                        Settings.findOne({ key: 'RECOVERY_MODE' }),
+                        Settings.findOne({ key: 'MAINTENANCE_SCHEDULE' })
                     ]);
 
-                    if (maintenance) this.status.isManualMaintenance = maintenance.value === 'true';
+                    let isScheduledActive = false;
+                    let customMessage = null;
+
+                    if (scheduleSetting?.value) {
+                        try {
+                            const sched = JSON.parse(scheduleSetting.value);
+                            if (sched.status === 'EMERGENCY_OFFLINE' || sched.status === 'MAINTENANCE') {
+                                isScheduledActive = true;
+                            } else if (sched.start && sched.end) {
+                                const nowTime = new Date().getTime();
+                                const startTime = new Date(sched.start).getTime();
+                                const endTime = new Date(sched.end).getTime();
+                                if (nowTime >= startTime && nowTime <= endTime) {
+                                    isScheduledActive = true;
+                                }
+                            }
+                            if (sched.message) customMessage = sched.message;
+                        } catch (e) {}
+                    }
+
+                    this.status.isManualMaintenance = (maintenance?.value === 'true') || isScheduledActive;
+                    this.status.maintenanceMessage = customMessage;
                     if (recovery) this.status.isRecoveryMode = recovery.value === 'true';
                 }
             }
@@ -190,7 +212,7 @@ class DowntimeManager {
                     return next();
                 }
 
-                return this.renderDowntime(res, 'Scheduled Maintenance', 'We are currently performing scheduled maintenance to improve our services. Please check back shortly.', 503);
+                return this.renderDowntime(res, 'Scheduled Maintenance', this.status.maintenanceMessage || 'We are currently performing scheduled maintenance to improve our services. Please check back shortly.', 503);
             }
 
             // Automatic System Crash / Isolation Mode

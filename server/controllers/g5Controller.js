@@ -3,31 +3,45 @@ import Meeting from '../models/Meeting.js';
 import Attendance from '../models/Attendance.js';
 import Training from '../models/Training.js';
 import Setting from '../models/Settings.js';
+import IncidentLog from '../models/IncidentLog.js';
+import CampProgram from '../models/CampProgram.js';
 
 export const getG5Stats = async (req, res) => {
     try {
+        const { campus } = req.query;
         const semSetting = await Setting.findOne({ key: 'current_semester' });
         const currentSemester = semSetting?.value || 'MAY-AUG 2026';
 
-        // 1. Total Attendance & Attendance Percentage
-        const totalAttendanceCount = await Attendance.countDocuments();
-        
-        // Total meetings count
-        const totalMeetingsCount = await Meeting.countDocuments();
-        const totalTrainingsCount = await Training.countDocuments();
-        
-        // Active member filter for this semester
+        // Base active filter
         const activeFilter = {
             status: 'Active',
             isActiveThisSemester: true,
             lastConfirmedSemester: currentSemester
         };
 
+        if (campus && campus !== 'All') {
+            activeFilter.campus = campus;
+        }
+
         const activeMembersCount = await Member.countDocuments(activeFilter);
-        const semesterMeetings = await Meeting.find({
+
+        // 1. Semester & Overall Attendance
+        const totalAttendanceCount = await Attendance.countDocuments();
+        const totalMeetingsCount = await Meeting.countDocuments(
+            campus && campus !== 'All' ? { campus: { $in: [campus, 'Both', 'All', 'Joint'] } } : {}
+        );
+        const totalTrainingsCount = await Training.countDocuments(
+            campus && campus !== 'All' ? { campus: { $in: [campus, 'Both', 'All', 'Joint'] } } : {}
+        );
+
+        const semesterMeetingQuery = {
             semester: currentSemester,
             isArchived: false
-        });
+        };
+        if (campus && campus !== 'All') {
+            semesterMeetingQuery.campus = { $in: [campus, 'Both', 'All', 'Joint'] };
+        }
+        const semesterMeetings = await Meeting.find(semesterMeetingQuery);
         let attendancePercentage = 0;
 
         if (semesterMeetings.length > 0 && activeMembersCount > 0) {
@@ -42,7 +56,7 @@ export const getG5Stats = async (req, res) => {
             attendancePercentage = 0;
         }
 
-        // 2. Recruits ready to graduate (>= 80 points or >= 8 meetings) — active this semester
+        // 2. Recruits Pipeline
         const recruitsReadyToGraduate = await Member.countDocuments({
             ...activeFilter,
             memberType: 'Recruit',
@@ -52,40 +66,117 @@ export const getG5Stats = async (req, res) => {
             ]
         });
 
-        // 3. Promotions pending (Shadow or Basic Douloids with points or evaluation activity) — active this semester
+        const totalRecruits = await Member.countDocuments({
+            ...activeFilter,
+            memberType: 'Recruit'
+        });
+
+        const archivedRecruitsQuery = { status: 'Archived', memberType: 'Recruit' };
+        if (campus && campus !== 'All') archivedRecruitsQuery.campus = campus;
+        const archivedRecruitsCount = await Member.countDocuments(archivedRecruitsQuery);
+
+        // 3. Promotions Pending (Shadow & Basic Douloids ready for next rank review)
         const promotionsPending = await Member.countDocuments({
             ...activeFilter,
             douloidRank: { $in: ['Shadow Douloid', 'Basic Douloid'] }
         });
 
-        // 4. Upcoming trainings/camps
+        // 4. Upcoming trainings count
         const now = new Date();
-        const upcomingTrainings = await Training.countDocuments({
+        const upcomingTrainingsQuery = {
             $or: [
                 { isActive: true },
                 { date: { $gte: now } }
             ]
-        });
+        };
+        if (campus && campus !== 'All') {
+            upcomingTrainingsQuery.campus = { $in: [campus, 'Both', 'All', 'Joint'] };
+        }
+        const upcomingTrainings = await Training.countDocuments(upcomingTrainingsQuery);
 
-        // 4.5 Recruits in pipeline and in archive
-        const totalRecruits = await Member.countDocuments({
-            ...activeFilter,
-            memberType: 'Recruit'
-        });
-        const archivedRecruitsCount = await Member.countDocuments({
-            status: 'Archived',
-            memberType: 'Recruit'
-        });
-
-        // 5. Absentee flags (consecutiveAbsences >= 3) — active this semester only
+        // 5. Absentee flags (consecutiveAbsences >= 3)
         const absenteeFlags = await Member.countDocuments({
             ...activeFilter,
             consecutiveAbsences: { $gte: 3 }
         });
 
-        // 6. Active live drill check
-        const activeMeeting = await Meeting.findOne({ isActive: true, isArchived: false });
-        const activeTraining = await Training.findOne({ isActive: true });
+        const flaggedMembers = await Member.find({
+            ...activeFilter,
+            consecutiveAbsences: { $gte: 3 }
+        }).select('name studentRegNo campus consecutiveAbsences douloidRank memberType').limit(8).lean();
+
+        // 6. Safety Flags (open incidents not yet reviewed & closed)
+        const incidentQuery = {
+            status: { $ne: 'Reviewed & Closed by G1' }
+        };
+        if (campus && campus !== 'All') {
+            incidentQuery.campus = { $in: [campus, 'Freedom Base', 'Lukenya Trail', 'Joint'] };
+        }
+        const safetyFlagsCount = await IncidentLog.countDocuments(incidentQuery);
+        const criticalSafetyCount = await IncidentLog.countDocuments({
+            ...incidentQuery,
+            severity: { $in: ['Severe / Evacuation Executed', 'Moderate (Medical Evaluation)'] }
+        });
+
+        // 7. Real Active Session (only if currently live)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        let activeLiveSession = await Meeting.findOne({
+            isActive: true,
+            isArchived: false,
+            ...(campus && campus !== 'All' ? { campus: { $in: [campus, 'Both', 'All', 'Joint'] } } : {})
+        }).lean();
+
+        if (!activeLiveSession) {
+            activeLiveSession = await Training.findOne({
+                isActive: true,
+                ...(campus && campus !== 'All' ? { campus: { $in: [campus, 'Both', 'All', 'Joint'] } } : {})
+            }).lean();
+        }
+
+        // Next upcoming scheduled session
+        let nextUpcomingSession = null;
+        if (!activeLiveSession) {
+            nextUpcomingSession = await Meeting.findOne({
+                date: { $gte: todayStart },
+                isArchived: false,
+                ...(campus && campus !== 'All' ? { campus: { $in: [campus, 'Both', 'All', 'Joint'] } } : {})
+            }).sort({ date: 1 }).lean();
+
+            if (!nextUpcomingSession) {
+                nextUpcomingSession = await Training.findOne({
+                    date: { $gte: todayStart },
+                    ...(campus && campus !== 'All' ? { campus: { $in: [campus, 'Both', 'All', 'Joint'] } } : {})
+                }).sort({ date: 1 }).lean();
+            }
+        }
+
+        let todayCheckedIn = 0;
+        let todayExpected = activeMembersCount || 0;
+
+        const currentSession = activeLiveSession || nextUpcomingSession;
+        if (currentSession) {
+            if (currentSession.roster && currentSession.roster.length > 0) {
+                todayExpected = currentSession.roster.length;
+            }
+            if (activeLiveSession) {
+                const attCount = await Attendance.countDocuments({
+                    $or: [
+                        { meeting: activeLiveSession._id },
+                        { meetingCode: activeLiveSession.code }
+                    ]
+                });
+                todayCheckedIn = attCount;
+            }
+        }
+
+        // 8. Upcoming Camp Program
+        const campQuery = { activeStatus: { $ne: 'Archived' } };
+        if (campus && campus !== 'All') {
+            campQuery.campus = { $in: [campus, 'Both'] };
+        }
+        const upcomingCamp = await CampProgram.findOne(campQuery).sort({ startDate: 1 }).lean();
 
         res.json({
             success: true,
@@ -100,7 +191,14 @@ export const getG5Stats = async (req, res) => {
                 promotionsPending,
                 upcomingTrainings,
                 absenteeFlags,
-                activeLiveSession: activeMeeting || activeTraining || null
+                flaggedMembers,
+                safetyFlags: safetyFlagsCount,
+                criticalSafetyCount,
+                todayExpected: todayExpected || 0,
+                todayCheckedIn,
+                activeLiveSession: activeLiveSession || null,
+                nextUpcomingSession: nextUpcomingSession || null,
+                upcomingCamp: upcomingCamp || null
             }
         });
     } catch (err) {

@@ -637,13 +637,22 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
 
   Widget _buildQuestionView() {
     final meetingName = _pendingMeeting?['name']?.toString() ?? 'Fellowship Meeting';
-    final questionText = _activeQuestion?['text']?.toString() ??
-        _pendingMeeting?['questionOfDay']?.toString() ??
-        '';
-    final category = (_activeQuestion?['category'] ?? 'BANTER').toString().toUpperCase();
-    final options = _activeQuestion?['options'] is List ? (_activeQuestion!['options'] as List) : [];
-    final skill = _activeQuestion?['skill']?.toString();
-    final difficulty = _activeQuestion?['difficulty']?.toString();
+    final meetingCustomQ = _pendingMeeting?['questionOfDay']?.toString().trim();
+    final bool hasCustomQ = meetingCustomQ != null && meetingCustomQ.isNotEmpty;
+
+    final questionText = hasCustomQ
+        ? meetingCustomQ
+        : (_activeQuestion?['text']?.toString() ?? '');
+
+    final category = hasCustomQ
+        ? 'SESSION'
+        : (_activeQuestion?['category'] ?? 'BANTER').toString().toUpperCase();
+
+    final options = (!hasCustomQ && _activeQuestion?['options'] is List)
+        ? (_activeQuestion!['options'] as List)
+        : [];
+    final skill = hasCustomQ ? null : _activeQuestion?['skill']?.toString();
+    final difficulty = hasCustomQ ? null : _activeQuestion?['difficulty']?.toString();
 
     // Category styling metadata
     Color catColor;
@@ -652,6 +661,12 @@ class _PortalQrScannerSheetState extends State<PortalQrScannerSheet> {
     String catLabel;
 
     switch (category) {
+      case 'SESSION':
+        catColor = const Color(0xFF2563EB);
+        catBg = const Color(0xFFEFF6FF);
+        catIcon = Icons.help_outline_rounded;
+        catLabel = 'Meeting Question';
+        break;
       case 'SKILLS':
         catColor = const Color(0xFF059669);
         catBg = const Color(0xFFECFDF5);

@@ -6,12 +6,13 @@ import {
     graduateMember, resetMemberPoints, bulkGraduateMembers, clearGraduationCongrats,
     enrollMember, archiveMember, unarchiveMember, updateWateringDays, graduateByRegNos, archiveByRegNos,
     bulkArchiveRecruits, bulkEnrollFromAttendance, selfRegisterMember, autoGenerateGroups, clearAllGroups, updateSelfWateringDays,
-    blockMemberByReg, confirmSemester
+    blockMemberByReg, confirmSemester, lookupMemberFast
 } from '../controllers/memberController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.get('/lookup/:regNo', lookupMemberFast);
 router.post('/:id/confirm-semester', confirmSemester);
 
 router.get('/', verifyAdmin, getMembers);

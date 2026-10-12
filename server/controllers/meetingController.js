@@ -4,6 +4,7 @@ import Attendance from '../models/Attendance.js';
 import User from '../models/User.js';
 import Venue from '../models/Venue.js';
 import Settings from '../models/Settings.js';
+import Question from '../models/Question.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getKenyanTime, getWeekRange } from '../utils/kenyanTime.js';
@@ -106,6 +107,25 @@ export const createMeeting = async (req, res) => {
             questionOptions: (questionOptions || []).filter(o => o && o.trim())
         });
         await meeting.save();
+
+        try {
+            await Question.findOneAndUpdate(
+                { meetingId: meeting._id },
+                {
+                    text: trimmedQuestion,
+                    category: 'SKILLS',
+                    responseType: questionType || 'text',
+                    options: (questionOptions || []).filter(o => o && o.trim()),
+                    visibility: 'COMMUNITY',
+                    status: 'ACTIVE',
+                    meetingId: meeting._id
+                },
+                { upsert: true, new: true }
+            );
+        } catch (qErr) {
+            console.warn('Auto-provisioning Question entity note:', qErr.message);
+        }
+
         res.status(201).json(meeting);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -280,14 +300,20 @@ export const updateMeeting = async (req, res) => {
             devotion, announcements
         } = req.body;
 
-        // Role check: G5 Training Directorate or SuperAdmin/Developer
+        // Role check: G5 Training Directorate, G-Council Executives, or Admins
         const userRole = (req.user?.role || '').toLowerCase();
         const username = (req.user?.username || '').toLowerCase();
-        const isG5 = ['trainer', 'g5', 'g5_training', 'g5_director'].includes(userRole) ||
-                     username.startsWith('trainer') ||
-                     username === 'g5_director' ||
-                     username === 'g5_training' ||
-                     ['superadmin', 'developer', 'admin'].includes(userRole);
+        const isG5 =
+            userRole.includes('g5') ||
+            userRole.includes('trainer') ||
+            userRole.includes('training') ||
+            userRole.startsWith('g') ||
+            ['admin', 'superadmin', 'developer', 'trainer', 'g5', 'operations'].includes(userRole) ||
+            username.includes('g5') ||
+            username.includes('trainer') ||
+            username.includes('training') ||
+            username.startsWith('g') ||
+            ['admin', 'superadmin', 'developer', 'seth', 'supersuperadmin', 'g5'].includes(username);
 
         if (!isG5) {
             return res.status(403).json({
@@ -395,8 +421,32 @@ export const updateMeeting = async (req, res) => {
         if (isTestMeeting !== undefined) meeting.isTestMeeting = Boolean(isTestMeeting);
         if (devotion !== undefined) meeting.devotion = devotion;
         if (announcements !== undefined) meeting.announcements = announcements;
+        if (questionOfDay !== undefined) meeting.questionOfDay = questionOfDay.trim();
+        if (questionType) meeting.questionType = questionType;
+        if (questionOptions) meeting.questionOptions = (questionOptions || []).filter(o => o && o.trim());
 
         await meeting.save();
+
+        if (meeting.questionOfDay) {
+            try {
+                await Question.findOneAndUpdate(
+                    { meetingId: meeting._id },
+                    {
+                        text: meeting.questionOfDay,
+                        category: 'SKILLS',
+                        responseType: meeting.questionType || 'text',
+                        options: meeting.questionOptions || [],
+                        visibility: 'COMMUNITY',
+                        status: 'ACTIVE',
+                        meetingId: meeting._id
+                    },
+                    { upsert: true, new: true }
+                );
+            } catch (qErr) {
+                console.warn('Sync Question error on update:', qErr.message);
+            }
+        }
+
         res.json({ message: `Meeting "${meeting.name}" updated successfully!`, meeting });
     } catch (error) {
         console.error('Error in updateMeeting:', error);
@@ -485,6 +535,8 @@ export const getMeetingByCode = async (req, res) => {
         const isTimeEnded = currentMinutes > (endTotalMinutes + 30); // 30min buffer
         const isToday = todayStr === meetingStr;
 
+        const isStandby = !isSuperUser && !meeting.isTestMeeting && !isTraining && isToday && !isTimeStarted;
+
         if (!isSuperUser && !meeting.isTestMeeting) {
             if (!meeting.isActive) {
                 return res.status(403).json({ message: isTraining ? 'This training has been closed by the admin.' : 'This meeting has been manually closed by the admin.' });
@@ -493,11 +545,6 @@ export const getMeetingByCode = async (req, res) => {
             if (!isTraining) {
                 if (!isToday) {
                     return res.status(403).json({ message: `This meeting is scheduled for ${meetingDate.toLocaleDateString()}. It is not open today.` });
-                }
-                if (!isTimeStarted) {
-                    return res.status(403).json({
-                        message: `This meeting starts at ${meeting.startTime} EAT. Please wait until then.`
-                    });
                 }
                 if (isTimeEnded) {
                     return res.status(403).json({
@@ -535,6 +582,8 @@ export const getMeetingByCode = async (req, res) => {
 
         res.json({
             ...meeting.toObject(),
+            isStandby,
+            isTimeStarted,
             previousRecap,
             serverStartTime: Date.now(),
             hasAttended,

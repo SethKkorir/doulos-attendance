@@ -142,4 +142,34 @@ router.post('/restore-db', verifyAdmin, async (req, res) => {
 router.get('/cloud-backups', verifyAdmin, getCloudBackups);
 router.post('/restore-cloud-backup', verifyAdmin, restoreCloudBackup);
 
+router.get('/audit-logs', verifyAdmin, async (req, res) => {
+    try {
+        const SystemAuditLog = (await import('../models/SystemAuditLog.js')).default;
+        const logs = await SystemAuditLog.find({}).sort({ timestamp: -1 }).limit(100);
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to retrieve audit logs', error: err.message });
+    }
+});
+
+router.post('/audit-logs', verifyAdmin, async (req, res) => {
+    try {
+        const SystemAuditLog = (await import('../models/SystemAuditLog.js')).default;
+        const { action, target, details, result = 'SUCCESS', metadata = {} } = req.body;
+        const log = new SystemAuditLog({
+            actor: req.user?.username || 'SuperAdmin',
+            action,
+            target,
+            details,
+            result,
+            metadata,
+            ipAddress: req.ip || req.connection?.remoteAddress || ''
+        });
+        await log.save();
+        res.status(201).json(log);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to record audit log', error: err.message });
+    }
+});
+
 export default router;

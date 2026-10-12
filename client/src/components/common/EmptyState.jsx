@@ -1,5 +1,6 @@
 import React from 'react';
 import { Inbox } from 'lucide-react';
+import { renderIcon } from './iconHelper';
 
 export const EmptyState = ({
     icon: Icon = Inbox,
@@ -31,7 +32,7 @@ export const EmptyState = ({
             alignItems: 'center',
             justifyContent: 'center'
         }}>
-            <Icon size={24} />
+            {renderIcon(Icon, 24)}
         </div>
         <div>
             <h4 style={{ margin: '0 0 0.25rem 0', color: '#0F172A', fontSize: '0.96rem', fontWeight: 800 }}>

@@ -1,62 +1,52 @@
 import React from 'react';
+import { LoadingState } from './LoadingState';
+import { EmptyState } from './EmptyState';
 
 /**
- * DataTable: Generic, clean, responsive data table matching the reference design layout:
- * - Upper-case tracked small-caps header in muted gray (#8E8B9F)
- * - Row dividers, hover state
- * - Customizable columns & render functions
- * - Empty & loading states
+ * Shared Doulos Design System: DataTable
+ * Features:
+ * - Upper-case tracked header in muted tone (var(--ds-text-muted, #8E8B9F))
+ * - Row dividers with subtle hover effect
+ * - Responsive horizontal scroll container
+ * - Integrated LoadingState and EmptyState fallbacks
+ * - Row click handler support
  */
-export default function DataTable({
+
+export const DataTable = ({
     columns = [],
     data = [],
     loading = false,
     emptyMessage = 'No records found in this view',
+    emptyDescription = 'Try adjusting your search query or filter parameters.',
+    emptyActionLabel,
+    onEmptyAction,
     keyField = '_id',
     onRowClick,
-    className = ''
-}) {
+    className = '',
+    style = {}
+}) => {
     if (loading) {
         return (
-            <div style={{ padding: '3rem 1rem', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '12px' }}>
-                <div
-                    style={{
-                        width: '32px',
-                        height: '32px',
-                        border: '3px solid #EBE8F8',
-                        borderTop: '3px solid #4B3F8C',
-                        borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite',
-                        margin: '0 auto 1rem'
-                    }}
-                />
-                <span style={{ fontSize: '0.84rem', color: '#8E8B9F', fontWeight: 600 }}>Loading table records...</span>
+            <div className={`ds-table-wrap ${className}`} style={{ padding: '2rem 1rem', ...style }}>
+                <LoadingState message="Loading table records..." />
             </div>
         );
     }
 
     if (!data || data.length === 0) {
         return (
-            <div
-                style={{
-                    padding: '3.5rem 1.5rem',
-                    textAlign: 'center',
-                    backgroundColor: '#FAFAFC',
-                    borderRadius: '12px',
-                    border: '1.5px dashed #E5E5EB',
-                    margin: '1rem 0'
-                }}
-            >
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>📋</div>
-                <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.98rem', fontWeight: 700, color: '#4A4560' }}>{emptyMessage}</h4>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#9E9EA7' }}>Try adjusting your search or active filter settings.</p>
-            </div>
+            <EmptyState
+                title={emptyMessage}
+                description={emptyDescription}
+                actionLabel={emptyActionLabel}
+                onAction={onEmptyAction}
+            />
         );
     }
 
     return (
-        <div className={`doulos-table-wrap ${className}`}>
-            <table className="doulos-table">
+        <div className={`ds-table-wrap ${className}`} style={style}>
+            <table className="ds-table">
                 <thead>
                     <tr>
                         {columns.map((col, idx) => (
@@ -97,4 +87,6 @@ export default function DataTable({
             </table>
         </div>
     );
-}
+};
+
+export default DataTable;

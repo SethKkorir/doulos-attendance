@@ -6,7 +6,7 @@ import { Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, Loader2, ShieldCheck,
 import Logo from '../components/Logo';
 
 const AdminLogin = () => {
-    const [selectedRole, setSelectedRole] = useState('g9'); // 'g9' | 'douloid' | 'recruit'
+    const [selectedRole, setSelectedRole] = useState('g9'); // 'g9' | 'douloid_recruit'
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [regNo, setRegNo] = useState('');
@@ -105,7 +105,7 @@ const AdminLogin = () => {
                     localStorage.setItem('initialTab', 'dashboard');
                     navigate('/g5/portal');
                 } else if (u === 'superadmin' || role === 'superadmin') {
-                    navigate('/admin/dashboard');
+                    navigate('/superadmin');
                 } else {
                     navigate('/admin/dashboard');
                 }
@@ -137,26 +137,7 @@ const AdminLogin = () => {
                     return;
                 }
 
-                const memberType = (res.data.memberType || 'Douloid').trim();
-                const douloidRank = (res.data.douloidRank || '').trim();
-                const isDouloid = memberType.toLowerCase() === 'douloid' || (douloidRank && douloidRank !== 'None' && !douloidRank.toLowerCase().includes('candidate'));
-                const isRecruit = memberType.toLowerCase() === 'recruit';
-
-                // Requirement: when you click Recruit and you are douloid, deny access
-                if (selectedRole === 'recruit' && isDouloid) {
-                    setError("Access Denied: You are a Douloid, not a recruit! 😂 Please select Douloid to sign in.");
-                    setLoading(false);
-                    return;
-                }
-
-                // If someone chooses Douloid but is registered as Recruit
-                if (selectedRole === 'douloid' && isRecruit) {
-                    setError("Access Denied: You are registered as a Recruit, not a Douloid! Please select Recruit to sign in.");
-                    setLoading(false);
-                    return;
-                }
-
-                // Successful student/recruit session setup (7 days)
+                // Successful Douloid / Recruit student session setup (7 days)
                 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;
                 localStorage.setItem('studentSession', JSON.stringify({ regNo: targetRegNo, expiry: Date.now() + SESSION_DURATION }));
                 navigate('/portal', { state: { memberData: res.data } });
@@ -796,12 +777,11 @@ const AdminLogin = () => {
                         display: 'flex',
                         flexDirection: 'row',
                         width: '100%',
-                        gap: '0.5rem'
+                        gap: '0.65rem'
                     }}>
                         {[
                             { id: 'g9', label: 'G9', icon: ShieldCheck },
-                            { id: 'douloid', label: 'Douloid', icon: Award },
-                            { id: 'recruit', label: 'Recruit', icon: Compass }
+                            { id: 'douloid_recruit', label: 'Douloid / Recruit', icon: Award }
                         ].map((item) => {
                             const isSelected = selectedRole === item.id;
                             const IconComponent = item.icon;
@@ -817,16 +797,16 @@ const AdminLogin = () => {
                                     style={{
                                         flex: '1 1 0',
                                         minWidth: 0,
-                                        height: '42px',
-                                        background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(30, 41, 59, 0.45)',
+                                        height: '44px',
+                                        background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.45)',
                                         border: isSelected ? '1.5px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.10)',
                                         borderRadius: '12px',
-                                        padding: '0 0.45rem',
+                                        padding: '0 0.65rem',
                                         display: 'flex',
                                         flexDirection: 'row',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '0.4rem',
+                                        gap: '0.5rem',
                                         cursor: 'pointer',
                                         whiteSpace: 'nowrap',
                                         transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -835,7 +815,7 @@ const AdminLogin = () => {
                                     }}
                                 >
                                     <IconComponent
-                                        size={17}
+                                        size={18}
                                         style={{
                                             color: isSelected ? '#38BDF8' : '#94A3B8',
                                             flexShrink: 0,
@@ -843,7 +823,7 @@ const AdminLogin = () => {
                                         }}
                                     />
                                     <span style={{
-                                        fontSize: '0.8rem',
+                                        fontSize: '0.84rem',
                                         fontWeight: isSelected ? 700 : 600,
                                         color: isSelected ? '#38BDF8' : '#CBD5E1',
                                         lineHeight: 1,

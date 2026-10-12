@@ -5,8 +5,12 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, default: 'admin' },
-  campus: { type: String, default: 'Athi River' }
-});
+  campus: { type: String, default: 'Athi River' },
+  email: { type: String, default: '' },
+  status: { type: String, enum: ['INVITED', 'ACTIVE', 'SUSPENDED', 'DISABLED'], default: 'ACTIVE' },
+  position: { type: String, default: '' },
+  lastLogin: { type: Date, default: null }
+}, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

@@ -100,8 +100,45 @@ export const getActiveDailyQuestion = async (req, res) => {
             }
         }
 
-        // 2. Default: Find the latest active question
-        const latestQuestion = await Question.findOne({ status: 'ACTIVE' }).sort({ createdAt: -1 });
+        // 2. Check if any active meeting has questionOfDay
+        const activeMeeting = await Meeting.findOne({
+            isActive: true,
+            isArchived: { $ne: true },
+            questionOfDay: { $exists: true, $ne: '' }
+        }).sort({ date: -1, createdAt: -1 }).lean();
+
+        if (activeMeeting && activeMeeting.questionOfDay && activeMeeting.questionOfDay.trim()) {
+            let question = await Question.findOne({
+                $or: [
+                    { meetingId: activeMeeting._id },
+                    { text: activeMeeting.questionOfDay.trim() }
+                ]
+            });
+
+            if (!question) {
+                let cat = 'SKILLS';
+                const qLower = activeMeeting.questionOfDay.toLowerCase();
+                if (qLower.includes('pray') || qLower.includes('heart') || qLower.includes('struggle') || qLower.includes('grateful') || qLower.includes('life')) {
+                    cat = 'LIFE';
+                }
+
+                question = new Question({
+                    text: activeMeeting.questionOfDay.trim(),
+                    category: cat,
+                    responseType: activeMeeting.questionType || 'text',
+                    options: activeMeeting.questionOptions || [],
+                    visibility: cat === 'LIFE' ? 'PRIVATE' : 'COMMUNITY',
+                    meetingId: activeMeeting._id,
+                    status: 'ACTIVE'
+                });
+                await question.save();
+            }
+
+            return res.json(question);
+        }
+
+        // 3. Fallback: Find the latest active question from bank
+        const latestQuestion = await Question.findOne({ status: { $in: ['ACTIVE', 'PUBLISHED'] } }).sort({ createdAt: -1 });
         res.json(latestQuestion || null);
     } catch (err) {
         console.error('Error fetching active question:', err);
@@ -373,9 +410,10 @@ export const getQuestionResponses = async (req, res) => {
         const question = await Question.findById(req.params.id);
         if (!question) return res.status(404).json({ message: 'Question not found' });
 
-        // Privacy rule: G3/G4 only sees anonymous or consent-permitted items for Life questions
-        const filter = { questionId: question._id };
-        let projection = '-__v';
+        const userRole = (req.user?.role || '').toLowerCase();
+        if (question.category === 'LIFE' && (userRole.startsWith('g5') || userRole === 'trainer')) {
+            return res.status(403).json({ message: 'Confidentiality Protection: Private spiritual and life reflections are restricted from G5 training view.' });
+        }
 
         if (question.category === 'LIFE') {
             // For life questions, show check-in reason only if requested

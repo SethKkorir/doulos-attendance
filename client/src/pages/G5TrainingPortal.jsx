@@ -9,6 +9,17 @@ import QRCode from 'react-qr-code';
 import api from '../api';
 import G5MeetingModal from '../components/G5MeetingModal';
 import CampScheduleStudio from '../components/dashboard/CampScheduleStudio';
+import G5CommandDashboard from '../components/g5/G5CommandDashboard';
+import G5TrainingsWorkspace from '../components/g5/G5TrainingsWorkspace';
+import G5CampCommandWorkspace from '../components/g5/G5CampCommandWorkspace';
+import G5QuestionBankWorkspace from '../components/g5/G5QuestionBankWorkspace';
+import G5ProgressionWorkspace from '../components/g5/G5ProgressionWorkspace';
+import G5SafetyCentreWorkspace from '../components/g5/G5SafetyCentreWorkspace';
+import G5GearLogisticsWorkspace from '../components/g5/G5GearLogisticsWorkspace';
+import G5ReportsWorkspace from '../components/g5/G5ReportsWorkspace';
+import G5ComingSoonWorkspace, { ComingSoonModal } from '../components/g5/G5ComingSoonWorkspace';
+import MemberReadinessProfileModal from '../components/g5/MemberReadinessProfileModal';
+import PromotionEvaluationModal from '../components/g5/PromotionEvaluationModal';
 import Logo from '../components/Logo';
 import '../styles/g5Portal.css';
 import {
@@ -80,7 +91,32 @@ const G5TrainingPortal = () => {
     const moreTabIds = ['trainings_camps', 'graduations', 'promotions', 'contributions', 'safety'];
     const isMoreActive = moreTabIds.includes(activeTab);
 
+    const [comingSoonModal, setComingSoonModal] = useState(null);
+
+    const COMING_SOON_TABS = {
+        questions: { label: 'Question Bank', icon: Lightbulb, key: 'questions' },
+        camps: { label: 'Camps Management', icon: Tent, key: 'camps' },
+        trainings: { label: 'Training Curricula', icon: Compass, key: 'trainings' },
+        trainings_camps: { label: 'Training Curricula', icon: Compass, key: 'trainings' },
+        safety_centre: { label: 'Safety Centre', icon: Shield, key: 'safety_centre' },
+        safety: { label: 'Safety Centre', icon: Shield, key: 'safety_centre' },
+        incidents: { label: 'Safety Incidents', icon: ShieldAlert, key: 'incidents' },
+        sops: { label: 'SOP / LOP Library', icon: FileText, key: 'sops' },
+        gear: { label: 'Gear & Logistics', icon: Layers, key: 'gear' },
+        contributions: { label: 'Operations & Contributions', icon: CreditCard, key: 'contributions' },
+        analytics: { label: 'Training Analytics', icon: Radio, key: 'analytics' },
+        readiness: { label: 'Readiness Reports', icon: Sparkles, key: 'readiness' },
+        settings: { label: 'Directorate Settings', icon: Settings, key: 'settings' }
+    };
+
     const handleSelectTab = (tabId) => {
+        if (COMING_SOON_TABS[tabId]) {
+            setComingSoonModal(COMING_SOON_TABS[tabId]);
+            setMobileSidebarOpen(false);
+            setMobileMoreOpen(false);
+            setToast({ message: `🚀 ${COMING_SOON_TABS[tabId].label} is coming soon!`, type: 'info' });
+            return;
+        }
         setActiveTab(tabId);
         setMobileSidebarOpen(false);
         setMobileMoreOpen(false);
@@ -179,14 +215,76 @@ const G5TrainingPortal = () => {
     const [editMeetingLoading, setEditMeetingLoading] = useState(false);
     const [editGpsCapturing, setEditGpsCapturing] = useState(false);
     const [editGpsCaptured, setEditGpsCaptured] = useState(false);
+    const [selectedReadinessMember, setSelectedReadinessMember] = useState(null);
+    const [selectedPromotionMember, setSelectedPromotionMember] = useState(null);
+    const [showCreateTrainingModal, setShowCreateTrainingModal] = useState(false);
 
-    // 1. Live G5 Dashboard Stats
+    // Live ticking timer for meetings countdown & standby resolution
+    const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTimeMs(Date.now());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const getMeetingTiming = (m, nowMs = currentTimeMs) => {
+        if (!m || !m.date) {
+            return { isLive: false, isUpcoming: false, isCompleted: false, msRemaining: 0, countdownText: '' };
+        }
+        try {
+            const mDate = new Date(m.date);
+            const mYear = mDate.getFullYear();
+            const mMonth = mDate.getMonth();
+            const mDay = mDate.getDate();
+
+            const [sH, sM] = String(m.startTime || '00:00').split(':').map(Number);
+            const [eH, eM] = String(m.endTime || '23:59').split(':').map(Number);
+
+            const startDateTime = new Date(mYear, mMonth, mDay, sH || 0, sM || 0, 0);
+            const endDateTime = new Date(mYear, mMonth, mDay, eH || 23, eM || 59, 59);
+
+            const startMs = startDateTime.getTime();
+            const endMs = endDateTime.getTime();
+
+            const isBefore = nowMs < startMs;
+            const hasEnded = nowMs > endMs;
+            const isLive = !isBefore && !hasEnded && m.isActive;
+            const isUpcoming = isBefore && m.isActive;
+            const msRemaining = isUpcoming ? Math.max(0, startMs - nowMs) : (isLive ? Math.max(0, endMs - nowMs) : 0);
+
+            const totalSecs = Math.floor(msRemaining / 1000);
+            const days = Math.floor(totalSecs / 86400);
+            const hours = Math.floor((totalSecs % 86400) / 3600);
+            const mins = Math.floor((totalSecs % 3600) / 60);
+            const secs = totalSecs % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            const countdownText = days > 0
+                ? `${days}d ${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`
+                : `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+
+            return {
+                isLive,
+                isUpcoming,
+                isCompleted: hasEnded || !m.isActive,
+                msRemaining,
+                countdownText,
+                startDateTime,
+                endDateTime
+            };
+        } catch (e) {
+            return { isLive: m.isActive, isUpcoming: false, isCompleted: !m.isActive, msRemaining: 0, countdownText: '' };
+        }
+    };
+
+    // 1. Live G5 Dashboard Stats with Campus Filtering
     const {
         data: g5StatsData,
         isLoading: statsLoading,
         isError: statsError,
         refetch: refetchG5Stats
-    } = usePortalData('g5-stats', '/g5/stats');
+    } = usePortalData(['g5-stats', campusFilter], `/g5/stats?campus=${campusFilter}`);
 
     const g5Stats = g5StatsData?.stats || {
         attendancePercentage: 0,
@@ -1501,18 +1599,56 @@ const G5TrainingPortal = () => {
         }
     };
 
-    // 9 Sidebar Items
-    const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-        { id: 'meetings', label: 'Meetings', icon: Calendar },
-        { id: 'trainings_camps', label: 'Trainings & Camps', icon: Compass },
-        { id: 'graduations', label: 'Recruit Graduations', icon: GraduationCap, badge: g5Stats.totalRecruits || recruits.length },
-        { id: 'promotions', label: 'Rank Promotions', icon: Award, badge: g5Stats.promotionsPending || cadres.filter(c => c.douloidRank === 'Shadow Douloid' || c.douloidRank === 'Basic Douloid').length },
-        { id: 'cadres', label: 'Membership Roster', icon: Users },
-        { id: 'contributions', label: 'Contributions', icon: CreditCard },
-        { id: 'safety', label: 'Safety & Incidents', icon: ShieldAlert, badge: incidents.length > 0 ? incidents.length : null }
+    // Restructure into G5 2.0 Command Centre Workspaces
+    const navGroups = [
+        {
+            title: 'COMMAND',
+            items: [
+                { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }
+            ]
+        },
+        {
+            title: 'TRAINING',
+            items: [
+                { id: 'trainings', label: 'Training', icon: Compass, comingSoon: true },
+                { id: 'camps', label: 'Camps', icon: Tent, comingSoon: true },
+                { id: 'meetings', label: 'Meetings', icon: Calendar },
+                { id: 'questions', label: 'Question Bank', icon: Lightbulb, comingSoon: true }
+            ]
+        },
+        {
+            title: 'PEOPLE',
+            items: [
+                { id: 'members', label: 'Members', icon: Users },
+                { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+                { id: 'progression', label: 'Progression', icon: Award, badge: (g5Stats.totalRecruits || recruits.length) + (g5Stats.promotionsPending || 0) }
+            ]
+        },
+        {
+            title: 'SAFETY',
+            items: [
+                { id: 'safety_centre', label: 'Safety Centre', icon: Shield, comingSoon: true },
+                { id: 'incidents', label: 'Incidents', icon: ShieldAlert, badge: g5Stats.safetyFlags || incidents.length || null, comingSoon: true },
+                { id: 'sops', label: 'SOP / LOP Library', icon: FileText, comingSoon: true }
+            ]
+        },
+        {
+            title: 'OPERATIONS',
+            items: [
+                { id: 'gear', label: 'Gear & Logistics', icon: Layers, comingSoon: true },
+                { id: 'contributions', label: 'Contributions', icon: CreditCard, comingSoon: true }
+            ]
+        },
+        {
+            title: 'REPORTS',
+            items: [
+                { id: 'analytics', label: 'Training Analytics', icon: Radio, comingSoon: true },
+                { id: 'readiness', label: 'Readiness', icon: Sparkles, comingSoon: true }
+            ]
+        }
     ];
+
+    const navItems = navGroups.flatMap(g => g.items);
 
     // Standard LOPs from Database (fallback to reference documents if initial load)
     const lops = (lopDocs && lopDocs.length > 0) ? lopDocs : [
@@ -1532,14 +1668,19 @@ const G5TrainingPortal = () => {
 
             {/* FIXED / MOBILE SLIDE-OUT SIDEBAR */}
             <aside className={`g5-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
-                <div className="g5-sidebar-brand" style={{ justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div className="g5-sidebar-brand" style={{ justifyContent: 'space-between', padding: '1.25rem 1.25rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div className="g5-brand-icon-box" title="Doulos G5 Logo">
-                            <Logo size={34} showText={false} />
+                            <Logo size={32} showText={false} />
                         </div>
                         <div>
-                            <div className="g5-brand-title">Doulos G5</div>
-                            <div className="g5-brand-subtitle">Training Portal</div>
+                            <div className="g5-brand-title" style={{ fontSize: '1.05rem', fontWeight: 900 }}>DOULOS</div>
+                            <div className="g5-brand-subtitle" style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                G5 • TRAINING & SAFETY
+                            </div>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                                Command Centre
+                            </div>
                         </div>
                     </div>
                     {mobileSidebarOpen && (
@@ -1560,27 +1701,69 @@ const G5TrainingPortal = () => {
                     )}
                 </div>
 
-                <nav className="g5-nav-list">
-                    {navItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                            <button
-                                key={item.id}
-                                className={`g5-nav-btn ${isActive ? 'active' : ''}`}
-                                onClick={() => {
-                                    setActiveTab(item.id);
-                                    setMobileSidebarOpen(false);
-                                }}
-                            >
-                                <Icon size={19} />
-                                <span>{item.label}</span>
-                                {item.badge ? (
-                                    <span className="g5-nav-badge">{item.badge}</span>
-                                ) : null}
-                            </button>
-                        );
-                    })}
+                <nav className="g5-nav-list" style={{ padding: '0.75rem 0.65rem' }}>
+                    {navGroups.map((group, gIdx) => (
+                        <div key={group.title || gIdx} className="g5-nav-group">
+                            <div className="g5-nav-group-title">{group.title}</div>
+                            {group.items.map(item => {
+                                const Icon = item.icon;
+                                const isActive = activeTab === item.id || 
+                                    (item.id === 'members' && activeTab === 'cadres') ||
+                                    (item.id === 'trainings' && activeTab === 'trainings_camps') ||
+                                    (item.id === 'progression' && (activeTab === 'graduations' || activeTab === 'promotions')) ||
+                                    (item.id === 'safety_centre' && activeTab === 'safety');
+                                return (
+                                    <button
+                                        key={item.id}
+                                        className={`g5-nav-btn ${isActive ? 'active' : ''}`}
+                                        onClick={() => {
+                                            handleSelectTab(item.id);
+                                        }}
+                                    >
+                                        <Icon size={17} />
+                                        <span>{item.label}</span>
+                                        {item.badge ? (
+                                            <span className="g5-nav-badge">{item.badge}</span>
+                                        ) : item.comingSoon ? (
+                                            <span style={{
+                                                marginLeft: 'auto',
+                                                fontSize: '0.6rem',
+                                                fontWeight: 800,
+                                                padding: '2px 6px',
+                                                borderRadius: '6px',
+                                                background: 'rgba(217, 119, 6, 0.12)',
+                                                color: '#D97706',
+                                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                                letterSpacing: '0.4px'
+                                            }}>SOON</span>
+                                        ) : null}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ))}
+
+                    <div style={{ marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border-subtle)' }}>
+                        <button
+                            type="button"
+                            className={`g5-nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                            onClick={() => handleSelectTab('settings')}
+                        >
+                            <Settings size={17} />
+                            <span>Settings</span>
+                            <span style={{
+                                marginLeft: 'auto',
+                                fontSize: '0.6rem',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: '6px',
+                                background: 'rgba(217, 119, 6, 0.12)',
+                                color: '#D97706',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                letterSpacing: '0.4px'
+                            }}>SOON</span>
+                        </button>
+                    </div>
                 </nav>
 
                 <div className="g5-sidebar-footer">
@@ -1771,239 +1954,30 @@ const G5TrainingPortal = () => {
                 <main className="g5-content">
 
                     {/* ========================================================= */}
-                    {/* TAB 1: DASHBOARD (LANDING PAGE) */}
+                    {/* TAB 1: COMMAND DASHBOARD (COMMAND CENTRE) */}
                     {/* ========================================================= */}
                     {activeTab === 'dashboard' && (
-                        <div>
-                            {/* ACTIVE LIVE BANNER ON DASHBOARD IF ANY SESSION IS LIVE */}
-                            {meetings.some(m => m.isActive) && (() => {
-                                const activeM = meetings.find(m => m.isActive);
-                                return (
-                                    <div className="g5-dashboard-live-banner">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                            <div className="g5-pulse-dot" style={{ width: '10px', height: '10px' }} />
-                                            <div>
-                                                <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.98rem' }}>
-                                                    Live Check-In Active: {activeM.name}
-                                                </div>
-                                                <div style={{ color: '#475569', fontSize: '0.8rem', marginTop: '0.15rem' }}>
-                                                    {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="g5-dashboard-banner-actions">
-                                            <button
-                                                className="g5-btn-blue-solid"
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
-                                            >
-                                                <Radio size={15} /> Open Live Feed
-                                            </button>
-                                            <button
-                                                className="g5-btn-blue-soft"
-                                                onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
-                                            >
-                                                <Users size={15} /> Who Attended ({activeM.attendanceCount ?? 0})
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* 5 Glanceable Stat Cards in a Balanced Responsive Grid */}
-                            {statsLoading ? (
-                                <div className="g5-stat-grid">
-                                    <StatCardSkeleton />
-                                    <StatCardSkeleton />
-                                    <StatCardSkeleton />
-                                    <StatCardSkeleton />
-                                    <StatCardSkeleton />
-                                </div>
-                            ) : statsError ? (
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <ErrorState message="Could not load G5 operational statistics." onRetry={refetchG5Stats} />
-                                </div>
-                            ) : (
-                                <div className="g5-stat-grid">
-                                    <div className="g5-stat-card">
-                                        <div className="g5-stat-top">
-                                            <span className="g5-stat-label">Overall Attendance</span>
-                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8' }}>
-                                                <CalendarCheck size={19} />
-                                            </div>
-                                        </div>
-                                        <div className="g5-stat-number" style={{ color: '#1D4ED8' }}>
-                                            {g5Stats.attendancePercentage}%
-                                        </div>
-                                        <span style={{ fontSize: '0.74rem', color: '#2563EB', fontWeight: 700 }}>
-                                            {g5Stats.totalAttended} attendances across {g5Stats.totalMeetingsCount || meetings.length} sessions
-                                        </span>
-                                    </div>
-
-                                    <div className="g5-stat-card">
-                                        <div className="g5-stat-top">
-                                            <span className="g5-stat-label">Recruits Pipeline</span>
-                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#E0F2FE', color: '#0284C7' }}>
-                                                <GraduationCap size={19} />
-                                            </div>
-                                        </div>
-                                        <div className="g5-stat-number" style={{ color: '#0284C7' }}>
-                                            {g5Stats.totalRecruits}
-                                        </div>
-                                        <span style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 600 }}>
-                                            {g5Stats.totalRecruits > 0 ? `${g5Stats.archivedRecruitsCount} in holding archive` : 'No recruits enrolled currently'}
-                                        </span>
-                                    </div>
-
-                                    <div className="g5-stat-card">
-                                        <div className="g5-stat-top">
-                                            <span className="g5-stat-label">Promotions Pending</span>
-                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#EFF6FF', color: '#2563EB' }}>
-                                                <Award size={19} />
-                                            </div>
-                                        </div>
-                                        <div className="g5-stat-number" style={{ color: '#1D4ED8' }}>
-                                            {g5Stats.promotionsPending}
-                                        </div>
-                                        <span style={{ fontSize: '0.74rem', color: '#1D4ED8', fontWeight: 700 }}>
-                                            Shadow & Basic Douloids
-                                        </span>
-                                    </div>
-
-                                    <div className="g5-stat-card">
-                                        <div className="g5-stat-top">
-                                            <span className="g5-stat-label">Upcoming Trainings</span>
-                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#E0F2FE', color: '#0284C7' }}>
-                                                <Compass size={19} />
-                                            </div>
-                                        </div>
-                                        <div className="g5-stat-number" style={{ color: '#0284C7' }}>
-                                            {g5Stats.upcomingTrainings}
-                                        </div>
-                                        <span style={{ fontSize: '0.74rem', color: '#0284C7', fontWeight: 600 }}>
-                                            {g5Stats.upcomingTrainings > 0 ? 'Active drill modules in DB' : `${trainings.length} completed in database`}
-                                        </span>
-                                    </div>
-
-                                    <div className="g5-stat-card">
-                                        <div className="g5-stat-top">
-                                            <span className="g5-stat-label">Absentee Flags</span>
-                                            <div className="g5-stat-icon-wrap" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
-                                                <AlertTriangle size={19} />
-                                            </div>
-                                        </div>
-                                        <div className="g5-stat-number" style={{ color: '#D97706' }}>
-                                            {g5Stats.absenteeFlags}
-                                        </div>
-                                        <span style={{ fontSize: '0.74rem', color: '#B45309', fontWeight: 700 }}>
-                                            3+ consecutive misses
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Warm Glanceable Overview Cards */}
-                            <div className="g5-overview-split">
-                                <div className="g5-card g5-dashboard-session-card">
-                                    <div className="g5-card-header">
-                                        <div>
-                                            <div className="g5-card-title">
-                                                {nextUpcomingMeeting ? 'Next Scheduled Meeting / Session' : 'Next Scheduled Meeting / Session'}
-                                            </div>
-                                            <div className="g5-card-desc" style={{ color: nextUpcomingMeeting ? '#1D4ED8' : '#64748B', fontWeight: 700 }}>
-                                                {nextUpcomingMeeting ? nextUpcomingMeeting.name : 'Term Intersession — No Live Session Today'}
-                                            </div>
-                                        </div>
-                                        <span className={`g5-pill ${nextUpcomingMeeting?.isActive ? 'g5-pill-active' : nextUpcomingMeeting ? 'g5-pill-blue' : 'g5-pill-soft'}`}>
-                                            <Check size={14} /> {nextUpcomingMeeting?.isActive ? 'Live Now' : nextUpcomingMeeting ? 'Scheduled' : 'Concluded Term'}
-                                        </span>
-                                    </div>
-
-                                    {nextUpcomingMeeting ? (
-                                        <div className="g5-dashboard-meeting-meta-grid">
-                                            <div className="g5-dashboard-meta-item">
-                                                <div className="g5-dashboard-meta-label">DATE & TIME</div>
-                                                <div className="g5-dashboard-meta-val">
-                                                    {new Date(nextUpcomingMeeting.date).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' })} • {nextUpcomingMeeting.startTime || 'TBD'}
-                                                </div>
-                                            </div>
-                                            <div className="g5-dashboard-meta-item">
-                                                <div className="g5-dashboard-meta-label">LOCATION</div>
-                                                <div className="g5-dashboard-meta-val">
-                                                    {nextUpcomingMeeting.location?.name || nextUpcomingMeeting.venue || nextUpcomingMeeting.campus || 'Not specified'}
-                                                </div>
-                                            </div>
-                                            <div className="g5-dashboard-meta-item">
-                                                <div className="g5-dashboard-meta-label">CAMPUS</div>
-                                                <div className="g5-dashboard-meta-val" style={{ color: '#1D4ED8' }}>
-                                                    {nextUpcomingMeeting.campus || 'All Campuses'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="g5-dashboard-meeting-meta-grid">
-                                            <div className="g5-dashboard-meta-item">
-                                                <div className="g5-dashboard-meta-label">LATEST CONCLUDED</div>
-                                                <div className="g5-dashboard-meta-val">
-                                                    {meetings[0]?.name ? `${meetings[0].name} (${new Date(meetings[0].date).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })})` : 'None in history'}
-                                                </div>
-                                            </div>
-                                            <div className="g5-dashboard-meta-item">
-                                                <div className="g5-dashboard-meta-label">ARCHIVED SESSIONS</div>
-                                                <div className="g5-dashboard-meta-val">
-                                                    {meetings.length} sessions logged in DB
-                                                </div>
-                                            </div>
-                                            <div className="g5-dashboard-meta-item">
-                                                <div className="g5-dashboard-meta-label">CAMPUS REGION</div>
-                                                <div className="g5-dashboard-meta-val" style={{ color: '#1D4ED8' }}>
-                                                    {meetings[0]?.campus || 'Athi River & VR'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="g5-dashboard-card-actions">
-                                        <button className="g5-btn-blue-solid" onClick={() => setActiveTab('graduations')}>
-                                            <GraduationCap size={16} /> View Recruit Graduations ({recruits.length})
-                                        </button>
-                                        <button className="g5-btn-blue-soft" onClick={() => setActiveTab('meetings')}>
-                                            <Calendar size={16} /> View Session Archive ({meetings.length})
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="g5-card g5-dashboard-belay-card">
-                                    <div>
-                                        <div className="g5-card-header" style={{ marginBottom: '1rem' }}>
-                                            <div>
-                                                <div className="g5-card-title">Belay Safety Readiness</div>
-                                                <div className="g5-card-desc">Certified belayers in membership roster</div>
-                                            </div>
-                                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Shield size={20} />
-                                            </div>
-                                        </div>
-                                        <div style={{ background: '#EFF6FF', padding: '1.1rem', borderRadius: '14px', border: '1.5px solid #BFDBFE' }}>
-                                            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#1D4ED8' }}>
-                                                {cadres.filter(c => c.belayStatus === 'Primary Belayer Certified' || c.douloidRank === 'Lead Douloid' || c.douloidRank === 'Intermediate Douloid').length} Certified Belayers
-                                            </div>
-                                            <div style={{ fontSize: '0.82rem', color: '#334155', marginTop: '0.35rem', fontWeight: 600 }}>
-                                                {cadres.length > 0 
-                                                    ? `Out of ${cadres.filter(c => c.douloidRank && c.douloidRank !== 'None').length} Douloids in active roster (${cadres.length} total active members registered).`
-                                                    : 'Awaiting membership roster enrollment.'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        className="g5-btn-blue-soft" 
-                                        style={{ marginTop: '1.25rem', width: '100%', justifyContent: 'center', padding: '0.72rem' }} 
-                                        onClick={() => setActiveTab('cadres')}
-                                    >
-                                        Inspect Membership Roster & Clearances <ChevronRight size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <G5CommandDashboard
+                            g5Stats={g5Stats}
+                            username={username}
+                            campusFilter={campusFilter}
+                            setCampusFilter={setCampusFilter}
+                            activeMeeting={meetings.find(m => m.isActive)}
+                            nextUpcomingMeeting={nextUpcomingMeeting}
+                            meetings={meetings}
+                            recruits={recruits}
+                            activeMembers={activeMembers}
+                            flaggedMembers={g5StatsData?.stats?.flaggedMembers || absenteeMembers}
+                            onNavigateTab={(tabId) => handleSelectTab(tabId)}
+                            onOpenSession={(sess) => {
+                                if (sess) {
+                                    setInsightMeeting({ ...sess, initialTab: 'attended' });
+                                } else {
+                                    handleSelectTab('attendance');
+                                }
+                            }}
+                            onCreateMeeting={() => setShowNewMeetingModal(true)}
+                        />
                     )}
 
                     {/* ========================================================= */}
@@ -2409,52 +2383,198 @@ const G5TrainingPortal = () => {
                             {/* ========================================================= */}
                             {meetingSubTab === 'active' && (
                                 <div>
-                                    {/* ACTIVE LIVE BANNER IF ANY SESSION IS LIVE (ROYAL BLUE HERO) */}
-                                    {filteredActiveMeetings.filter(m => m.isActive).length > 0 && (() => {
-                                        const activeM = filteredActiveMeetings.filter(m => m.isActive)[0];
+                                    {/* HERO BANNER: SHOWS LIVE SESSION IF IN PROGRESS, OR STANDBY / UPCOMING IF SCHEDULED */}
+                                    {(() => {
+                                        const liveM = filteredActiveMeetings.find(m => m.isActive && getMeetingTiming(m).isLive);
+                                        const upcomingM = filteredActiveMeetings.find(m => m.isActive && getMeetingTiming(m).isUpcoming);
+                                        const heroM = liveM || upcomingM;
+                                        if (!heroM) return null;
+
+                                        const timing = getMeetingTiming(heroM);
+
+                                        if (timing.isLive) {
+                                            return (
+                                                <div className="g5-live-banner">
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                        <div style={{
+                                                            width: '14px',
+                                                            height: '14px',
+                                                            borderRadius: '50%',
+                                                            backgroundColor: '#10B981',
+                                                            boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.35)',
+                                                            animation: 'g5Pulse 1.6s infinite',
+                                                            flexShrink: 0
+                                                        }} />
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                <span style={{
+                                                                    background: '#10B981',
+                                                                    color: '#FFFFFF',
+                                                                    fontWeight: 800,
+                                                                    fontSize: '0.72rem',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '999px',
+                                                                    letterSpacing: '0.5px'
+                                                                }}>
+                                                                    LIVE SESSION ACTIVE
+                                                                </span>
+                                                                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF' }}>
+                                                                    {heroM.name}
+                                                                </span>
+                                                            </div>
+                                                            <div style={{ fontSize: '0.86rem', color: '#DBEAFE', marginTop: '0.25rem' }}>
+                                                                📍 {heroM.location?.name || (heroM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                            </div>
+                                                            {heroM.questionOfDay && (
+                                                                <div style={{ fontSize: '0.84rem', color: '#FEF08A', marginTop: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                                    💬 Question: "{heroM.questionOfDay}"
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="g5-live-banner-actions">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setInsightMeeting({ ...heroM, initialTab: 'qrcode' })}
+                                                            style={{
+                                                                background: 'linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%)',
+                                                                color: '#FFFFFF',
+                                                                border: 'none',
+                                                                borderRadius: '12px',
+                                                                padding: '0.65rem 1.15rem',
+                                                                fontSize: '0.86rem',
+                                                                fontWeight: 800,
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.45rem',
+                                                                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)'
+                                                            }}
+                                                        >
+                                                            <QrCode size={16} /> QR Screen
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setInsightMeeting({ ...heroM, initialTab: 'attended' })}
+                                                            style={{
+                                                                background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                                                                color: '#FFFFFF',
+                                                                border: 'none',
+                                                                borderRadius: '12px',
+                                                                padding: '0.65rem 1.15rem',
+                                                                fontSize: '0.86rem',
+                                                                fontWeight: 800,
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.5rem',
+                                                                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.45)',
+                                                                transition: 'all 0.18s ease'
+                                                            }}
+                                                        >
+                                                            <Radio size={16} />
+                                                            <span>Live Attendance Feed</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setInsightMeeting({ ...heroM, initialTab: 'attended' })}
+                                                            style={{
+                                                                background: '#FFFFFF',
+                                                                color: '#1D4ED8',
+                                                                border: '2px solid #BFDBFE',
+                                                                borderRadius: '12px',
+                                                                padding: '0.65rem 1.15rem',
+                                                                fontSize: '0.86rem',
+                                                                fontWeight: 800,
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.5rem',
+                                                                boxShadow: '0 2px 10px rgba(37, 99, 235, 0.15)',
+                                                                transition: 'all 0.18s ease'
+                                                            }}
+                                                        >
+                                                            <Users size={16} />
+                                                            <span>Who Attended ({heroM.attendanceCount ?? 0})</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        // UPCOMING / STANDBY HERO BANNER WITH COUNTDOWN
                                         return (
-                                            <div className="g5-live-banner">
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div className="g5-live-banner" style={{
+                                                background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #1E293B 100%)',
+                                                border: '1.5px solid rgba(251, 191, 36, 0.4)',
+                                                boxShadow: '0 12px 36px rgba(15, 23, 42, 0.4)'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                                                     <div style={{
                                                         width: '14px',
                                                         height: '14px',
                                                         borderRadius: '50%',
-                                                        backgroundColor: '#10B981',
-                                                        boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.35)',
-                                                        animation: 'g5Pulse 1.6s infinite',
+                                                        backgroundColor: '#F59E0B',
+                                                        boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.35)',
+                                                        animation: 'g5Pulse 1.8s infinite',
                                                         flexShrink: 0
                                                     }} />
                                                     <div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                             <span style={{
-                                                                background: '#10B981',
+                                                                background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)',
                                                                 color: '#FFFFFF',
-                                                                fontWeight: 800,
+                                                                fontWeight: 900,
                                                                 fontSize: '0.72rem',
-                                                                padding: '2px 8px',
+                                                                padding: '2px 9px',
                                                                 borderRadius: '999px',
-                                                                letterSpacing: '0.5px'
+                                                                letterSpacing: '0.6px',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.35rem'
                                                             }}>
-                                                                LIVE SESSION ACTIVE
+                                                                <Clock size={12} /> STANDBY • UPCOMING
                                                             </span>
-                                                            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF' }}>
-                                                                {activeM.name}
+                                                            <span style={{ fontSize: '1.18rem', fontWeight: 900, color: '#FFFFFF' }}>
+                                                                {heroM.name}
                                                             </span>
                                                         </div>
-                                                        <div style={{ fontSize: '0.86rem', color: '#DBEAFE', marginTop: '0.25rem' }}>
-                                                            📍 {activeM.location?.name || (activeM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}
+                                                        <div style={{ fontSize: '0.86rem', color: '#CBD5E1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                            <span>📍 {heroM.location?.name || (heroM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
+                                                            <span>•</span>
+                                                            <span>🕒 Scheduled for {heroM.startTime || '18:00'} ({new Date(heroM.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })})</span>
                                                         </div>
-                                                        {activeM.questionOfDay && (
+                                                        {heroM.questionOfDay && (
                                                             <div style={{ fontSize: '0.84rem', color: '#FEF08A', marginTop: '0.35rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                                💬 Question: "{activeM.questionOfDay}"
+                                                                💬 Question: "{heroM.questionOfDay}"
                                                             </div>
                                                         )}
+
+                                                        {/* LIVE COUNTDOWN BOX */}
+                                                        <div style={{
+                                                            marginTop: '0.65rem',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.65rem',
+                                                            background: 'rgba(15, 23, 42, 0.75)',
+                                                            border: '1px solid rgba(251, 191, 36, 0.5)',
+                                                            padding: '0.45rem 0.95rem',
+                                                            borderRadius: '12px'
+                                                        }}>
+                                                            <Clock size={15} color="#FBBF24" />
+                                                            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#FDE68A', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                                                STARTS IN:
+                                                            </span>
+                                                            <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '1px' }}>
+                                                                {timing.countdownText}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="g5-live-banner-actions">
                                                     <button
                                                         type="button"
-                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'qrcode' })}
+                                                        onClick={() => setInsightMeeting({ ...heroM, initialTab: 'qrcode' })}
                                                         style={{
                                                             background: 'linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%)',
                                                             color: '#FFFFFF',
@@ -2470,15 +2590,15 @@ const G5TrainingPortal = () => {
                                                             boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)'
                                                         }}
                                                     >
-                                                        <QrCode size={16} /> QR Screen
+                                                        <QrCode size={16} /> QR Screen (Standby)
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
+                                                        onClick={() => setInsightMeeting({ ...heroM, initialTab: 'attended' })}
                                                         style={{
-                                                            background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                                                            background: 'rgba(255, 255, 255, 0.1)',
                                                             color: '#FFFFFF',
-                                                            border: 'none',
+                                                            border: '1px solid rgba(255, 255, 255, 0.2)',
                                                             borderRadius: '12px',
                                                             padding: '0.65rem 1.15rem',
                                                             fontSize: '0.86rem',
@@ -2486,35 +2606,11 @@ const G5TrainingPortal = () => {
                                                             cursor: 'pointer',
                                                             display: 'inline-flex',
                                                             alignItems: 'center',
-                                                            gap: '0.5rem',
-                                                            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.45)',
-                                                            transition: 'all 0.18s ease'
+                                                            gap: '0.5rem'
                                                         }}
                                                     >
                                                         <Radio size={16} />
-                                                        <span>Live Attendance Feed</span>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setInsightMeeting({ ...activeM, initialTab: 'attended' })}
-                                                        style={{
-                                                            background: '#FFFFFF',
-                                                            color: '#1D4ED8',
-                                                            border: '2px solid #BFDBFE',
-                                                            borderRadius: '12px',
-                                                            padding: '0.65rem 1.15rem',
-                                                            fontSize: '0.86rem',
-                                                            fontWeight: 800,
-                                                            cursor: 'pointer',
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.5rem',
-                                                            boxShadow: '0 2px 10px rgba(37, 99, 235, 0.15)',
-                                                            transition: 'all 0.18s ease'
-                                                        }}
-                                                    >
-                                                        <Users size={16} />
-                                                        <span>Who Attended ({activeM.attendanceCount ?? 0})</span>
+                                                        <span>Roster Readiness</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -2574,12 +2670,17 @@ const G5TrainingPortal = () => {
                                         </div>
                                     ) : (
                                         <div className="g5-meetings-grid">
-                                            {filteredActiveMeetings.map((meeting) => (
+                                            {filteredActiveMeetings.map((meeting) => {
+                                                const timing = getMeetingTiming(meeting);
+                                                return (
                                                 <div
                                                     key={meeting._id || meeting.code || meeting.date}
-                                                    className={`g5-meeting-card-v2 ${meeting.isActive ? 'active-session' : ''}`}
+                                                    className={`g5-meeting-card-v2 ${timing.isLive ? 'active-session' : ''}`}
                                                     onClick={() => setInsightMeeting({ ...meeting, initialTab: 'attended' })}
-                                                    style={{ cursor: 'pointer' }}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        borderColor: timing.isUpcoming ? '#F59E0B' : (timing.isLive ? '#10B981' : undefined)
+                                                    }}
                                                 >
                                                     <div>
                                                         {/* CARD TOP META */}
@@ -2600,9 +2701,9 @@ const G5TrainingPortal = () => {
                                                             </span>
                                                             <span
                                                                 style={{
-                                                                    background: meeting.isActive ? '#ECFDF5' : '#F1F5F9',
-                                                                    color: meeting.isActive ? '#047857' : '#475569',
-                                                                    border: meeting.isActive ? '1.5px solid #A7F3D0' : '1.5px solid #CBD5E1',
+                                                                    background: timing.isLive ? '#ECFDF5' : (timing.isUpcoming ? '#FEF3C7' : '#F1F5F9'),
+                                                                    color: timing.isLive ? '#047857' : (timing.isUpcoming ? '#B45309' : '#475569'),
+                                                                    border: timing.isLive ? '1.5px solid #A7F3D0' : (timing.isUpcoming ? '1.5px solid #FDE68A' : '1.5px solid #CBD5E1'),
                                                                     padding: '0.3rem 0.7rem',
                                                                     borderRadius: '999px',
                                                                     fontSize: '0.76rem',
@@ -2617,10 +2718,15 @@ const G5TrainingPortal = () => {
                                                                     setInsightMeeting({ ...meeting, initialTab: 'attended' });
                                                                 }}
                                                             >
-                                                                {meeting.isActive ? (
+                                                                {timing.isLive ? (
                                                                     <>
                                                                         <div className="g5-pulse-dot" style={{ width: '6px', height: '6px', backgroundColor: '#10B981' }} />
                                                                         Live • Active
+                                                                    </>
+                                                                ) : timing.isUpcoming ? (
+                                                                    <>
+                                                                        <Clock size={12} color="#D97706" />
+                                                                        Standby • Starts in {timing.countdownText}
                                                                     </>
                                                                 ) : (
                                                                     'Completed'
@@ -2795,7 +2901,8 @@ const G5TrainingPortal = () => {
                                                         )}
                                                     </div>
                                                 </div>
-                                            ))}
+                                            );
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -3009,52 +3116,91 @@ const G5TrainingPortal = () => {
                     )}
 
                     {/* ========================================================= */}
-                    {/* TAB 4: TRAININGS & CAMPS */}
+                    {/* TAB 4: TRAINING OPERATIONS (COMING SOON) */}
                     {/* ========================================================= */}
-                    {activeTab === 'trainings_camps' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-                            {/* 3-DAY CAMP SCHEDULE STUDIO (FRIDAY, SATURDAY, SUNDAY) */}
-                            <CampScheduleStudio
-                                api={api}
-                                campus={campusFilter === 'All' ? userCampus : campusFilter}
-                                cadres={cadres}
-                                meetings={meetings}
-                                showToast={showToast}
-                            />
+                    {(activeTab === 'trainings' || activeTab === 'trainings_camps') && (
+                        <G5ComingSoonWorkspace
+                            tabId={activeTab}
+                            onNavigateTab={handleSelectTab}
+                            fallbackComponent={
+                                <G5TrainingsWorkspace
+                                    trainings={trainings}
+                                    members={members}
+                                    campusFilter={campusFilter}
+                                    onCreateTraining={() => setShowNewMeetingModal(true)}
+                                    onStartTraining={async (id) => {
+                                        try {
+                                            await api.patch(`/trainings/${id}`, { isActive: true });
+                                            showToast('Started training session', 'success');
+                                            fetchPortalData();
+                                        } catch (err) {
+                                            showToast('Failed to start training', 'error');
+                                        }
+                                    }}
+                                    onEndTraining={async (id) => {
+                                        try {
+                                            await api.patch(`/trainings/${id}`, { isActive: false });
+                                            showToast('Ended training session', 'success');
+                                            fetchPortalData();
+                                        } catch (err) {
+                                            showToast('Failed to end training', 'error');
+                                        }
+                                    }}
+                                    onOpenAttendance={() => {
+                                        handleSelectTab('attendance');
+                                    }}
+                                    onOpenTrainingQr={(tr) => {
+                                        setQrMeeting(tr);
+                                    }}
+                                    onDeleteTraining={async (id) => {
+                                        try {
+                                            await api.post(`/trainings/${id}/delete-secure`, { adminPasscode: 'DOULOS_SECURE_DELETE_2026' });
+                                            showToast('Deleted training session', 'success');
+                                            fetchPortalData();
+                                        } catch (err) {
+                                            showToast('Failed to delete training', 'error');
+                                        }
+                                    }}
+                                />
+                            }
+                        />
+                    )}
 
-                            {/* CAMP READINESS & HARDWARE AUDIT CARDS */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                <div style={{ background: '#FFFFFF', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--color-border)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.65rem' }}>
-                                        <Shield size={20} style={{ color: 'var(--color-accent-warm)' }} />
-                                        <h4 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>Equipment Readiness Check</h4>
-                                    </div>
-                                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-                                        {gearAssets.length > 0 
-                                            ? `${gearAssets.length} hardware assets logged in inventory (${gearAssets.filter(a => a.status === 'Operational').length} Operational, ${gearAssets.filter(a => a.status === 'Needs Maintenance').length} In Maintenance).`
-                                            : 'No gear assets registered yet in G8 asset database.'}
-                                    </p>
-                                    <span className={`g5-pill ${gearAssets.some(a => a.status === 'Needs Maintenance') ? 'g5-pill-recruit' : 'g5-pill-active'}`}>
-                                        {gearAssets.length > 0 ? `${gearAssets.filter(a => a.status === 'Operational').length}/${gearAssets.length} Operational` : 'Database Standby'}
-                                    </span>
-                                </div>
+                    {/* ========================================================= */}
+                    {/* TAB: CAMPS COMMAND STUDIO (COMING SOON) */}
+                    {/* ========================================================= */}
+                    {activeTab === 'camps' && (
+                        <G5ComingSoonWorkspace
+                            tabId="camps"
+                            onNavigateTab={handleSelectTab}
+                            fallbackComponent={
+                                <G5CampCommandWorkspace
+                                    campProgram={campProgram}
+                                    cadres={cadres}
+                                    meetings={meetings}
+                                    gearAssets={gearAssets}
+                                    campusFilter={campusFilter}
+                                    api={api}
+                                    showToast={showToast}
+                                />
+                            }
+                        />
+                    )}
 
-                                <div style={{ background: '#FFFFFF', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--color-border)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.65rem' }}>
-                                        <Award size={20} style={{ color: 'var(--color-status-active)' }} />
-                                        <h4 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-main)' }}>Belay Station Deployment</h4>
-                                    </div>
-                                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-                                        {campProgram?.dutyRoster?.length > 0
-                                            ? `${campProgram.dutyRoster.length} duty stations configured in database (${campProgram.dutyRoster.filter(s => s.safetyCleared && s.primaryBelayer).length} staffed & safety-cleared).`
-                                            : 'No camp duty stations configured yet in database.'}
-                                    </p>
-                                    <span className="g5-pill g5-pill-active">
-                                        {campProgram?.dutyRoster?.length > 0 ? `${campProgram.dutyRoster.filter(s => s.safetyCleared && s.primaryBelayer).length} Stations Staffed` : 'Roster Standby'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                    {/* ========================================================= */}
+                    {/* TAB: QUESTION BANK (COMING SOON) */}
+                    {/* ========================================================= */}
+                    {activeTab === 'questions' && (
+                        <G5ComingSoonWorkspace
+                            tabId="questions"
+                            onNavigateTab={handleSelectTab}
+                            fallbackComponent={
+                                <G5QuestionBankWorkspace
+                                    api={api}
+                                    showToast={showToast}
+                                />
+                            }
+                        />
                     )}
 
                     {/* ========================================================= */}
@@ -4505,7 +4651,7 @@ const G5TrainingPortal = () => {
                     {/* ========================================================= */}
                     {/* TAB 7: MEMBERSHIP ROSTER & EXPORT STUDIO */}
                     {/* ========================================================= */}
-                    {activeTab === 'cadres' && (
+                    {(activeTab === 'cadres' || activeTab === 'members') && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {/* TOP HEADER & SUB-TAB NAVIGATION */}
                             <div className="g5-card" style={{ padding: '1.5rem' }}>
@@ -4896,6 +5042,14 @@ const G5TrainingPortal = () => {
                                                                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', justifyContent: 'flex-end' }}>
                                                                             <button
                                                                                 type="button"
+                                                                                className="g5-btn-primary"
+                                                                                style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}
+                                                                                onClick={() => setSelectedReadinessMember(member)}
+                                                                            >
+                                                                                <Sparkles size={12} /> Readiness
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
                                                                                 className="g5-btn-secondary"
                                                                                 style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}
                                                                                 onClick={() => {
@@ -5256,181 +5410,106 @@ const G5TrainingPortal = () => {
                     )}
 
                     {/* ========================================================= */}
-                    {/* TAB 8: CONTRIBUTIONS (GLANCE-AND-NUDGE MINIMAL LIST) */}
+                    {/* ========================================================= */}
+                    {/* TAB 8: CONTRIBUTIONS (OPERATIONS - COMING SOON) */}
                     {/* ========================================================= */}
                     {activeTab === 'contributions' && (
-                        <div className="g5-card">
-                            <div className="g5-card-header">
-                                <div>
-                                    <div className="g5-card-title">Member & Recruit Contributions</div>
-                                    <div className="g5-card-desc">Training dues liaison overview (read-only glance-and-nudge list)</div>
-                                </div>
-                            </div>
-
-                            <div className="g5-table-wrap">
-                                <table className="g5-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Member</th>
-                                            <th>Campus</th>
-                                            <th>Semester Dues</th>
-                                            <th>Status</th>
-                                            <th>Nudge Liaison</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {members.map((member) => {
-                                            const memberPayments = payments.filter(p => String(p.studentRegNo).trim().toUpperCase() === String(member.studentRegNo).trim().toUpperCase());
-                                            const approvedPayment = memberPayments.find(p => p.status === 'approved');
-                                            const pendingPayment = memberPayments.find(p => p.status === 'pending');
-                                            const isPaid = !!approvedPayment;
-                                            const statusText = approvedPayment ? 'Paid' : (pendingPayment ? 'Pending Verification' : 'Unpaid');
-                                            const amountDisplay = approvedPayment 
-                                                ? `KES ${approvedPayment.amount.toLocaleString()}` 
-                                                : (pendingPayment ? `KES ${pendingPayment.amount.toLocaleString()}` : 'KES 0');
-                                            return (
-                                                <tr key={member._id}>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                                                            <div className="g5-avatar" style={{ width: '38px', height: '38px' }}>
-                                                                {member.name.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ fontWeight: 700, color: 'var(--color-text-main)' }}>{member.name}</div>
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.studentRegNo}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ fontWeight: 600 }}>{member.campus}</td>
-                                                    <td style={{ fontWeight: 700 }}>{amountDisplay}</td>
-                                                    <td>
-                                                        <span className={`g5-pill ${isPaid ? 'g5-pill-active' : (pendingPayment ? 'g5-pill-recruit' : 'g5-pill-inactive')}`}>
-                                                            {statusText}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {!isPaid ? (
-                                                            <a
-                                                                href={`https://wa.me/?text=${encodeURIComponent(`Habari ${member.name.split(' ')[0]}! Kindly remember to submit your Doulos semester contribution via the student portal. Let's make camp a blessing! 🙏⛺`)}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="g5-btn-outline"
-                                                                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', textDecoration: 'none' }}
-                                                            >
-                                                                <MessageCircle size={14} /> Send WhatsApp Nudge
-                                                            </a>
-                                                        ) : (
-                                                            <span style={{ color: 'var(--color-status-active)', fontWeight: 600, fontSize: '0.85rem' }}>
-                                                                ✓ Cleared
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <G5ComingSoonWorkspace
+                            tabId="contributions"
+                            onNavigateTab={handleSelectTab}
+                        />
                     )}
 
                     {/* ========================================================= */}
-                    {/* TAB 9: SAFETY & INCIDENTS (LOP LIBRARY + INCIDENT LOG) */}
+                    {/* TAB: SAFETY & INCIDENTS (SAFETY CENTRE 2.0 - COMING SOON) */}
                     {/* ========================================================= */}
-                    {activeTab === 'safety' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            {/* LOP Documents Card Grid */}
-                            <div>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.35rem' }}>
-                                    Standard Operating Procedures (LOP Library)
-                                </h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-                                    Standard safety protocols approved by G5 Training Directorate
-                                </p>
+                    {(activeTab === 'safety_centre' || activeTab === 'safety' || activeTab === 'incidents' || activeTab === 'sops') && (
+                        <G5ComingSoonWorkspace
+                            tabId={activeTab}
+                            onNavigateTab={handleSelectTab}
+                            fallbackComponent={
+                                <G5SafetyCentreWorkspace
+                                    incidents={incidents}
+                                    lops={lops}
+                                    campusFilter={campusFilter}
+                                    onReportIncident={() => setShowReportIncidentModal(true)}
+                                    showToast={showToast}
+                                />
+                            }
+                        />
+                    )}
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                    {lops.map((lop) => (
-                                        <div key={lop.id} className="g5-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                            <div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                                    <span className="g5-pill g5-pill-purple">{lop.code}</span>
-                                                    <FileText size={18} style={{ color: 'var(--color-primary)' }} />
-                                                </div>
-                                                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '0.5rem' }}>
-                                                    {lop.title}
-                                                </h4>
-                                                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                                                    {lop.desc}
-                                                </p>
-                                            </div>
-                                            <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem' }}>
-                                                <button className="g5-btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => showToast(`Opened ${lop.code}`)}>
-                                                    <ExternalLink size={15} /> View Protocol
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                    {/* ========================================================= */}
+                    {/* TAB: PROGRESSION PIPELINE 2.0 (RECRUITS & DOULOIDS) */}
+                    {/* ========================================================= */}
+                    {activeTab === 'progression' && (
+                        <G5ProgressionWorkspace
+                            recruits={recruits}
+                            cadres={cadres}
+                            campusFilter={campusFilter}
+                            onEvaluateMember={(member) => setSelectedPromotionMember(member)}
+                            onGraduateRecruits={async (ids) => {
+                                if (Array.isArray(ids) && ids.length > 0) {
+                                    try {
+                                        await api.post('/members/bulk-graduate', { memberIds: ids });
+                                        showToast(`🎉 Spectacular! ${ids.length} recruits graduated to Douloid!`);
+                                        fetchPortalData();
+                                    } catch (err) {
+                                        showToast(err.response?.data?.message || 'Failed to graduate recruits', 'error');
+                                    }
+                                }
+                            }}
+                            onPromoteMember={(member) => setSelectedPromotionMember(member)}
+                            onSelectMemberProfile={(member) => setSelectedReadinessMember(member)}
+                            showToast={showToast}
+                        />
+                    )}
 
-                            {/* Chronological Incident Log */}
-                            <div className="g5-card">
-                                <div className="g5-card-header">
-                                    <div>
-                                        <div className="g5-card-title">Incident & Near-Miss Log</div>
-                                        <div className="g5-card-desc">Chronological tracking of field occurrences and corrective action plans</div>
-                                    </div>
-                                    <button className="g5-btn-warm" onClick={() => setShowReportIncidentModal(true)}>
-                                        <Plus size={16} /> + Report Incident
-                                    </button>
-                                </div>
+                    {/* ========================================================= */}
+                    {/* TAB: GEAR & LOGISTICS 2.0 (OPERATIONS - COMING SOON) */}
+                    {/* ========================================================= */}
+                    {activeTab === 'gear' && (
+                        <G5ComingSoonWorkspace
+                            tabId="gear"
+                            onNavigateTab={handleSelectTab}
+                            fallbackComponent={
+                                <G5GearLogisticsWorkspace
+                                    gearAssets={gearAssets}
+                                    campusFilter={campusFilter}
+                                    showToast={showToast}
+                                />
+                            }
+                        />
+                    )}
 
-                                {incidents.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--color-text-muted)' }}>
-                                        <Shield size={36} style={{ color: 'var(--color-status-active)', margin: '0 auto 0.75rem' }} />
-                                        <div style={{ fontWeight: 700, color: 'var(--color-text-main)' }}>Zero Active Incidents Filed</div>
-                                        <div style={{ fontSize: '0.85rem' }}>All training courses operating safely within LOP specifications.</div>
-                                    </div>
-                                ) : (
-                                    <div className="g5-table-wrap">
-                                        <table className="g5-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date</th>
-                                                    <th>Title</th>
-                                                    <th>Severity</th>
-                                                    <th>Location</th>
-                                                    <th>Corrective Action</th>
-                                                    <th>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {incidents.map((incident) => (
-                                                    <tr key={incident._id}>
-                                                        <td style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                                                            {new Date(incident.incidentDate || incident.createdAt || Date.now()).toLocaleDateString()}
-                                                        </td>
-                                                        <td style={{ fontWeight: 700 }}>{incident.title}</td>
-                                                        <td>
-                                                            <span className={`g5-pill ${incident.severity === 'Near-Miss' ? 'g5-pill-recruit' : 'g5-pill-inactive'}`}>
-                                                                {incident.severity}
-                                                            </span>
-                                                        </td>
-                                                        <td>{incident.location || incident.campus}</td>
-                                                        <td style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                                                            {incident.correctiveActionPlan || 'Root-cause audit complete.'}
-                                                        </td>
-                                                        <td>
-                                                            <span className="g5-pill g5-pill-active">Logged</span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                    {/* ========================================================= */}
+                    {/* TAB: TRAINING ANALYTICS & READINESS REPORTS 2.0 (REPORTS - COMING SOON) */}
+                    {/* ========================================================= */}
+                    {(activeTab === 'analytics' || activeTab === 'readiness') && (
+                        <G5ComingSoonWorkspace
+                            tabId={activeTab}
+                            onNavigateTab={handleSelectTab}
+                            fallbackComponent={
+                                <G5ReportsWorkspace
+                                    campusFilter={campusFilter}
+                                    meetings={meetings}
+                                    members={members}
+                                    recruits={recruits}
+                                    cadres={cadres}
+                                    showToast={showToast}
+                                />
+                            }
+                        />
+                    )}
+
+                    {/* ========================================================= */}
+                    {/* TAB: G5 DIRECTORATE SETTINGS (COMING SOON) */}
+                    {/* ========================================================= */}
+                    {activeTab === 'settings' && (
+                        <G5ComingSoonWorkspace
+                            tabId="settings"
+                            onNavigateTab={handleSelectTab}
+                        />
                     )}
 
                 </main>
@@ -6965,6 +7044,35 @@ const G5TrainingPortal = () => {
             )}
 
             {/* ===================================================== */}
+            {/* G5 2.0 READINESS PROFILE & PROMOTION EVALUATION MODALS */}
+            {/* ===================================================== */}
+            {selectedReadinessMember && (
+                <MemberReadinessProfileModal
+                    member={selectedReadinessMember}
+                    onClose={() => setSelectedReadinessMember(null)}
+                    onOpenEvaluation={(mem) => setSelectedPromotionMember(mem)}
+                    showToast={showToast}
+                />
+            )}
+
+            {selectedPromotionMember && (
+                <PromotionEvaluationModal
+                    member={selectedPromotionMember}
+                    onClose={() => setSelectedPromotionMember(null)}
+                    onConfirmPromotion={handleConfirmPromotion}
+                    showToast={showToast}
+                />
+            )}
+
+            {comingSoonModal && (
+                <ComingSoonModal
+                    itemInfo={comingSoonModal}
+                    moduleKey={comingSoonModal.key}
+                    onClose={() => setComingSoonModal(null)}
+                />
+            )}
+
+            {/* ===================================================== */}
             {/* NATIVE-STYLE MOBILE BOTTOM NAVIGATION BAR */}
             {/* ===================================================== */}
             <nav className="g5-mobile-bottom-nav">
@@ -7074,6 +7182,8 @@ const G5TrainingPortal = () => {
                                     <Icon size={22} />
                                     {item.badge ? (
                                         <span className="g5-sheet-badge">{item.badge}</span>
+                                    ) : item.comingSoon ? (
+                                        <span className="g5-sheet-badge" style={{ background: '#D97706', fontSize: '0.55rem', fontWeight: 800 }}>SOON</span>
                                     ) : null}
                                 </div>
                                 <span className="g5-sheet-item-label">{item.label}</span>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { 
@@ -145,6 +145,52 @@ const CheckIn = () => {
     const [msg, setMsg] = useState('');
     const [isLocating, setIsLocating] = useState(false);
     const [hasAlreadyCheckedIn, setHasAlreadyCheckedIn] = useState(false);
+
+    // Live ticking timer for meetings countdown & standby resolution
+    const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTimeMs(Date.now());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const getMeetingTiming = (m, nowMs = currentTimeMs) => {
+        if (!m || !m.date) {
+            return { isStandby: false, countdownText: '' };
+        }
+        try {
+            const mDate = new Date(m.date);
+            const mYear = mDate.getFullYear();
+            const mMonth = mDate.getMonth();
+            const mDay = mDate.getDate();
+
+            const [sH, sM] = String(m.startTime || '00:00').split(':').map(Number);
+            const startDateTime = new Date(mYear, mMonth, mDay, sH || 0, sM || 0, 0);
+            const startMs = startDateTime.getTime();
+
+            const isBefore = nowMs < startMs;
+            const msRemaining = isBefore ? Math.max(0, startMs - nowMs) : 0;
+            const totalSecs = Math.floor(msRemaining / 1000);
+            const days = Math.floor(totalSecs / 86400);
+            const hours = Math.floor((totalSecs % 86400) / 3600);
+            const mins = Math.floor((totalSecs % 3600) / 60);
+            const secs = totalSecs % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            const countdownText = days > 0
+                ? `${days}d ${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`
+                : `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+
+            return {
+                isStandby: (m.isStandby || isBefore) && !m.isTestMeeting && !m.isTraining,
+                countdownText,
+                startDateTime
+            };
+        } catch (e) {
+            return { isStandby: false, countdownText: '' };
+        }
+    };
     const [systemStatus, setSystemStatus] = useState({ recoveryMode: false });
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [currentSemester, setCurrentSemester] = useState('');
@@ -165,6 +211,28 @@ const CheckIn = () => {
         campus: 'Athi River',
         memberType: 'Recruit'
     });
+
+    const cachedLocationRef = useRef(null);
+
+    // Pre-warm device geolocation on component load so location is ready before button click
+    useEffect(() => {
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    cachedLocationRef.current = {
+                        lat: pos.coords.latitude,
+                        long: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy || 0,
+                        timestamp: Date.now()
+                    };
+                },
+                (err) => {
+                    console.warn('Background location pre-warm note:', err.message);
+                },
+                { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+            );
+        }
+    }, []);
 
     useEffect(() => {
         let timer;
@@ -334,7 +402,8 @@ const CheckIn = () => {
         }
         setIsLookingUp(true);
         try {
-            const res = await api.get(`/attendance/student/${encodeURIComponent(regNo)}`);
+            // Ultra-fast lightweight lookup first
+            const res = await api.get(`/members/lookup/${encodeURIComponent(regNo)}`);
             if (res.data && res.data.registrationRequired) {
                 setMemberInfo(null);
                 setShowSelfRegistration(true);
@@ -347,21 +416,15 @@ const CheckIn = () => {
                 return;
             }
 
-            if (res.data && res.data.stats && res.data.stats.percentage !== undefined) {
-                const name = res.data.memberName || 'Member';
+            if (res.data && (res.data.memberName || res.data.name)) {
+                const name = res.data.memberName || res.data.name || 'Member';
                 setMemberInfo({ name, type: res.data.memberType });
                 setShowSelfRegistration(false);
 
-                // Store semester info for welcome check
-                setCurrentSemester(res.data.currentSemester || '');
-                setLastActiveSemester(res.data.lastActiveSemester || '');
-                setSemesterTheme(res.data.semesterTheme || '');
-                setSemesterVerse(res.data.semesterVerse || '');
-
-                // Pre-fill all name-related fields in responses using functional update to avoid staled state
+                // Pre-fill all name-related fields in responses
                 setResponses(prev => {
                     const updated = { ...prev };
-                    meeting?.requiredFields.forEach(f => {
+                    meeting?.requiredFields?.forEach(f => {
                         const k = f.key.toLowerCase();
                         if (k.includes('name') && k !== 'studentregno') {
                             updated[f.key] = name;
@@ -384,10 +447,7 @@ const CheckIn = () => {
                     campus: prev.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
                     memberType: 'Recruit'
                 }));
-                return;
             }
-            setMemberInfo(null);
-            setShowSelfRegistration(false);
         } finally {
             setIsLookingUp(false);
         }
@@ -420,17 +480,6 @@ const CheckIn = () => {
         setMsg('');
 
         try {
-            try {
-                await api.post('/members/self-register', {
-                    studentRegNo: regNo,
-                    name: fullName,
-                    campus: selfRegForm.campus || (meeting?.campus === 'Valley Road' ? 'Valley Road' : 'Athi River'),
-                    memberType: 'Recruit'
-                });
-            } catch (regErr) {
-                console.warn('Self registration pre-call note:', regErr?.response?.data?.message);
-            }
-
             setIsNewRecruitRegistered(true);
             setMemberInfo({ name: fullName, type: 'Recruit' });
             setShowSelfRegistration(false);
@@ -440,6 +489,7 @@ const CheckIn = () => {
                 studentName: fullName
             }));
 
+            // Submit directly in 1 fast atomic request (backend creates recruit and records attendance)
             await submitAttendanceRecord({
                 studentRegNo: regNo,
                 name: fullName,
@@ -781,27 +831,48 @@ const CheckIn = () => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, options);
                 });
 
-                let position;
-                try {
-                    // Try High Accuracy first (12s timeout)
-                    position = await getPosition({
-                        enableHighAccuracy: true,
-                        timeout: 12000,
-                        maximumAge: 0
-                    });
-                } catch (err) {
-                    console.warn("High accuracy GPS failed, trying standard accuracy...", err);
-                    position = await getPosition({
-                        enableHighAccuracy: false,
-                        timeout: 12000,
-                        maximumAge: 60000
-                    });
+                let position = null;
+                const cachedPos = cachedLocationRef.current;
+                const isCacheFresh = cachedPos && (Date.now() - (cachedPos.timestamp || 0) < 90000);
+
+                if (isCacheFresh) {
+                    position = {
+                        coords: {
+                            latitude: cachedPos.lat,
+                            longitude: cachedPos.long,
+                            accuracy: cachedPos.accuracy
+                        }
+                    };
+                } else {
+                    try {
+                        // Quick 3.5s timeout with 60s cached location allowed
+                        position = await getPosition({
+                            enableHighAccuracy: true,
+                            timeout: 3500,
+                            maximumAge: 60000
+                        });
+                    } catch (err) {
+                        console.warn("High accuracy GPS timeout, trying standard accuracy...", err);
+                        position = await getPosition({
+                            enableHighAccuracy: false,
+                            timeout: 3500,
+                            maximumAge: 120000
+                        });
+                    }
                 }
 
                 const acc = position.coords.accuracy || 0;
                 userLocation.lat = position.coords.latitude;
                 userLocation.long = position.coords.longitude;
                 userLocation.accuracy = acc;
+
+                // Cache the fresh position
+                cachedLocationRef.current = {
+                    lat: userLocation.lat,
+                    long: userLocation.long,
+                    accuracy: acc,
+                    timestamp: Date.now()
+                };
 
                 // Detect if iOS Safari Precise Location is off (typically accuracy > 800m)
                 if (acc > 800) {
@@ -1089,7 +1160,74 @@ const CheckIn = () => {
                 boxSizing: 'border-box',
                 animation: 'popScale 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
-                {hasAlreadyCheckedIn ? (
+                {getMeetingTiming(meeting).isStandby ? (
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                        <div style={{
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.25rem',
+                            border: '2px solid rgba(245, 158, 11, 0.4)',
+                            boxShadow: '0 0 24px rgba(245, 158, 11, 0.25)'
+                        }}>
+                            <Clock size={36} color="#F59E0B" />
+                        </div>
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.35rem 0.95rem',
+                            borderRadius: '999px',
+                            background: 'rgba(245, 158, 11, 0.2)',
+                            color: '#FBBF24',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            fontSize: '0.74rem',
+                            fontWeight: 900,
+                            letterSpacing: '0.8px',
+                            textTransform: 'uppercase',
+                            marginBottom: '0.75rem'
+                        }}>
+                            <Clock size={13} />
+                            <span>STANDBY • OPENS IN</span>
+                        </div>
+                        <div style={{
+                            fontFamily: 'monospace',
+                            fontSize: '2.5rem',
+                            fontWeight: 900,
+                            color: '#FFFFFF',
+                            letterSpacing: '2px',
+                            margin: '0.5rem 0 1rem',
+                            textShadow: '0 0 20px rgba(245, 158, 11, 0.5)'
+                        }}>
+                            {getMeetingTiming(meeting).countdownText}
+                        </div>
+                        <div style={{
+                            fontSize: '0.86rem',
+                            color: '#94A3B8',
+                            lineHeight: 1.5,
+                            marginBottom: '1.25rem',
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            padding: '0.85rem 1rem',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                        }}>
+                            <div>🕒 Scheduled for <strong>{meeting?.startTime || '17:00'} EAT</strong></div>
+                            {meeting?.location?.name && <div style={{ marginTop: '0.25rem' }}>📍 Venue: <strong>{meeting.location.name}</strong></div>}
+                            {meeting?.questionOfDay && (
+                                <div style={{ marginTop: '0.5rem', color: '#FDE68A', fontSize: '0.84rem' }}>
+                                    💬 Question: "{meeting.questionOfDay}"
+                                </div>
+                            )}
+                        </div>
+                        <p style={{ fontSize: '0.78rem', color: '#64748B', margin: 0 }}>
+                            Attendance check-in will unlock automatically when the meeting begins. Stay tuned!
+                        </p>
+                    </div>
+                ) : hasAlreadyCheckedIn ? (
                     <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                         <div style={{ background: 'rgba(255, 215, 0, 0.12)', width: '90px', height: '90px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', border: '2px solid rgba(251, 191, 36, 0.3)' }}>
                             <span style={{ fontSize: '2.8rem' }}>😎</span>

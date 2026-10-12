@@ -18,13 +18,50 @@ if (!process.env.MONGO_URI) {
     dotenv.config({ path: parentEnvPath });
 }
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER || 'kipzseth@gmail.com',
-        pass: process.env.EMAIL_PASS || 'oiav xqvf pffk lbzf'
+const getTransporter = () => {
+    const user = process.env.EMAIL_USER || 'kipzseth@gmail.com';
+    const pass = process.env.EMAIL_PASS || 'oiav xqvf pffk lbzf';
+    const host = process.env.EMAIL_HOST;
+    const port = parseInt(process.env.EMAIL_PORT, 10) || 587;
+    const service = (process.env.EMAIL_SERVICE || '').toLowerCase();
+
+    // Custom SMTP host specified
+    if (host) {
+        return nodemailer.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: { user, pass },
+            tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
+        });
     }
-});
+
+    // Microsoft / Office 365 / Outlook
+    const isMicrosoft = service === 'outlook' || 
+                        service === 'office365' || 
+                        service === 'microsoft' ||
+                        user.includes('@outlook.com') || 
+                        user.includes('@hotmail.com') || 
+                        user.includes('@live.com');
+
+    if (isMicrosoft) {
+        return nodemailer.createTransport({
+            host: 'smtp.office365.com',
+            port: 587,
+            secure: false, // STARTTLS
+            auth: { user, pass },
+            tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
+        });
+    }
+
+    // Default to Gmail or specified service
+    return nodemailer.createTransport({
+        service: service || 'gmail',
+        auth: { user, pass }
+    });
+};
+
+const transporter = getTransporter();
 
 /**
  * Dispatches an intelligent, beautifully formatted HTML system alert.
@@ -685,3 +722,83 @@ export const sendCheckInErrorsEmail = async (sessionId, isTraining = false) => {
         return { success: false, error: error.message };
     }
 };
+
+/**
+ * Sends a secure invitation email to a newly provisioned leader/administrator.
+ */
+export const sendInvitationEmail = async (toEmail, { role, position, campus, inviteUrl, expiresHours = 168 }) => {
+    try {
+        const mailOptions = {
+            from: `"Doulos System Governance" <${process.env.EMAIL_USER || 'kipzseth@gmail.com'}>`,
+            to: toEmail,
+            subject: `Invitation to Doulos Platform: ${position || role.toUpperCase()}`,
+            html: `
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0B132B; margin: 0; padding: 40px 20px; color: #1e293b;">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+                    <tr>
+                        <td style="background-color: #1E3A8A; padding: 32px 40px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: -0.5px;">DOULOS PLATFORM</h1>
+                            <p style="color: #93C5FD; margin: 6px 0 0 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Official Account Invitation</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 36px 40px;">
+                            <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155; line-height: 1.6;">
+                                Hello,
+                            </p>
+                            <p style="margin: 0 0 20px 0; font-size: 15px; color: #334155; line-height: 1.6;">
+                                You have been authorized and invited by the Super Administrator to join the Doulos Campus Ministry Platform with the following scope:
+                            </p>
+                            
+                            <table width="100%" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; margin-bottom: 24px; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">Position / Office:</td>
+                                    <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-weight: 700;">${position || 'System Administrator'}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B; font-weight: 600;">System Role:</td>
+                                    <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #1D4ED8; font-weight: 700;">${role.toUpperCase()}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 16px; font-size: 13px; color: #64748B; font-weight: 600;">Jurisdiction / Campus:</td>
+                                    <td style="padding: 12px 16px; font-size: 13px; color: #0F172A; font-weight: 700;">${campus}</td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">
+                                To activate your account and securely create your password, click the button below. This invitation link will expire in <strong>${Math.round(expiresHours / 24)} days</strong>.
+                            </p>
+
+                            <div style="text-align: center; margin: 32px 0;">
+                                <a href="${inviteUrl}" style="background-color: #1D4ED8; color: #ffffff; padding: 14px 28px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 10px; display: inline-block; letter-spacing: 0.5px;">
+                                    Activate Account & Set Password &rarr;
+                                </a>
+                            </div>
+
+                            <p style="margin: 0; font-size: 12px; color: #94A3B8; line-height: 1.5; border-top: 1px solid #E2E8F0; padding-top: 20px;">
+                                If you did not expect this invitation or believe it was sent in error, please contact the Doulos Executive Leadership. For security reasons, never forward this email to anyone else.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #F1F5F9; padding: 18px 40px; text-align: center; font-size: 11px; color: #64748B;">
+                            &copy; ${new Date().getFullYear()} Doulos Campus Ministry &bull; System Governance
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[INVITATION-EMAIL] Sent to ${toEmail}. Message ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+    } catch (err) {
+        console.warn(`[INVITATION-EMAIL] Could not send email via SMTP to ${toEmail}:`, err.message);
+        return { success: false, error: err.message };
+    }
+};
+

@@ -38,6 +38,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
   // Inactivity & Session Idle Management
   Timer? _idleTimer;
   Timer? _countdownTimer;
+  Timer? _liveTickerTimer;
   bool _isShowingCountdown = false;
 
   @override
@@ -50,13 +51,25 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
     _loadTodayFellowship();
     _loadTodayQuestion();
     _startInactivityMonitoring();
+    _startLiveTicker();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _liveTickerTimer?.cancel();
+    _liveTickerTimer = null;
     _cancelTimers();
     super.dispose();
+  }
+
+  void _startLiveTicker() {
+    _liveTickerTimer?.cancel();
+    _liveTickerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -335,6 +348,14 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
   Map<String, dynamic>? _getNextMeeting() {
     final memberCampus = _data['campus']?.toString() ?? 'Athi River';
 
+    // 0. Prioritize _data['currentMeeting'] if provided by backend portal
+    if (_data['currentMeeting'] is Map) {
+      final cm = Map<String, dynamic>.from(_data['currentMeeting'] as Map);
+      if (_matchesCampus(cm['campus'], memberCampus)) {
+        return cm;
+      }
+    }
+
     final matching = _campusMeetings.where((m) {
       if (m is! Map) return false;
       return _matchesCampus(m['campus'], memberCampus);
@@ -374,6 +395,72 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
     }
 
     return null;
+  }
+
+  Map<String, dynamic> _getMeetingTiming(Map<String, dynamic>? m) {
+    if (m == null || m['date'] == null) {
+      return {
+        'isLive': false,
+        'isStandby': false,
+        'isUpcoming': false,
+        'isCompleted': false,
+        'countdown': '',
+        'startTime': '',
+        'endTime': '',
+      };
+    }
+
+    final now = DateTime.now();
+    final startDt = _resolveMeetingDateTime(m, isEnd: false);
+    final endDt = _resolveMeetingDateTime(m, isEnd: true);
+
+    if (startDt == null || endDt == null) {
+      final isActive = m['isActive'] == true;
+      return {
+        'isLive': isActive,
+        'isStandby': false,
+        'isUpcoming': false,
+        'isCompleted': !isActive,
+        'countdown': '',
+        'startTime': _formatTimeString(m['startTime'] ?? '17:00'),
+        'endTime': _formatTimeString(m['endTime'] ?? '20:00'),
+      };
+    }
+
+    final isBefore = now.isBefore(startDt);
+    final hasEnded = now.isAfter(endDt);
+    final isActive = m['isActive'] == true;
+
+    final isSameDay = now.year == startDt.year && now.month == startDt.month && now.day == startDt.day;
+    final isStandby = isBefore && (isActive || isSameDay);
+    final isLive = !isBefore && !hasEnded && isActive;
+    final isUpcomingFuture = isBefore && !isSameDay && !isActive;
+    final isCompleted = hasEnded && !isActive;
+
+    final Duration diff = isStandby || isUpcomingFuture
+        ? startDt.difference(now)
+        : (isLive ? endDt.difference(now) : Duration.zero);
+
+    final totalSecs = diff.inSeconds > 0 ? diff.inSeconds : 0;
+    final days = totalSecs ~/ 86400;
+    final hours = (totalSecs % 86400) ~/ 3600;
+    final minutes = (totalSecs % 3600) ~/ 60;
+    final seconds = totalSecs % 60;
+
+    String pad(int n) => n.toString().padLeft(2, '0');
+    final countdown = days > 0
+        ? '${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s'
+        : '${pad(hours)}:${pad(minutes)}:${pad(seconds)}';
+
+    return {
+      'isLive': isLive,
+      'isStandby': isStandby,
+      'isUpcoming': isUpcomingFuture,
+      'isCompleted': isCompleted,
+      'countdown': countdown,
+      'startTime': _formatTimeString(m['startTime'] ?? '17:00'),
+      'endTime': _formatTimeString(m['endTime'] ?? '20:00'),
+    };
   }
 
   String _formatDateString(dynamic rawDate) {
@@ -549,6 +636,167 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
     );
   }
 
+  void _showStandbyMeetingSheet(Map<String, dynamic> meeting, Map<String, dynamic> timing) {
+    final title = meeting['name']?.toString() ?? 'Fellowship Meeting';
+    final location = meeting['location']?.toString() ?? 'Doulos Store';
+    final question = meeting['questionOfDay']?.toString().trim() ?? '';
+    final countdown = timing['countdown']?.toString() ?? '';
+    final startTime = timing['startTime']?.toString() ?? '';
+    final endTime = timing['endTime']?.toString() ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.hourglass_top_rounded, size: 14, color: Color(0xFFD97706)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'STANDBY • OPENS IN $countdown',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFD97706),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFFD97706)),
+                const SizedBox(width: 6),
+                Text(
+                  location,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                if (startTime.isNotEmpty) ...[
+                  const SizedBox(width: 14),
+                  const Icon(Icons.access_time_rounded, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$startTime – $endTime',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (question.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'QUESTION OF THE DAY',
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFD97706),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '💬 "$question"',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _openAttendancePass();
+                },
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18, color: Colors.white),
+                label: Text(
+                  'Open Check-In Scanner',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _openAttendancePass() {
     _openCameraScanner();
   }
@@ -655,23 +903,28 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
     final name = _data['memberName']?.toString() ?? 'Member';
     final memberType = _data['memberType']?.toString() ?? 'Douloid';
     final douloidRank = _data['douloidRank']?.toString() ?? 'Douloid';
+    final isRecruit = memberType.toLowerCase() == 'recruit';
 
     // Stats calculation from backend
     final stats = (_data['stats'] as Map<String, dynamic>?) ?? {};
     final totalMeetings = ApiService.safeInt(stats['totalMeetings'], 0);
     final attendedMeetings = ApiService.safeInt(stats['totalAttended'] ?? stats['physicalAttended'], 0);
-    final missedMeetings = (totalMeetings - attendedMeetings).clamp(0, 999);
+    final missedMeetings = isRecruit && totalMeetings == 0 ? 0 : (totalMeetings - attendedMeetings).clamp(0, 999);
 
     // Dynamic next meeting resolution for member's campus
     final memberCampus = _data['campus']?.toString() ?? 'Athi River';
     final nextMeeting = _getNextMeeting();
-    final isMeetingActive = nextMeeting?['isActive'] == true;
+    final timing = _getMeetingTiming(nextMeeting);
+    final isStandby = timing['isStandby'] == true;
+    final isMeetingActive = timing['isLive'] == true || (!isStandby && nextMeeting?['isActive'] == true);
     final nextMeetingTitle = nextMeeting != null
         ? (nextMeeting['name']?.toString() ?? 'Doulos Fellowship')
         : 'No Upcoming Meeting Scheduled';
     final nextMeetingSubtitle = nextMeeting != null
         ? _formatMeetingSchedule(nextMeeting)
         : 'Campus: $memberCampus';
+    final nextMeetingLocation = nextMeeting?['location']?.toString() ?? 'Doulos Store';
+    final nextMeetingQuestion = nextMeeting?['questionOfDay']?.toString().trim() ?? '';
 
     return RefreshIndicator(
       onRefresh: _refreshData,
@@ -799,79 +1052,175 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
             // Next Meeting Section
             if (nextMeeting != null)
               GestureDetector(
-                onTap: _openAttendancePass,
+                onTap: () {
+                  if (isStandby) {
+                    _showStandbyMeetingSheet(nextMeeting, timing);
+                  } else {
+                    _openAttendancePass();
+                  }
+                },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isStandby
+                        ? const Color(0xFFFFFBEB)
+                        : (isMeetingActive ? const Color(0xFFF0FDF4) : Colors.white),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isMeetingActive ? const Color(0xFFA7F3D0) : const Color(0xFFE9D5FF),
-                      width: 1.2,
+                      color: isStandby
+                          ? const Color(0xFFFDE68A)
+                          : (isMeetingActive ? const Color(0xFFA7F3D0) : const Color(0xFFE9D5FF)),
+                      width: 1.3,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE)).withValues(alpha: 0.05),
-                        blurRadius: 12,
+                        color: (isStandby
+                                ? const Color(0xFFD97706)
+                                : (isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE)))
+                            .withValues(alpha: 0.08),
+                        blurRadius: 14,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: isMeetingActive ? const Color(0xFFECFDF5) : const Color(0xFFF3E8FF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isMeetingActive ? Icons.sensors_rounded : Icons.star_rounded,
-                          color: isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE),
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isMeetingActive ? '🟢 HAPPENING NOW • TAP TO CHECK IN' : 'Next Meeting',
-                              style: GoogleFonts.inter(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE),
-                                letterSpacing: 0.5,
-                              ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isStandby
+                                  ? const Color(0xFFFEF3C7)
+                                  : (isMeetingActive ? const Color(0xFFDCFCE7) : const Color(0xFFF3E8FF)),
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              nextMeetingTitle,
-                              style: GoogleFonts.inter(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textDark,
-                              ),
+                            child: Icon(
+                              isStandby
+                                  ? Icons.hourglass_top_rounded
+                                  : (isMeetingActive ? Icons.sensors_rounded : Icons.star_rounded),
+                              color: isStandby
+                                  ? const Color(0xFFD97706)
+                                  : (isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE)),
+                              size: 22,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              nextMeetingSubtitle,
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                color: AppColors.textSecondary,
-                              ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isStandby
+                                      ? '⏳ STANDBY • OPENS IN ${timing['countdown']}'
+                                      : (isMeetingActive
+                                          ? '🟢 LIVE SESSION ACTIVE • TAP TO CHECK IN'
+                                          : 'Next Meeting'),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: isStandby
+                                        ? const Color(0xFFD97706)
+                                        : (isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE)),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  nextMeetingTitle,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textDark,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on_rounded, size: 12, color: AppColors.textSecondary),
+                                    const SizedBox(width: 3),
+                                    Flexible(
+                                      child: Text(
+                                        nextMeetingLocation,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textDark,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.access_time_rounded, size: 12, color: AppColors.textSecondary),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      (timing['startTime'] as String).isNotEmpty
+                                          ? '${timing['startTime']} – ${timing['endTime']}'
+                                          : nextMeetingSubtitle,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11.5,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: isStandby
+                                ? const Color(0xFFD97706)
+                                : (isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE)),
+                            size: 22,
+                          ),
+                        ],
+                      ),
+                      if (nextMeetingQuestion.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isStandby
+                                ? const Color(0xFFFEF3C7).withValues(alpha: 0.7)
+                                : (isMeetingActive ? const Color(0xFFECFDF5) : const Color(0xFFFAF5FF)),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isStandby
+                                  ? const Color(0xFFFDE68A)
+                                  : (isMeetingActive ? const Color(0xFFA7F3D0) : const Color(0xFFE9D5FF)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                size: 14,
+                                color: isStandby
+                                    ? const Color(0xFFD97706)
+                                    : (isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE)),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Question: "$nextMeetingQuestion"',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textDark,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: isMeetingActive ? const Color(0xFF059669) : const Color(0xFF7E22CE),
-                        size: 22,
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -1080,6 +1429,34 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen>
                 ],
               ),
             ),
+            if (isRecruit && totalMeetings == 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.eco_rounded, size: 18, color: Color(0xFF16A34A)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Fresh Recruit Standing · 100% (Clean Slate)',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF15803D),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // Upcoming Events Section Header

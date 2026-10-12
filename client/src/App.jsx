@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdmin from './pages/SuperAdmin';
+import AcceptInvitation from './pages/AcceptInvitation';
 import G5TrainingPortal from './pages/G5TrainingPortal';
 import G2OperationsPortal from './pages/G2OperationsPortal';
 import G3SpiritualPortal from './pages/G3SpiritualPortal';
@@ -57,6 +58,7 @@ function App() {
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvitation />} />
         <Route
           path="/admin/dashboard"
           element={

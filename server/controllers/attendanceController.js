@@ -417,11 +417,11 @@ export const submitAttendance = async (req, res) => {
                 setCached(`attendance:device:${meeting._id}:${deviceId}`, attendance, CACHE_TTL.deviceCheck);
             }
 
-            // Clear database scan errors for this student since check-in was successful
+            // Clear database scan errors for this student asynchronously without blocking check-in
             if (mongoose.connection.readyState === 1) {
-                await mongoose.connection.db.collection('scanerrors').deleteMany({
+                mongoose.connection.db.collection('scanerrors').deleteMany({
                     studentRegNo: studentRegNo.trim().toUpperCase()
-                });
+                }).catch(e => console.warn('Async scanerrors cleanup note:', e.message));
             }
         }
 
@@ -554,11 +554,54 @@ export const getStudentPortalData = async (req, res) => {
             return start.getTime();
         };
 
+        // Recruit Fresh Start Logic:
+        // Any recruit entering mid-semester starts fresh and is not penalized for meetings held before they entered.
+        // Continuing Douloids continue tracking against the entire semester's meetings.
+        const isRecruit = (member.memberType || '').trim().toLowerCase() === 'recruit' || (member.role || '').trim().toLowerCase() === 'recruit';
+
+        let relevantCampusMeetings = campusMeetings;
+        let relevantSemTrainings = semTrainings;
+
+        if (isRecruit) {
+            const attendedTimestamps = attendanceRecords
+                .filter(a => a.meeting || a.trainingId)
+                .map(a => new Date(a.timestamp).getTime())
+                .filter(t => !isNaN(t));
+
+            let recruitStartMs;
+            if (attendedTimestamps.length > 0) {
+                // If the recruit has attended meetings, start from the day of their first attended session
+                const earliestAttended = Math.min(...attendedTimestamps);
+                const d = new Date(earliestAttended);
+                d.setHours(0, 0, 0, 0);
+                recruitStartMs = d.getTime();
+            } else {
+                // Brand-new recruit who has not attended yet: starts completely fresh as of today
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                recruitStartMs = today.getTime();
+            }
+
+            // Exclude past meetings that were held before the recruit entered
+            relevantCampusMeetings = campusMeetings.filter(m => {
+                const mDate = new Date(m.date);
+                mDate.setHours(23, 59, 59, 999);
+                return mDate.getTime() >= recruitStartMs;
+            });
+
+            // Exclude past trainings held before the recruit entered
+            relevantSemTrainings = semTrainings.filter(t => {
+                const tDate = new Date(t.date || t.startDate);
+                tDate.setHours(23, 59, 59, 999);
+                return tDate.getTime() >= recruitStartMs;
+            });
+        }
+
         // 7. Group by week (Mainly for Weekly Meetings)
         const weeklyData = new Map();
 
-        // Initialize with campus meetings as 'ABSENT'
-        campusMeetings.forEach(m => {
+        // Initialize with relevant campus meetings as 'ABSENT'
+        relevantCampusMeetings.forEach(m => {
             const weekKey = getWeekStart(m.date);
             weeklyData.set(weekKey, {
                 _id: m._id,
@@ -575,9 +618,9 @@ export const getStudentPortalData = async (req, res) => {
             });
         });
 
-        // Initialize all semester trainings as 'ABSENT' for each of the 3 days
+        // Initialize relevant semester trainings as 'ABSENT' for each of the 3 days
         const trainingMap = new Map();
-        semTrainings.forEach(t => {
+        relevantSemTrainings.forEach(t => {
             const tDate = new Date(t.date);
             
             const friDate = new Date(tDate);
@@ -739,9 +782,9 @@ export const getStudentPortalData = async (req, res) => {
         const totalValid = physicalAttended + exemptedCount;
 
         // Total fellowship meetings held for this semester:
-        // Number of campus meetings held so far, or at least the number of meetings attended by the student
-        const totalMeetings = Math.max(campusMeetings.length, totalValid);
-        const percentage = totalMeetings > 0 ? Math.min(100, Math.round((totalValid / totalMeetings) * 100)) : 0;
+        // Number of relevant campus meetings held so far, or at least the number of meetings attended by the student
+        const totalMeetings = Math.max(relevantCampusMeetings.length, totalValid);
+        const percentage = totalMeetings > 0 ? Math.min(100, Math.round((totalValid / totalMeetings) * 100)) : (isRecruit ? 100 : 0);
 
         const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
 
@@ -812,6 +855,70 @@ export const getStudentPortalData = async (req, res) => {
             });
         }
 
+        // Find current or scheduled meeting for member campus (today or active)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const currentMeetingDoc = await Meeting.findOne({
+            campus: campusFilter,
+            isArchived: { $ne: true },
+            $or: [
+                { isActive: true },
+                { date: { $gte: todayStart, $lte: todayEnd } }
+            ]
+        }).sort({ isActive: -1, date: -1 });
+
+        let currentMeeting = null;
+        if (currentMeetingDoc) {
+            const hasAttendedCurrent = await Attendance.findOne({
+                meeting: currentMeetingDoc._id,
+                studentRegNo
+            });
+            currentMeeting = {
+                _id: currentMeetingDoc._id,
+                name: currentMeetingDoc.name,
+                code: currentMeetingDoc.code,
+                date: currentMeetingDoc.date,
+                campus: currentMeetingDoc.campus,
+                startTime: currentMeetingDoc.startTime || '17:00',
+                endTime: currentMeetingDoc.endTime || '20:00',
+                isActive: currentMeetingDoc.isActive,
+                location: currentMeetingDoc.location,
+                questionOfDay: currentMeetingDoc.questionOfDay || '',
+                hasAttended: !!hasAttendedCurrent,
+                category: currentMeetingDoc.category || 'Meeting'
+            };
+        } else {
+            const activeTr = await Training.findOne({
+                campus: { $in: [member.campus, 'Both', 'All'] },
+                isActive: true
+            });
+            if (activeTr) {
+                const attendedTr = await Attendance.findOne({
+                    trainingId: activeTr._id,
+                    studentRegNo,
+                    trainingDay: activeTr.activeDay || 1
+                });
+                currentMeeting = {
+                    _id: activeTr._id,
+                    name: activeTr.title || activeTr.name || 'Training Camp',
+                    code: activeTr.code,
+                    date: activeTr.startDate || activeTr.date || new Date(),
+                    campus: activeTr.campus,
+                    startTime: '08:00',
+                    endTime: '18:00',
+                    isActive: activeTr.isActive,
+                    location: activeTr.location,
+                    questionOfDay: '',
+                    hasAttended: !!attendedTr,
+                    isTraining: true,
+                    category: 'Training'
+                };
+            }
+        }
+
         // Set persistent HTTP session cookie for student portal
         const studentCookieOptions = {
             httpOnly: true,
@@ -829,6 +936,7 @@ export const getStudentPortalData = async (req, res) => {
             studentRegNo,
             memberName: member.name || 'Visitor',
             campus: member.campus || 'Athi River',
+            currentMeeting,
             email: member.email || '',
             phone: member.phone || '',
             memberType: member.memberType || 'Visitor',
@@ -844,9 +952,9 @@ export const getStudentPortalData = async (req, res) => {
             wateringSelectorActive,
             totalPoints: member.totalPoints || 0,
             lastActiveSemester: member.lastActiveSemester,
-            isActiveThisSemester: member.isActiveThisSemester !== undefined ? member.isActiveThisSemester : true,
+            isActiveThisSemester: (member.memberType === 'Recruit' || member.role === 'Recruit') ? true : (member.isActiveThisSemester !== undefined ? member.isActiveThisSemester : true),
             lastConfirmedSemester: member.lastConfirmedSemester || null,
-            needsSemesterConfirmation: (member.lastConfirmedSemester || '') !== currentSemester,
+            needsSemesterConfirmation: (member.memberType === 'Recruit' || member.role === 'Recruit') ? false : ((member.lastConfirmedSemester || '') !== currentSemester),
             currentSemester,
             availableSemesters,
             selectedSemester: targetSemester,
@@ -858,7 +966,7 @@ export const getStudentPortalData = async (req, res) => {
                 physicalAttended,
                 exemptedCount,
                 trainingAttended: totalTrainingAttended,
-                totalTrainings: semTrainings.length * 3,
+                totalTrainings: relevantSemTrainings.length * 3,
                 totalAttended: totalValid,
                 percentage
             },

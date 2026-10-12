@@ -252,24 +252,62 @@ class _HistoryTabState extends State<HistoryTab> {
           Expanded(
             child: filteredList.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.event_busy_rounded,
-                          size: 48,
-                          color: AppColors.textMuted.withValues(alpha: 0.6),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No records found in "$_selectedFilter"',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (widget.studentData['memberType']?.toString().toLowerCase() == 'recruit' && historyList.isEmpty) ...[
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFDCFCE7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.eco_rounded,
+                                size: 34,
+                                color: Color(0xFF16A34A),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Fresh Recruit Standing',
+                              style: GoogleFonts.inter(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF15803D),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Welcome to Doulos! You start with a clean slate (100% standing) and 0 missed meetings. Your official attendance tracking begins from your first session.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                height: 1.45,
+                              ),
+                            ),
+                          ] else ...[
+                            Icon(
+                              Icons.event_busy_rounded,
+                              size: 48,
+                              color: AppColors.textMuted.withValues(alpha: 0.6),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No records found in "$_selectedFilter"',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   )
                 : ListView.builder(

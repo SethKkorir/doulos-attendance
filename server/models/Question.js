@@ -35,7 +35,7 @@ const questionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'],
+        enum: ['DRAFT', 'ACTIVE', 'ARCHIVED', 'PUBLISHED'],
         default: 'ACTIVE',
         index: true
     },

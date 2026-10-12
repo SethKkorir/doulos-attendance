@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Logo from '../components/Logo';
+import G5ComingSoonWorkspace, { ComingSoonModal } from '../components/g5/G5ComingSoonWorkspace';
 import '../styles/spiritualPortal.css';
 import {
     BookOpen,
@@ -27,7 +28,23 @@ import {
     Share2,
     Bookmark,
     RefreshCw,
-    Menu
+    Menu,
+    Wifi,
+    Battery,
+    Signal,
+    Moon,
+    Sun,
+    ArrowLeft,
+    FileText,
+    Lock,
+    Unlock,
+    Printer,
+    Award,
+    HeartHandshake,
+    Shield,
+    Users,
+    User,
+    CheckSquare
 } from 'lucide-react';
 
 const G3SpiritualPortal = () => {
@@ -37,12 +54,42 @@ const G3SpiritualPortal = () => {
     const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'fellowship' | 'create'
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [fellowshipSubTab, setFellowshipSubTab] = useState('all'); // 'all' | 'published' | 'scheduled' | 'draft' | 'archived'
+    const [simulatorTheme, setSimulatorTheme] = useState('light'); // 'light' | 'dark'
+    const [comingSoonModal, setComingSoonModal] = useState(null);
 
     // Data States
     const [dashboardData, setDashboardData] = useState(null);
     const [fellowships, setFellowships] = useState([]);
+    const [minutes, setMinutes] = useState([]);
+    const [members, setMembers] = useState([]);
+    const [supportRequests, setSupportRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState(null);
+
+    // Minutes Vault State
+    const [showNewMinutesModal, setShowNewMinutesModal] = useState(false);
+    const [minutesForm, setMinutesForm] = useState({
+        meetingDate: new Date().toISOString().split('T')[0],
+        meetingType: 'Executive G-Council',
+        location: 'Freedom Base Council Chamber',
+        agendaText: '',
+        attendeesText: '',
+        resolutions: [
+            { topic: '', decision: '', assignedOfficer: '', deadline: '' }
+        ]
+    });
+
+    // Transcript State
+    const [selectedMemberId, setSelectedMemberId] = useState('');
+    const [transcriptData, setTranscriptData] = useState(null);
+    const [transcriptLoading, setTranscriptLoading] = useState(false);
+    const [memberSearchQuery, setMemberSearchQuery] = useState('');
+
+    // Pastoral Care State
+    const [careFilter, setCareFilter] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved'
+    const [selectedCareRequest, setSelectedCareRequest] = useState(null);
+    const [careNoteText, setCareNoteText] = useState('');
+    const [savingCareNote, setSavingCareNote] = useState(false);
 
     // Profile & Context
     const username = localStorage.getItem('username') || 'seth';
@@ -78,19 +125,25 @@ const G3SpiritualPortal = () => {
         setTimeout(() => setToast(null), 4000);
     };
 
-    // Load Devotional Data
+    // Load Comprehensive G3 Portal Data
     const loadPortalData = async () => {
         try {
             setLoading(true);
-            const [statsRes, listRes] = await Promise.all([
-                api.get('/fellowships/stats/dashboard'),
-                api.get('/fellowships')
+            const [statsRes, listRes, minutesRes, membersRes, supportRes] = await Promise.all([
+                api.get('/fellowships/stats/dashboard').catch(() => ({ data: null })),
+                api.get('/fellowships').catch(() => ({ data: [] })),
+                api.get('/council/minutes').catch(() => ({ data: [] })),
+                api.get('/members').catch(() => ({ data: [] })),
+                api.get('/support-requests').catch(() => ({ data: [] }))
             ]);
             setDashboardData(statsRes.data);
             setFellowships(listRes.data || []);
+            setMinutes(minutesRes.data || []);
+            setMembers(Array.isArray(membersRes.data) ? membersRes.data : membersRes.data?.members || []);
+            setSupportRequests(Array.isArray(supportRes.data) ? supportRes.data : supportRes.data?.requests || []);
         } catch (err) {
             console.error('Failed to load spiritual portal data:', err);
-            showToast('error', 'Could not sync devotional data');
+            showToast('error', 'Could not sync all portal records');
         } finally {
             setLoading(false);
         }
@@ -99,6 +152,150 @@ const G3SpiritualPortal = () => {
     useEffect(() => {
         loadPortalData();
     }, []);
+
+    // Minutes Actions
+    const handleLockMinutes = async (id) => {
+        if (!window.confirm('Seal these meeting minutes in the Vault? Once locked, resolutions are tamper-proof.')) return;
+        try {
+            const res = await api.post(`/council/minutes/${id}/lock`);
+            showToast('success', res.data.message || 'Minutes sealed in Vault');
+            loadPortalData();
+        } catch (err) {
+            showToast('error', err.response?.data?.message || 'Failed to lock minutes');
+        }
+    };
+
+    const handleAddResolutionRow = () => {
+        setMinutesForm(prev => ({
+            ...prev,
+            resolutions: [...prev.resolutions, { topic: '', decision: '', assignedOfficer: '', deadline: '' }]
+        }));
+    };
+
+    const handleSaveMinutes = async (e) => {
+        e.preventDefault();
+        const agenda = minutesForm.agendaText.split('\n').map(a => a.trim()).filter(Boolean);
+        const attendees = minutesForm.attendeesText.split('\n').map(name => ({ name: name.trim(), present: true })).filter(a => a.name);
+
+        try {
+            const res = await api.post('/council/minutes', {
+                ...minutesForm,
+                agenda,
+                attendees,
+                resolutions: minutesForm.resolutions.filter(r => r.topic.trim())
+            });
+            showToast('success', res.data.message || 'Minutes successfully recorded in Vault');
+            setShowNewMinutesModal(false);
+            setMinutesForm({
+                meetingDate: new Date().toISOString().split('T')[0],
+                meetingType: 'Executive G-Council',
+                location: 'Freedom Base Council Chamber',
+                agendaText: '',
+                attendeesText: '',
+                resolutions: [{ topic: '', decision: '', assignedOfficer: '', deadline: '' }]
+            });
+            loadPortalData();
+        } catch (err) {
+            showToast('error', err.response?.data?.message || 'Failed to save minutes');
+        }
+    };
+
+    // Transcript Actions
+    const handleGenerateTranscript = async (memberId) => {
+        if (!memberId) return;
+        setTranscriptLoading(true);
+        try {
+            const res = await api.get(`/council/transcripts/${memberId}`);
+            setTranscriptData(res.data);
+            setSelectedMemberId(memberId);
+            showToast('success', 'Official Service Transcript generated');
+        } catch (err) {
+            showToast('error', 'Failed to generate service transcript');
+        } finally {
+            setTranscriptLoading(false);
+        }
+    };
+
+    const handlePrintCertificate = () => {
+        if (!transcriptData) return;
+        const printWindow = window.open('', '_blank');
+        const content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Official Service Certificate - ${transcriptData.officerName}</title>
+                <style>
+                    body { font-family: "Times New Roman", serif; margin: 40px; text-align: center; color: #021525; background: #fff; }
+                    .border { border: 12px double #021525; padding: 40px; }
+                    h1 { font-size: 26pt; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+                    h2 { font-size: 13pt; color: #4F46E5; font-weight: normal; margin-top: 0; text-transform: uppercase; letter-spacing: 3px; }
+                    p { font-size: 13pt; line-height: 1.6; margin: 20px 0; }
+                    .name { font-size: 24pt; font-weight: bold; text-decoration: underline; margin: 15px 0; }
+                    .rank-badge { font-size: 16pt; color: #b45309; font-weight: bold; margin-bottom: 20px; }
+                    .details { margin: 25px auto; width: 85%; border-collapse: collapse; text-align: left; }
+                    .details td { padding: 9px 14px; border-bottom: 1px solid #cbd5e1; font-size: 11pt; }
+                    .signatures { display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px; }
+                    .sign-line { border-top: 1px solid #000; width: 220px; padding-top: 6px; font-size: 10pt; text-align: center; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="border">
+                    <h2>Daystar University Doulos Ministry</h2>
+                    <h1>Certificate of Outdoor Service & Ministry</h1>
+                    <p>This is to certify that</p>
+                    <div class="name">${transcriptData.officerName}</div>
+                    <p>Student Admission Number: <strong>${transcriptData.admissionNumber}</strong> (${transcriptData.campus || 'Athi River'} Campus)<br />
+                    has completed service with spiritual fidelity and physical competence, attaining the certified rank of:</p>
+                    <div class="rank-badge">${(transcriptData.douloidRank || 'Douloid').toUpperCase()}</div>
+                    
+                    <table class="details">
+                        <tr><td>Belay Master Qualification:</td><td><strong>${transcriptData.belayStatus || 'Standard'}</strong></td></tr>
+                        <tr><td>Solo Outdoor Station Clearance:</td><td><strong>${transcriptData.soloStationAllowed ? 'Authorized' : 'Supervised Only'}</strong></td></tr>
+                        <tr><td>Total Stewardship Points:</td><td><strong>${transcriptData.totalPoints || 0} Points</strong></td></tr>
+                        <tr><td>Fellowship Meetings Attended:</td><td><strong>${transcriptData.fellowshipMeetingsCount || 0} Sessions</strong></td></tr>
+                        <tr><td>Practical Outdoor Camps:</td><td><strong>${transcriptData.trainingsCount || 0} Camps</strong></td></tr>
+                        <tr><td>Certification Code:</td><td><strong>US-G3-${transcriptData.admissionNumber}</strong></td></tr>
+                    </table>
+
+                    <div class="signatures">
+                        <div class="sign-line">G3 Secretariat & Records</div>
+                        <div class="sign-line">G1 Executive Coordinator</div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        printWindow.document.write(content);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+    };
+
+    // Pastoral Care Actions
+    const handleUpdateCareStatus = async (id, status) => {
+        try {
+            await api.put(`/support-requests/${id}`, { status });
+            showToast('success', `Request marked as ${status}`);
+            loadPortalData();
+        } catch (err) {
+            showToast('error', 'Failed to update request status');
+        }
+    };
+
+    const handleAddCareNote = async (id) => {
+        if (!careNoteText.trim()) return;
+        try {
+            setSavingCareNote(true);
+            await api.post(`/support-requests/${id}/notes`, { text: careNoteText.trim() });
+            showToast('success', 'Counseling note recorded');
+            setCareNoteText('');
+            loadPortalData();
+        } catch (err) {
+            showToast('error', 'Failed to add note');
+        } finally {
+            setSavingCareNote(false);
+        }
+    };
 
     const handleSignOut = () => {
         localStorage.clear();
@@ -220,19 +417,28 @@ const G3SpiritualPortal = () => {
     const getPageTitle = (tab) => {
         switch (tab) {
             case 'fellowship':
-                return 'All Daily Devotionals';
+                return 'Daily Devotionals Library';
             case 'create':
-                return 'Devotional Studio';
+                return 'Devotional Studio & Live Preview';
+            case 'minutes':
+                return 'Executive Governance Minutes Vault';
+            case 'transcripts':
+                return 'Official Service Transcripts & Certificates';
+            case 'care':
+                return 'Pastoral Care & Member Prayer Requests';
             case 'dashboard':
             default:
-                return 'Daily Devotional Command Centre';
+                return 'Secretariat & Spiritual Ministry Command';
         }
     };
 
     const navItems = [
-        { id: 'dashboard', label: "Today's Devotional", icon: LayoutDashboard },
-        { id: 'fellowship', label: 'All Devotionals', icon: BookOpen, badge: fellowships.length },
-        { id: 'create', label: 'Devotional Studio', icon: Feather }
+        { id: 'dashboard', label: "Today's Word", icon: LayoutDashboard },
+        { id: 'fellowship', label: 'Devotionals Library', icon: BookOpen, badge: fellowships.length },
+        { id: 'create', label: 'Devotional Studio', icon: Feather },
+        { id: 'minutes', label: 'Minutes Vault', icon: FileText, comingSoon: true },
+        { id: 'transcripts', label: 'Service Transcripts', icon: Award, comingSoon: true },
+        { id: 'care', label: 'Pastoral Care', icon: HeartHandshake, comingSoon: true }
     ];
 
     return (
@@ -278,15 +484,22 @@ const G3SpiritualPortal = () => {
                                 type="button"
                                 className={`g3-nav-item ${isActive ? 'active' : ''}`}
                                 onClick={() => {
+                                    if (item.comingSoon) {
+                                        setComingSoonModal(item);
+                                        setMobileNavOpen(false);
+                                        return;
+                                    }
                                     setActiveTab(item.id);
                                     setMobileNavOpen(false);
                                 }}
                             >
                                 <Icon size={18} />
                                 <span>{item.label}</span>
-                                {item.badge != null && (
+                                {item.comingSoon ? (
+                                    <span className="g3-nav-soon-pill">SOON</span>
+                                ) : item.badge != null ? (
                                     <span className="g3-nav-badge">{item.badge}</span>
-                                )}
+                                ) : null}
                             </button>
                         );
                     })}
@@ -717,7 +930,7 @@ const G3SpiritualPortal = () => {
                         TAB 3: DEVOTIONAL STUDIO & BUILDER
                        ======================================================== */}
                     {activeTab === 'create' && (
-                        <div className="sm-builder-container">
+                        <div className="sm-builder-layout">
                             {/* Left: Devotional Editor Form */}
                             <div className="sm-builder-form">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -866,124 +1079,318 @@ const G3SpiritualPortal = () => {
                                 </div>
                             </div>
 
-                            {/* Right: Live Preview Panel */}
-                            <div className="sm-builder-preview">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--sm-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                        Live Member Preview
-                                    </span>
-                                    <div style={{ display: 'flex', gap: '0.35rem', background: '#FFF', padding: '3px', borderRadius: '8px', border: '1px solid var(--sm-border)' }}>
+                            {/* Right: Apple iPhone Simulator Testing Suite */}
+                            <div className="sm-simulator-wrapper">
+                                {/* macOS Apple Simulator Window Header */}
+                                <div className="apple-simulator-window">
+                                    <div className="apple-traffic-lights">
+                                        <div className="apple-traffic-dot apple-traffic-close" title="Close"></div>
+                                        <div className="apple-traffic-dot apple-traffic-min" title="Minimize"></div>
+                                        <div className="apple-traffic-dot apple-traffic-max" title="Zoom"></div>
+                                    </div>
+                                    <div className="apple-simulator-title">
+                                        <span>iPhone 16 Pro</span>
+                                        <span className="apple-simulator-badge">iOS 18.2</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <button
                                             type="button"
-                                            onClick={() => setPreviewMode('mobile')}
+                                            onClick={() => setSimulatorTheme(simulatorTheme === 'dark' ? 'light' : 'dark')}
                                             style={{
-                                                padding: '4px 8px',
+                                                background: 'rgba(255, 255, 255, 0.1)',
                                                 border: 'none',
                                                 borderRadius: '6px',
-                                                background: previewMode === 'mobile' ? 'var(--sm-bg-quote)' : 'transparent',
-                                                cursor: 'pointer'
+                                                padding: '4px 7px',
+                                                color: '#E2E8F0',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 700
                                             }}
-                                            title="Mobile View"
+                                            title="Toggle iPhone Dark/Light Mode"
                                         >
-                                            <Smartphone size={15} color={previewMode === 'mobile' ? 'var(--sm-accent-gold)' : 'var(--sm-text-muted)'} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreviewMode('desktop')}
-                                            style={{
-                                                padding: '4px 8px',
-                                                border: 'none',
-                                                borderRadius: '6px',
-                                                background: previewMode === 'desktop' ? 'var(--sm-bg-quote)' : 'transparent',
-                                                cursor: 'pointer'
-                                            }}
-                                            title="Desktop View"
-                                        >
-                                            <Monitor size={15} color={previewMode === 'desktop' ? 'var(--sm-accent-gold)' : 'var(--sm-text-muted)'} />
+                                            {simulatorTheme === 'dark' ? <Sun size={12} color="#FBBF24" /> : <Moon size={12} color="#94A3B8" />}
+                                            <span>{simulatorTheme === 'dark' ? 'Dark' : 'Light'}</span>
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className={`sm-preview-frame ${previewMode === 'mobile' ? 'sm-preview-mobile' : 'sm-preview-desktop'}`}>
-                                    {/* Preview Header & Theme */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--sm-accent-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                            {builderForm.theme || 'TODAY\'S DEVOTIONAL'}
-                                        </span>
-                                        <span style={{ fontSize: '0.74rem', color: 'var(--sm-text-muted)' }}>
-                                            {builderForm.date ? new Date(builderForm.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today'}
-                                        </span>
+                                {/* Physical Apple iPhone Chassis */}
+                                <div className="iphone-device-chassis">
+                                    {/* Hardware Side Buttons */}
+                                    <div className="iphone-btn-action" title="Action Button"></div>
+                                    <div className="iphone-btn-vol-up" title="Volume Up"></div>
+                                    <div className="iphone-btn-vol-down" title="Volume Down"></div>
+                                    <div className="iphone-btn-power" title="Side Button"></div>
+
+                                    {/* iPhone Screen Viewport */}
+                                    <div className={`iphone-screen-viewport ${simulatorTheme === 'dark' ? 'dark' : ''}`}>
+                                        {/* Dynamic Island */}
+                                        <div className="iphone-dynamic-island">
+                                            <div className="iphone-camera-lens"></div>
+                                            <div className="iphone-sensor-dot"></div>
+                                        </div>
+
+                                        {/* iOS Status Bar */}
+                                        <div className="iphone-status-bar">
+                                            <span className="iphone-status-time">9:41</span>
+                                            <div className="iphone-status-icons">
+                                                <Signal size={13} strokeWidth={2.5} />
+                                                <Wifi size={13} strokeWidth={2.5} />
+                                                <Battery size={15} strokeWidth={2.5} />
+                                            </div>
+                                        </div>
+
+                                        {/* Doulos In-App Navigation Bar */}
+                                        <div className="iphone-app-navbar">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--sm-accent-gold)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+                                                <ArrowLeft size={16} />
+                                                <span>Devotional</span>
+                                            </div>
+                                            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.4px', textTransform: 'uppercase', opacity: 0.85 }}>
+                                                Doulos
+                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.75 }}>
+                                                <Bookmark size={15} />
+                                                <Share2 size={15} />
+                                            </div>
+                                        </div>
+
+                                        {/* Scrollable Devotional Content */}
+                                        <div style={{ padding: '1.25rem 1.15rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            {/* Header & Theme Pill */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 900,
+                                                    color: '#B45309',
+                                                    background: '#FEF3C7',
+                                                    padding: '0.2rem 0.55rem',
+                                                    borderRadius: '12px',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.04em'
+                                                }}>
+                                                    {builderForm.theme || "TODAY'S DEVOTIONAL"}
+                                                </span>
+                                                <span style={{ fontSize: '0.72rem', color: simulatorTheme === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 600 }}>
+                                                    {builderForm.date ? new Date(builderForm.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Today'}
+                                                </span>
+                                            </div>
+
+                                            {/* Devotional Title */}
+                                            <h2 style={{
+                                                fontFamily: '"Playfair Display", Georgia, serif',
+                                                fontSize: '1.38rem',
+                                                fontWeight: 800,
+                                                lineHeight: 1.3,
+                                                margin: 0,
+                                                color: simulatorTheme === 'dark' ? '#FFFFFF' : '#0F172A'
+                                            }}>
+                                                {builderForm.title || "Untitled Devotional"}
+                                            </h2>
+
+                                            {/* Scripture Reference Quote Card */}
+                                            {builderForm.scriptureReference && (
+                                                <div style={{
+                                                    background: simulatorTheme === 'dark' ? 'rgba(217, 119, 6, 0.12)' : '#FFFDF8',
+                                                    borderLeft: '3.5px solid #D97706',
+                                                    borderTop: simulatorTheme === 'dark' ? '1px solid rgba(217, 119, 6, 0.25)' : '1px solid #FEF3C7',
+                                                    borderRight: simulatorTheme === 'dark' ? '1px solid rgba(217, 119, 6, 0.25)' : '1px solid #FEF3C7',
+                                                    borderBottom: simulatorTheme === 'dark' ? '1px solid rgba(217, 119, 6, 0.25)' : '1px solid #FEF3C7',
+                                                    padding: '0.85rem 1rem',
+                                                    borderRadius: '0 12px 12px 0'
+                                                }}>
+                                                    <div style={{ fontWeight: 800, fontSize: '0.76rem', color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                                        {builderForm.scriptureReference}
+                                                    </div>
+                                                    <div style={{
+                                                        fontFamily: '"Playfair Display", Georgia, serif',
+                                                        fontStyle: 'italic',
+                                                        fontSize: '0.88rem',
+                                                        color: simulatorTheme === 'dark' ? '#E2E8F0' : '#334155',
+                                                        marginTop: '4px',
+                                                        lineHeight: '1.5'
+                                                    }}>
+                                                        "{builderForm.scriptureText || 'Scripture reading for today...'}"
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Devotional Word */}
+                                            <div style={{
+                                                fontSize: '0.88rem',
+                                                lineHeight: '1.68',
+                                                color: simulatorTheme === 'dark' ? '#CBD5E1' : '#334155',
+                                                whiteSpace: 'pre-line'
+                                            }}>
+                                                {builderForm.devotional || 'Devotional reflection will appear here live as you type in the editor...'}
+                                            </div>
+
+                                            {/* Personal Reflection Card */}
+                                            {builderForm.reflectionQuestion && (
+                                                <div style={{
+                                                    background: simulatorTheme === 'dark' ? '#1E293B' : '#F8FAFC',
+                                                    border: simulatorTheme === 'dark' ? '1px solid #334155' : '1.5px solid #E2E8F0',
+                                                    borderRadius: '14px',
+                                                    padding: '1.1rem'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                                        <div style={{ fontSize: '0.68rem', fontWeight: 900, color: simulatorTheme === 'dark' ? '#38BDF8' : '#1E293B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                            MY REFLECTION
+                                                        </div>
+                                                        <span style={{ fontSize: '0.66rem', color: simulatorTheme === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 700 }}>
+                                                            🔒 Confidential
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: simulatorTheme === 'dark' ? '#F8FAFC' : '#0F172A', marginBottom: '0.65rem', lineHeight: '1.4' }}>
+                                                        {builderForm.reflectionQuestion}
+                                                    </div>
+                                                    <textarea
+                                                        rows={2}
+                                                        readOnly
+                                                        placeholder="Write your private reflection here (only you can see this)..."
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '0.6rem',
+                                                            borderRadius: '8px',
+                                                            border: simulatorTheme === 'dark' ? '1px solid #475569' : '1.5px solid #CBD5E1',
+                                                            background: simulatorTheme === 'dark' ? '#0F172A' : '#FFFFFF',
+                                                            color: simulatorTheme === 'dark' ? '#F8FAFC' : '#0F172A',
+                                                            fontSize: '0.8rem',
+                                                            outline: 'none',
+                                                            boxSizing: 'border-box',
+                                                            fontFamily: 'inherit',
+                                                            marginBottom: '0.5rem',
+                                                            cursor: 'default'
+                                                        }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        style={{
+                                                            padding: '0.4rem 0.85rem',
+                                                            borderRadius: '8px',
+                                                            border: 'none',
+                                                            background: '#1D4ED8',
+                                                            color: '#FFFFFF',
+                                                            fontWeight: 800,
+                                                            fontSize: '0.76rem',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Save Note
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Closing Prayer Card */}
+                                            {builderForm.prayer && (
+                                                <div style={{
+                                                    background: simulatorTheme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'linear-gradient(135deg, #FFFDF8 0%, #FFFBEB 100%)',
+                                                    border: simulatorTheme === 'dark' ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid #FEF3C7',
+                                                    borderRadius: '14px',
+                                                    padding: '1.1rem'
+                                                }}>
+                                                    <div style={{ fontSize: '0.68rem', fontWeight: 900, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.35rem' }}>
+                                                        CLOSING PRAYER
+                                                    </div>
+                                                    <div style={{ fontSize: '0.84rem', color: simulatorTheme === 'dark' ? '#FDE68A' : '#78350F', fontStyle: 'italic', lineHeight: '1.55', marginBottom: '0.75rem' }}>
+                                                        "{builderForm.prayer}"
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '0.55rem',
+                                                            borderRadius: '10px',
+                                                            border: '1px solid #F59E0B',
+                                                            background: simulatorTheme === 'dark' ? '#1E293B' : '#FFFFFF',
+                                                            color: '#D97706',
+                                                            fontWeight: 800,
+                                                            fontSize: '0.78rem',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        🙏 Say Amen
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Community Sharing Circle */}
+                                            {builderForm.communityPrompt && (
+                                                <div style={{
+                                                    background: simulatorTheme === 'dark' ? 'rgba(99, 102, 241, 0.12)' : '#EEF2FF',
+                                                    border: simulatorTheme === 'dark' ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid #C7D2FE',
+                                                    borderRadius: '14px',
+                                                    padding: '1rem'
+                                                }}>
+                                                    <div style={{ fontSize: '0.68rem', fontWeight: 900, color: simulatorTheme === 'dark' ? '#818CF8' : '#4338CA', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
+                                                        COMMUNITY SHARING CIRCLE
+                                                    </div>
+                                                    <div style={{ fontSize: '0.82rem', color: simulatorTheme === 'dark' ? '#C7D2FE' : '#312E81', lineHeight: '1.45', fontWeight: 600 }}>
+                                                        {builderForm.communityPrompt}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* iOS Home Indicator */}
+                                        <div className="iphone-home-indicator"></div>
                                     </div>
+                                </div>
 
-                                    {/* Title */}
-                                    <h2 style={{ fontFamily: 'var(--sm-font-serif)', fontSize: '1.4rem', fontWeight: 800, color: 'var(--sm-text-primary)', margin: '0 0 0.85rem 0', lineHeight: 1.3 }}>
-                                        {builderForm.title || 'Devotional Title Preview'}
-                                    </h2>
-
-                                    {/* Scripture Reference Quote */}
-                                    {builderForm.scriptureReference && (
-                                        <div style={{
-                                            background: 'var(--sm-bg-quote)',
-                                            borderLeft: '3.5px solid var(--sm-accent-gold)',
-                                            padding: '0.85rem 1rem',
-                                            borderRadius: '0 10px 10px 0',
-                                            marginBottom: '1rem'
-                                        }}>
-                                            <div style={{ fontWeight: 800, fontSize: '0.78rem', color: 'var(--sm-accent-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                                {builderForm.scriptureReference}
-                                            </div>
-                                            <div style={{ fontStyle: 'italic', fontSize: '0.88rem', color: 'var(--sm-text-secondary)', marginTop: '4px', lineHeight: '1.5' }}>
-                                                "{builderForm.scriptureText || 'Scripture reading for today...'}"
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Devotional Word */}
-                                    <div style={{ fontSize: '0.9rem', lineHeight: '1.65', color: 'var(--sm-text-secondary)', marginBottom: '1.25rem', whiteSpace: 'pre-line' }}>
-                                        {builderForm.devotional || 'Devotional reflection will appear here as written...'}
-                                    </div>
-
-                                    {/* Reflection Prompt */}
-                                    {builderForm.reflectionQuestion && (
-                                        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1rem' }}>
-                                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#0F172A', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                                                YOUR REFLECTION
-                                            </div>
-                                            <div style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600 }}>
-                                                {builderForm.reflectionQuestion}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Closing Prayer */}
-                                    {builderForm.prayer && (
-                                        <div style={{ background: '#FFFDF8', border: '1px solid #FEF3C7', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1rem' }}>
-                                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#B45309', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                                                CLOSING PRAYER
-                                            </div>
-                                            <div style={{ fontSize: '0.82rem', color: '#78350F', fontStyle: 'italic' }}>
-                                                "{builderForm.prayer}"
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Community Prompt */}
-                                    {builderForm.communityPrompt && (
-                                        <div style={{ background: '#EEF2FF', border: '1px solid #E0E7FF', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1rem' }}>
-                                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#4338CA', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                                                COMMUNITY SHARING
-                                            </div>
-                                            <div style={{ fontSize: '0.8rem', color: '#312E81', lineHeight: '1.4' }}>
-                                                {builderForm.communityPrompt}
-                                            </div>
-                                        </div>
-                                    )}
+                                <div style={{ fontSize: '0.72rem', color: 'var(--sm-text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                    <Sparkles size={12} color="var(--sm-accent-gold)" />
+                                    <span>Live Apple Simulator • Updates in real-time as you write</span>
                                 </div>
                             </div>
                         </div>
                     )}
+
+                    {/* Coming Soon workspace for upcoming directorate modules if tab is directly navigated */}
+                    {(activeTab === 'minutes' || activeTab === 'transcripts' || activeTab === 'care') && (
+                        <G5ComingSoonWorkspace
+                            moduleKey={activeTab}
+                            itemInfo={navItems.find(i => i.id === activeTab)}
+                            onNavigateTab={(tab) => setActiveTab(tab)}
+                        />
+                    )}
                 </main>
             </div>
+
+            {/* Native Mobile Bottom Nav */}
+            <nav className="g3-mobile-bottom-nav">
+                {navItems.map((item) => (
+                    <button
+                        key={item.id}
+                        type="button"
+                        className={`g3-bottom-nav-item ${activeTab === item.id ? 'active' : ''}`}
+                        onClick={() => {
+                            if (item.comingSoon) {
+                                setComingSoonModal(item);
+                                return;
+                            }
+                            setActiveTab(item.id);
+                        }}
+                    >
+                        <item.icon size={18} />
+                        <span>{item.label.split(' ')[0]}</span>
+                        {item.comingSoon && (
+                            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#D97706', lineHeight: 1 }}>SOON</span>
+                        )}
+                    </button>
+                ))}
+            </nav>
+
+            {/* Coming Soon Interactive Modal */}
+            {comingSoonModal && (
+                <ComingSoonModal
+                    itemInfo={comingSoonModal}
+                    moduleKey={comingSoonModal.id}
+                    onClose={() => setComingSoonModal(null)}
+                />
+            )}
 
             {/* Modal: Confirm Devotional Publish */}
             {confirmPublishOpen && (

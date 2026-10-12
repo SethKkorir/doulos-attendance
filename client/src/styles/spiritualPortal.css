@@ -838,63 +838,259 @@
 }
 
 /* ==========================================================================
-   FELLOWSHIP STUDIO & PHONE MOCKUP
+   FELLOWSHIP STUDIO & APPLE SIMULATOR TESTING SUITE
    ========================================================================== */
 .sm-builder-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 2.5rem;
   align-items: start;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .sm-builder-layout {
     grid-template-columns: 1fr;
   }
 }
 
-.sm-phone-frame {
+/* Simulator Wrapper (Sticky on Desktop) */
+.sm-simulator-wrapper {
+  position: sticky;
+  top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
   width: 100%;
-  max-width: 375px;
-  margin: 0 auto;
+}
+
+/* Apple Simulator Window Bar */
+.apple-simulator-window {
+  width: 100%;
+  max-width: 410px;
   background: #0F172A;
-  border-radius: 46px;
-  padding: 12px;
-  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-sizing: border-box;
+}
+
+.apple-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.apple-traffic-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.apple-traffic-close { background: #FF5F56; border: 1px solid #E0443E; }
+.apple-traffic-min { background: #FFBD2E; border: 1px solid #DEA123; }
+.apple-traffic-max { background: #27C93F; border: 1px solid #1AAB29; }
+
+.apple-simulator-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #E2E8F0;
+  letter-spacing: 0.3px;
+}
+
+.apple-simulator-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  background: rgba(56, 189, 248, 0.18);
+  color: #38BDF8;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+/* Realistic iPhone Chassis */
+.iphone-device-chassis {
   position: relative;
-  border: 4px solid #1E293B;
+  width: 100%;
+  max-width: 380px;
+  background: #090A0F;
+  border-radius: 50px;
+  padding: 12px;
+  box-sizing: border-box;
+  box-shadow: 
+    0 25px 60px -10px rgba(0, 0, 0, 0.55),
+    0 0 0 1.5px #2A2E39,
+    0 0 0 4px #12141A,
+    0 0 0 5.5px #3A3F4D;
+  transition: all 0.3s ease;
 }
 
-.sm-phone-notch {
-  width: 120px;
-  height: 20px;
-  background: #0F172A;
-  border-radius: 0 0 14px 14px;
+/* Hardware Side Buttons */
+.iphone-btn-action {
   position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
+  left: -8px;
+  top: 100px;
+  width: 4px;
+  height: 24px;
+  background: #2A2E39;
+  border-radius: 2px 0 0 2px;
 }
 
-.sm-phone-screen {
+.iphone-btn-vol-up {
+  position: absolute;
+  left: -8px;
+  top: 140px;
+  width: 4px;
+  height: 46px;
+  background: #2A2E39;
+  border-radius: 2px 0 0 2px;
+}
+
+.iphone-btn-vol-down {
+  position: absolute;
+  left: -8px;
+  top: 198px;
+  width: 4px;
+  height: 46px;
+  background: #2A2E39;
+  border-radius: 2px 0 0 2px;
+}
+
+.iphone-btn-power {
+  position: absolute;
+  right: -8px;
+  top: 145px;
+  width: 4px;
+  height: 68px;
+  background: #2A2E39;
+  border-radius: 0 2px 2px 0;
+}
+
+/* iPhone Screen */
+.iphone-screen-viewport {
+  position: relative;
+  border-radius: 40px;
   background: #FFFFFF;
-  border-radius: 36px;
-  padding: 2.2rem 1.35rem 1.75rem;
-  min-height: 580px;
+  color: #0F172A;
+  min-height: 640px;
   max-height: 680px;
   overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
-  position: relative;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
-.sm-phone-screen::-webkit-scrollbar {
+.iphone-screen-viewport.dark {
+  background: #0B0F19;
+  color: #F8FAFC;
+}
+
+.iphone-screen-viewport::-webkit-scrollbar {
   width: 4px;
 }
-.sm-phone-screen::-webkit-scrollbar-thumb {
-  background: #E2E8F0;
+.iphone-screen-viewport::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
   border-radius: 4px;
+}
+
+/* Dynamic Island */
+.iphone-dynamic-island {
+  position: sticky;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 110px;
+  height: 28px;
+  background: #000000;
+  border-radius: 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  box-sizing: border-box;
+  margin: 0 auto -28px auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.iphone-camera-lens {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #1A365D 0%, #000000 70%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.iphone-sensor-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #111827;
+}
+
+/* iOS Status Bar */
+.iphone-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 22px 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  z-index: 40;
+  color: inherit;
+}
+
+.iphone-status-time {
+  letter-spacing: -0.2px;
+}
+
+.iphone-status-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* In-App App Bar */
+.iphone-app-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.iphone-screen-viewport.dark .iphone-app-navbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Home Indicator Bar */
+.iphone-home-indicator {
+  position: sticky;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 130px;
+  height: 4.5px;
+  background: #000000;
+  opacity: 0.35;
+  border-radius: 4px;
+  margin: 12px auto 6px;
+  pointer-events: none;
+}
+
+.iphone-screen-viewport.dark .iphone-home-indicator {
+  background: #FFFFFF;
+  opacity: 0.45;
 }
 
 /* ==========================================================================
@@ -1248,4 +1444,163 @@
 @keyframes sm-scale-up {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================================================
+   MINUTES VAULT & SECRETARIAT RESOLUTIONS
+   ========================================================================== */
+.sm-vault-card {
+  background: #FFFFFF;
+  border: 1px solid var(--sm-border);
+  border-radius: var(--sm-radius-md);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--sm-shadow-subtle);
+  transition: all 0.2s ease;
+}
+
+.sm-vault-card:hover {
+  border-color: var(--sm-border-hover);
+  box-shadow: var(--sm-shadow-card);
+}
+
+.sm-vault-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.sm-vault-badge-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sm-vault-badge-draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.1);
+  color: #D97706;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sm-resolutions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin-top: 1rem;
+}
+
+.sm-resolutions-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  background: var(--sm-bg-subtle);
+  color: var(--sm-text-muted);
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--sm-border);
+}
+
+.sm-resolutions-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--sm-border);
+  color: var(--sm-text-primary);
+}
+
+/* ==========================================================================
+   OFFICIAL SERVICE TRANSCRIPT & CERTIFICATE
+   ========================================================================== */
+.sm-cert-preview {
+  background: #FFFDF8;
+  border: 4px double #1E1B39;
+  border-radius: var(--sm-radius-md);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+  position: relative;
+  margin-top: 1.25rem;
+}
+
+.sm-cert-seal-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   NATIVE MOBILE BOTTOM NAVIGATION (G3)
+   ========================================================================== */
+.g3-mobile-bottom-nav {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border-top: 1px solid var(--sm-border);
+  padding: 0.35rem 0.5rem;
+  z-index: 100;
+  justify-content: space-around;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@media (min-width: 1024px) {
+  .g3-mobile-bottom-nav {
+    display: none;
+  }
+}
+
+.g3-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--sm-text-muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.g3-bottom-nav-item.active {
+  color: var(--sm-accent-indigo);
+}
+
+.g3-nav-soon-pill {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.12);
+  color: #B45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  margin-left: auto;
 }

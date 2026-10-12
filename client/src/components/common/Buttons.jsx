@@ -1,4 +1,5 @@
 import React from 'react';
+import { renderIcon } from './iconHelper';
 
 /**
  * PrimaryButton: Filled purple (#4B3F8C) matching the reference "Add new" button
@@ -42,7 +43,7 @@ export function PrimaryButton({ children, onClick, icon: Icon, disabled = false,
             }}
             {...props}
         >
-            {Icon && <Icon size={16} />}
+            {renderIcon(Icon, 16)}
             {children}
         </button>
     );
@@ -89,7 +90,7 @@ export function OutlineButton({ children, onClick, icon: Icon, disabled = false,
             }}
             {...props}
         >
-            {Icon && <Icon size={15} style={{ opacity: 0.85 }} />}
+            {renderIcon(Icon, 15, { style: { opacity: 0.85 } })}
             {children}
         </button>
     );
@@ -136,7 +137,7 @@ export function DarkActionButton({ children = 'View Portal', onClick, icon: Icon
             }}
             {...props}
         >
-            {Icon && <Icon size={13} />}
+            {renderIcon(Icon, 13)}
             {children}
         </button>
     );

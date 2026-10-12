@@ -62,6 +62,13 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
     const [weeklyAttendedMap, setWeeklyAttendedMap] = useState(new Map()); // studentRegNo -> meetingName
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
 
+    const [nowTick, setNowTick] = useState(() => Date.now());
+
+    useEffect(() => {
+        const interval = setInterval(() => setNowTick(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
         window.addEventListener('resize', handleResize);
@@ -238,14 +245,14 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
             return { hasStarted: true, hasEnded: false, statusText: 'Active', isBefore: false };
         }
         try {
-            const now = new Date();
+            const now = new Date(nowTick);
             // Kenyan/Local Date components
             const mDate = new Date(meeting.date);
             const mYear = mDate.getFullYear();
             const mMonth = mDate.getMonth();
             const mDay = mDate.getDate();
 
-            const [sHours, sMinutes] = meeting.startTime.split(':').map(Number);
+            const [sHours, sMinutes] = (meeting.startTime || '00:00').split(':').map(Number);
             const [eHours, eMinutes] = (meeting.endTime || '23:59').split(':').map(Number);
 
             const startDateTime = new Date(mYear, mMonth, mDay, sHours || 0, sMinutes || 0, 0);
@@ -254,23 +261,34 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
             const isBefore = now < startDateTime;
             const hasEnded = now > endDateTime;
             const hasStarted = !isBefore && !hasEnded;
+            const msRemaining = isBefore ? Math.max(0, startDateTime.getTime() - now.getTime()) : (hasStarted ? Math.max(0, endDateTime.getTime() - now.getTime()) : 0);
+
+            // Format countdown
+            const totalSecs = Math.floor(msRemaining / 1000);
+            const days = Math.floor(totalSecs / 86400);
+            const hours = Math.floor((totalSecs % 86400) / 3600);
+            const mins = Math.floor((totalSecs % 3600) / 60);
+            const secs = totalSecs % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            const countdownText = days > 0
+                ? `${days}d ${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`
+                : `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
 
             let statusText = 'Live Session Active';
             if (isBefore) {
-                // Check if it is today or future date
                 const isToday = now.toDateString() === mDate.toDateString();
                 statusText = isToday 
-                    ? `Starts at ${meeting.startTime}`
-                    : `Scheduled for ${mDate.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${meeting.startTime}`;
+                    ? `Standby • Starts in ${countdownText}`
+                    : `Standby • Starts in ${countdownText}`;
             } else if (hasEnded) {
                 statusText = 'Session Ended';
             }
 
-            return { hasStarted, hasEnded, isBefore, statusText, startDateTime };
+            return { hasStarted, hasEnded, isBefore, statusText, startDateTime, msRemaining, countdownText };
         } catch (e) {
-            return { hasStarted: true, hasEnded: false, statusText: 'Active', isBefore: false };
+            return { hasStarted: true, hasEnded: false, statusText: 'Active', isBefore: false, msRemaining: 0, countdownText: '' };
         }
-    }, [meeting?.date, meeting?.startTime, meeting?.endTime]);
+    }, [meeting?.date, meeting?.startTime, meeting?.endTime, nowTick]);
 
     // Copy check-in link
     const [copiedLink, setCopiedLink] = useState(false);
@@ -835,7 +853,12 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.45rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0 }}>
                                     <span className={`g5-pill ${!meeting.isActive ? 'g5-pill-inactive' : timingStatus.isBefore ? 'g5-pill-purple' : 'g5-pill-active'}`} style={{ fontSize: '0.7rem', padding: '0.18rem 0.55rem', fontWeight: 800 }}>
-                                        {!meeting.isActive ? 'Session Ended' : timingStatus.isBefore ? (meeting.startTime ? `Starts at ${meeting.startTime}` : 'Scheduled') : (
+                                        {!meeting.isActive ? 'Session Ended' : timingStatus.isBefore ? (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                <Clock size={11} color="#D97706" />
+                                                ⏳ Standby • Starts in {timingStatus.countdownText}
+                                            </span>
+                                        ) : (
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669', display: 'inline-block' }} />
                                                 Live Session Active
@@ -1841,16 +1864,48 @@ const G5MeetingModal = ({ meeting, onClose, api, onRefresh, onEditMeeting }) => 
                                 border: '1.5px solid rgba(37, 170, 225, 0.25)',
                                 boxShadow: '0 16px 48px rgba(15, 23, 42, 0.08)'
                             }}>
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(37, 170, 225, 0.1)', color: '#0284C7', padding: '0.4rem 0.9rem', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1.25rem' }}>
-                                    <QrCode size={14} /> Scan With Phone Camera
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: timingStatus.isBefore ? 'rgba(245, 158, 11, 0.12)' : 'rgba(37, 170, 225, 0.1)', color: timingStatus.isBefore ? '#D97706' : '#0284C7', padding: '0.4rem 0.9rem', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1.25rem' }}>
+                                    {timingStatus.isBefore ? (
+                                        <>
+                                            <Clock size={14} /> STANDBY • OPENS IN {timingStatus.countdownText}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <QrCode size={14} /> Scan With Phone Camera
+                                        </>
+                                    )}
                                 </div>
 
                                 <h3 style={{ fontSize: isMobile ? '1.25rem' : '1.45rem', fontWeight: 900, color: '#0F172A', margin: '0 0 0.5rem' }}>
                                     {meeting.name || 'Weekly Training Meeting'}
                                 </h3>
-                                <p style={{ color: '#64748B', fontSize: '0.85rem', margin: '0 0 1.5rem' }}>
+                                <p style={{ color: '#64748B', fontSize: '0.85rem', margin: '0 0 1rem' }}>
                                     {meeting.campus} • {new Date(meeting.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} • {meeting.startTime || '18:00'} - {meeting.endTime || '20:00'}
                                 </p>
+
+                                {/* ROLL-CALL QUESTION DISPLAY ON PROJECTOR */}
+                                {questionText && (
+                                    <div style={{
+                                        margin: '0 auto 1.5rem',
+                                        maxWidth: '480px',
+                                        padding: '0.85rem 1.15rem',
+                                        background: '#FEF3C7',
+                                        border: '1.5px solid #FDE68A',
+                                        borderRadius: '16px',
+                                        textAlign: 'center',
+                                        boxShadow: '0 4px 14px rgba(251, 191, 36, 0.15)'
+                                    }}>
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+                                            <MessageCircle size={14} color="#D97706" />
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                                                Roll-Call Question
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: isMobile ? '1.02rem' : '1.15rem', fontWeight: 900, color: '#78350F', lineHeight: 1.35 }}>
+                                            "{questionText}"
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* QR CODE CONTAINER */}
                                 <div style={{

@@ -1021,3 +1021,38 @@ export const confirmSemester = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const lookupMemberFast = async (req, res) => {
+    try {
+        const rawReg = (req.params.regNo || '').trim();
+        const studentRegNo = rawReg.toUpperCase();
+        const digits = rawReg.replace(/\D/g, '');
+
+        let member = await Member.findOne({ studentRegNo }).select('name memberType campus status isActiveThisSemester lastConfirmedSemester');
+        if (!member) {
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${studentRegNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).select('name memberType campus status isActiveThisSemester lastConfirmedSemester');
+        }
+        if (!member && digits.length >= 4) {
+            const prefix = digits.slice(0, 2);
+            const suffix = digits.slice(2);
+            member = await Member.findOne({ studentRegNo: { $regex: new RegExp(`^${prefix}[-/\\s]*${suffix}$`, 'i') } }).select('name memberType campus status isActiveThisSemester lastConfirmedSemester');
+        }
+
+        if (!member) {
+            return res.json({ registrationRequired: true, studentRegNo });
+        }
+
+        res.json({
+            registrationRequired: false,
+            memberName: member.name,
+            name: member.name,
+            memberType: member.memberType,
+            campus: member.campus,
+            status: member.status,
+            isActiveThisSemester: member.memberType === 'Recruit' ? true : member.isActiveThisSemester
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error looking up member', error: error.message });
+    }
+};
+

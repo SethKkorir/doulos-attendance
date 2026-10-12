@@ -37,6 +37,7 @@ export const verifySpiritualCoordinator = (req, res, next) => {
     verifyToken(req, res, () => {
         const allowedRoles = [
             'g3', 'g3_secretary', 'g4', 'g4_logistics',
+            'g5', 'g5_training', 'trainer',
             'admin', 'superadmin', 'developer'
         ];
         const userRole = (req.user?.role || '').toLowerCase();
@@ -45,15 +46,18 @@ export const verifySpiritualCoordinator = (req, res, next) => {
             allowedRoles.includes(userRole) ||
             userRole.startsWith('g3') ||
             userRole.startsWith('g4') ||
+            userRole.startsWith('g5') ||
+            userRole === 'trainer' ||
             username.startsWith('g3') ||
             username.startsWith('g4') ||
+            username.startsWith('g5') ||
             username === 'superadmin' ||
             username === 'supersuperadmin' ||
             username === 'seth'
         ) {
             next();
         } else {
-            res.status(403).json({ message: 'Access Denied: Spiritual Ministry (G3/G4) coordinator privileges required' });
+            res.status(403).json({ message: 'Access Denied: Coordinator privileges required' });
         }
     });
 };

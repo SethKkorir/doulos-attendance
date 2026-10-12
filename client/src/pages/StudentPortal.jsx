@@ -517,6 +517,65 @@ const StudentPortal = () => {
     const [reflectionSaved, setReflectionSaved] = useState(false);
     const [prayerEngaged, setPrayerEngaged] = useState(false);
 
+    // Live ticking timer for meeting countdown & standby resolution
+    const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTimeMs(Date.now());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const getMeetingTiming = (m, nowMs = currentTimeMs) => {
+        if (!m || !m.date) {
+            return { isLive: false, isUpcoming: false, isCompleted: false, msRemaining: 0, countdownText: '' };
+        }
+        try {
+            const mDate = new Date(m.date);
+            const mYear = mDate.getFullYear();
+            const mMonth = mDate.getMonth();
+            const mDay = mDate.getDate();
+
+            const [sH, sM] = String(m.startTime || '00:00').split(':').map(Number);
+            const [eH, eM] = String(m.endTime || '23:59').split(':').map(Number);
+
+            const startDateTime = new Date(mYear, mMonth, mDay, sH || 0, sM || 0, 0);
+            const endDateTime = new Date(mYear, mMonth, mDay, eH || 23, eM || 59, 59);
+
+            const startMs = startDateTime.getTime();
+            const endMs = endDateTime.getTime();
+
+            const isBefore = nowMs < startMs;
+            const hasEnded = nowMs > endMs;
+            const isLive = !isBefore && !hasEnded && m.isActive;
+            const isUpcoming = isBefore && m.isActive;
+            const msRemaining = isUpcoming ? Math.max(0, startMs - nowMs) : (isLive ? Math.max(0, endMs - nowMs) : 0);
+
+            const totalSecs = Math.floor(msRemaining / 1000);
+            const days = Math.floor(totalSecs / 86400);
+            const hours = Math.floor((totalSecs % 86400) / 3600);
+            const mins = Math.floor((totalSecs % 3600) / 60);
+            const secs = totalSecs % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            const countdownText = days > 0
+                ? `${days}d ${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`
+                : `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+
+            return {
+                isLive,
+                isUpcoming,
+                isCompleted: hasEnded || !m.isActive,
+                msRemaining,
+                countdownText,
+                startDateTime,
+                endDateTime
+            };
+        } catch (e) {
+            return { isLive: m.isActive, isUpcoming: false, isCompleted: !m.isActive, msRemaining: 0, countdownText: '' };
+        }
+    };
+
     const loadSpiritualData = async () => {
         try {
             setLoadingFellowship(true);
@@ -538,7 +597,7 @@ const StudentPortal = () => {
             }
             if (questionRes.status === 'fulfilled' && questionRes.value?.data) {
                 const q = questionRes.value.data;
-                if (q && q.category !== 'BANTER') {
+                if (q && q.text) {
                     setTodayQuestion(q);
                 } else {
                     setTodayQuestion(null);
@@ -644,9 +703,16 @@ const StudentPortal = () => {
 
     useEffect(() => {
         if (data) {
-            const needsConfirmation = data.needsSemesterConfirmation !== undefined 
+            const isRecruit = (
+                data.memberType === 'Recruit' ||
+                data.role === 'Recruit' ||
+                data.isRecruit ||
+                data.douloidRank === 'Recruit' ||
+                data.status === 'Recruit'
+            );
+            const needsConfirmation = !isRecruit && (data.needsSemesterConfirmation !== undefined 
                 ? data.needsSemesterConfirmation 
-                : (data.lastConfirmedSemester !== data.currentSemester);
+                : (data.lastConfirmedSemester !== data.currentSemester));
             setShowRolloverWelcome(needsConfirmation);
         }
     }, [data]);
@@ -1787,6 +1853,7 @@ const StudentPortal = () => {
     const pct = data?.stats?.percentage || 0;
     const campusName = data?.campus || 'Athi River';
     const currentSem = data?.currentSemester || 'SEP-DEC 2026';
+    const isRecruit = (data?.memberType || '').trim().toLowerCase() === 'recruit';
 
     return (
         <div className="sp-viewport">
@@ -1968,6 +2035,203 @@ const StudentPortal = () => {
                     </div>
                 </div>
 
+                {/* ══ 2. CURRENT / UPCOMING SESSION HERO BANNER (STANDBY WITH COUNTDOWN) ══ */}
+                {(() => {
+                    const currentM = data?.currentMeeting;
+                    if (!currentM) return null;
+                    const timing = getMeetingTiming(currentM);
+
+                    if (timing.isUpcoming) {
+                        return (
+                            <div style={{
+                                background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #1E293B 100%)',
+                                border: '1.5px solid rgba(251, 191, 36, 0.45)',
+                                borderRadius: '20px',
+                                padding: '1.25rem 1.4rem',
+                                marginBottom: '1.25rem',
+                                color: '#FFFFFF',
+                                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.35)',
+                                animation: 'fadeUp 0.3s ease-out'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{
+                                            width: '12px',
+                                            height: '12px',
+                                            borderRadius: '50%',
+                                            backgroundColor: '#F59E0B',
+                                            boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.3)',
+                                            animation: 'pulse 1.8s infinite'
+                                        }} />
+                                        <span style={{
+                                            background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)',
+                                            color: '#FFFFFF',
+                                            fontWeight: 900,
+                                            fontSize: '0.72rem',
+                                            padding: '3px 10px',
+                                            borderRadius: '999px',
+                                            letterSpacing: '0.8px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            <Clock size={12} /> STANDBY • UPCOMING
+                                        </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.74rem', color: '#CBD5E1', fontWeight: 700 }}>
+                                        {currentM.campus}
+                                    </span>
+                                </div>
+
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: '0 0 0.35rem 0', color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                                    {currentM.name}
+                                </h3>
+
+                                <div style={{ fontSize: '0.84rem', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+                                    <span>📍 {currentM.location?.name || (currentM.campus === 'Valley Road' ? 'DAC 506' : 'Doulos Store')}</span>
+                                    <span>•</span>
+                                    <span>🕒 Scheduled for {currentM.startTime || '17:00'} EAT</span>
+                                </div>
+
+                                {currentM.questionOfDay && (
+                                    <div style={{
+                                        fontSize: '0.84rem',
+                                        color: '#FEF08A',
+                                        marginBottom: '0.85rem',
+                                        fontWeight: 600,
+                                        background: 'rgba(254, 240, 138, 0.08)',
+                                        padding: '0.5rem 0.8rem',
+                                        borderRadius: '10px',
+                                        border: '1px solid rgba(254, 240, 138, 0.2)'
+                                    }}>
+                                        💬 Question of the Day: "{currentM.questionOfDay}"
+                                    </div>
+                                )}
+
+                                {/* LIVE TICKING COUNTDOWN */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '1rem',
+                                    flexWrap: 'wrap',
+                                    background: 'rgba(15, 23, 42, 0.75)',
+                                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                                    borderRadius: '14px',
+                                    padding: '0.75rem 1rem'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Clock size={16} color="#FBBF24" />
+                                        <span style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FDE68A', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                            STARTS IN:
+                                        </span>
+                                    </div>
+                                    <div style={{ fontFamily: 'monospace', fontSize: '1.35rem', fontWeight: 900, color: '#FFFFFF', letterSpacing: '1px' }}>
+                                        {timing.countdownText}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    if (timing.isLive) {
+                        return (
+                            <div style={{
+                                background: 'linear-gradient(135deg, #064E3B 0%, #065F46 50%, #0F766E 100%)',
+                                border: '1.5px solid rgba(52, 211, 153, 0.5)',
+                                borderRadius: '20px',
+                                padding: '1.25rem 1.4rem',
+                                marginBottom: '1.25rem',
+                                color: '#FFFFFF',
+                                boxShadow: '0 12px 32px rgba(6, 78, 59, 0.35)',
+                                animation: 'fadeUp 0.3s ease-out'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{
+                                            width: '12px',
+                                            height: '12px',
+                                            borderRadius: '50%',
+                                            backgroundColor: '#34D399',
+                                            boxShadow: '0 0 0 4px rgba(52, 211, 153, 0.35)',
+                                            animation: 'pulse 1.6s infinite'
+                                        }} />
+                                        <span style={{
+                                            background: '#047857',
+                                            color: '#ECFDF5',
+                                            fontWeight: 900,
+                                            fontSize: '0.72rem',
+                                            padding: '3px 10px',
+                                            borderRadius: '999px',
+                                            letterSpacing: '0.8px',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            LIVE SESSION ACTIVE
+                                        </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.74rem', color: '#A7F3D0', fontWeight: 700 }}>
+                                        {currentM.campus}
+                                    </span>
+                                </div>
+
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: '0 0 0.35rem 0', color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                                    {currentM.name}
+                                </h3>
+
+                                <div style={{ fontSize: '0.84rem', color: '#D1FAE5', display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+                                    <span>📍 {currentM.location?.name || 'Main Hall'}</span>
+                                    <span>•</span>
+                                    <span>🕒 Active Until {currentM.endTime || '20:00'} EAT</span>
+                                </div>
+
+                                {currentM.hasAttended ? (
+                                    <div style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        background: 'rgba(255, 255, 255, 0.18)',
+                                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                                        padding: '0.55rem 1rem',
+                                        borderRadius: '12px',
+                                        fontWeight: 800,
+                                        fontSize: '0.86rem',
+                                        color: '#ECFDF5'
+                                    }}>
+                                        <CheckCircle size={17} />
+                                        <span>Attendance Recorded for Today!</span>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowScanner(true)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.85rem 1.25rem',
+                                            borderRadius: '14px',
+                                            border: 'none',
+                                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                            color: '#FFFFFF',
+                                            fontWeight: 900,
+                                            fontSize: '0.94rem',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 6px 20px rgba(5, 150, 105, 0.4)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.65rem'
+                                        }}
+                                    >
+                                        <QrCode size={19} />
+                                        <span>CHECK IN NOW (SCAN QR)</span>
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    }
+
+                    return null;
+                })()}
 
                 {/* ══ 3. TAB CONTENT ══ */}
                 <div style={{ animation: 'fadeUp 0.25s ease' }}>
@@ -2010,7 +2274,7 @@ const StudentPortal = () => {
                                         </div>
                                     </div>
                                     <span style={{ fontSize: '0.74rem', fontWeight: 800, padding: '0.35rem 0.85rem', borderRadius: '999px', background: totalMeetings === 0 ? '#EFF6FF' : pct >= 75 ? '#ECFDF5' : '#FEF3C7', color: totalMeetings === 0 ? '#1D4ED8' : pct >= 75 ? '#065F46' : '#92400E', border: `1px solid ${totalMeetings === 0 ? '#BFDBFE' : pct >= 75 ? '#A7F3D0' : '#FDE68A'}` }}>
-                                        {totalMeetings === 0 ? 'NEW SEMESTER' : pct >= 75 ? '75%+ STANDING' : 'NEEDS IMPROVEMENT'}
+                                        {totalMeetings === 0 ? (isRecruit ? 'FRESH RECRUIT STANDING' : 'NEW SEMESTER') : pct >= 75 ? '75%+ STANDING' : 'NEEDS IMPROVEMENT'}
                                     </span>
                                 </div>
 
@@ -2018,18 +2282,18 @@ const StudentPortal = () => {
                                 <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div>
                                         <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.04em', lineHeight: 1 }}>
-                                            {totalMeetings === 0 ? '0%' : `${pct}%`}
+                                            {totalMeetings === 0 ? (isRecruit ? '100%' : '0%') : `${pct}%`}
                                         </div>
                                         <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 700, marginTop: '0.35rem' }}>
-                                            {totalMeetings === 0 ? 'Fresh Semester Standing' : 'Semester Attendance Rate'}
+                                            {totalMeetings === 0 ? (isRecruit ? 'Fresh Recruit Journey' : 'Fresh Semester Standing') : 'Semester Attendance Rate'}
                                         </div>
                                     </div>
                                     <div style={{ textAlign: 'right', maxWidth: '240px' }}>
                                         <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A' }}>
-                                            {totalMeetings === 0 ? 'Semester Just Begun' : `${totalAttended} of ${totalMeetings} Sessions`}
+                                            {totalMeetings === 0 ? (isRecruit ? 'Welcome to Doulos!' : 'Semester Just Begun') : `${totalAttended} of ${totalMeetings} Sessions`}
                                         </div>
                                         <div style={{ fontSize: '0.74rem', color: '#64748B', marginTop: '2px', lineHeight: 1.4 }}>
-                                            {totalMeetings === 0 ? 'Attend weekly fellowships to build your consistency score.' : pct >= 75 ? 'Excellent standing! Keep up the fellowship. 🌟' : 'Aim for 75%+ weekly attendance.'}
+                                            {totalMeetings === 0 ? (isRecruit ? 'Your recruitment journey starts fresh from today. Attend upcoming fellowships to build your standing.' : 'Attend weekly fellowships to build your consistency score.') : pct >= 75 ? 'Excellent standing! Keep up the fellowship. 🌟' : 'Aim for 75%+ weekly attendance.'}
                                         </div>
                                     </div>
                                 </div>
@@ -2270,7 +2534,9 @@ const StudentPortal = () => {
 
                                 {(!data?.history || data.history.length === 0) ? (
                                     <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', background: '#FFFFFF', borderRadius: '16px', border: '1px dashed #CBD5E1', color: '#64748B', fontSize: '0.88rem', fontWeight: 600 }}>
-                                        No meetings have been held yet for <strong>{currentSem}</strong>.
+                                        {isRecruit
+                                            ? <>Welcome Recruit! Your attendance records start fresh from your first fellowship.</>
+                                            : <>No meetings have been held yet for <strong>{currentSem}</strong>.</>}
                                     </div>
                                 ) : (
                                     data.history.slice(0, 3).map((m, i) => (
@@ -2303,7 +2569,9 @@ const StudentPortal = () => {
 
                             {(!data?.history || data.history.length === 0) ? (
                                 <div style={{ textAlign: 'center', padding: '3rem 1.5rem', background: '#FFFFFF', borderRadius: '20px', border: '1px dashed #CBD5E1', color: '#64748B', fontSize: '0.9rem' }}>
-                                    No attendance records found for <strong>{currentSem}</strong>.
+                                    {isRecruit
+                                        ? <>Welcome to Doulos! No previous absences apply to your account. Your record starts fresh.</>
+                                        : <>No attendance records found for <strong>{currentSem}</strong>.</>}
                                 </div>
                             ) : (
                                 data.history.map((m, i) => (

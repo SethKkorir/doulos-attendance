@@ -1,0 +1,619 @@
+/* ==========================================================================
+   DOULOS ADMIN DESIGN SYSTEM (DESIGN TOKENS & MASTER THEME)
+   Structured for Doulos Admin Portal, rooted in the reference UI:
+   - Deep Indigo/Royal Sidebar with high contrast active pills
+   - Floating Crisp Surface Cards with subtle border & elevation
+   - Full Light / Dark Mode support via CSS custom properties
+   - Responsive Layout (Desktop, Tablet, Mobile Sheet / Drawer)
+   ========================================================================== */
+
+:root {
+    /* ─── BASE SURFACE & CANVAS ─── */
+    --ds-page-bg: #F8FAFC;
+    --ds-surface: #FFFFFF;
+    --ds-surface-elevated: #F1F5F9;
+    --ds-surface-subtle: #F8FAFC;
+    --ds-border: #E2E8F0;
+    --ds-border-subtle: #F1F5F9;
+    --ds-border-strong: #CBD5E1;
+
+    /* ─── TYPOGRAPHY COLORS ─── */
+    --ds-text-primary: #0F172A;
+    --ds-text-secondary: #475569;
+    --ds-text-muted: #64748B;
+    --ds-text-placeholder: #94A3B8;
+    --ds-text-inverse: #FFFFFF;
+
+    /* ─── BRAND & PRIMARY ACCENTS ─── */
+    --ds-primary: #1D4ED8;
+    --ds-primary-hover: #1E40AF;
+    --ds-primary-active: #172554;
+    --ds-primary-light: #EFF6FF;
+    --ds-primary-border: #BFDBFE;
+    --ds-primary-glow: rgba(29, 78, 216, 0.18);
+
+    /* ─── SECONDARY & NEUTRAL BUTTONS ─── */
+    --ds-btn-secondary-bg: #FFFFFF;
+    --ds-btn-secondary-text: #334155;
+    --ds-btn-secondary-border: #CBD5E1;
+    --ds-btn-secondary-hover-bg: #F8FAFC;
+
+    /* ─── DARK ACTION BUTTON (E-Commerce "Action" Button) ─── */
+    --ds-btn-dark-bg: #0F172A;
+    --ds-btn-dark-text: #FFFFFF;
+    --ds-btn-dark-hover: #1E293B;
+
+    /* ─── SIDEBAR (Deep Royal Navy / Indigo) ─── */
+    --ds-sidebar-bg: #1E3A8A;
+    --ds-sidebar-border: rgba(255, 255, 255, 0.08);
+    --ds-sidebar-text: #DBEAFE;
+    --ds-sidebar-text-muted: #93C5FD;
+    --ds-sidebar-hover-bg: rgba(219, 234, 254, 0.12);
+    --ds-sidebar-active-bg: #EFF6FF;
+    --ds-sidebar-active-text: #1D4ED8;
+
+    /* ─── STATUS TOKENS ─── */
+    /* Success / Active */
+    --ds-status-success-bg: #ECFDF5;
+    --ds-status-success-text: #047857;
+    --ds-status-success-border: #A7F3D0;
+
+    /* Warning / Recruit / Pending */
+    --ds-status-warning-bg: #FFFBEB;
+    --ds-status-warning-text: #B45309;
+    --ds-status-warning-border: #FDE68A;
+
+    /* Danger / Critical / Inactive */
+    --ds-status-danger-bg: #FEF2F2;
+    --ds-status-danger-text: #B91C1C;
+    --ds-status-danger-border: #FECACA;
+
+    /* Info / Processing */
+    --ds-status-info-bg: #EFF6FF;
+    --ds-status-info-text: #1D4ED8;
+    --ds-status-info-border: #BFDBFE;
+
+    /* Neutral / Archived */
+    --ds-status-neutral-bg: #F1F5F9;
+    --ds-status-neutral-text: #475569;
+    --ds-status-neutral-border: #E2E8F0;
+
+    /* ─── CADRE RANKS ─── */
+    --ds-rank-shadow-bg: #F1F5F9;
+    --ds-rank-shadow-text: #475569;
+    --ds-rank-shadow-border: #CBD5E1;
+
+    --ds-rank-basic-bg: #E0E7FF;
+    --ds-rank-basic-text: #4338CA;
+    --ds-rank-basic-border: #C7D2FE;
+
+    --ds-rank-intermediate-bg: #E0F2FE;
+    --ds-rank-intermediate-text: #0284C7;
+    --ds-rank-intermediate-border: #BAE6FD;
+
+    --ds-rank-lead-bg: #FEF3C7;
+    --ds-rank-lead-text: #B45309;
+    --ds-rank-lead-border: #FDE68A;
+
+    /* ─── GEOMETRY & ELEVATION ─── */
+    --ds-radius-sm: 6px;
+    --ds-radius-md: 10px;
+    --ds-radius-lg: 16px;
+    --ds-radius-xl: 20px;
+    --ds-radius-pill: 999px;
+
+    --ds-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --ds-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --ds-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+    --ds-shadow-lg: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+    --ds-shadow-modal: 0 20px 45px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+
+    /* ─── TRANSITIONS ─── */
+    --ds-transition-fast: 0.15s ease;
+    --ds-transition-base: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   DARK MODE TOKEN OVERRIDES (System & Toggle Supported)
+   ========================================================================== */
+.dark, [data-theme="dark"] {
+    --ds-page-bg: #0B0F19;
+    --ds-surface: #111827;
+    --ds-surface-elevated: #1F2937;
+    --ds-surface-subtle: #162033;
+    --ds-border: #1F2937;
+    --ds-border-subtle: #172033;
+    --ds-border-strong: #374151;
+
+    --ds-text-primary: #F8FAFC;
+    --ds-text-secondary: #CBD5E1;
+    --ds-text-muted: #94A3B8;
+    --ds-text-placeholder: #64748B;
+    --ds-text-inverse: #0F172A;
+
+    --ds-primary: #3B82F6;
+    --ds-primary-hover: #60A5FA;
+    --ds-primary-active: #2563EB;
+    --ds-primary-light: rgba(59, 130, 246, 0.15);
+    --ds-primary-border: rgba(59, 130, 246, 0.35);
+    --ds-primary-glow: rgba(59, 130, 246, 0.25);
+
+    --ds-btn-secondary-bg: #1F2937;
+    --ds-btn-secondary-text: #E2E8F0;
+    --ds-btn-secondary-border: #374151;
+    --ds-btn-secondary-hover-bg: #374151;
+
+    --ds-btn-dark-bg: #3B82F6;
+    --ds-btn-dark-text: #FFFFFF;
+    --ds-btn-dark-hover: #2563EB;
+
+    --ds-sidebar-bg: #0A1128;
+    --ds-sidebar-border: rgba(255, 255, 255, 0.06);
+    --ds-sidebar-text: #93C5FD;
+    --ds-sidebar-text-muted: #60A5FA;
+    --ds-sidebar-hover-bg: rgba(59, 130, 246, 0.12);
+    --ds-sidebar-active-bg: #1E3A8A;
+    --ds-sidebar-active-text: #FFFFFF;
+
+    --ds-status-success-bg: rgba(4, 120, 87, 0.15);
+    --ds-status-success-text: #34D399;
+    --ds-status-success-border: rgba(52, 211, 153, 0.3);
+
+    --ds-status-warning-bg: rgba(180, 83, 9, 0.15);
+    --ds-status-warning-text: #FBBF24;
+    --ds-status-warning-border: rgba(251, 191, 36, 0.3);
+
+    --ds-status-danger-bg: rgba(185, 28, 28, 0.15);
+    --ds-status-danger-text: #F87171;
+    --ds-status-danger-border: rgba(248, 113, 113, 0.3);
+
+    --ds-status-info-bg: rgba(29, 78, 216, 0.18);
+    --ds-status-info-text: #60A5FA;
+    --ds-status-info-border: rgba(96, 165, 250, 0.3);
+
+    --ds-status-neutral-bg: rgba(71, 85, 105, 0.2);
+    --ds-status-neutral-text: #94A3B8;
+    --ds-status-neutral-border: rgba(148, 163, 184, 0.2);
+
+    --ds-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --ds-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --ds-shadow-modal: 0 20px 45px rgba(0, 0, 0, 0.7);
+}
+
+/* ==========================================================================
+   GLOBAL LAYOUT SHELL & CORE CLASSES
+   ========================================================================== */
+.ds-admin-shell {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--ds-page-bg);
+    color: var(--ds-text-primary);
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* ─── SIDEBAR ─── */
+.ds-sidebar {
+    width: 260px;
+    min-width: 260px;
+    background-color: var(--ds-sidebar-bg);
+    color: var(--ds-sidebar-text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 1.5rem 1rem;
+    box-sizing: border-box;
+    transition: transform var(--ds-transition-base), width var(--ds-transition-base);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.ds-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.25rem 0.65rem 1.5rem;
+    border-bottom: 1px solid var(--ds-sidebar-border);
+    margin-bottom: 1rem;
+}
+
+.ds-sidebar-brand-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    line-height: 1.2;
+}
+
+.ds-sidebar-brand-sub {
+    font-size: 0.68rem;
+    color: var(--ds-sidebar-text-muted);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.ds-nav-group-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--ds-sidebar-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 0.75rem 0.85rem 0.35rem;
+}
+
+.ds-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.ds-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.65rem 0.95rem;
+    border-radius: var(--ds-radius-pill);
+    color: var(--ds-sidebar-text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--ds-transition-fast);
+    position: relative;
+    width: 100%;
+}
+
+.ds-nav-item:hover {
+    background-color: var(--ds-sidebar-hover-bg);
+    color: #FFFFFF;
+}
+
+.ds-nav-item.active {
+    background-color: var(--ds-sidebar-active-bg);
+    color: var(--ds-sidebar-active-text);
+    font-weight: 800;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ds-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 18px;
+    border-radius: 2px;
+    background-color: #FFFFFF;
+}
+
+/* ─── MAIN CONTENT AREA ─── */
+.ds-main-area {
+    flex: 1;
+    padding: 2rem 2.25rem;
+    min-width: 0;
+    overflow-y: auto;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Floating Surface Card (The signature e-commerce container) */
+.ds-surface-card {
+    background-color: var(--ds-surface);
+    border-radius: var(--ds-radius-lg);
+    box-shadow: var(--ds-shadow-md);
+    border: 1px solid var(--ds-border);
+    padding: 2rem 2.25rem;
+    min-height: calc(100vh - 4rem);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* ─── TOPBAR ─── */
+.ds-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--ds-border-subtle);
+    margin-bottom: 1.5rem;
+}
+
+.ds-search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background-color: var(--ds-surface-elevated);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-pill);
+    padding: 0.55rem 1.15rem;
+    width: 320px;
+    max-width: 100%;
+    transition: all var(--ds-transition-fast);
+}
+
+.ds-search-box:focus-within {
+    background-color: var(--ds-surface);
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px var(--ds-primary-glow);
+}
+
+.ds-search-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ds-text-primary);
+    width: 100%;
+}
+
+.ds-search-input::placeholder {
+    color: var(--ds-text-placeholder);
+}
+
+.ds-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ds-icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background-color: var(--ds-surface-elevated);
+    border: 1px solid var(--ds-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ds-text-secondary);
+    cursor: pointer;
+    position: relative;
+    transition: all var(--ds-transition-fast);
+}
+
+.ds-icon-btn:hover {
+    background-color: var(--ds-border);
+    color: var(--ds-primary);
+}
+
+.ds-icon-badge {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #EF4444;
+    border: 1.5px solid var(--ds-surface);
+}
+
+.ds-identity-block {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--ds-radius-pill);
+    cursor: pointer;
+    transition: background var(--ds-transition-fast);
+    user-select: none;
+}
+
+.ds-identity-block:hover {
+    background-color: var(--ds-surface-elevated);
+}
+
+.ds-identity-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--ds-radius-pill);
+    background: linear-gradient(135deg, var(--ds-sidebar-bg) 0%, #1E40AF 100%);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.88rem;
+    flex-shrink: 0;
+}
+
+/* ─── DATA TABLE ─── */
+.ds-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--ds-radius-md);
+    border: 1px solid var(--ds-border);
+}
+
+.ds-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    text-align: left;
+}
+
+.ds-table th {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--ds-text-muted);
+    padding: 0.85rem 1rem;
+    border-bottom: 1.5px solid var(--ds-border);
+    background-color: var(--ds-surface-subtle);
+    white-space: nowrap;
+}
+
+.ds-table td {
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid var(--ds-border);
+    font-size: 0.86rem;
+    color: var(--ds-text-primary);
+    vertical-align: middle;
+    background-color: var(--ds-surface);
+}
+
+.ds-table tbody tr {
+    transition: background-color var(--ds-transition-fast);
+}
+
+.ds-table tbody tr:hover td {
+    background-color: var(--ds-surface-subtle);
+}
+
+.ds-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ─── MODAL OVERLAYS & DIALOGS ─── */
+.ds-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: dsFadeIn 0.2s ease-out;
+}
+
+.ds-modal {
+    background-color: var(--ds-surface);
+    border-radius: var(--ds-radius-lg);
+    box-shadow: var(--ds-shadow-modal);
+    border: 1px solid var(--ds-border);
+    width: 100%;
+    max-width: 540px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: dsScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ds-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: 80vh;
+}
+
+.ds-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-subtle);
+}
+
+/* ─── TOAST NOTIFICATION ─── */
+.ds-toast {
+    position: fixed;
+    bottom: 1.75rem;
+    right: 1.75rem;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    border-radius: var(--ds-radius-md);
+    background-color: var(--ds-surface);
+    color: var(--ds-text-primary);
+    box-shadow: var(--ds-shadow-lg);
+    border: 1px solid var(--ds-border);
+    font-size: 0.88rem;
+    font-weight: 600;
+    animation: dsSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ds-toast.success { border-left: 4px solid #10B981; }
+.ds-toast.error { border-left: 4px solid #EF4444; }
+.ds-toast.info { border-left: 4px solid #3B82F6; }
+.ds-toast.warning { border-left: 4px solid #F59E0B; }
+
+/* ─── ANIMATIONS ─── */
+@keyframes dsFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes dsScaleIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dsSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── RESPONSIVE BREAKPOINTS ─── */
+@media (max-width: 1024px) {
+    .ds-sidebar {
+        width: 220px;
+        min-width: 220px;
+        padding: 1.25rem 0.75rem;
+    }
+    .ds-main-area {
+        padding: 1.5rem;
+    }
+    .ds-surface-card {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .ds-admin-shell {
+        flex-direction: column;
+    }
+    .ds-sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 260px;
+        height: 100vh;
+        z-index: 60;
+    }
+    .ds-sidebar.mobile-open {
+        transform: translateX(280px);
+    }
+    .ds-main-area {
+        padding: 1rem;
+    }
+    .ds-surface-card {
+        padding: 1.25rem;
+        border-radius: var(--ds-radius-md);
+    }
+    .ds-topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.85rem;
+    }
+    .ds-mobile-menu-btn {
+        display: flex !important;
+    }
+    .ds-search-box {
+        width: 100%;
+    }
+}

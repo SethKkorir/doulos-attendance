@@ -9,20 +9,56 @@ export const getSystemStatus = async (req, res) => {
         const targetUri = await Settings.findOne({ key: 'TARGET_CLUSTER_URI' });
         const recoverySetting = await Settings.findOne({ key: 'RECOVERY_MODE' });
         const maintenanceSetting = await Settings.findOne({ key: 'MANUAL_MAINTENANCE' });
+        const maintenanceSchedule = await Settings.findOne({ key: 'MAINTENANCE_SCHEDULE' });
         
+        const [activeUsersCount, activeMembersCount, g9UsersCount] = await Promise.all([
+            User.countDocuments().catch(() => 0),
+            Member.countDocuments({ status: 'Active' }).catch(() => 0),
+            User.countDocuments({
+                $or: [
+                    { position: { $regex: /^G[1-9]/i } },
+                    { role: { $regex: /^g[1-9]/i } }
+                ]
+            }).catch(() => 0)
+        ]);
+
+        let parsedSchedule = null;
+        if (maintenanceSchedule?.value) {
+            try {
+                parsedSchedule = JSON.parse(maintenanceSchedule.value);
+            } catch (e) {
+                parsedSchedule = null;
+            }
+        }
+
+        const isDbConnected = mongoose.connection.readyState === 1;
+
         res.json({
             recoveryMode: recoverySetting?.value === 'true',
             manualMaintenance: maintenanceSetting?.value === 'true',
             targetClusterUri: targetUri?.value || '',
-            currentCluster: 'New (Temporary)'
+            currentCluster: 'New (Temporary)',
+            activeUsers: activeUsersCount,
+            activeMembers: activeMembersCount,
+            g9Count: g9UsersCount,
+            dbConnected: isDbConnected,
+            maintenanceSchedule: parsedSchedule,
+            serverHealth: {
+                server: 'Operational',
+                database: isDbConnected ? 'Connected' : 'Degraded',
+                auth: 'Operational',
+                attendance: 'Operational',
+                workers: 'Operational'
+            }
         });
     } catch (error) {
+        console.error("Error in getSystemStatus:", error);
         res.status(500).json({ message: 'Error fetching status' });
     }
 };
 
 export const updateSystemStatus = async (req, res) => {
-    const { recoveryMode, manualMaintenance, targetClusterUri } = req.body;
+    const { recoveryMode, manualMaintenance, targetClusterUri, maintenanceSchedule } = req.body;
     
     try {
         if (targetClusterUri !== undefined) {
@@ -45,6 +81,14 @@ export const updateSystemStatus = async (req, res) => {
             await Settings.findOneAndUpdate(
                 { key: 'MANUAL_MAINTENANCE' },
                 { value: manualMaintenance ? 'true' : 'false' },
+                { upsert: true }
+            );
+        }
+
+        if (maintenanceSchedule !== undefined) {
+            await Settings.findOneAndUpdate(
+                { key: 'MAINTENANCE_SCHEDULE' },
+                { value: maintenanceSchedule ? JSON.stringify(maintenanceSchedule) : '' },
                 { upsert: true }
             );
         }
