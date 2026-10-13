@@ -17,7 +17,6 @@ import G5ProgressionWorkspace from '../components/g5/G5ProgressionWorkspace';
 import G5SafetyCentreWorkspace from '../components/g5/G5SafetyCentreWorkspace';
 import G5GearLogisticsWorkspace from '../components/g5/G5GearLogisticsWorkspace';
 import G5ReportsWorkspace from '../components/g5/G5ReportsWorkspace';
-import G5ComingSoonWorkspace, { ComingSoonModal } from '../components/g5/G5ComingSoonWorkspace';
 import MemberReadinessProfileModal from '../components/g5/MemberReadinessProfileModal';
 import PromotionEvaluationModal from '../components/g5/PromotionEvaluationModal';
 import Logo from '../components/Logo';
@@ -88,36 +87,14 @@ const G5TrainingPortal = () => {
     // Responsive Mobile State
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
-    const moreTabIds = ['trainings_camps', 'graduations', 'promotions', 'contributions', 'safety'];
-    const isMoreActive = moreTabIds.includes(activeTab);
+    const isMoreActive = activeTab === 'progression' || activeTab === 'graduations' || activeTab === 'promotions';
 
-    const [comingSoonModal, setComingSoonModal] = useState(null);
-
-    const COMING_SOON_TABS = {
-        questions: { label: 'Question Bank', icon: Lightbulb, key: 'questions' },
-        camps: { label: 'Camps Management', icon: Tent, key: 'camps' },
-        trainings: { label: 'Training Curricula', icon: Compass, key: 'trainings' },
-        trainings_camps: { label: 'Training Curricula', icon: Compass, key: 'trainings' },
-        safety_centre: { label: 'Safety Centre', icon: Shield, key: 'safety_centre' },
-        safety: { label: 'Safety Centre', icon: Shield, key: 'safety_centre' },
-        incidents: { label: 'Safety Incidents', icon: ShieldAlert, key: 'incidents' },
-        sops: { label: 'SOP / LOP Library', icon: FileText, key: 'sops' },
-        gear: { label: 'Gear & Logistics', icon: Layers, key: 'gear' },
-        contributions: { label: 'Operations & Contributions', icon: CreditCard, key: 'contributions' },
-        analytics: { label: 'Training Analytics', icon: Radio, key: 'analytics' },
-        readiness: { label: 'Readiness Reports', icon: Sparkles, key: 'readiness' },
-        settings: { label: 'Directorate Settings', icon: Settings, key: 'settings' }
-    };
-
+    const VALID_TABS = ['dashboard', 'attendance', 'meetings', 'members', 'cadres', 'progression', 'graduations', 'promotions'];
     const handleSelectTab = (tabId) => {
-        if (COMING_SOON_TABS[tabId]) {
-            setComingSoonModal(COMING_SOON_TABS[tabId]);
-            setMobileSidebarOpen(false);
-            setMobileMoreOpen(false);
-            setToast({ message: `🚀 ${COMING_SOON_TABS[tabId].label} is coming soon!`, type: 'info' });
-            return;
-        }
-        setActiveTab(tabId);
+        let target = tabId;
+        if (target === 'cadres' || target === 'recruits') target = 'members';
+        if (!VALID_TABS.includes(target)) target = 'dashboard';
+        setActiveTab(target);
         setMobileSidebarOpen(false);
         setMobileMoreOpen(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1599,7 +1576,7 @@ const G5TrainingPortal = () => {
         }
     };
 
-    // Restructure into G5 2.0 Command Centre Workspaces
+    // G5 Production Command Centre Workspaces
     const navGroups = [
         {
             title: 'COMMAND',
@@ -1608,42 +1585,17 @@ const G5TrainingPortal = () => {
             ]
         },
         {
-            title: 'TRAINING',
+            title: 'SESSIONS & DRILLS',
             items: [
-                { id: 'trainings', label: 'Training', icon: Compass, comingSoon: true },
-                { id: 'camps', label: 'Camps', icon: Tent, comingSoon: true },
-                { id: 'meetings', label: 'Meetings', icon: Calendar },
-                { id: 'questions', label: 'Question Bank', icon: Lightbulb, comingSoon: true }
+                { id: 'meetings', label: 'Meetings & Sessions', icon: Calendar },
+                { id: 'attendance', label: 'Attendance Ledger', icon: CalendarCheck }
             ]
         },
         {
-            title: 'PEOPLE',
+            title: 'PERSONNEL',
             items: [
-                { id: 'members', label: 'Members', icon: Users },
-                { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-                { id: 'progression', label: 'Progression', icon: Award, badge: (g5Stats.totalRecruits || recruits.length) + (g5Stats.promotionsPending || 0) }
-            ]
-        },
-        {
-            title: 'SAFETY',
-            items: [
-                { id: 'safety_centre', label: 'Safety Centre', icon: Shield, comingSoon: true },
-                { id: 'incidents', label: 'Incidents', icon: ShieldAlert, badge: g5Stats.safetyFlags || incidents.length || null, comingSoon: true },
-                { id: 'sops', label: 'SOP / LOP Library', icon: FileText, comingSoon: true }
-            ]
-        },
-        {
-            title: 'OPERATIONS',
-            items: [
-                { id: 'gear', label: 'Gear & Logistics', icon: Layers, comingSoon: true },
-                { id: 'contributions', label: 'Contributions', icon: CreditCard, comingSoon: true }
-            ]
-        },
-        {
-            title: 'REPORTS',
-            items: [
-                { id: 'analytics', label: 'Training Analytics', icon: Radio, comingSoon: true },
-                { id: 'readiness', label: 'Readiness', icon: Sparkles, comingSoon: true }
+                { id: 'members', label: 'Membership Roster', icon: Users },
+                { id: 'progression', label: 'Graduations & Progression', icon: Award, badge: (g5Stats.totalRecruits || recruits.length) + (g5Stats.promotionsPending || 0) }
             ]
         }
     ];
@@ -1709,9 +1661,7 @@ const G5TrainingPortal = () => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id || 
                                     (item.id === 'members' && activeTab === 'cadres') ||
-                                    (item.id === 'trainings' && activeTab === 'trainings_camps') ||
-                                    (item.id === 'progression' && (activeTab === 'graduations' || activeTab === 'promotions')) ||
-                                    (item.id === 'safety_centre' && activeTab === 'safety');
+                                    (item.id === 'progression' && (activeTab === 'graduations' || activeTab === 'promotions'));
                                 return (
                                     <button
                                         key={item.id}
@@ -1724,46 +1674,12 @@ const G5TrainingPortal = () => {
                                         <span>{item.label}</span>
                                         {item.badge ? (
                                             <span className="g5-nav-badge">{item.badge}</span>
-                                        ) : item.comingSoon ? (
-                                            <span style={{
-                                                marginLeft: 'auto',
-                                                fontSize: '0.6rem',
-                                                fontWeight: 800,
-                                                padding: '2px 6px',
-                                                borderRadius: '6px',
-                                                background: 'rgba(217, 119, 6, 0.12)',
-                                                color: '#D97706',
-                                                border: '1px solid rgba(245, 158, 11, 0.3)',
-                                                letterSpacing: '0.4px'
-                                            }}>SOON</span>
                                         ) : null}
                                     </button>
                                 );
                             })}
                         </div>
                     ))}
-
-                    <div style={{ marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border-subtle)' }}>
-                        <button
-                            type="button"
-                            className={`g5-nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                            onClick={() => handleSelectTab('settings')}
-                        >
-                            <Settings size={17} />
-                            <span>Settings</span>
-                            <span style={{
-                                marginLeft: 'auto',
-                                fontSize: '0.6rem',
-                                fontWeight: 800,
-                                padding: '2px 6px',
-                                borderRadius: '6px',
-                                background: 'rgba(217, 119, 6, 0.12)',
-                                color: '#D97706',
-                                border: '1px solid rgba(245, 158, 11, 0.3)',
-                                letterSpacing: '0.4px'
-                            }}>SOON</span>
-                        </button>
-                    </div>
                 </nav>
 
                 <div className="g5-sidebar-footer">
@@ -3115,93 +3031,6 @@ const G5TrainingPortal = () => {
                         </div>
                     )}
 
-                    {/* ========================================================= */}
-                    {/* TAB 4: TRAINING OPERATIONS (COMING SOON) */}
-                    {/* ========================================================= */}
-                    {(activeTab === 'trainings' || activeTab === 'trainings_camps') && (
-                        <G5ComingSoonWorkspace
-                            tabId={activeTab}
-                            onNavigateTab={handleSelectTab}
-                            fallbackComponent={
-                                <G5TrainingsWorkspace
-                                    trainings={trainings}
-                                    members={members}
-                                    campusFilter={campusFilter}
-                                    onCreateTraining={() => setShowNewMeetingModal(true)}
-                                    onStartTraining={async (id) => {
-                                        try {
-                                            await api.patch(`/trainings/${id}`, { isActive: true });
-                                            showToast('Started training session', 'success');
-                                            fetchPortalData();
-                                        } catch (err) {
-                                            showToast('Failed to start training', 'error');
-                                        }
-                                    }}
-                                    onEndTraining={async (id) => {
-                                        try {
-                                            await api.patch(`/trainings/${id}`, { isActive: false });
-                                            showToast('Ended training session', 'success');
-                                            fetchPortalData();
-                                        } catch (err) {
-                                            showToast('Failed to end training', 'error');
-                                        }
-                                    }}
-                                    onOpenAttendance={() => {
-                                        handleSelectTab('attendance');
-                                    }}
-                                    onOpenTrainingQr={(tr) => {
-                                        setQrMeeting(tr);
-                                    }}
-                                    onDeleteTraining={async (id) => {
-                                        try {
-                                            await api.post(`/trainings/${id}/delete-secure`, { adminPasscode: 'DOULOS_SECURE_DELETE_2026' });
-                                            showToast('Deleted training session', 'success');
-                                            fetchPortalData();
-                                        } catch (err) {
-                                            showToast('Failed to delete training', 'error');
-                                        }
-                                    }}
-                                />
-                            }
-                        />
-                    )}
-
-                    {/* ========================================================= */}
-                    {/* TAB: CAMPS COMMAND STUDIO (COMING SOON) */}
-                    {/* ========================================================= */}
-                    {activeTab === 'camps' && (
-                        <G5ComingSoonWorkspace
-                            tabId="camps"
-                            onNavigateTab={handleSelectTab}
-                            fallbackComponent={
-                                <G5CampCommandWorkspace
-                                    campProgram={campProgram}
-                                    cadres={cadres}
-                                    meetings={meetings}
-                                    gearAssets={gearAssets}
-                                    campusFilter={campusFilter}
-                                    api={api}
-                                    showToast={showToast}
-                                />
-                            }
-                        />
-                    )}
-
-                    {/* ========================================================= */}
-                    {/* TAB: QUESTION BANK (COMING SOON) */}
-                    {/* ========================================================= */}
-                    {activeTab === 'questions' && (
-                        <G5ComingSoonWorkspace
-                            tabId="questions"
-                            onNavigateTab={handleSelectTab}
-                            fallbackComponent={
-                                <G5QuestionBankWorkspace
-                                    api={api}
-                                    showToast={showToast}
-                                />
-                            }
-                        />
-                    )}
 
                     {/* ========================================================= */}
                     {/* TAB 5: RECRUIT GRADUATIONS (EMOTIONAL HIGH POINT - WARM CARDS) */}
@@ -5409,35 +5238,6 @@ const G5TrainingPortal = () => {
                         </div>
                     )}
 
-                    {/* ========================================================= */}
-                    {/* ========================================================= */}
-                    {/* TAB 8: CONTRIBUTIONS (OPERATIONS - COMING SOON) */}
-                    {/* ========================================================= */}
-                    {activeTab === 'contributions' && (
-                        <G5ComingSoonWorkspace
-                            tabId="contributions"
-                            onNavigateTab={handleSelectTab}
-                        />
-                    )}
-
-                    {/* ========================================================= */}
-                    {/* TAB: SAFETY & INCIDENTS (SAFETY CENTRE 2.0 - COMING SOON) */}
-                    {/* ========================================================= */}
-                    {(activeTab === 'safety_centre' || activeTab === 'safety' || activeTab === 'incidents' || activeTab === 'sops') && (
-                        <G5ComingSoonWorkspace
-                            tabId={activeTab}
-                            onNavigateTab={handleSelectTab}
-                            fallbackComponent={
-                                <G5SafetyCentreWorkspace
-                                    incidents={incidents}
-                                    lops={lops}
-                                    campusFilter={campusFilter}
-                                    onReportIncident={() => setShowReportIncidentModal(true)}
-                                    showToast={showToast}
-                                />
-                            }
-                        />
-                    )}
 
                     {/* ========================================================= */}
                     {/* TAB: PROGRESSION PIPELINE 2.0 (RECRUITS & DOULOIDS) */}
@@ -5465,52 +5265,6 @@ const G5TrainingPortal = () => {
                         />
                     )}
 
-                    {/* ========================================================= */}
-                    {/* TAB: GEAR & LOGISTICS 2.0 (OPERATIONS - COMING SOON) */}
-                    {/* ========================================================= */}
-                    {activeTab === 'gear' && (
-                        <G5ComingSoonWorkspace
-                            tabId="gear"
-                            onNavigateTab={handleSelectTab}
-                            fallbackComponent={
-                                <G5GearLogisticsWorkspace
-                                    gearAssets={gearAssets}
-                                    campusFilter={campusFilter}
-                                    showToast={showToast}
-                                />
-                            }
-                        />
-                    )}
-
-                    {/* ========================================================= */}
-                    {/* TAB: TRAINING ANALYTICS & READINESS REPORTS 2.0 (REPORTS - COMING SOON) */}
-                    {/* ========================================================= */}
-                    {(activeTab === 'analytics' || activeTab === 'readiness') && (
-                        <G5ComingSoonWorkspace
-                            tabId={activeTab}
-                            onNavigateTab={handleSelectTab}
-                            fallbackComponent={
-                                <G5ReportsWorkspace
-                                    campusFilter={campusFilter}
-                                    meetings={meetings}
-                                    members={members}
-                                    recruits={recruits}
-                                    cadres={cadres}
-                                    showToast={showToast}
-                                />
-                            }
-                        />
-                    )}
-
-                    {/* ========================================================= */}
-                    {/* TAB: G5 DIRECTORATE SETTINGS (COMING SOON) */}
-                    {/* ========================================================= */}
-                    {activeTab === 'settings' && (
-                        <G5ComingSoonWorkspace
-                            tabId="settings"
-                            onNavigateTab={handleSelectTab}
-                        />
-                    )}
 
                 </main>
             </div>
@@ -7064,13 +6818,6 @@ const G5TrainingPortal = () => {
                 />
             )}
 
-            {comingSoonModal && (
-                <ComingSoonModal
-                    itemInfo={comingSoonModal}
-                    moduleKey={comingSoonModal.key}
-                    onClose={() => setComingSoonModal(null)}
-                />
-            )}
 
             {/* ===================================================== */}
             {/* NATIVE-STYLE MOBILE BOTTOM NAVIGATION BAR */}
@@ -7084,16 +6831,6 @@ const G5TrainingPortal = () => {
                 >
                     <LayoutDashboard size={20} />
                     <span>Home</span>
-                </button>
-
-                <button
-                    type="button"
-                    className={`g5-bottom-nav-item ${activeTab === 'attendance' ? 'active' : ''}`}
-                    onClick={() => handleSelectTab('attendance')}
-                    aria-label="Attendance Ledger"
-                >
-                    <CalendarCheck size={20} />
-                    <span>Attend</span>
                 </button>
 
                 <button
@@ -7113,8 +6850,18 @@ const G5TrainingPortal = () => {
 
                 <button
                     type="button"
-                    className={`g5-bottom-nav-item ${activeTab === 'cadres' ? 'active' : ''}`}
-                    onClick={() => handleSelectTab('cadres')}
+                    className={`g5-bottom-nav-item ${activeTab === 'attendance' ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('attendance')}
+                    aria-label="Attendance Ledger"
+                >
+                    <CalendarCheck size={20} />
+                    <span>Attend</span>
+                </button>
+
+                <button
+                    type="button"
+                    className={`g5-bottom-nav-item ${(activeTab === 'cadres' || activeTab === 'members') ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('members')}
                     aria-label="Membership Roster"
                 >
                     <Users size={20} />
@@ -7123,19 +6870,19 @@ const G5TrainingPortal = () => {
 
                 <button
                     type="button"
-                    className={`g5-bottom-nav-item ${(isMoreActive || mobileMoreOpen) ? 'active' : ''}`}
-                    onClick={() => setMobileMoreOpen(!mobileMoreOpen)}
-                    aria-label="More Ministry Portals"
+                    className={`g5-bottom-nav-item ${(activeTab === 'progression' || activeTab === 'graduations' || activeTab === 'promotions') ? 'active' : ''}`}
+                    onClick={() => handleSelectTab('progression')}
+                    aria-label="Progression Studio"
                 >
                     <div style={{ position: 'relative', display: 'inline-flex' }}>
-                        <Layers size={20} />
-                        {(recruits.length > 0 || incidents.length > 0) && (
+                        <Award size={20} />
+                        {recruits.length > 0 && (
                             <span className="g5-bottom-nav-badge">
-                                {recruits.length + incidents.length}
+                                {recruits.length}
                             </span>
                         )}
                     </div>
-                    <span>More</span>
+                    <span>Promote</span>
                 </button>
             </nav>
 
@@ -7182,8 +6929,6 @@ const G5TrainingPortal = () => {
                                     <Icon size={22} />
                                     {item.badge ? (
                                         <span className="g5-sheet-badge">{item.badge}</span>
-                                    ) : item.comingSoon ? (
-                                        <span className="g5-sheet-badge" style={{ background: '#D97706', fontSize: '0.55rem', fontWeight: 800 }}>SOON</span>
                                     ) : null}
                                 </div>
                                 <span className="g5-sheet-item-label">{item.label}</span>
